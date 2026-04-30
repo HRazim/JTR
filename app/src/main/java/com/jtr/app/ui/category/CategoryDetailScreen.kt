@@ -22,6 +22,7 @@ import com.jtr.app.ui.home.PersonCard
 fun CategoryDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToPersonDetail: (String) -> Unit,
+    onNavigateToAddPerson: () -> Unit,
     viewModel: CategoryDetailViewModel = viewModel()
 ) {
     val persons by viewModel.persons.collectAsStateWithLifecycle()
@@ -78,6 +79,18 @@ fun CategoryDetailScreen(
                 )
             }
         },
+        // FAB : ajouter un contact directement dans cette catégorie
+        floatingActionButton = {
+            if (!isSelectionMode) {
+                ExtendedFloatingActionButton(
+                    onClick = onNavigateToAddPerson,
+                    icon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
+                    text = { Text("Ajouter un contact") },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        },
         bottomBar = {
             if (isSelectionMode) {
                 BottomAppBar(
@@ -90,6 +103,17 @@ fun CategoryDetailScreen(
                             .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // Retirer de cette catégorie (ne supprime pas le contact)
+                        OutlinedButton(
+                            onClick = { viewModel.removeSelectedFromCategory() },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.LinkOff, contentDescription = null,
+                                modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Retirer")
+                        }
+                        // Assigner à une autre catégorie (en plus)
                         OutlinedButton(
                             onClick = { showCategoryDialog = true },
                             modifier = Modifier.weight(1f)
@@ -99,6 +123,7 @@ fun CategoryDetailScreen(
                             Spacer(Modifier.width(6.dp))
                             Text("Catégorie")
                         }
+                        // Supprimer (soft-delete de la personne)
                         Button(
                             onClick = { viewModel.deleteSelected() },
                             modifier = Modifier.weight(1f),
@@ -160,8 +185,9 @@ fun CategoryDetailScreen(
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Assignez des contacts depuis l'accueil",
+                            "Appuyez sur + pour ajouter un contact",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

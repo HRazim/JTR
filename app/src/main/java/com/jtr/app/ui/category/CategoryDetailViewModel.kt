@@ -18,7 +18,7 @@ class CategoryDetailViewModel(
     savedStateHandle: SavedStateHandle
 ) : AndroidViewModel(application) {
 
-    private val categoryId: String = checkNotNull(savedStateHandle["categoryId"])
+    val categoryId: String = checkNotNull(savedStateHandle["categoryId"])
     private val repository = PersonRepository(application.applicationContext)
     private val categoryRepo = CategoryRepository(application.applicationContext)
     private val categoryDao = AppDatabase.getInstance(application.applicationContext).categoryDao()
@@ -71,6 +71,20 @@ class CategoryDetailViewModel(
 
     fun clearSelection() { _selectedIds.value = emptySet() }
 
+    /**
+     * Retire les contacts sélectionnés de CETTE catégorie uniquement.
+     * Les contacts ne sont PAS supprimés de la base de données ni de leurs autres catégories.
+     */
+    fun removeSelectedFromCategory() {
+        val ids = _selectedIds.value.toList()
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            repository.removeFromCategory(ids, categoryId)
+            _selectedIds.value = emptySet()
+        }
+    }
+
+    /** Supprime définitivement (soft-delete) les contacts sélectionnés. */
     fun deleteSelected() {
         val ids = _selectedIds.value.toList()
         if (ids.isEmpty()) return
@@ -84,7 +98,7 @@ class CategoryDetailViewModel(
         val ids = _selectedIds.value.toList()
         if (ids.isEmpty()) return
         viewModelScope.launch {
-            val category = com.jtr.app.domain.model.Category(name = name, color = color)
+            val category = Category(name = name, color = color)
             categoryRepo.add(category)
             repository.assignCategory(ids, category.id)
             _selectedIds.value = emptySet()

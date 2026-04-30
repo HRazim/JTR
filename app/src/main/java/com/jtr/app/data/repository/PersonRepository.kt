@@ -5,21 +5,25 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.data.local.PersonDao
+import com.jtr.app.data.local.PersonCategoryDao
 import com.jtr.app.domain.model.Person
+import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.utils.normalizeForSearch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.io.File
 
 /**
- * PersonRepository — PP3 VERSION COMPLÈTE.
+ * PersonRepository — PP3 VERSION FINALE avec Many-to-Many.
  *
- * Inclut : CRUD, recherche, migration JSON→Room, géocodage intégré,
- * gestion des catégories, markAsContacted, purge corbeille.
+ * Les opérations de catégorie passent désormais par PersonCategoryDao
+ * (table de jointure) au lieu du champ Person.categoryId.
+ * Supprimer un contact d'une catégorie ne supprime PAS le contact.
  */
 class PersonRepository(context: Context) {
 
     private val dao: PersonDao = AppDatabase.getInstance(context).personDao()
+    private val categoryDao: PersonCategoryDao = AppDatabase.getInstance(context).personCategoryDao()
     private val appContext = context.applicationContext
 
     // =========================================================
@@ -29,8 +33,7 @@ class PersonRepository(context: Context) {
     fun getAllActive(): Flow<List<Person>> = dao.getAllActive()
 
     /**
-     * Recherche accent-insensitive et case-insensitive via filtrage en mémoire.
-     * Remplace la requête SQL LIKE qui ne normalise pas les caractères accentués.
+     * Recherche accent-insensitive via filtrage en mémoire.
      * Ex : "therese" trouve "Thérèse", "francois" trouve "François".
      */
     fun search(query: String): Flow<List<Person>> {
@@ -45,11 +48,20 @@ class PersonRepository(context: Context) {
         }
     }
 
-    fun getByCategory(categoryId: String): Flow<List<Person>> = dao.getByCategory(categoryId)
+    /** Contacts actifs d'une catégorie (via table de jointure Many-to-Many). */
+    fun getByCategory(categoryId: String): Flow<List<Person>> =
+        categoryDao.getActivePersonsInCategory(categoryId)
 
     fun getDeleted(): Flow<List<Person>> = dao.getDeleted()
 
+    /** Tous les liens personne-catégorie (utilisé par TrashViewModel pour le regroupement). */
+    fun getAllCategoryJoins(): Flow<List<PersonCategoryJoin>> = categoryDao.getAllJoins()
+
     suspend fun getById(id: String): Person? = dao.getById(id)
+
+    /** IDs des catégories d'une personne (version suspend). */
+    suspend fun getCategoryIdsForPerson(personId: String): List<String> =
+        categoryDao.getCategoryIdsForPersonSync(personId)
 
     // =========================================================
     // ÉCRITURE
@@ -58,44 +70,48 @@ class PersonRepository(context: Context) {
     suspend fun add(person: Person) = dao.insert(person)
 
     /**
-     * Ajoute une personne avec géocodage automatique de la ville.
-     * Si la ville est renseignée mais sans coordonnées, interroge Nominatim.
+     * Ajoute une personne ET l'assigne directement à une catégorie.
+     * Utilisé depuis CategoryDetailScreen → AddPersonScreen.
+     */
+    suspend fun addToCategory(person: Person, categoryId: String) {
+        dao.insert(person)
+        categoryDao.insert(PersonCategoryJoin(person.id, categoryId))
+    }
+
+    /**
+     * Ajoute une personne avec géocodage automatique si ville sans coordonnées.
      */
     suspend fun addWithGeocoding(person: Person): Person {
         val enriched = if (person.city != null && !person.hasGeoCoordinates) {
             try {
-                val geocodingRepo = GeocodingRepository()
-                val coords = geocodingRepo.getCityCoordinates(person.city)
-                if (coords != null) {
-                    person.copy(cityLat = coords.latitude, cityLng = coords.longitude)
-                } else person
-            } catch (e: Exception) {
-                person // En cas d'erreur réseau, on sauvegarde sans coordonnées
-            }
+                val coords = GeocodingRepository().getCityCoordinates(person.city)
+                if (coords != null) person.copy(cityLat = coords.latitude, cityLng = coords.longitude)
+                else person
+            } catch (_: Exception) { person }
         } else person
-
         dao.insert(enriched)
+        return enriched
+    }
+
+    /**
+     * Ajoute avec géocodage ET assigne à une catégorie.
+     */
+    suspend fun addWithGeocodingToCategory(person: Person, categoryId: String): Person {
+        val enriched = addWithGeocoding(person)
+        categoryDao.insert(PersonCategoryJoin(enriched.id, categoryId))
         return enriched
     }
 
     suspend fun update(person: Person) = dao.update(person)
 
-    /**
-     * Met à jour avec géocodage si la ville a changé.
-     */
     suspend fun updateWithGeocoding(person: Person, oldCity: String?): Person {
         val enriched = if (person.city != null && person.city != oldCity) {
             try {
-                val geocodingRepo = GeocodingRepository()
-                val coords = geocodingRepo.getCityCoordinates(person.city)
-                if (coords != null) {
-                    person.copy(cityLat = coords.latitude, cityLng = coords.longitude)
-                } else person
-            } catch (e: Exception) {
-                person
-            }
+                val coords = GeocodingRepository().getCityCoordinates(person.city)
+                if (coords != null) person.copy(cityLat = coords.latitude, cityLng = coords.longitude)
+                else person
+            } catch (_: Exception) { person }
         } else person
-
         dao.update(enriched)
         return enriched
     }
@@ -108,25 +124,12 @@ class PersonRepository(context: Context) {
         dao.update(person.copy(isFavorite = !person.isFavorite))
     }
 
-    /**
-     * Marque un contact comme "contacté aujourd'hui".
-     * Utilisé pour le calcul de daysSinceLastContact dans le ProximityCheckWorker.
-     */
-    suspend fun markAsContacted(personId: String) {
-        dao.markAsContacted(personId)
-    }
+    suspend fun markAsContacted(personId: String) = dao.markAsContacted(personId)
 
-    /**
-     * Purge les éléments supprimés depuis plus de 30 jours.
-     */
     suspend fun purgeOldDeleted() {
         val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
         dao.purgeOldDeleted(thirtyDaysAgo)
     }
-
-    // =========================================================
-    // MIGRATION JSON → ROOM (données du PP1)
-    // =========================================================
 
     suspend fun restore(id: String) = dao.restore(id)
 
@@ -134,8 +137,28 @@ class PersonRepository(context: Context) {
 
     suspend fun softDeleteMultiple(ids: List<String>) = dao.softDeleteMultiple(ids)
 
-    suspend fun assignCategory(ids: List<String>, categoryId: String?) =
-        dao.assignCategory(ids, categoryId)
+    // =========================================================
+    // GESTION MANY-TO-MANY DES CATÉGORIES
+    // =========================================================
+
+    /**
+     * Assigne plusieurs personnes à une catégorie (ajoute les liens, ne supprime pas les anciens).
+     */
+    suspend fun assignCategory(ids: List<String>, categoryId: String) {
+        val joins = ids.map { PersonCategoryJoin(it, categoryId) }
+        categoryDao.insertAll(joins)
+    }
+
+    /**
+     * Retire plusieurs personnes d'une catégorie spécifique SANS les supprimer.
+     */
+    suspend fun removeFromCategory(ids: List<String>, categoryId: String) {
+        categoryDao.removePersonsFromCategory(ids, categoryId)
+    }
+
+    // =========================================================
+    // MIGRATION JSON → ROOM (données du PP1)
+    // =========================================================
 
     suspend fun migrateFromJson() {
         val file = File(appContext.filesDir, "persons.json")
@@ -146,8 +169,6 @@ class PersonRepository(context: Context) {
             val persons: List<Person> = Gson().fromJson(json, type)
             persons.forEach { dao.insert(it) }
             file.delete()
-        } catch (e: Exception) {
-            // Ignore migration errors — app starts with empty list
-        }
+        } catch (_: Exception) { }
     }
 }

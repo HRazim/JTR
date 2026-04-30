@@ -14,7 +14,7 @@ data class GeocodingResult(
     @SerialName("lat") val lat: String,
     @SerialName("lon") val lon: String,
     @SerialName("display_name") val displayName: String,
-    @SerialName("place_id") val placeId: Long
+    @SerialName("place_id") val placeId: Long? = null
 ) {
     val latitude: Double? get() = lat.toDoubleOrNull()
     val longitude: Double? get() = lon.toDoubleOrNull()

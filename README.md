@@ -1,4 +1,4 @@
-# 📱 JTR — Justin To Remember
+# 📱 JTR — Just To Remember
 
 > **Carnet de contacts enrichi nouvelle génération** · Version `3.0-Final`  
 > Cours **8INF257 — Développement Mobile** · Université du Québec à Chicoutimi (UQAC) · Hiver 2026
@@ -7,7 +7,7 @@
 
 ## 🎯 Proposition de valeur
 
-JTR (*Justin To Remember*) va au-delà du simple répertoire téléphonique. L'application maintient une **mémoire sociale active** : elle enregistre le contexte humain de chaque relation (goûts, anniversaires, ville, notes), géocode automatiquement les villes via OpenStreetMap, et notifie proactivement l'utilisateur lorsqu'il se retrouve physiquement proche d'un contact qu'il n'a pas vu depuis longtemps. Le tout, sans service cloud, sans clé API propriétaire, et avec un stockage 100 % local chiffrable.
+JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'application maintient une **mémoire sociale active** : elle enregistre le contexte humain de chaque relation (goûts, anniversaires, ville, notes), géocode automatiquement les villes via OpenStreetMap, et notifie proactivement l'utilisateur lorsqu'il se retrouve physiquement proche d'un contact qu'il n'a pas vu depuis longtemps. Le tout, sans service cloud, sans clé API propriétaire, et avec un stockage 100 % local chiffrable.
 
 ---
 

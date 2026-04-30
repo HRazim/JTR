@@ -22,7 +22,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jtr.app.ui.theme.ThemePreset
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,11 +34,13 @@ fun SettingsScreen(
     onDarkModeChange: (Boolean) -> Unit = {},
     selectedPreset: ThemePreset = ThemePreset.AZURE,
     onPresetSelected: (ThemePreset) -> Unit = {},
-    onNavigateToTrash: () -> Unit = {}
+    onNavigateToTrash: () -> Unit = {},
+    settingsViewModel: SettingsViewModel = viewModel()
 ) {
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var proximityEnabled by remember { mutableStateOf(true) }
-    var birthdayEnabled by remember { mutableStateOf(true) }
+    val notificationsEnabled by settingsViewModel.notificationsEnabled.collectAsStateWithLifecycle()
+    val proximityEnabled by settingsViewModel.proximityEnabled.collectAsStateWithLifecycle()
+    val birthdayEnabled by settingsViewModel.birthdayEnabled.collectAsStateWithLifecycle()
+    val proximityRadiusKm by settingsViewModel.proximityRadiusKm.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -61,17 +66,59 @@ fun SettingsScreen(
                 title = "Activer les notifications",
                 subtitle = "Active ou désactive toutes les notifications",
                 checked = notificationsEnabled,
-                onCheckedChange = { notificationsEnabled = it }
+                onCheckedChange = { settingsViewModel.setNotificationsEnabled(it) }
             )
 
             SettingsSwitch(
                 icon = Icons.Default.LocationOn,
                 title = "Rappels de proximité",
-                subtitle = "Notifier quand un contact est dans la même ville",
+                subtitle = "Notifier quand un contact est dans les environs",
                 checked = proximityEnabled && notificationsEnabled,
                 enabled = notificationsEnabled,
-                onCheckedChange = { proximityEnabled = it }
+                onCheckedChange = { settingsViewModel.setProximityEnabled(it) }
             )
+
+            // Curseur du rayon de proximité (visible seulement si activé)
+            if (proximityEnabled && notificationsEnabled) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Rayon de détection",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "${proximityRadiusKm.roundToInt()} km",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Slider(
+                        value = proximityRadiusKm,
+                        onValueChange = { settingsViewModel.setProximityRadiusKm(it) },
+                        valueRange = 1f..50f,
+                        steps = 48, // paliers de 1 km
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("1 km", style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("50 km", style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
 
             SettingsSwitch(
                 icon = Icons.Default.Cake,
@@ -79,7 +126,7 @@ fun SettingsScreen(
                 subtitle = "Notifier le jour des anniversaires",
                 checked = birthdayEnabled && notificationsEnabled,
                 enabled = notificationsEnabled,
-                onCheckedChange = { birthdayEnabled = it }
+                onCheckedChange = { settingsViewModel.setBirthdayEnabled(it) }
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))

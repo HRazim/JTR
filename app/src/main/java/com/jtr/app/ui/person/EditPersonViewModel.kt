@@ -29,11 +29,6 @@ class EditPersonViewModel(
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // --- Map results (auto-populated by Navigation when returning from MapScreen) ---
-    val mapCity: StateFlow<String?> = savedStateHandle.getStateFlow("selected_city", null)
-    val mapLat: StateFlow<Double?> = savedStateHandle.getStateFlow("selected_lat", null)
-    val mapLng: StateFlow<Double?> = savedStateHandle.getStateFlow("selected_lng", null)
-
     // --- Form state (survives navigation, initialized from loaded Person) ---
     private val _firstName = MutableStateFlow("")
     val firstName: StateFlow<String> = _firstName.asStateFlow()
@@ -73,16 +68,10 @@ class EditPersonViewModel(
 
     private var personLoaded = false
 
-    init {
-        viewModelScope.launch {
-            mapCity.collect { newCity ->
-                if (newCity != null) {
-                    _city.value = newCity
-                    _cityLat.value = savedStateHandle.get<Double>("selected_lat")
-                    _cityLng.value = savedStateHandle.get<Double>("selected_lng")
-                }
-            }
-        }
+    fun onCityFromMap(city: String, lat: Double?, lng: Double?) {
+        _city.value = city
+        _cityLat.value = lat
+        _cityLng.value = lng
     }
 
     fun loadPerson(personId: String) {

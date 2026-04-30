@@ -22,7 +22,6 @@ data class Person(
     val cityLng: Double? = null,           // NOUVEAU PP3 : pour le géofencing
     val cityNotify: Boolean = false,
     val isFavorite: Boolean = false,
-    val categoryId: String? = null,        // NOUVEAU PP3 : lien vers catégorie
     val lastContactedAt: Long? = null,     // NOUVEAU PP3 : pour rappels
     val notes: String? = null,
     val likes: String? = null,

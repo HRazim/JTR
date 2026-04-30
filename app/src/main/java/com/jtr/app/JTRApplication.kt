@@ -9,6 +9,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.jtr.app.worker.ProximityCheckWorker
+import org.maplibre.android.MapLibre
 import java.util.concurrent.TimeUnit
 
 /**
@@ -21,6 +22,7 @@ class JTRApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        MapLibre.getInstance(this)
         createNotificationChannels()
         scheduleProximityChecks()
     }

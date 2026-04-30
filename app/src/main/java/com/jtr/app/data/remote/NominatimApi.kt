@@ -23,4 +23,11 @@ interface NominatimApi {
         @Query("limit") limit: Int = 1,
         @Query("addressdetails") addressDetails: Int = 1
     ): List<GeocodingResult>
+
+    @GET("reverse")
+    suspend fun reverseGeocode(
+        @Query("lat") lat: Double,
+        @Query("lon") lon: Double,
+        @Query("format") format: String = "json"
+    ): GeocodingResult
 }

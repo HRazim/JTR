@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fond sombre assorti au logo JTR (#231F1F) -->
     <background android:drawable="@drawable/ic_launcher_background" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <!-- Logo JTR.png comme calque avant — les lettres sont centrées dans la safe zone (72dp) -->
+    <foreground android:drawable="@drawable/jtr" />
+    <!-- Calque monochrome pour les icônes thématisées Android 13+ -->
     <monochrome android:drawable="@drawable/ic_launcher_foreground" />
 </adaptive-icon>

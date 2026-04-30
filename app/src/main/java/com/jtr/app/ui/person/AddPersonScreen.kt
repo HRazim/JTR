@@ -18,8 +18,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -32,6 +36,10 @@ import java.util.*
 fun AddPersonScreen(
     onNavigateBack: () -> Unit,
     onNavigateToMap: () -> Unit = {},
+    cityFromMap: String? = null,
+    latFromMap: Double? = null,
+    lngFromMap: Double? = null,
+    onMapResultConsumed: () -> Unit = {},
     viewModel: AddPersonViewModel = viewModel()
 ) {
     // Champs texte : état LOCAL pour ne pas briser la composition IME des accents (é, à, ç…).
@@ -39,7 +47,7 @@ fun AddPersonScreen(
     // Le ViewModel reste notifié à chaque frappe pour persister l'état lors de la navigation.
     var firstName by remember { mutableStateOf(viewModel.firstName.value) }
     var lastName  by remember { mutableStateOf(viewModel.lastName.value) }
-    var city      by remember { mutableStateOf(viewModel.city.value) }
+    var city      by remember { mutableStateOf(TextFieldValue(viewModel.city.value)) }
     var origin    by remember { mutableStateOf(viewModel.origin.value) }
     var likes     by remember { mutableStateOf(viewModel.likes.value) }
     var notes     by remember { mutableStateOf(viewModel.notes.value) }
@@ -50,6 +58,16 @@ fun AddPersonScreen(
     val cityLat        by viewModel.cityLat.collectAsStateWithLifecycle()
     val photoUri       by viewModel.photoUri.collectAsStateWithLifecycle()
     val firstNameError by viewModel.firstNameError.collectAsStateWithLifecycle()
+
+    val cityFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(cityFromMap) {
+        val c = cityFromMap ?: return@LaunchedEffect
+        city = TextFieldValue(c, TextRange(c.length))
+        viewModel.onCityFromMap(c, latFromMap, lngFromMap)
+        onMapResultConsumed()
+        cityFocusRequester.requestFocus()
+    }
 
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -175,9 +193,9 @@ fun AddPersonScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = city,
-                    onValueChange = { city = it; viewModel.onCityChanged(it) },
+                    onValueChange = { city = it; viewModel.onCityChanged(it.text) },
                     label = { Text("Ville") },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).focusRequester(cityFocusRequester),
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     trailingIcon = {

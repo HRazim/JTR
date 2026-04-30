@@ -65,6 +65,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Assigne les contacts sélectionnés à une catégorie (Many-to-Many).
+     * Les contacts restent dans leurs catégories précédentes.
+     */
     fun assignCategoryToSelected(categoryId: String) {
         val ids = _selectedIds.value.toList()
         if (ids.isEmpty()) return

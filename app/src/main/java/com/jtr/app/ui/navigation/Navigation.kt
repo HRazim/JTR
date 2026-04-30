@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -31,7 +32,8 @@ import kotlinx.coroutines.launch
 
 object Routes {
     const val HOME = "home"
-    const val ADD_PERSON = "add_person"
+    // Route optionnelle : categoryId pré-remplit la catégorie lors de la création
+    const val ADD_PERSON = "add_person?categoryId={categoryId}"
     const val PERSON_DETAIL = "person_detail/{personId}"
     const val EDIT_PERSON = "edit_person/{personId}"
     const val CATEGORIES = "categories"
@@ -43,6 +45,12 @@ object Routes {
     fun personDetail(personId: String) = "person_detail/$personId"
     fun editPerson(personId: String) = "edit_person/$personId"
     fun categoryDetail(categoryId: String) = "category_detail/$categoryId"
+
+    /** Navigation vers AddPersonScreen depuis une catégorie (contact pré-assigné). */
+    fun addPersonInCategory(categoryId: String) = "add_person?categoryId=$categoryId"
+
+    /** Navigation vers AddPersonScreen sans catégorie pré-assignée. */
+    fun addPerson() = "add_person"
 }
 
 data class BottomNavItem(
@@ -102,15 +110,42 @@ fun JTRMainScaffold(
         ) {
             composable(Routes.HOME) {
                 HomeScreen(
-                    onNavigateToAddPerson = { navController.navigate(Routes.ADD_PERSON) },
+                    onNavigateToAddPerson = { navController.navigate(Routes.addPerson()) },
                     onNavigateToPersonDetail = { id -> navController.navigate(Routes.personDetail(id)) }
                 )
             }
 
-            composable(Routes.ADD_PERSON) {
+            // add_person accepte un categoryId optionnel (null = pas de catégorie pré-assignée)
+            composable(
+                route = Routes.ADD_PERSON,
+                arguments = listOf(
+                    navArgument("categoryId") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+                val cityFromMap by backStackEntry.savedStateHandle
+                    .getStateFlow<String?>("selected_city", null)
+                    .collectAsStateWithLifecycle()
+                val latFromMap by backStackEntry.savedStateHandle
+                    .getStateFlow<Double?>("selected_lat", null)
+                    .collectAsStateWithLifecycle()
+                val lngFromMap by backStackEntry.savedStateHandle
+                    .getStateFlow<Double?>("selected_lng", null)
+                    .collectAsStateWithLifecycle()
                 AddPersonScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToMap = { navController.navigate(Routes.MAP_PICKER) }
+                    onNavigateToMap = { navController.navigate(Routes.MAP_PICKER) },
+                    cityFromMap = cityFromMap,
+                    latFromMap = latFromMap,
+                    lngFromMap = lngFromMap,
+                    onMapResultConsumed = {
+                        backStackEntry.savedStateHandle.remove<String>("selected_city")
+                        backStackEntry.savedStateHandle.remove<Double>("selected_lat")
+                        backStackEntry.savedStateHandle.remove<Double>("selected_lng")
+                    }
                 )
             }
 
@@ -120,19 +155,21 @@ fun JTRMainScaffold(
             ) { backStackEntry ->
                 val personId = backStackEntry.arguments?.getString("personId") ?: ""
                 var person by remember { mutableStateOf<Person?>(null) }
-                var categoryName by remember { mutableStateOf<String?>(null) }
+                var categoryNames by remember { mutableStateOf<List<String>>(emptyList()) }
                 val scope = rememberCoroutineScope()
                 val db = AppDatabase.getInstance(LocalContext.current)
 
                 LaunchedEffect(personId) {
                     person = repository.getById(personId)
-                    categoryName = person?.categoryId?.let { db.categoryDao().getById(it)?.name }
+                    // Récupère tous les noms de catégories via la table de jointure (Many-to-Many)
+                    val categoryIds = db.personCategoryDao().getCategoryIdsForPersonSync(personId)
+                    categoryNames = categoryIds.mapNotNull { db.categoryDao().getById(it)?.name }
                     repository.markAsContacted(personId)
                 }
 
                 PersonDetailScreen(
                     person = person,
-                    categoryName = categoryName,
+                    categoryNames = categoryNames,
                     onNavigateBack = { navController.popBackStack() },
                     onEditClick = { navController.navigate(Routes.editPerson(personId)) },
                     onDeleteClick = {
@@ -149,10 +186,27 @@ fun JTRMainScaffold(
                 arguments = listOf(navArgument("personId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val personId = backStackEntry.arguments?.getString("personId") ?: ""
+                val cityFromMap by backStackEntry.savedStateHandle
+                    .getStateFlow<String?>("selected_city", null)
+                    .collectAsStateWithLifecycle()
+                val latFromMap by backStackEntry.savedStateHandle
+                    .getStateFlow<Double?>("selected_lat", null)
+                    .collectAsStateWithLifecycle()
+                val lngFromMap by backStackEntry.savedStateHandle
+                    .getStateFlow<Double?>("selected_lng", null)
+                    .collectAsStateWithLifecycle()
                 EditPersonScreen(
                     personId = personId,
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToMap = { navController.navigate(Routes.MAP_PICKER) }
+                    onNavigateToMap = { navController.navigate(Routes.MAP_PICKER) },
+                    cityFromMap = cityFromMap,
+                    latFromMap = latFromMap,
+                    lngFromMap = lngFromMap,
+                    onMapResultConsumed = {
+                        backStackEntry.savedStateHandle.remove<String>("selected_city")
+                        backStackEntry.savedStateHandle.remove<Double>("selected_lat")
+                        backStackEntry.savedStateHandle.remove<Double>("selected_lng")
+                    }
                 )
             }
 
@@ -183,11 +237,16 @@ fun JTRMainScaffold(
             composable(
                 route = Routes.CATEGORY_DETAIL,
                 arguments = listOf(navArgument("categoryId") { type = NavType.StringType })
-            ) {
+            ) { backStackEntry ->
+                val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
                 CategoryDetailScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToPersonDetail = { id ->
                         navController.navigate(Routes.personDetail(id))
+                    },
+                    // FAB : navigue vers AddPersonScreen avec la catégorie pré-assignée
+                    onNavigateToAddPerson = {
+                        navController.navigate(Routes.addPersonInCategory(categoryId))
                     }
                 )
             }

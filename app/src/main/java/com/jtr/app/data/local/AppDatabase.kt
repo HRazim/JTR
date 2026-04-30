@@ -6,22 +6,25 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
+import com.jtr.app.domain.model.PersonCategoryJoin
 
 /**
- * AppDatabase — PP3 : Base de données Room avec Person + Category.
+ * AppDatabase — Version 6.
  *
- * IMPORTANT : version passée à 2 pour inclure la table categories.
- * fallbackToDestructiveMigration() utilisé pour simplifier (acceptable en dev).
+ * Ajout de PersonCategoryJoin pour la relation Many-to-Many Person ↔ Category.
+ * Suppression de Person.categoryId (FK simple remplacée par la table de jointure).
+ * fallbackToDestructiveMigration() conservé pour le développement.
  */
 @Database(
-    entities = [Person::class, Category::class],
-    version = 5,
+    entities = [Person::class, Category::class, PersonCategoryJoin::class],
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun personDao(): PersonDao
     abstract fun categoryDao(): CategoryDao
+    abstract fun personCategoryDao(): PersonCategoryDao
 
     companion object {
         @Volatile

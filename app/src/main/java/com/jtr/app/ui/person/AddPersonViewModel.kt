@@ -19,6 +19,9 @@ import java.util.UUID
 /**
  * Tout le state du formulaire vit ici pour survivre à la navigation vers MapScreen.
  * SavedStateHandle fournit les résultats de la carte automatiquement.
+ *
+ * Si la route contient un categoryId, le nouveau contact est automatiquement
+ * assigné à cette catégorie lors de la sauvegarde (Many-to-Many).
  */
 class AddPersonViewModel(
     application: Application,
@@ -27,12 +30,11 @@ class AddPersonViewModel(
 
     private val repository = PersonRepository(application.applicationContext)
 
-    // --- Map results (auto-populated by Navigation when returning from MapScreen) ---
-    val mapCity: StateFlow<String?> = savedStateHandle.getStateFlow("selected_city", null)
-    val mapLat: StateFlow<Double?> = savedStateHandle.getStateFlow("selected_lat", null)
-    val mapLng: StateFlow<Double?> = savedStateHandle.getStateFlow("selected_lng", null)
+    // categoryId transmis depuis CategoryDetailScreen (peut être null ou vide)
+    private val presetCategoryId: String? =
+        savedStateHandle.get<String>("categoryId")?.takeIf { it.isNotBlank() }
 
-    // --- Form state (survives navigation, no remember needed in composable) ---
+    // --- Form state ---
     private val _firstName = MutableStateFlow("")
     val firstName: StateFlow<String> = _firstName.asStateFlow()
 
@@ -69,19 +71,10 @@ class AddPersonViewModel(
     private val _firstNameError = MutableStateFlow(false)
     val firstNameError: StateFlow<Boolean> = _firstNameError.asStateFlow()
 
-    init {
-        // Sync map result into city fields as soon as we return from MapScreen.
-        // Read lat/lng via savedStateHandle.get() directly to avoid any StateFlow timing issue —
-        // all three keys are set synchronously in Navigation before popBackStack().
-        viewModelScope.launch {
-            mapCity.collect { newCity ->
-                if (newCity != null) {
-                    _city.value = newCity
-                    _cityLat.value = savedStateHandle.get<Double>("selected_lat")
-                    _cityLng.value = savedStateHandle.get<Double>("selected_lng")
-                }
-            }
-        }
+    fun onCityFromMap(city: String, lat: Double?, lng: Double?) {
+        _city.value = city
+        _cityLat.value = lat
+        _cityLng.value = lng
     }
 
     fun onFirstNameChanged(v: String) { _firstName.value = v; _firstNameError.value = false }
@@ -116,11 +109,18 @@ class AddPersonViewModel(
                 likes = _likes.value.trim().ifBlank { null },
                 origin = _origin.value.trim().ifBlank { null }
             )
-            if (_cityLat.value != null && _cityLng.value != null) {
-                repository.add(person)
+
+            val hasCoords = _cityLat.value != null && _cityLng.value != null
+
+            if (presetCategoryId != null) {
+                // Depuis CategoryDetailScreen : assigne automatiquement à la catégorie
+                if (hasCoords) repository.addToCategory(person, presetCategoryId)
+                else repository.addWithGeocodingToCategory(person, presetCategoryId)
             } else {
-                repository.addWithGeocoding(person)
+                if (hasCoords) repository.add(person)
+                else repository.addWithGeocoding(person)
             }
+
             onSuccess()
         }
     }

@@ -21,6 +21,9 @@ class MapViewModel : ViewModel() {
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
 
+    private val _selectedLocation = MutableStateFlow<Triple<String, Double, Double>?>(null)
+    val selectedLocation: StateFlow<Triple<String, Double, Double>?> = _selectedLocation.asStateFlow()
+
     private var searchJob: Job? = null
 
     fun search(query: String) {
@@ -28,7 +31,7 @@ class MapViewModel : ViewModel() {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             _isSearching.value = true
-            delay(400) // debounce
+            delay(400)
             try {
                 val results = withContext(Dispatchers.IO) {
                     ApiClient.nominatimApi.searchCity(
@@ -49,5 +52,27 @@ class MapViewModel : ViewModel() {
 
     fun clearResults() {
         _searchResults.value = emptyList()
+    }
+
+    fun selectFromSearch(result: GeocodingResult) {
+        val lat = result.latitude ?: return
+        val lng = result.longitude ?: return
+        val city = result.displayName.split(",").first().trim()
+        _selectedLocation.value = Triple(city, lat, lng)
+        clearResults()
+    }
+
+    fun onMapClick(lat: Double, lng: Double) {
+        viewModelScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    ApiClient.nominatimApi.reverseGeocode(lat = lat, lon = lng)
+                }
+                val city = result.displayName.split(",").first().trim()
+                _selectedLocation.value = Triple(city, lat, lng)
+            } catch (_: Exception) {
+                _selectedLocation.value = Triple("%.4f, %.4f".format(lat, lng), lat, lng)
+            }
+        }
     }
 }

@@ -30,6 +30,14 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
+
+    packaging {
+        jniLibs {
+            // Stocke les .so non compressés dans l'APK pour préserver
+            // l'alignement 16 KB exigé par Android 15 (API 35+).
+            useLegacyPackaging = false
+        }
+    }
 }
 
 dependencies {
@@ -69,6 +77,9 @@ dependencies {
 
     // DataStore (préférences)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // MapLibre (carte native) — 11.5.0 : premier release avec support 16 KB pages (PR #2852)
+    implementation("org.maplibre.gl:android-sdk:11.5.0")
 
     // Gson + Coil
     implementation("com.google.code.gson:gson:2.11.0")

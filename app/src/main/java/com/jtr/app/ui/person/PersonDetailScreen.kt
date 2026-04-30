@@ -1,8 +1,5 @@
 package com.jtr.app.ui.person
 
-import android.annotation.SuppressLint
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -23,10 +20,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
+import org.maplibre.android.annotations.MarkerOptions
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapView
 import com.jtr.app.domain.model.Person
 import java.text.SimpleDateFormat
 import java.util.*
@@ -35,7 +40,7 @@ import java.util.*
 @Composable
 fun PersonDetailScreen(
     person: Person?,
-    categoryName: String? = null,
+    categoryNames: List<String> = emptyList(),
     onNavigateBack: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
@@ -104,14 +109,18 @@ fun PersonDetailScreen(
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold)
 
-                if (categoryName != null) {
+                if (categoryNames.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(6.dp))
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text(categoryName) },
-                        icon = { Icon(Icons.Default.Folder, contentDescription = null,
-                            modifier = Modifier.size(16.dp)) }
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        categoryNames.forEach { name ->
+                            SuggestionChip(
+                                onClick = {},
+                                label = { Text(name) },
+                                icon = { Icon(Icons.Default.Folder, contentDescription = null,
+                                    modifier = Modifier.size(16.dp)) }
+                            )
+                        }
+                    }
                 }
 
                 if (person.isFavorite) {
@@ -240,7 +249,7 @@ private fun CityDetailRow(city: String, cityLat: Double?, cityLng: Double?) {
                 shape = RoundedCornerShape(12.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                LeafletMapView(
+                MapLibreMiniMap(
                     lat = cityLat!!,
                     lng = cityLng!!,
                     cityName = city,
@@ -249,7 +258,7 @@ private fun CityDetailRow(city: String, cityLat: Double?, cityLng: Double?) {
                         .height(180.dp)
                 )
                 Text(
-                    text = "© OpenStreetMap contributors",
+                    text = "© OpenStreetMap contributors | MapLibre",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -259,75 +268,72 @@ private fun CityDetailRow(city: String, cityLat: Double?, cityLng: Double?) {
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun LeafletMapView(
+private fun MapLibreMiniMap(
     lat: Double,
     lng: Double,
     cityName: String,
     modifier: Modifier = Modifier
 ) {
-    val html = buildLeafletHtml(lat, lng, cityName)
+    val context = LocalContext.current
+    val mapView = remember { MapView(context).also { it.onCreate(null) } }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+
+    DisposableEffect(context) {
+        val callbacks = object : android.content.ComponentCallbacks2 {
+            override fun onTrimMemory(level: Int) = mapView.onLowMemory()
+            override fun onConfigurationChanged(c: android.content.res.Configuration) = Unit
+            override fun onLowMemory() = mapView.onLowMemory()
+        }
+        context.registerComponentCallbacks(callbacks)
+        onDispose { context.unregisterComponentCallbacks(callbacks) }
+    }
+
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> mapView.onStart()
+                Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                Lifecycle.Event.ON_STOP -> mapView.onStop()
+                Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
+                else -> {}
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
+            if (lifecycle.currentState != Lifecycle.State.DESTROYED) {
+                mapView.onStop()
+                mapView.onDestroy()
+            }
+        }
+    }
     AndroidView(
-        modifier = modifier.clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
-        factory = { context ->
-            WebView(context).apply {
-                webViewClient = WebViewClient()
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                // Base URL OSM pour résoudre les tuiles sans blocage CORS
-                loadDataWithBaseURL(
-                    "https://openstreetmap.org",
-                    html,
-                    "text/html",
-                    "UTF-8",
-                    null
-                )
+        factory = { _ ->
+            mapView.apply {
+                getMapAsync { map ->
+                    map.setStyle("https://tiles.openfreemap.org/styles/liberty") {
+                        map.uiSettings.apply {
+                            isScrollGesturesEnabled = true
+                            isZoomGesturesEnabled = true
+                            isRotateGesturesEnabled = true
+                            isTiltGesturesEnabled = true
+                            isCompassEnabled = true
+                        }
+                        map.moveCamera(
+                            CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), 12.0)
+                        )
+                        map.addMarker(
+                            MarkerOptions().position(LatLng(lat, lng)).title(cityName)
+                        )
+                    }
+                }
             }
         },
-        update = { webView ->
-            webView.loadDataWithBaseURL(
-                "https://openstreetmap.org", html, "text/html", "UTF-8", null
-            )
-        }
+        modifier = modifier.clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
     )
 }
-
-private fun buildLeafletHtml(lat: Double, lng: Double, cityName: String): String = """
-<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <style>
-    body { margin: 0; padding: 0; background: #f0f0f0; }
-    #map { width: 100%; height: 100vh; }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    var map = L.map('map', {
-      center: [$lat, $lng],
-      zoom: 12,
-      zoomControl: false,
-      dragging: false,
-      scrollWheelZoom: false,
-      doubleClickZoom: false,
-      touchZoom: false
-    });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18
-    }).addTo(map);
-    L.marker([$lat, $lng])
-      .addTo(map)
-      .bindPopup('${cityName.replace("'", "\\'")}')
-      .openPopup();
-  </script>
-</body>
-</html>
-""".trimIndent()
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Composables utilitaires

@@ -4,7 +4,12 @@ import androidx.room.*
 import com.jtr.app.domain.model.Person
 import kotlinx.coroutines.flow.Flow
 
-
+/**
+ * PersonDao — opérations CRUD sur la table persons.
+ *
+ * Note : les opérations liées aux catégories (filtrage, assignation) sont
+ * déléguées à PersonCategoryDao (relation Many-to-Many via table de jointure).
+ */
 @Dao
 interface PersonDao {
 
@@ -47,35 +52,18 @@ interface PersonDao {
     @Query("DELETE FROM persons WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
     suspend fun purgeOldDeleted(cutoff: Long)
 
-    // PP3 : Filtrer par catégorie
-    @Query("SELECT * FROM persons WHERE categoryId = :categoryId AND deletedAt IS NULL ORDER BY isFavorite DESC, firstName ASC")
-    fun getByCategory(categoryId: String): Flow<List<Person>>
-
     @Query("UPDATE persons SET deletedAt = NULL WHERE id = :id")
     suspend fun restore(id: String)
+
+    @Query("UPDATE persons SET deletedAt = NULL WHERE id IN (:ids)")
+    suspend fun restoreMultiple(ids: List<String>)
 
     @Query("DELETE FROM persons WHERE deletedAt IS NOT NULL")
     suspend fun hardDeleteAllDeleted()
 
-    // PP3 : Marquer comme contacté
     @Query("UPDATE persons SET lastContactedAt = :timestamp WHERE id = :id")
     suspend fun markAsContacted(id: String, timestamp: Long = System.currentTimeMillis())
 
     @Query("UPDATE persons SET deletedAt = :timestamp WHERE id IN (:ids)")
     suspend fun softDeleteMultiple(ids: List<String>, timestamp: Long = System.currentTimeMillis())
-
-    @Query("UPDATE persons SET categoryId = :categoryId WHERE id IN (:ids)")
-    suspend fun assignCategory(ids: List<String>, categoryId: String?)
-
-    @Query("UPDATE persons SET deletedAt = :timestamp WHERE categoryId = :categoryId AND deletedAt IS NULL")
-    suspend fun softDeleteByCategory(categoryId: String, timestamp: Long = System.currentTimeMillis())
-
-    @Query("UPDATE persons SET deletedAt = NULL WHERE categoryId = :categoryId")
-    suspend fun restoreByCategory(categoryId: String)
-
-    @Query("DELETE FROM persons WHERE categoryId = :categoryId AND deletedAt IS NOT NULL")
-    suspend fun hardDeleteByCategory(categoryId: String)
-
-    @Query("SELECT COUNT(*) FROM persons WHERE categoryId = :categoryId AND deletedAt IS NULL")
-    suspend fun countActiveByCategory(categoryId: String): Int
 }
