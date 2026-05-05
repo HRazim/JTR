@@ -1,38 +1,110 @@
 # 📱 JTR — Just To Remember
 
-> **Carnet de contacts enrichi nouvelle génération** · Version `3.0-Final`  
-> Cours **8INF257 — Développement Mobile** · Université du Québec à Chicoutimi (UQAC) · Hiver 2026
+> **Carnet de contacts enrichi nouvelle génération** · Version `4.0-Final`  
+> Projet personnel Android — Kotlin · Jetpack Compose · MVVM
 
 ---
 
 ## 🎯 Proposition de valeur
 
-JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'application maintient une **mémoire sociale active** : elle enregistre le contexte humain de chaque relation (goûts, anniversaires, ville, notes), géocode automatiquement les villes via OpenStreetMap, et notifie proactivement l'utilisateur lorsqu'il se retrouve physiquement proche d'un contact qu'il n'a pas vu depuis longtemps. Le tout, sans service cloud, sans clé API propriétaire, et avec un stockage 100 % local chiffrable.
+JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'application maintient une **mémoire sociale active** : elle enregistre le contexte humain de chaque relation (goûts, anniversaires, ville, notes, réseaux sociaux), géocode automatiquement les villes via OpenStreetMap, et notifie proactivement l'utilisateur lorsqu'il se retrouve physiquement proche d'un contact qu'il n'a pas vu depuis longtemps. Le tout, sans service cloud, sans clé API propriétaire, et avec un stockage 100 % local.
 
 ---
 
 ## 📋 Table des matières
 
-1. [Captures d'écran](#-aperçu-visuel)
-2. [Arborescence du projet](#-arborescence-du-projet)
-3. [Architecture MVVM](#-architecture-mvvm)
-4. [Stack technologique](#-stack-technologique)
-5. [Répertoire des classes](#-répertoire-des-classes-et-composants)
-6. [Fonctionnalités clés PP3](#-fonctionnalités-clés-pp3)
-7. [Base de données Room](#-base-de-données-room)
-8. [Guide d'installation](#-guide-dinstallation-et-configuration)
-9. [Permissions requises](#-permissions-requises)
-10. [Tests et qualité](#-tests-et-qualité)
-11. [Optimisations de performance](#-optimisations-de-performance)
-12. [Évolution par livrable](#-évolution-par-livrable)
+1. [Aperçu visuel](#-aperçu-visuel)
+2. [Nouveautés v4.0](#-nouveautés-v40)
+3. [Arborescence du projet](#-arborescence-du-projet)
+4. [Architecture MVVM](#-architecture-mvvm)
+5. [Stack technologique](#-stack-technologique)
+6. [Répertoire des classes](#-répertoire-des-classes-et-composants)
+7. [Fonctionnalités clés](#-fonctionnalités-clés)
+8. [Base de données Room](#-base-de-données-room)
+9. [Guide d'installation](#-guide-dinstallation-et-configuration)
+10. [Permissions requises](#-permissions-requises)
+11. [Tests et qualité](#-tests-et-qualité)
+12. [Optimisations de performance](#-optimisations-de-performance)
+13. [Évolution par version](#-évolution-par-version)
 
 ---
 
 ## 🖼 Aperçu visuel
 
-| Accueil | Détail contact | Catégories | Paramètres |
-|---------|---------------|------------|------------|
-| Liste filtrée, favoris, recherche debounce | Photo, carte OSM, historique | Gestion avec photo de couverture | Thèmes, corbeille |
+| Accueil | Détail contact | Carte MapLibre | Paramètres |
+|---------|---------------|----------------|------------|
+| Liste filtrée, icônes réseaux sociaux, favoris, recherche | Photo, mini-carte, liens sociaux brandés | Sélecteur GPS natif, zoom/pan libre | Thèmes, corbeille, rayon de proximité |
+
+---
+
+## 🚀 Nouveautés v4.0
+
+### 1. Dynamic Social Icon Mapping
+
+Les icônes de réseaux sociaux sont désormais affichées avec leurs **couleurs de marque originales** dans toute l'application, en remplacement des icônes génériques Material Design.
+
+**Composants introduits :**
+
+| Fichier | Rôle |
+|---------|------|
+| `utils/SocialMediaMapper.kt` | Fonction `getSocialIcon(url): @DrawableRes Int` — détection de plateforme via `Uri.parse().host` |
+| `res/drawable/ic_instagram.xml` | Gradient orange → rouge → rose → violet (`aapt:attr`, API 24+) |
+| `res/drawable/ic_facebook.xml` | Bleu Facebook `#475993` |
+| `res/drawable/ic_linkedin.xml` | Bleu LinkedIn `#0077B7` |
+| `res/drawable/ic_x.xml` | Fond noir, lettre X transparente (`fillType="evenOdd"`) |
+| `res/drawable/ic_discord.xml` | Violet Discord `#5865F2` |
+| `res/drawable/ic_youtube.xml` | Rouge YouTube `#F61C0D` |
+| `res/drawable/ic_link.xml` | Fallback générique pour URL non reconnue |
+
+**Intégration UI :**
+- **`PersonCard` (HomeScreen)** — rangée d'icônes 18 dp, espacement 8 dp, `tint = Color.Unspecified` pour préserver les couleurs d'origine. Limitée à 6 icônes.
+- **`SocialLinksSection` (PersonDetailScreen)** — icônes brandées 28 dp cliquables (mode lecture) ou liste éditable avec suppression (mode édition).
+
+---
+
+### 2. Réseaux sociaux dès la création d'un contact
+
+Il est désormais possible d'ajouter des liens sociaux **lors de la création** d'un contact, sans avoir à passer par l'écran de détail.
+
+**Mécanisme :**
+- `AddPersonViewModel` gère une liste de `PendingLink(url, platform)` en mémoire avant que le contact soit persisté.
+- Après l'insertion en base, chaque lien est inséré dans `social_links` en associant le `personId` UUID (connu localement dès la création de l'objet `Person`).
+- Le dialogue `AddSocialLinkDialog` (prévisualisation de plateforme en temps réel) est réutilisé depuis `PersonDetailScreen`.
+
+```kotlin
+// AddPersonViewModel
+fun addPendingLink(url: String) {
+    val platform = extractSocialLinks(url).firstOrNull()?.platform?.displayName ?: "Lien"
+    _pendingLinks.value = _pendingLinks.value + PendingLink(url, platform)
+}
+
+// Dans savePerson() — après insertion Person
+_pendingLinks.value.forEach { link ->
+    repository.addSocialLink(SocialLinkEntity(personId = person.id, url = link.url, platform = link.platform))
+}
+```
+
+---
+
+### 3. Correction UX carte MapLibre — Isolation des gestes
+
+**Problème :** Le système de gestes de Compose interceptait les événements de toucher avant qu'ils n'atteignent le `MapView` natif, rendant le zoom et le déplacement inefficaces.
+
+**Solution :** Un `setOnTouchListener` est appliqué sur chaque instance `MapView` (plein écran et mini-carte inline). Dès le premier contact (`ACTION_DOWN` / `ACTION_POINTER_DOWN`), il appelle `parent.requestDisallowInterceptTouchEvent(true)` pour céder le contrôle des gestes au SDK MapLibre. L'interception est restituée au parent à `ACTION_UP` / `ACTION_CANCEL`.
+
+```kotlin
+mapView.setOnTouchListener { v, event ->
+    when (event.actionMasked) {
+        MotionEvent.ACTION_DOWN,
+        MotionEvent.ACTION_POINTER_DOWN -> v.parent?.requestDisallowInterceptTouchEvent(true)
+        MotionEvent.ACTION_UP,
+        MotionEvent.ACTION_CANCEL       -> v.parent?.requestDisallowInterceptTouchEvent(false)
+    }
+    false // laisser MapView traiter l'événement
+}
+```
+
+Corrigé dans `MapScreen.kt` (carte plein écran) **et** dans `MapLibreMiniMap` de `PersonDetailScreen.kt` (mini-carte à l'intérieur d'un `verticalScroll`).
 
 ---
 
@@ -41,68 +113,84 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 ```
 JTR_TP3/
 ├── app/
-│   ├── build.gradle.kts                    # Dépendances, versionCode=3, minSdk=26
+│   ├── build.gradle.kts                    # Dépendances, versionCode=4, minSdk=26
 │   └── src/
 │       ├── main/
 │       │   ├── AndroidManifest.xml         # Permissions, déclaration workers/receiver
+│       │   ├── res/drawable/
+│       │   │   ├── ic_discord.xml          # Vector Drawable — couleurs de marque
+│       │   │   ├── ic_facebook.xml
+│       │   │   ├── ic_instagram.xml        # Gradient aapt:attr (3 paths)
+│       │   │   ├── ic_linkedin.xml
+│       │   │   ├── ic_x.xml               # fillType="evenOdd"
+│       │   │   ├── ic_youtube.xml
+│       │   │   └── ic_link.xml            # Fallback générique
 │       │   └── java/com/jtr/app/
 │       │       ├── JTRApplication.kt       # Application class — canaux + WorkManager
 │       │       ├── MainActivity.kt         # Entry point Compose, thème global
 │       │       │
 │       │       ├── domain/
 │       │       │   └── model/
-│       │       │       ├── Person.kt       # Entité Room — 18 champs
-│       │       │       └── Category.kt     # Entité Room — 8 champs (+ imagePath)
+│       │       │       ├── Person.kt           # Entité Room — 17 champs
+│       │       │       ├── Category.kt         # Entité Room — 7 champs (+ imagePath)
+│       │       │       ├── PersonCategoryJoin.kt # Table de jointure Many-to-Many
+│       │       │       └── SocialLinkEntity.kt # Entité Room — liens sociaux (1:N Person)
 │       │       │
 │       │       ├── data/
 │       │       │   ├── local/
-│       │       │   │   ├── AppDatabase.kt  # Singleton Room, version 5
-│       │       │   │   ├── PersonDao.kt    # DAO CRUD + recherche + cascade
-│       │       │   │   └── CategoryDao.kt  # DAO CRUD + soft delete
+│       │       │   │   ├── AppDatabase.kt      # Singleton Room, version 7
+│       │       │   │   ├── PersonDao.kt        # DAO CRUD + recherche accent-insensitive
+│       │       │   │   ├── CategoryDao.kt      # DAO CRUD + soft delete
+│       │       │   │   ├── PersonCategoryDao.kt # DAO table de jointure M2M
+│       │       │   │   └── SocialLinkDao.kt    # DAO CRUD liens sociaux
 │       │       │   ├── remote/
-│       │       │   │   ├── ApiClient.kt    # Retrofit + OkHttp, User-Agent conforme Nominatim
-│       │       │   │   ├── NominatimApi.kt # Interface Retrofit — endpoint /search
-│       │       │   │   └── GeocodingResult.kt # Modèle JSON @Serializable
+│       │       │   │   ├── ApiClient.kt        # Retrofit + OkHttp, User-Agent Nominatim
+│       │       │   │   ├── NominatimApi.kt     # Interface Retrofit — /search + /reverse
+│       │       │   │   └── GeocodingResult.kt  # Modèle JSON @Serializable
 │       │       │   └── repository/
-│       │       │       ├── PersonRepository.kt    # CRUD, géocodage, migration JSON
-│       │       │       ├── CategoryRepository.kt  # CRUD catégories + cascade
-│       │       │       └── GeocodingRepository.kt # Couche d'abstraction Nominatim
+│       │       │       ├── PersonRepository.kt     # CRUD, géocodage, M2M, social links
+│       │       │       ├── CategoryRepository.kt   # CRUD catégories + cascade M2M
+│       │       │       └── GeocodingRepository.kt  # Abstraction Nominatim
+│       │       │
+│       │       ├── utils/
+│       │       │   ├── SocialMediaUtils.kt     # SocialPlatform, extractSocialLinks, openSocialLink
+│       │       │   └── SocialMediaMapper.kt    # getSocialIcon(url): @DrawableRes Int
 │       │       │
 │       │       ├── ui/
 │       │       │   ├── navigation/
-│       │       │   │   └── Navigation.kt   # Routes, NavHost, BottomBar
+│       │       │   │   └── Navigation.kt       # Routes, NavHost, BottomBar
 │       │       │   ├── home/
-│       │       │   │   ├── HomeScreen.kt   # Liste contacts, recherche, FAB
-│       │       │   │   └── HomeViewModel.kt
+│       │       │   │   ├── HomeScreen.kt       # PersonCard avec icônes réseaux sociaux
+│       │       │   │   └── HomeViewModel.kt    # + socialLinksMap: StateFlow<Map<String,List<SocialLinkEntity>>>
 │       │       │   ├── person/
-│       │       │   │   ├── AddPersonScreen.kt
-│       │       │   │   ├── AddPersonViewModel.kt  # State formulaire + SavedStateHandle
-│       │       │   │   ├── EditPersonScreen.kt
-│       │       │   │   ├── EditPersonViewModel.kt
-│       │       │   │   └── PersonDetailScreen.kt  # Carte OSM intégrée (Leaflet/WebView)
+│       │       │   │   ├── AddPersonScreen.kt  # Formulaire + section réseaux sociaux
+│       │       │   │   ├── AddPersonViewModel.kt  # + pendingLinks, addPendingLink/removePendingLink
+│       │       │   │   └── PersonDetailScreen.kt  # Mini-carte, SocialLinksSection, édition inline
+│       │       │   │   └── EditPersonViewModel.kt # socialLinks réactif depuis Room
 │       │       │   ├── category/
-│       │       │   │   ├── CategoriesScreen.kt    # Liste + édition + photo couverture
+│       │       │   │   ├── CategoriesScreen.kt
 │       │       │   │   ├── CategoryViewModel.kt
 │       │       │   │   ├── CategoryDetailScreen.kt
 │       │       │   │   └── CategoryDetailViewModel.kt
 │       │       │   ├── map/
-│       │       │   │   ├── MapScreen.kt    # Sélecteur GPS via Leaflet
+│       │       │   │   ├── MapScreen.kt        # Touch isolation MapLibre (requestDisallowIntercept)
 │       │       │   │   └── MapViewModel.kt
 │       │       │   ├── settings/
-│       │       │   │   └── SettingsScreen.kt  # Mode sombre, thèmes, corbeille
+│       │       │   │   ├── SettingsScreen.kt
+│       │       │   │   └── SettingsViewModel.kt
 │       │       │   ├── theme/
 │       │       │   │   ├── Color.kt
 │       │       │   │   ├── Theme.kt
-│       │       │   │   ├── ThemePreset.kt  # Presets de couleurs (DataStore)
+│       │       │   │   ├── ThemePreset.kt
 │       │       │   │   ├── ThemeViewModel.kt
 │       │       │   │   └── Type.kt
 │       │       │   └── trash/
-│       │       │       ├── TrashScreen.kt  # Corbeille — restauration / suppression
+│       │       │       ├── TrashScreen.kt
 │       │       │       └── TrashViewModel.kt
 │       │       │
 │       │       └── worker/
-│       │           ├── ProximityCheckWorker.kt    # Haversine, 6h, 10 km, 90 jours
-│       │           ├── BirthdayCheckWorker.kt     # Vérif quotidienne anniversaires
+│       │           ├── ProximityCheckWorker.kt    # Haversine, 6h, rayon configurable, 90j
+│       │           ├── BirthdayCheckWorker.kt     # Vérification quotidienne anniversaires
 │       │           └── GeofenceBroadcastReceiver.kt
 │       │
 │       ├── test/                           # Tests unitaires (JVM)
@@ -123,35 +211,37 @@ JTR_TP3/
 
 ## 🏛 Architecture MVVM
 
-JTR implémente le pattern **Model-View-ViewModel** recommandé par Google, renforcé d'une couche Repository pour l'isolation des sources de données.
+JTR implémente le pattern **Model-View-ViewModel** recommandé par Google, renforcé d'une couche Repository pour l'isolation complète des sources de données.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                          UI LAYER                               │
 │   Composables Jetpack Compose  ←→  ViewModels (StateFlow)       │
-│   (CategoriesScreen, HomeScreen, PersonDetailScreen, ...)       │
+│   HomeScreen · PersonDetailScreen · AddPersonScreen · MapScreen │
 └───────────────────────────┬─────────────────────────────────────┘
                             │ observe / call
 ┌───────────────────────────▼─────────────────────────────────────┐
 │                       DOMAIN LAYER                              │
-│   Person.kt  ·  Category.kt  (entités pures, logique métier)    │
+│   Person · Category · PersonCategoryJoin · SocialLinkEntity     │
 └───────────────────────────┬─────────────────────────────────────┘
                             │ inject
 ┌───────────────────────────▼─────────────────────────────────────┐
 │                        DATA LAYER                               │
-│   PersonRepository  ·  CategoryRepository  ·  GeocodingRepo     │
-│        │                    │                      │            │
-│   PersonDao (Room)    CategoryDao (Room)    NominatimApi (HTTP) │
-│        └──────────────── AppDatabase ──────────────┘           │
+│   PersonRepository · CategoryRepository · GeocodingRepository   │
+│        │                 │                      │               │
+│   PersonDao         CategoryDao          NominatimApi (HTTP)    │
+│   PersonCategoryDao SocialLinkDao                               │
+│        └──────────────── AppDatabase (v7) ──────────┘          │
 └─────────────────────────────────────────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────────────┐
 │                    BACKGROUND LAYER                             │
 │   ProximityCheckWorker (6h)  ·  BirthdayCheckWorker (1j)       │
+│   GeofenceBroadcastReceiver                                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Flux de données unidirectionnel
+### Flux de données unidirectionnel (UDF)
 
 ```
 User action ──► ViewModel.fun() ──► Repository.suspend() ──► DAO / API
@@ -159,7 +249,7 @@ User action ──► ViewModel.fun() ──► Repository.suspend() ──► D
                      └─────── Flow<T> (Room reactive) ◄────────┘
 ```
 
-Les ViewModels exposent uniquement des `StateFlow<T>` en lecture seule via `stateIn(WhileSubscribed(5000))`. Les Composables observent ces flows avec `collectAsStateWithLifecycle()` pour éviter les fuites mémoire.
+Les ViewModels exposent uniquement des `StateFlow<T>` en lecture seule via `stateIn(WhileSubscribed(5000))`. Les Composables observent ces flows avec `collectAsStateWithLifecycle()` pour suspendre automatiquement la collecte en arrière-plan et éviter les fuites mémoire.
 
 ---
 
@@ -170,25 +260,28 @@ Les ViewModels exposent uniquement des `StateFlow<T>` en lecture seule via `stat
 | **UI** | Jetpack Compose BOM | `2024.12.01` | Interface déclarative 100 % Compose |
 | **UI** | Material3 | via BOM | Design system, thèmes dynamiques |
 | **UI** | Material Icons Extended | via BOM | Icônes vectorielles |
-| **Navigation** | Navigation Compose | `2.8.5` | NavHost, bottom bar, SavedStateHandle |
+| **Navigation** | Navigation Compose | `2.8.5` | NavHost, BottomBar, SavedStateHandle |
 | **Persistence** | Room Runtime + KTX | `2.6.1` | ORM SQLite, Flows réactifs |
-| **Persistence** | KSP | `2.1.0-1.0.29` | Génération code Room (remplace KAPT) |
+| **Persistence** | KSP | `2.1.0-1.0.29` | Génération de code Room (remplace KAPT) |
+| **Carte** | MapLibre Android SDK | `11.5.0` | Carte native plein écran + mini-carte intégrée, 16 KB pages |
 | **Réseau** | Retrofit | `2.11.0` | Client HTTP typé pour Nominatim |
-| **Réseau** | OkHttp | `4.12.0` | Couche transport + intercepteurs |
+| **Réseau** | OkHttp + Logging Interceptor | `4.12.0` | Transport HTTP + logs debug |
 | **Réseau** | kotlinx.serialization | `1.7.3` | Désérialisation JSON sans réflexion |
-| **Background** | WorkManager | `2.10.0` | Tâches périodiques garanties |
-| **Localisation** | Play Services Location | `21.3.0` | FusedLocationProviderClient |
-| **Image** | Coil Compose | `2.7.0` | Chargement asynchrone photos |
-| **Préférences** | DataStore Preferences | `1.1.1` | Thème, mode sombre persistants |
+| **Background** | WorkManager | `2.10.0` | Tâches périodiques garanties (proximité + anniversaires) |
+| **Localisation** | Play Services Location | `21.3.0` | FusedLocationProviderClient + Geofencing |
+| **Image** | Coil Compose | `2.7.0` | Chargement asynchrone photos de profil |
+| **Préférences** | DataStore Preferences | `1.1.1` | Thème et mode sombre persistants |
+| **Préférences** | SharedPreferences | SDK | Rayon de proximité, toggles notifications |
 | **Coroutines** | Kotlinx Coroutines Android | `1.8.1` | Async non-bloquant |
-| **Coroutines** | Coroutines Play Services | `1.8.1` | `await()` sur Task Google |
+| **Coroutines** | Coroutines Play Services | `1.8.1` | `await()` sur `Task<T>` Google |
 | **Tests** | JUnit 4 | `4.13.2` | Cadre de test unitaire |
 | **Tests** | MockK | `1.13.12` | Mocking idiomatique Kotlin |
 | **Tests** | Turbine | `1.2.0` | Test de `Flow` Kotlin |
 | **Tests** | Truth | `1.4.4` | Assertions fluentes lisibles |
 
 **Langages :** Kotlin 2.1.0 · JVM target 17  
-**SDK :** `compileSdk = 35` · `targetSdk = 35` · `minSdk = 26` (Android 8.0+)
+**SDK :** `compileSdk = 35` · `targetSdk = 35` · `minSdk = 26` (Android 8.0+)  
+**Tuiles cartographiques :** OpenFreeMap (`tiles.openfreemap.org/styles/liberty`) — sans clé API
 
 ---
 
@@ -197,32 +290,31 @@ Les ViewModels exposent uniquement des `StateFlow<T>` en lecture seule via `stat
 ### 🔷 Couche Domain — Modèles
 
 #### `Person.kt`
-Entité Room centrale avec 18 champs couvrant l'identité, la géolocalisation, les préférences de notification et les métadonnées de gestion.
+Entité Room centrale avec 17 champs couvrant l'identité, la géolocalisation, les préférences de notification et les métadonnées de cycle de vie.
 
 | Champ | Type | Description |
 |-------|------|-------------|
-| `id` | `String` (UUID) | Clé primaire générée automatiquement |
+| `id` | `String` (UUID) | Clé primaire générée localement |
 | `firstName`, `lastName` | `String` / `String?` | Nom complet |
 | `gender` | `String?` | `"male"`, `"female"`, `"non-binary"` |
 | `photoUri` | `String?` | Chemin absolu vers `filesDir/photos/` |
-| `birthdate` | `Long?` | Timestamp Unix (ms) |
+| `birthdate` | `Long?` | Timestamp Unix (ms), stocké en heure locale (midi) |
 | `birthdateNotify` | `Boolean` | Active le canal `CHANNEL_BIRTHDAY` |
-| `city` | `String?` | Nom de ville (texte libre) |
-| `cityLat`, `cityLng` | `Double?` | Coordonnées GPS (géocodage Nominatim) |
+| `city` | `String?` | Nom de ville (texte libre ou issu du géocodage) |
+| `cityLat`, `cityLng` | `Double?` | Coordonnées GPS (Nominatim ou sélection carte) |
 | `cityNotify` | `Boolean` | Active le canal `CHANNEL_PROXIMITY` |
-| `isFavorite` | `Boolean` | Épingle en haut de liste |
-| `categoryId` | `String?` | FK vers `Category.id` |
+| `isFavorite` | `Boolean` | Épinge en haut de liste |
 | `lastContactedAt` | `Long?` | Timestamp de la dernière consultation de fiche |
-| `notes`, `likes`, `origin` | `String?` | Champs texte enrichis |
-| `createdAt` | `Long` | Timestamp de création |
-| `deletedAt` | `Long?` | Null = actif, non-null = en corbeille |
+| `notes`, `likes`, `origin` | `String?` | Champs texte libres enrichis |
+| `createdAt` | `Long` | Timestamp de création (auto) |
+| `deletedAt` | `Long?` | `null` = actif · non-null = en corbeille |
 
 **Propriétés calculées :**
 ```kotlin
-val fullName: String          // "Alice Dupont"
-val initials: String          // "AD"
-val hasGeoCoordinates: Boolean // cityLat != null && cityLng != null
-fun daysSinceLastContact(): Long? // (now - lastContactedAt) / 86_400_000
+val fullName: String            // "Alice Dupont"
+val initials: String            // "AD"
+val hasGeoCoordinates: Boolean  // cityLat != null && cityLng != null
+fun daysSinceLastContact(): Long?  // (now - lastContactedAt) / 86_400_000
 ```
 
 #### `Category.kt`
@@ -234,129 +326,137 @@ Groupe logique pour organiser les contacts.
 | `name` | `String` | Libellé affiché |
 | `color` | `String` | Code hexadécimal (`"#2E86C1"`) |
 | `icon` | `String` | Nom icône Material (`"folder"`) |
-| `imagePath` | `String?` | Chemin photo de couverture (optionnel) |
+| `imagePath` | `String?` | Chemin photo de couverture |
 | `order` | `Int` | Ordre d'affichage |
 | `deletedAt` | `Long?` | Soft delete |
+
+#### `PersonCategoryJoin.kt`
+Table de jointure **Many-to-Many** entre `Person` et `Category`. Clé primaire composite `(personId, categoryId)`. Contraintes `CASCADE` des deux côtés : la suppression physique d'une personne ou d'une catégorie nettoie automatiquement les liens orphelins.
+
+```kotlin
+@Entity(
+    tableName = "person_category_join",
+    primaryKeys = ["personId", "categoryId"],
+    foreignKeys = [
+        ForeignKey(entity = Person::class,   ..., onDelete = CASCADE),
+        ForeignKey(entity = Category::class, ..., onDelete = CASCADE)
+    ]
+)
+data class PersonCategoryJoin(val personId: String, val categoryId: String)
+```
+
+#### `SocialLinkEntity.kt`
+Entité Room représentant un lien vers un réseau social. Relation **1:N** avec `Person` (plusieurs liens par contact). La suppression physique d'un contact déclenche un `CASCADE DELETE` sur ses liens.
+
+```kotlin
+@Entity(
+    tableName = "social_links",
+    foreignKeys = [ForeignKey(entity = Person::class, ..., onDelete = CASCADE)],
+    indices = [Index("personId")]
+)
+data class SocialLinkEntity(
+    @PrimaryKey val id: String = UUID.randomUUID().toString(),
+    val personId: String,
+    val url: String,
+    val platform: String   // "Instagram", "LinkedIn", "Lien", etc.
+)
+```
 
 ---
 
 ### 🔷 Couche Data — Accès aux données
 
 #### `AppDatabase.kt`
-Singleton Room (pattern double-checked locking). Version actuelle : **5**.
+Singleton Room (double-checked locking). Version actuelle : **7**.
 
 ```kotlin
-@Database(entities = [Person::class, Category::class], version = 5, exportSchema = false)
+@Database(
+    entities = [Person::class, Category::class, PersonCategoryJoin::class, SocialLinkEntity::class],
+    version = 7,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun personDao(): PersonDao
     abstract fun categoryDao(): CategoryDao
-    // getInstance(context) — Singleton thread-safe
+    abstract fun personCategoryDao(): PersonCategoryDao
+    abstract fun socialLinkDao(): SocialLinkDao
 }
 ```
-> `fallbackToDestructiveMigration()` est activé pour simplifier les migrations en développement.
+> `fallbackToDestructiveMigration()` est activé pour faciliter les mises à jour en développement.
 
 #### `PersonDao.kt`
-Interface Room exposant toutes les opérations sur la table `persons`.
 
-| Méthode | Type retour | Description |
-|---------|-------------|-------------|
-| `getAllActive()` | `Flow<List<Person>>` | Contacts non supprimés, triés par `isFavorite DESC, firstName ASC` |
-| `search(query)` | `Flow<List<Person>>` | Recherche LIKE sur nom + ville |
-| `getByCategory(id)` | `Flow<List<Person>>` | Filtre par catégorie |
-| `getDeleted()` | `Flow<List<Person>>` | Corbeille triée par `deletedAt DESC` |
+| Méthode | Retour | Description |
+|---------|--------|-------------|
+| `getAllActive()` | `Flow<List<Person>>` | Contacts actifs, triés favoris `DESC`, prénom `ASC` |
+| `getById(id)` | `suspend Person?` | Lookup par UUID |
 | `insert(person)` | `suspend` | Insertion avec `REPLACE` |
 | `update(person)` | `suspend` | Mise à jour complète |
 | `softDelete(id)` | `suspend` | Positionne `deletedAt = now` |
+| `softDeleteMultiple(ids)` | `suspend` | Soft-delete en lot |
 | `restore(id)` | `suspend` | `deletedAt = NULL` |
 | `hardDelete(id)` | `suspend` | Suppression physique |
+| `hardDeleteAllDeleted()` | `suspend` | Vide la corbeille |
+| `getDeleted()` | `Flow<List<Person>>` | Corbeille triée par `deletedAt DESC` |
 | `markAsContacted(id)` | `suspend` | Met à jour `lastContactedAt` |
-| `purgeOldDeleted(cutoff)` | `suspend` | Supprime physiquement les entrées > 30 jours |
-| `softDeleteByCategory(id, ts)` | `suspend` | Cascade catégorie → contacts |
-| `assignCategory(ids, catId)` | `suspend` | Affectation en masse |
-| `countActiveByCategory(id)` | `suspend Int` | Comptage pour UI confirmation |
+| `purgeOldDeleted(cutoff)` | `suspend` | Supprime les éléments > 30 jours |
 
-#### `CategoryDao.kt`
+#### `SocialLinkDao.kt`
+
+| Méthode | Retour | Description |
+|---------|--------|-------------|
+| `getForPerson(personId)` | `Flow<List<SocialLinkEntity>>` | Liens d'un contact, triés par insertion |
+| `getAll()` | `Flow<List<SocialLinkEntity>>` | Tous les liens (utilisé par `HomeViewModel.socialLinksMap`) |
+| `insert(link)` | `suspend` | Insertion avec `REPLACE` |
+| `deleteById(id)` | `suspend` | Suppression par ID de lien |
+| `deleteAllForPerson(personId)` | `suspend` | Supprime tous les liens d'un contact |
+
+#### `PersonCategoryDao.kt`
+DAO dédié à la table de jointure. **Aucune opération de ce DAO ne supprime de personne ou de catégorie** — il gère uniquement les associations.
+
 | Méthode | Description |
 |---------|-------------|
-| `getAll()` | Flow de catégories actives (ORDER BY `order` ASC, `name` ASC) |
-| `getDeleted()` | Flow corbeille catégories |
-| `insert` / `update` / `hardDelete` | CRUD standard |
-| `softDelete(id, ts)` | Mise en corbeille |
-| `restore(id)` | Restauration |
-| `getById(id)` | Lookup synchrone (suspend) |
+| `insert(join)` / `insertAll(joins)` | Crée un ou plusieurs liens personne-catégorie |
+| `removePersonsFromCategory(ids, categoryId)` | Retire plusieurs contacts d'une catégorie |
+| `getActivePersonsInCategory(categoryId)` | `Flow<List<Person>>` — contacts actifs |
+| `getCategoryIdsForPersonSync(personId)` | `suspend` — catégories d'un contact |
+| `getAllJoins()` | `Flow<List<PersonCategoryJoin>>` — tous les liens |
 
 #### `ApiClient.kt`
-Configuration Retrofit pour Nominatim. Conforme aux [conditions d'utilisation](https://operations.osmfoundation.org/policies/nominatim/) : User-Agent obligatoire, intercepteur HTTP pour logs debug.
+Configuration Retrofit pour Nominatim. Conforme aux [conditions d'utilisation OSM](https://operations.osmfoundation.org/policies/nominatim/) : User-Agent requis, intercepteur de logs en mode debug.
 
 ```kotlin
-object ApiClient {
-    // User-Agent conforme politique Nominatim
-    private val userAgentInterceptor = Interceptor { chain ->
-        chain.proceed(
-            chain.request().newBuilder()
-                .header("User-Agent", "JTR-App/3.0 (UQAC 8INF257)")
-                .build()
-        )
-    }
-
-    val nominatimApi: NominatimApi by lazy {
-        Retrofit.Builder()
-            .baseUrl("https://nominatim.openstreetmap.org/")
-            .client(okHttpClient)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-            .build()
-            .create(NominatimApi::class.java)
-    }
-}
+.header("User-Agent", "JTR-App/4.0 (contact-manager Android)")
 ```
-
-#### `NominatimApi.kt`
-Interface Retrofit — endpoint `/search` de l'API OpenStreetMap Nominatim.
-
-```kotlin
-interface NominatimApi {
-    @GET("search")
-    suspend fun searchCity(
-        @Query("q") cityName: String,
-        @Query("format") format: String = "json",
-        @Query("limit") limit: Int = 1,
-        @Query("addressdetails") addressDetails: Int = 1
-    ): List<GeocodingResult>
-}
-```
-
-#### `GeocodingResult.kt`
-Data class `@Serializable` mappant la réponse JSON Nominatim. Les coordonnées (`lat`, `lon`) sont transmises sous forme de `String` par l'API et converties en `Double?` via des propriétés calculées.
 
 ---
 
-### 🔷 Couche Repository — Logique métier
+### 🔷 Couche Utilitaires — Réseaux sociaux
 
-#### `PersonRepository.kt`
-Orchestre toutes les opérations sur les contacts. Points notables :
-- `addWithGeocoding(person)` et `updateWithGeocoding(person, oldCity)` : appel conditionnel à Nominatim si les coordonnées sont absentes ou si la ville a changé.
-- `migrateFromJson()` : migration automatique des données PP1 (fichier `persons.json`) vers Room.
-- `purgeOldDeleted()` : suppression physique des éléments en corbeille depuis > 30 jours.
-- `markAsContacted(personId)` : met à jour `lastContactedAt` à chaque ouverture d'une fiche contact.
+#### `SocialMediaUtils.kt`
+Définit l'énumération `SocialPlatform` (Instagram, LinkedIn, X, Facebook, Snapchat, TikTok) avec leurs métadonnées (couleur ARGB, package Android, patterns d'URL). Expose :
+- `extractSocialLinks(text)` : détecte les URLs sociales dans un texte libre
+- `openSocialLink(context, link)` : lance l'app native si disponible, sinon navigateur
+- `SocialPlatform.icon()` : retourne `Icons.Default.*` correspondant (utilisé dans les dialogues)
 
-#### `CategoryRepository.kt`
-Gère les opérations en cascade catégorie ↔ contacts :
+#### `SocialMediaMapper.kt`
+Mappe une URL vers le drawable de marque correspondant. Résistant aux URLs malformées (bloc `try/catch`, retour fallback).
 
 ```kotlin
-suspend fun softDeleteWithCascade(categoryId: String) {
-    val ts = System.currentTimeMillis()
-    categoryDao.softDelete(categoryId, ts)
-    personDao.softDeleteByCategory(categoryId, ts) // même timestamp pour cohérence
-}
-
-suspend fun restoreWithCascade(categoryId: String) {
-    categoryDao.restore(categoryId)
-    personDao.restoreByCategory(categoryId)
-}
+@DrawableRes
+fun getSocialIcon(url: String): Int = try {
+    val host = Uri.parse(url).host?.removePrefix("www.") ?: ""
+    when {
+        host.contains("instagram.com") || host.contains("instagr.am") -> R.drawable.ic_instagram
+        host.contains("facebook.com")  || host.contains("fb.com")     -> R.drawable.ic_facebook
+        host.contains("linkedin.com")  || host.contains("lnkd.in")    -> R.drawable.ic_linkedin
+        host.contains("twitter.com")   || host.contains("x.com")      -> R.drawable.ic_x
+        host.contains("discord.com")   || host.contains("discord.gg") -> R.drawable.ic_discord
+        host.contains("youtube.com")   || host.contains("youtu.be")   -> R.drawable.ic_youtube
+        else -> R.drawable.ic_link
+    }
+} catch (_: Exception) { R.drawable.ic_link }
 ```
-
-#### `GeocodingRepository.kt`
-Couche d'abstraction fine sur `ApiClient.nominatimApi`. Retourne `Pair<Double, Double>?` (lat, lng) depuis un nom de ville, ou `null` en cas d'échec réseau.
 
 ---
 
@@ -364,189 +464,150 @@ Couche d'abstraction fine sur `ApiClient.nominatimApi`. Retourne `Pair<Double, D
 
 | ViewModel | StateFlows exposés | Méthodes clés |
 |-----------|--------------------|---------------|
-| `HomeViewModel` | `persons`, `searchQuery` | `onSearchQueryChanged()`, `toggleFavorite()` |
+| `HomeViewModel` | `persons`, `selectedIds`, `isSelectionMode`, `categories`, `isLocationEnabled`, **`socialLinksMap`** | `onSearchQueryChanged()`, `toggleFavorite()`, `toggleSelection()`, `deleteSelected()`, `assignCategoryToSelected()` |
+| `AddPersonViewModel` | `firstName`…`photoUri`, `firstNameError`, `cityLat`, **`pendingLinks`** | `onCityFromMap()`, `onPhotoSelected()`, `savePerson()`, **`addPendingLink()`**, **`removePendingLink()`** |
+| `EditPersonViewModel` | idem + `isLoading`, `isEditing`, **`socialLinks`** | `loadPerson()`, `commitAllEdits()`, `cancelEdit()`, **`addSocialLink()`**, **`removeSocialLink()`** |
 | `CategoryViewModel` | `categories`, `personCountByCategory` | `addCategory()`, `updateCategory()`, `deleteCategoryWithCascade()` |
-| `CategoryDetailViewModel` | `category`, `persons`, `searchQuery`, `selectedIds` | `toggleSelection()`, `deleteSelected()`, `assignCategory()` |
-| `AddPersonViewModel` | `firstName`…`photoUri`, `firstNameError`, `mapCity/Lat/Lng` | `onPhotoSelected()`, `savePerson()` |
-| `EditPersonViewModel` | idem + `personId` | `loadPerson()`, `updatePerson()` |
+| `CategoryDetailViewModel` | `category`, `persons`, `searchQuery`, `selectedIds` | `toggleSelection()`, `removeSelectedFromCategory()`, `assignPersonsToCategory()` |
+| `SettingsViewModel` | `notificationsEnabled`, `proximityEnabled`, `birthdayEnabled`, `proximityRadiusKm` | `setNotificationsEnabled()`, `setProximityEnabled()`, `setBirthdayEnabled()`, `setProximityRadiusKm()` |
 | `ThemeViewModel` | `isDarkMode`, `selectedPreset` | `setDarkMode()`, `setPreset()` |
 | `TrashViewModel` | `deletedPersons`, `deletedCategories` | `restore()`, `hardDelete()`, `hardDeleteAll()` |
-| `MapViewModel` | `searchQuery`, `suggestions`, `selectedLocation` | `search()` (debounce 500ms) |
+| `MapViewModel` | `searchResults`, `isSearching`, `selectedLocation`, `cameraEvent` | `search()` (debounce 400 ms), `selectFromSearch()`, `onMapClick()` |
+
+---
+
+### 🔷 Couche UI — Écrans détaillés
+
+#### `HomeScreen.kt` — PersonCard avec réseaux sociaux
+
+La carte de contact affiche désormais une rangée d'icônes de réseaux sociaux sous les métadonnées du contact. Les icônes sont chargées via `painterResource(getSocialIcon(link.url))` avec `tint = Color.Unspecified` pour préserver les couleurs d'origine. Les liens sociaux sont alimentés par `HomeViewModel.socialLinksMap` — un `StateFlow<Map<String, List<SocialLinkEntity>>>` obtenu par `groupBy { it.personId }` sur le flow Room global.
+
+Le **mode multi-sélection** (appui long) reste inchangé : barre d'actions contextuelle, assignation de catégorie à la volée, suppression en lot.
+
+#### `PersonDetailScreen.kt` — SocialLinksSection
+
+La section liens sociaux s'adapte au mode courant :
+
+- **Mode lecture** : icônes brandées 28 dp cliquables → ouvre l'application native ou le navigateur via `openSocialLink()`. Bouton `+` toujours accessible.
+- **Mode édition** (double-tap ou bouton Modifier) : liste éditable avec icône + nom de plateforme + URL tronquée + bouton de suppression. Bouton `OutlinedButton("Ajouter un lien social")` en bas.
+
+La mini-carte MapLibre intégrée (`MapLibreMiniMap`) bénéficie de la correction de touch isolation (v4.0), rendant le pan et le zoom fonctionnels y compris lorsqu'elle est affichée au sein du `verticalScroll` de la fiche contact.
+
+#### `MapScreen.kt` — Sélecteur GPS natif
+
+Interface plein écran avec :
+- **Barre de recherche en overlay** : appels Nominatim avec debounce 400 ms, résultats cliquables dans un `LazyColumn` flottant
+- **Tap direct sur la carte** : placement de marqueur + géocodage inverse → bandeau de confirmation bas
+- **Animation caméra** : `easeCamera()` avec interruption propre sur geste utilisateur (`CancelableCallback`)
+- **Niveau de zoom adaptatif** : pays (4.0) → ville (11.5) → quartier (14.5), calculé depuis le champ `addressType` de Nominatim
 
 ---
 
 ### 🔷 Background — Workers
 
 #### `ProximityCheckWorker.kt`
-`CoroutineWorker` planifié toutes les **6 heures** via `PeriodicWorkRequestBuilder`.
+`CoroutineWorker` planifié toutes les **6 heures**. Rayon de détection configurable (1–50 km, défaut 5 km) lu depuis `SharedPreferences` à chaque exécution. Conditions de déclenchement d'une notification :
 
-```kotlin
-override suspend fun doWork(): Result {
-    val location = fusedLocationClient.lastLocation.await() ?: return Result.success()
-
-    repository.getAllActive().first()
-        .filter { it.cityNotify && it.hasGeoCoordinates }
-        .forEach { person ->
-            val distance = calculateDistance(
-                location.latitude, location.longitude,
-                person.cityLat!!, person.cityLng!!
-            )
-            val shouldNotify = distance < PROXIMITY_RADIUS_KM &&       // < 10 km
-                               (person.daysSinceLastContact() ?: Long.MAX_VALUE) > 90  // > 90 jours
-            if (shouldNotify) sendProximityNotification(person, distance.toInt())
-        }
-    return Result.success()
-}
-```
+| Condition | Valeur |
+|-----------|--------|
+| Distance contact | `< rayon configuré` |
+| Inactivité | `> 90 jours` (`daysSinceLastContact() > 90`) |
+| Opt-in notification | `cityNotify = true` |
+| Coordonnées valides | `hasGeoCoordinates = true` |
+| Permission localisation | `ACCESS_FINE_LOCATION` accordée |
+| Toggle global | `notifications_enabled = true` |
 
 #### `BirthdayCheckWorker.kt`
-Vérifie quotidiennement si le `Calendar.DAY_OF_MONTH` et `Calendar.MONTH` du birthdate correspondent à aujourd'hui. Déclenche une notification `PRIORITY_HIGH` sur `CHANNEL_BIRTHDAY`.
+Vérification quotidienne du `DAY_OF_MONTH` et `MONTH` de chaque contact. Notification `IMPORTANCE_HIGH` sur le canal `CHANNEL_BIRTHDAY`. Respecte le toggle `birthday_enabled`.
+
+#### `GeofenceBroadcastReceiver.kt`
+`BroadcastReceiver` déclaré dans le Manifest, prêt à recevoir les événements `GeofencingEvent` de l'API Play Services Location. Complète le polling logiciel de `ProximityCheckWorker` pour les déclenchements matériels en temps réel.
 
 ---
 
-### 🔷 Application — `JTRApplication.kt`
-
-Point d'entrée global. Initialisé **une seule fois** au démarrage du processus.
-
-```kotlin
-class JTRApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        createNotificationChannels()   // Android 8+ requis
-        scheduleProximityChecks()      // WorkManager KEEP policy
-    }
-
-    private fun scheduleProximityChecks() {
-        val request = PeriodicWorkRequestBuilder<ProximityCheckWorker>(
-            6, TimeUnit.HOURS
-        ).build()
-
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "proximity_check",
-            ExistingPeriodicWorkPolicy.KEEP,  // Ne recrée pas si déjà planifié
-            request
-        )
-    }
-
-    companion object {
-        const val CHANNEL_PROXIMITY = "proximity_channel"
-        const val CHANNEL_BIRTHDAY  = "birthday_channel"
-    }
-}
-```
-
----
-
-## ⭐ Fonctionnalités clés PP3
+## ⭐ Fonctionnalités clés
 
 ### 1. 📍 Rappel de proximité sociale
 
-**Concept :** L'application surveille en arrière-plan si l'utilisateur est géographiquement proche d'une ville associée à un contact qu'il n'a pas vu depuis longtemps.
+L'application surveille en arrière-plan si l'utilisateur est géographiquement proche d'une ville associée à un contact qu'il n'a pas contacté depuis 90 jours.
 
-#### Algorithme — Formule de Haversine
+#### Formule de Haversine
 
-La distance entre deux points GPS (φ₁, λ₁) et (φ₂, λ₂) est calculée via la formule de Haversine, précise à ±0,5 % pour des distances < 1 000 km :
+Distance entre deux points GPS (φ₁, λ₁) et (φ₂, λ₂), précise à ±0,5 % pour des distances < 1 000 km :
 
 ```
 a  = sin²(Δφ/2) + cos(φ₁) · cos(φ₂) · sin²(Δλ/2)
 d  = 2R · atan2(√a, √(1-a))   avec R = 6 371 km
 ```
 
-Implémentation Kotlin :
-
 ```kotlin
-private fun calculateDistance(
-    lat1: Double, lon1: Double,
-    lat2: Double, lon2: Double
-): Double {
+private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     val R = 6371.0
     val dLat = Math.toRadians(lat2 - lat1)
     val dLon = Math.toRadians(lon2 - lon1)
     val a = sin(dLat / 2).pow(2) +
-            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-            sin(dLon / 2).pow(2)
+            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2).pow(2)
     return R * 2 * atan2(sqrt(a), sqrt(1 - a))
 }
 ```
 
-#### Conditions de déclenchement
-
-| Condition | Valeur | Source |
-|-----------|--------|--------|
-| Distance | `< 10 km` | `PROXIMITY_RADIUS_KM = 10.0` |
-| Inactivité | `> 90 jours` | `person.daysSinceLastContact() > 90` |
-| Opt-in | `cityNotify = true` | Champ `Person` |
-| Coordonnées | `hasGeoCoordinates = true` | `cityLat != null && cityLng != null` |
-| Permission | `ACCESS_FINE_LOCATION` | Vérifiée en runtime dans le worker |
-
 ---
 
-### 2. 🗺 Intégration API OpenStreetMap Nominatim
+### 2. 🗺 Géocodage automatique + carte MapLibre
 
-Le géocodage est déclenché **automatiquement** lors de l'ajout ou de la modification d'un contact si une ville est saisie sans coordonnées GPS.
+Le géocodage est déclenché **automatiquement** si une ville est saisie sans coordonnées GPS, ou si la ville est modifiée.
 
 ```
-Utilisateur saisit "Chicoutimi"
-         │
-         ▼
+Saisie "Chicoutimi"
+    │
+    ▼
 PersonRepository.addWithGeocoding(person)
-         │
-         ▼
-GeocodingRepository.getCityCoordinates("Chicoutimi")
-         │
-         ▼
-GET https://nominatim.openstreetmap.org/search
-    ?q=Chicoutimi&format=json&limit=1&addressdetails=1
-    Header: User-Agent: JTR-App/3.0 (UQAC 8INF257)
-         │
-         ▼
-GeocodingResult { lat: "48.4286", lon: "-71.0687", ... }
-         │
-         ▼
+    │
+    ▼
+GET nominatim.openstreetmap.org/search?q=Chicoutimi&format=json
+    Header: User-Agent: JTR-App/4.0 (contact-manager Android)
+    │
+    ▼
 person.copy(cityLat = 48.4286, cityLng = -71.0687) → Room
 ```
 
-Le sélecteur de carte intégré (`MapScreen`) permet une sélection GPS manuelle via une carte Leaflet/OpenStreetMap dans un `WebView`. Le résultat est transmis à l'écran précédent via `SavedStateHandle` (pattern navigation Compose).
+Le résultat de sélection depuis `MapScreen` transite via `SavedStateHandle` → `LaunchedEffect` dans le formulaire appelant (pattern consume-once, compatible sélection répétée de la même ville).
 
 ---
 
-### 3. 🔔 Système de notifications
+### 3. 🔗 Réseaux sociaux multi-plateforme
 
-#### Canaux de notification
+**Création de contact** : liens ajoutés avant la persistance via `PendingLink`, insérés dans Room après la création de la personne (UUID connu localement).
+
+**Fiche contact** : icônes brandées cliquables (couleurs de marque via `Color.Unspecified`), liste éditable en mode édition, détection automatique de plateforme depuis l'URL.
+
+**Plateformes reconnues** : Instagram · LinkedIn · X (Twitter) · Facebook · Snapchat · TikTok · Discord · YouTube · fallback générique.
+
+---
+
+### 4. 🔔 Système de notifications dual-canal
 
 | Canal | ID | Importance | Déclencheur |
 |-------|----|------------|-------------|
-| **Proximité** | `proximity_channel` | `IMPORTANCE_DEFAULT` | `ProximityCheckWorker` toutes les 6h |
-| **Anniversaires** | `birthday_channel` | `IMPORTANCE_HIGH` | `BirthdayCheckWorker` quotidien |
+| Proximité | `proximity_channel` | `DEFAULT` | `ProximityCheckWorker` — toutes les 6 h |
+| Anniversaires | `birthday_channel` | `HIGH` | `BirthdayCheckWorker` — quotidien |
 
-#### Planification WorkManager
-
-```kotlin
-// Démarrage unique garanti — KEEP préserve le worker existant au redémarrage
-WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-    "proximity_check",
-    ExistingPeriodicWorkPolicy.KEEP,
-    PeriodicWorkRequestBuilder<ProximityCheckWorker>(6, TimeUnit.HOURS).build()
-)
-```
-
-WorkManager garantit l'exécution même après un redémarrage de l'appareil ou un arrêt forcé de l'application (sous contraintes OEM).
+Tous les toggles (notifications globales, proximité, anniversaires, rayon 1–50 km) sont persistés dans `SharedPreferences` et lus par les workers à chaque exécution sans redémarrage.
 
 ---
 
-### 4. 🗃 Gestion des catégories
+### 5. 🗃 Catégories Many-to-Many
 
-- **Création** : nom + couleur hex parmi 6 presets
-- **Édition** : dialogue de modification avec sélecteur de photo de couverture (`PickVisualMedia`)
-- **Photo de couverture** : stockée dans `filesDir/photos/category_<UUID>.jpg`, affichée dans la liste à la place de la couleur via `AsyncImage` (Coil)
-- **Suppression en cascade** : soft-delete catégorie + tous ses membres actifs en une transaction
-- **Réactivité** : `personCountByCategory` est un `StateFlow<Map<String, Int>>` recalculé à chaque mutation de la table `persons`
+- Un contact peut appartenir à **plusieurs catégories** simultanément via `PersonCategoryJoin`
+- **Suppression en cascade** : soft-delete catégorie → soft-delete des membres actifs via `PersonCategoryDao`
+- **Réactivité** : `getPersonCountsPerCategory()` combine deux flows Room (`getAllJoins()` + `getAllActive()`) sans requête supplémentaire
+- **Photo de couverture** : stockée dans `filesDir/photos/`, affichée via Coil `AsyncImage`
 
 ---
 
-### 5. 🗑 Corbeille avec purge automatique
+### 6. 🗑 Corbeille avec purge automatique
 
-Les suppressions sont toujours **logiques** (`deletedAt = timestamp`). La `TrashScreen` affiche les contacts et catégories supprimés avec la possibilité de restaurer ou supprimer définitivement. La méthode `purgeOldDeleted()` élimine physiquement les éléments en corbeille depuis plus de **30 jours**.
+Toutes les suppressions sont **logiques** (`deletedAt = timestamp`). La `TrashScreen` permet la restauration ou la suppression définitive. `purgeOldDeleted()` élimine physiquement les éléments en corbeille depuis plus de **30 jours** au démarrage.
 
 ---
 
@@ -568,7 +629,6 @@ CREATE TABLE persons (
     cityLng         REAL,
     cityNotify      INTEGER NOT NULL DEFAULT 0,
     isFavorite      INTEGER NOT NULL DEFAULT 0,
-    categoryId      TEXT,
     lastContactedAt INTEGER,
     notes           TEXT,
     likes           TEXT,
@@ -592,15 +652,43 @@ CREATE TABLE categories (
 );
 ```
 
+### Schéma — Table `person_category_join`
+
+```sql
+CREATE TABLE person_category_join (
+    personId    TEXT NOT NULL,
+    categoryId  TEXT NOT NULL,
+    PRIMARY KEY (personId, categoryId),
+    FOREIGN KEY (personId)   REFERENCES persons(id)    ON DELETE CASCADE,
+    FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE CASCADE
+);
+CREATE INDEX index_person_category_join_categoryId ON person_category_join(categoryId);
+```
+
+### Schéma — Table `social_links` *(v7)*
+
+```sql
+CREATE TABLE social_links (
+    id        TEXT PRIMARY KEY,
+    personId  TEXT NOT NULL,
+    url       TEXT NOT NULL,
+    platform  TEXT NOT NULL,
+    FOREIGN KEY (personId) REFERENCES persons(id) ON DELETE CASCADE
+);
+CREATE INDEX index_social_links_personId ON social_links(personId);
+```
+
 ### Historique des versions
 
 | Version | Changement principal |
 |---------|---------------------|
 | 1 | Création table `persons` |
 | 2 | Ajout table `categories` |
-| 3 | Ajout `cityLat`, `cityLng`, `categoryId`, `lastContactedAt` dans `persons` |
+| 3 | Ajout `cityLat`, `cityLng`, `lastContactedAt` dans `persons` |
 | 4 | Refactoring champs notifications |
-| **5** | Ajout `imagePath` dans `categories` *(version actuelle)* |
+| 5 | Ajout `imagePath` dans `categories` |
+| 6 | Ajout table `person_category_join` (Many-to-Many), suppression `categoryId` de `persons` |
+| **7** | Ajout table `social_links` (1:N Person, CASCADE delete) · Ajout `SocialLinkDao` *(version actuelle)* |
 
 ---
 
@@ -614,7 +702,7 @@ CREATE TABLE categories (
 | JDK | 17 |
 | Android SDK | API 35 (compileSdk) |
 | Appareil / Émulateur | API 26 (Android 8.0 Oreo) minimum |
-| Connexion internet | Requise pour le géocodage Nominatim |
+| Connexion internet | Requise pour le géocodage Nominatim et les tuiles carte |
 
 ### Étapes de build
 
@@ -638,48 +726,49 @@ cd JTR_TP3
 ```kotlin
 // app/build.gradle.kts
 android {
-    namespace   = "com.jtr.app"
-    compileSdk  = 35
+    namespace  = "com.jtr.app"
+    compileSdk = 35
     defaultConfig {
-        applicationId  = "com.jtr.app"
-        minSdk         = 26
-        targetSdk      = 35
-        versionCode    = 3
-        versionName    = "3.0-Final"
+        applicationId = "com.jtr.app"
+        minSdk        = 26
+        targetSdk     = 35
+        versionCode   = 4
+        versionName   = "4.0-Final"
     }
     kotlinOptions { jvmTarget = "17" }
+    packaging {
+        jniLibs { useLegacyPackaging = false }  // alignement 16 KB pages (Android 15+)
+    }
 }
 ```
 
-### Lancer les tests unitaires
+### Lancer les tests
 
 ```bash
-./gradlew test                    # Tests JVM (PersonRepositoryTest, DistanceCalculationTest...)
-./gradlew connectedAndroidTest    # Tests instrumentés Room (requiert device/émulateur)
+./gradlew test                    # Tests JVM (PersonRepositoryTest, DistanceCalculationTest…)
+./gradlew connectedAndroidTest    # Tests instrumentés Room (requiert appareil/émulateur)
 ```
 
 ---
 
 ## 🔐 Permissions requises
 
-Déclarées dans `AndroidManifest.xml` :
-
 ```xml
-<!-- Localisation précise — requise pour FusedLocationProvider dans le Worker -->
+<!-- Localisation précise — FusedLocationProvider dans le Worker -->
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-<!-- Localisation en arrière-plan — requise pour ProximityCheckWorker (Android 10+) -->
+<!-- Localisation en arrière-plan — ProximityCheckWorker (Android 10+) -->
 <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
 <!-- Notifications — requise sur Android 13+ (API 33+) -->
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-<!-- Internet — géocodage Nominatim -->
+<!-- Internet — géocodage Nominatim + tuiles OpenFreeMap -->
 <uses-permission android:name="android.permission.INTERNET" />
 ```
 
-> **Note :** Les permissions de localisation et de notification sont demandées en runtime à l'utilisateur. L'application fonctionne en mode dégradé (sans notifications de proximité) si ces permissions sont refusées — les workers retournent `Result.success()` silencieusement.
+> Les permissions de localisation et de notification sont demandées en runtime. L'application fonctionne en mode dégradé si ces permissions sont refusées : les workers retournent `Result.success()` silencieusement sans crash.
 
 ---
 
@@ -690,124 +779,96 @@ Déclarées dans `AndroidManifest.xml` :
 | Niveau | Framework | Portée |
 |--------|-----------|--------|
 | **Unitaire JVM** | JUnit 4 + MockK + Truth + Turbine | Logique métier, calculs, modèles |
-| **Instrumenté** | AndroidJUnit4 + Room Testing | DAO en base réelle (in-memory) |
+| **Instrumenté** | AndroidJUnit4 + Room Testing | DAO en base in-memory réelle |
 | **Manuel** | Scénarios définis | Flows complets, UX, permissions |
 
 ### Tests unitaires — Classes couvertes
 
-#### `PersonRepositoryTest.kt` — 9 tests
-
-```kotlin
-// Exemples de tests
-`getAllActive returns flow from dao`           // MockK + Turbine Flow assertion
-`daysSinceLastContact returns null when never contacted`
-`daysSinceLastContact returns correct days`   // 3 jours = 3 * 86_400_000 ms
-`fullName combines firstName and lastName`
-`initials uses first letter of first and last name`
-`hasGeoCoordinates returns true when both coordinates set`
-`softDelete calls dao with correct id`        // coVerify MockK
+#### `PersonRepositoryTest.kt`
+```
+getAllActive returns flow from dao
+daysSinceLastContact returns null when never contacted
+daysSinceLastContact returns correct days  // 3 jours = 3 × 86_400_000 ms
+fullName combines firstName and lastName
+initials uses first letter of first and last name
+hasGeoCoordinates returns true when both coordinates set
+softDelete calls dao with correct id
 ```
 
-#### `DistanceCalculationTest.kt` — 3 tests
-
-```kotlin
-`distance between same point is zero`                          // d = 0.0 ± 0.01 km
-`distance Montreal to Quebec City is approximately 234 km`     // ± 10 km
-`distance Chicoutimi to Saguenay is small`                     // < 15 km
+#### `DistanceCalculationTest.kt`
+```
+distance between same point is zero                         // d = 0.0 ± 0.01 km
+distance Montreal to Quebec City is approximately 234 km    // ± 10 km
+distance Chicoutimi to Saguenay is small                    // < 15 km
 ```
 
-### Scénarios de tests manuels validés
+### Scénarios manuels validés
 
 | # | Scénario | Résultat attendu |
 |---|----------|-----------------|
-| M-01 | Créer un contact avec ville → vérifier coordonnées GPS | Nominatim géocode automatiquement |
+| M-01 | Créer un contact avec ville → vérifier coordonnées | Nominatim géocode automatiquement |
 | M-02 | Supprimer contact → ouvrir corbeille → restaurer | Contact réapparaît dans la liste |
-| M-03 | Supprimer catégorie avec 3 contacts → vérifier corbeille | 4 éléments en corbeille (1 cat + 3 contacts) |
-| M-04 | Activer `cityNotify` sur un contact → simuler proximité | Notification "dans les parages" reçue |
-| M-05 | Changer de thème → fermer l'app → rouvrir | Thème persisté via DataStore |
-| M-06 | Sélectionner une ville sur la carte → vérifier formulaire | Champ ville + coordonnées remplis |
-| M-07 | Refuser permission localisation → vérifier Worker | Aucun crash, `Result.success()` silencieux |
-| M-08 | Ajouter photo de profil à une catégorie → vérifier liste | Image remplace la couleur dans le cercle |
-| M-09 | Éditer nom d'une catégorie → vérifier fiche contact liée | Nom mis à jour dynamiquement |
-| M-10 | Ajouter 30 contacts, effectuer une recherche | Filtre réactif sans délai perceptible |
+| M-03 | Supprimer catégorie avec 3 contacts → vérifier corbeille | 4 éléments (1 catégorie + 3 contacts) |
+| M-04 | Activer `cityNotify` → simuler proximité | Notification "dans les parages" reçue |
+| M-05 | Changer de thème → fermer → rouvrir | Thème persisté via DataStore |
+| M-06 | Sélectionner ville sur la carte → vérifier formulaire | Champ ville + coordonnées GPS remplis |
+| M-07 | Sélectionner deux fois la même ville | Formulaire rempli correctement les deux fois |
+| M-08 | Refuser permission localisation | Aucun crash, worker silencieux |
+| M-09 | Ajouter photo de couverture à une catégorie | Image remplace la couleur dans le cercle |
+| M-10 | Assigner un contact à plusieurs catégories | Contact visible dans chaque catégorie |
+| M-11 | Pan + zoom sur la carte MapLibre | Gestes fluides sans conflit Compose |
+| M-12 | Pan + zoom sur la mini-carte en fiche contact | Gestes fluides dans le scroll vertical |
+| M-13 | Ajouter un lien Instagram lors de la création | Lien et icône visibles dans la fiche |
+| M-14 | Ajouter un lien inconnu (URL générique) | Icône chaîne fallback affichée |
+| M-15 | Rechercher "therese" dans la liste | Trouve "Thérèse" — accent-insensitive |
 
 ---
 
 ## ⚡ Optimisations de performance
 
-### Debounce 500ms sur la recherche
+### Debounce sur la recherche et les appels réseau
 
-Les requêtes de recherche (HomeScreen et MapScreen) sont throttlées via un `debounce` de 500ms pour éviter les appels DAO / réseau à chaque frappe clavier :
+- **HomeScreen** : debounce 500 ms via `Flow.debounce()` dans `HomeViewModel`
+- **MapScreen** : debounce 400 ms via `delay()` + annulation du `Job` précédent à chaque frappe
 
-```kotlin
-viewModelScope.launch {
-    _searchQuery
-        .debounce(500)
-        .collect { query ->
-            // Déclenche la requête Room ou Nominatim uniquement après 500ms d'inactivité
-        }
-}
-```
-
-### Pattern Singleton pour Room
-
-`AppDatabase` utilise un singleton thread-safe (`@Volatile` + `synchronized`) pour garantir une unique instance de connexion SQLite sur toute la durée de vie du processus :
+### Singleton Room thread-safe
 
 ```kotlin
-companion object {
-    @Volatile private var INSTANCE: AppDatabase? = null
-
-    fun getInstance(context: Context): AppDatabase =
-        INSTANCE ?: synchronized(this) {
-            INSTANCE ?: Room.databaseBuilder(...)
-                .fallbackToDestructiveMigration()
-                .build()
-                .also { INSTANCE = it }
-        }
-}
+fun getInstance(context: Context): AppDatabase =
+    INSTANCE ?: synchronized(this) {
+        INSTANCE ?: Room.databaseBuilder(...)
+            .fallbackToDestructiveMigration()
+            .build()
+            .also { INSTANCE = it }
+    }
 ```
 
 ### `stateIn(WhileSubscribed(5000))`
 
-Tous les flows Room dans les ViewModels utilisent la stratégie `WhileSubscribed(5000)` :
-
-```kotlin
-val categories: StateFlow<List<Category>> = repo.getAllActive()
-    .stateIn(
-        scope     = viewModelScope,
-        started   = SharingStarted.WhileSubscribed(5000), // Maintient le flow 5s après disparition UI
-        initialValue = emptyList()
-    )
-```
-
-Cela évite les reconnexions inutiles à Room lors des rotations d'écran ou des brèves transitions de navigation, tout en libérant les ressources si l'UI est absente depuis plus de 5 secondes.
+Évite les reconnexions Room lors des rotations ou des transitions de navigation. Libère les ressources si l'UI est absente depuis plus de 5 secondes.
 
 ### `collectAsStateWithLifecycle()`
 
-Tous les Composables utilisent `collectAsStateWithLifecycle()` (lifecycle-runtime-compose) à la place de `collectAsState()`, ce qui suspend automatiquement la collecte du flow lorsque l'app passe en arrière-plan (lifecycle `STARTED`), réduisant la consommation CPU et batterie.
+Suspend automatiquement la collecte du flow lorsque l'app passe en arrière-plan (lifecycle `STARTED`), réduisant la consommation CPU et batterie.
 
-### Copie de photos en `Dispatchers.IO`
+### Copie de photos sur `Dispatchers.IO`
 
-Les opérations de copie de fichier image (contact et catégorie) sont systématiquement exécutées sur le dispatcher IO pour ne jamais bloquer le thread principal :
+Toutes les opérations de copie de fichier image sont exécutées hors du thread principal via `withContext(Dispatchers.IO)`.
 
-```kotlin
-fun onPhotoSelected(uri: Uri) {
-    viewModelScope.launch {
-        val path = withContext(Dispatchers.IO) { copyPhotoToStorage(uri) }
-        _photoUri.value = path
-    }
-}
-```
+### Alignement mémoire 16 KB (Android 15)
+
+MapLibre 11.5.0 + `useLegacyPackaging = false` garantit que les `.so` sont stockés non compressés et alignés sur des pages de 16 KB, conformément aux exigences d'Android 15 (API 35+).
 
 ---
 
-## 📈 Évolution par livrable
+## 📈 Évolution par version
 
-| Livrable | Fonctionnalités introduites |
-|----------|-----------------------------|
-| **PP1** | CRUD contacts basique, stockage JSON, liste simple |
-| **PP2** | Migration vers Room (SQLite), Photos Coil, Favoris, Recherche, Corbeille, Navigation Compose, Thèmes DataStore |
-| **PP3** | Géocodage Nominatim, Coordonnées GPS, Sélecteur carte Leaflet, Catégories avec cascade, WorkManager (Proximité + Anniversaires), Notifications dual-channel, Tests unitaires MockK/Turbine/Truth, **Édition catégories + photo de couverture** |
+| Version | Fonctionnalités introduites |
+|---------|-----------------------------|
+| **PP1 / v1.0** | CRUD contacts basique, stockage JSON, liste simple |
+| **PP2 / v2.0** | Migration vers Room, photos Coil, favoris, recherche, corbeille, Navigation Compose, thèmes DataStore |
+| **PP3 / v3.0** | Géocodage Nominatim, coordonnées GPS, sélecteur carte **MapLibre natif**, catégories **Many-to-Many** (DB v6), WorkManager (proximité + anniversaires), notifications dual-canal, rayon configurable, recherche accent-insensitive, tests MockK/Turbine/Truth, édition catégories + photo de couverture |
+| **v4.0-Final** | **Dynamic Social Icon Mapping** (7 drawables brandés, `getSocialIcon`), **Liens sociaux à la création** (`PendingLink`, `AddPersonViewModel`), **Fix gestes MapLibre** (`requestDisallowInterceptTouchEvent` sur plein écran + mini-carte), **DB v7** (`social_links`, `SocialLinkDao`), User-Agent mis à jour |
 
 ---
 
@@ -817,17 +878,16 @@ fun onPhotoSelected(uri: Uri) {
 |-------|-------------|
 | **Nom** | Hazim R. |
 | **Courriel** | rhaziim78@gmail.com |
-| **Institution** | UQAC — Université du Québec à Chicoutimi |
-| **Cours** | 8INF257 — Développement d'applications mobiles |
-| **Session** | Hiver 2026 |
+| **GitHub** | HRazim |
 
 ---
 
 ## 📄 Licence
 
-Ce projet est réalisé dans le cadre d'un cours universitaire. Tous droits réservés.  
-Les données cartographiques sont fournies par © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) sous licence ODbL.
+Ce projet est à usage personnel. Tous droits réservés.  
+Les données cartographiques sont fournies par © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) sous licence ODbL.  
+Les tuiles sont servies par [OpenFreeMap](https://openfreemap.org) (licence libre, sans clé API).
 
 ---
 
-*Généré avec ❤️ et Jetpack Compose — JTR v3.0-Final*
+*JTR v4.0-Final — Kotlin · Jetpack Compose · MVVM*

@@ -10,8 +10,8 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 /**
  * ApiClient — Configuration Retrofit pour l'API Nominatim.
  *
- * [PP3] Inclut un User-Agent obligatoire (règles Nominatim) et
- * un intercepteur de log en mode debug.
+ * Inclut un User-Agent obligatoire (règles d'utilisation Nominatim) et
+ * un intercepteur de journalisation HTTP en mode debug.
  */
 object ApiClient {
 
@@ -19,7 +19,7 @@ object ApiClient {
 
     private val userAgentInterceptor = okhttp3.Interceptor { chain ->
         val request = chain.request().newBuilder()
-            .header("User-Agent", "JTR-App/3.0 (UQAC 8INF257)")
+            .header("User-Agent", "JTR-App/4.0 (contact-manager Android)")
             .build()
         chain.proceed(request)
     }

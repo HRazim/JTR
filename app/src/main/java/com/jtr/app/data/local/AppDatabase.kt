@@ -7,17 +7,16 @@ import androidx.room.RoomDatabase
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.PersonCategoryJoin
+import com.jtr.app.domain.model.SocialLinkEntity
 
 /**
- * AppDatabase — Version 6.
+ * AppDatabase — Version 7.
  *
- * Ajout de PersonCategoryJoin pour la relation Many-to-Many Person ↔ Category.
- * Suppression de Person.categoryId (FK simple remplacée par la table de jointure).
- * fallbackToDestructiveMigration() conservé pour le développement.
+ * v7 : Ajout de la table social_links (relation 1:N avec Person, CASCADE delete).
  */
 @Database(
-    entities = [Person::class, Category::class, PersonCategoryJoin::class],
-    version = 6,
+    entities = [Person::class, Category::class, PersonCategoryJoin::class, SocialLinkEntity::class],
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -25,6 +24,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun personDao(): PersonDao
     abstract fun categoryDao(): CategoryDao
     abstract fun personCategoryDao(): PersonCategoryDao
+    abstract fun socialLinkDao(): SocialLinkDao
 
     companion object {
         @Volatile

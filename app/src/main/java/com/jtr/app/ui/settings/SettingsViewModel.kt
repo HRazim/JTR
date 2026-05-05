@@ -3,9 +3,14 @@ package com.jtr.app.ui.settings
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.jtr.app.JTRApplication
+import com.jtr.app.data.repository.PersonRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * SettingsViewModel — Persiste les préférences de notification via SharedPreferences.
@@ -16,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
+    private val personRepository = PersonRepository(application.applicationContext)
 
     private val _notificationsEnabled = MutableStateFlow(
         prefs.getBoolean("notifications_enabled", true)
@@ -53,9 +59,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         prefs.edit().putBoolean("birthday_enabled", enabled).apply()
     }
 
-    /** Enregistre le nouveau rayon (lu par ProximityCheckWorker). */
+    /** Enregistre le nouveau rayon et re-synchronise les geofences. */
     fun setProximityRadiusKm(km: Float) {
         _proximityRadiusKm.value = km
         prefs.edit().putFloat("proximity_radius_km", km).apply()
+        viewModelScope.launch {
+            val manager = JTRApplication.geofenceManager ?: return@launch
+            val persons = personRepository.getAllActive().first()
+            manager.unregisterAll()
+            manager.registerAll(persons, km * 1000f)
+        }
     }
 }

@@ -1,5 +1,6 @@
 package com.jtr.app.ui.home
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -17,17 +18,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.core.graphics.toColorInt
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
+import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.utils.getSocialIcon
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -44,6 +52,8 @@ fun HomeScreen(
     val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val isLocationEnabled by viewModel.isLocationEnabled.collectAsStateWithLifecycle()
+    val socialLinksMap by viewModel.socialLinksMap.collectAsStateWithLifecycle()
 
     var showCategoryDialog by remember { mutableStateOf(false) }
 
@@ -134,6 +144,33 @@ fun HomeScreen(
         }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            // ── Bannière GPS désactivé ────────────────────────────────────────
+            AnimatedVisibility(visible = !isLocationEnabled && !isSelectionMode) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    tonalElevation = 2.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.GpsOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Activez la localisation pour les rappels de proximité",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
             if (!isSelectionMode) {
                 OutlinedTextField(
                     value = searchQuery,
@@ -151,7 +188,7 @@ fun HomeScreen(
                         }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(28.dp) // pill
                 )
             }
 
@@ -179,6 +216,7 @@ fun HomeScreen(
                     items(items = persons, key = { it.id }) { person ->
                         PersonCard(
                             person = person,
+                            socialLinks = socialLinksMap[person.id] ?: emptyList(),
                             isSelected = person.id in selectedIds,
                             isSelectionMode = isSelectionMode,
                             onClick = {
@@ -354,19 +392,30 @@ private fun parseCategoryColor(hex: String): Color = try {
 @Composable
 fun PersonCard(
     person: Person,
+    socialLinks: List<SocialLinkEntity> = emptyList(),
     isSelected: Boolean,
     isSelectionMode: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onFavoriteClick: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            // Ombre colorée : ambientColor reprend la teinte primaire du thème
+            .shadow(
+                elevation = if (isSelected) 8.dp else 3.dp,
+                shape = RoundedCornerShape(24.dp),
+                clip = false,
+                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                spotColor  = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+            )
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 4.dp else 2.dp),
-        shape = RoundedCornerShape(12.dp),
+        // elevation = 0 : la shadow Modifier gère l'effet de profondeur
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
                 MaterialTheme.colorScheme.secondaryContainer
@@ -374,65 +423,119 @@ fun PersonCard(
         )
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isSelectionMode) {
-                Checkbox(checked = isSelected, onCheckedChange = { onClick() },
-                    modifier = Modifier.padding(end = 4.dp))
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() },
+                    modifier = Modifier.padding(end = 8.dp)
+                )
             }
 
+            // ── Avatar ──────────────────────────────────────────────────────
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
-                    .background(
-                        if (isSelected) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.primaryContainer
+                    .then(
+                        if (person.photoUri == null)
+                            Modifier.background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.secondary
+                                    )
+                                )
+                            )
+                        else
+                            Modifier.background(MaterialTheme.colorScheme.primaryContainer)
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 if (person.photoUri != null) {
-                    AsyncImage(model = person.photoUri, contentDescription = null,
-                        modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(person.photoUri)
+                            .crossfade(300)
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
                 } else {
-                    Text(text = person.initials,
+                    Text(
+                        text = person.initials,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                        else MaterialTheme.colorScheme.onPrimaryContainer)
+                        color = Color.White
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(14.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = person.fullName,
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = person.fullName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 if (person.city != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.LocationOn, contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = person.city,
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = person.city,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
                 if (person.birthdate != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Cake, contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            Icons.Default.Cake,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = SimpleDateFormat("d MMMM yyyy", Locale.FRENCH)
                                 .format(Date(person.birthdate)),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                if (socialLinks.isNotEmpty()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        socialLinks.take(6).forEach { link ->
+                            Icon(
+                                painter = painterResource(getSocialIcon(link.url)),
+                                contentDescription = link.platform,
+                                modifier = Modifier.size(18.dp),
+                                tint = Color.Unspecified
+                            )
+                        }
                     }
                 }
             }
@@ -444,7 +547,7 @@ fun PersonCard(
                         else Icons.Default.FavoriteBorder,
                         contentDescription = "Favori",
                         tint = if (person.isFavorite) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                     )
                 }
             }

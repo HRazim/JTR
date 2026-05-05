@@ -7,10 +7,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.Person
+import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.utils.extractSocialLinks
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -29,7 +30,14 @@ class EditPersonViewModel(
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // --- Form state (survives navigation, initialized from loaded Person) ---
+    // ── Mode édition globale ──────────────────────────────────────────────────
+    private val _isEditing = MutableStateFlow(false)
+    val isEditing: StateFlow<Boolean> = _isEditing.asStateFlow()
+
+    fun enterEditMode() { _isEditing.value = true }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── Champs formulaire ─────────────────────────────────────────────────────
     private val _firstName = MutableStateFlow("")
     val firstName: StateFlow<String> = _firstName.asStateFlow()
 
@@ -42,6 +50,9 @@ class EditPersonViewModel(
     private val _birthdate = MutableStateFlow<Long?>(null)
     val birthdate: StateFlow<Long?> = _birthdate.asStateFlow()
 
+    private val _birthdateNotify = MutableStateFlow(false)
+    val birthdateNotify: StateFlow<Boolean> = _birthdateNotify.asStateFlow()
+
     private val _city = MutableStateFlow("")
     val city: StateFlow<String> = _city.asStateFlow()
 
@@ -50,6 +61,9 @@ class EditPersonViewModel(
 
     private val _cityLng = MutableStateFlow<Double?>(null)
     val cityLng: StateFlow<Double?> = _cityLng.asStateFlow()
+
+    private val _cityNotify = MutableStateFlow(false)
+    val cityNotify: StateFlow<Boolean> = _cityNotify.asStateFlow()
 
     private val _origin = MutableStateFlow("")
     val origin: StateFlow<String> = _origin.asStateFlow()
@@ -65,6 +79,31 @@ class EditPersonViewModel(
 
     private val _firstNameError = MutableStateFlow(false)
     val firstNameError: StateFlow<Boolean> = _firstNameError.asStateFlow()
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── Liens sociaux (réactifs depuis Room) ──────────────────────────────────
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val socialLinks: StateFlow<List<SocialLinkEntity>> = _person
+        .flatMapLatest { p ->
+            if (p != null) repository.getSocialLinks(p.id)
+            else flowOf(emptyList())
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun addSocialLink(url: String) {
+        val p = _person.value ?: return
+        val trimmed = url.trim()
+        if (trimmed.isBlank()) return
+        val platform = extractSocialLinks(trimmed).firstOrNull()?.platform?.displayName ?: "Lien"
+        viewModelScope.launch {
+            repository.addSocialLink(SocialLinkEntity(personId = p.id, url = trimmed, platform = platform))
+        }
+    }
+
+    fun removeSocialLink(id: String) {
+        viewModelScope.launch { repository.removeSocialLink(id) }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     private var personLoaded = false
 
@@ -75,37 +114,43 @@ class EditPersonViewModel(
     }
 
     fun loadPerson(personId: String) {
-        if (personLoaded) return  // Don't overwrite form if already loaded (e.g. back from map)
+        if (personLoaded) return
         viewModelScope.launch {
             _isLoading.value = true
             val p = repository.getById(personId)
-            if (p != null) {
-                _firstName.value = p.firstName
-                _lastName.value = p.lastName ?: ""
-                _gender.value = p.gender
-                _birthdate.value = p.birthdate
-                _city.value = p.city ?: ""
-                _cityLat.value = p.cityLat
-                _cityLng.value = p.cityLng
-                _origin.value = p.origin ?: ""
-                _likes.value = p.likes ?: ""
-                _notes.value = p.notes ?: ""
-                _photoUri.value = p.photoUri
-                personLoaded = true
-            }
+            if (p != null) populateFields(p)
             _person.value = p
             _isLoading.value = false
         }
     }
 
-    fun onFirstNameChanged(v: String) { _firstName.value = v; _firstNameError.value = false }
-    fun onLastNameChanged(v: String) { _lastName.value = v }
-    fun onGenderChanged(v: String?) { _gender.value = v }
-    fun onBirthdateChanged(v: Long?) { _birthdate.value = v }
-    fun onCityChanged(v: String) { _city.value = v; _cityLat.value = null; _cityLng.value = null }
-    fun onOriginChanged(v: String) { _origin.value = v }
-    fun onLikesChanged(v: String) { _likes.value = v }
-    fun onNotesChanged(v: String) { _notes.value = v }
+    private fun populateFields(p: Person) {
+        _firstName.value = p.firstName
+        _lastName.value = p.lastName ?: ""
+        _gender.value = p.gender
+        _birthdate.value = p.birthdate
+        _birthdateNotify.value = p.birthdateNotify
+        _city.value = p.city ?: ""
+        _cityLat.value = p.cityLat
+        _cityLng.value = p.cityLng
+        _cityNotify.value = p.cityNotify
+        _origin.value = p.origin ?: ""
+        _likes.value = p.likes ?: ""
+        _notes.value = p.notes ?: ""
+        _photoUri.value = p.photoUri
+        personLoaded = true
+    }
+
+    fun onFirstNameChanged(v: String)    { _firstName.value = v; _firstNameError.value = false }
+    fun onLastNameChanged(v: String)     { _lastName.value = v }
+    fun onGenderChanged(v: String?)      { _gender.value = v }
+    fun onBirthdateChanged(v: Long?)     { _birthdate.value = v }
+    fun onBirthdateNotifyChanged(v: Boolean) { _birthdateNotify.value = v }
+    fun onCityChanged(v: String)         { _city.value = v; _cityLat.value = null; _cityLng.value = null }
+    fun onCityNotifyChanged(v: Boolean)  { _cityNotify.value = v }
+    fun onOriginChanged(v: String)       { _origin.value = v }
+    fun onLikesChanged(v: String)        { _likes.value = v }
+    fun onNotesChanged(v: String)        { _notes.value = v }
 
     fun onPhotoSelected(uri: Uri) {
         viewModelScope.launch {
@@ -114,24 +159,36 @@ class EditPersonViewModel(
         }
     }
 
+    /** Sauvegarde globale depuis PersonDetailScreen — reste sur l'écran. */
+    fun commitAllEdits() {
+        val p = _person.value ?: return
+        if (_firstName.value.isBlank()) { _firstNameError.value = true; return }
+        viewModelScope.launch {
+            val updated = buildUpdatedPerson(p)
+            if (_city.value.trim() != (p.city ?: "") && _cityLat.value == null) {
+                repository.updateWithGeocoding(updated, p.city)
+            } else {
+                repository.update(updated)
+            }
+            _person.value = updated
+            _isEditing.value = false
+        }
+    }
+
+    /** Annule le mode édition et restaure les champs depuis la snapshot locale. */
+    fun cancelEdit() {
+        val p = _person.value ?: run { _isEditing.value = false; return }
+        populateFields(p)
+        _firstNameError.value = false
+        _isEditing.value = false
+    }
+
+    /** Sauvegarde et navigue — utilisé depuis EditPersonScreen. */
     fun updatePerson(onSuccess: () -> Unit) {
         val p = _person.value ?: return
         if (_firstName.value.isBlank()) { _firstNameError.value = true; return }
         viewModelScope.launch {
-            val updated = p.copy(
-                firstName = _firstName.value.trim(),
-                lastName = _lastName.value.trim().ifBlank { null },
-                gender = _gender.value,
-                birthdate = _birthdate.value,
-                city = _city.value.trim().ifBlank { null },
-                cityLat = _cityLat.value,
-                cityLng = _cityLng.value,
-                photoUri = _photoUri.value,
-                notes = _notes.value.trim().ifBlank { null },
-                likes = _likes.value.trim().ifBlank { null },
-                origin = _origin.value.trim().ifBlank { null }
-            )
-            // Re-geocode only if city changed manually (no GPS from map)
+            val updated = buildUpdatedPerson(p)
             if (_city.value.trim() != (p.city ?: "") && _cityLat.value == null) {
                 repository.updateWithGeocoding(updated, p.city)
             } else {
@@ -140,6 +197,22 @@ class EditPersonViewModel(
             onSuccess()
         }
     }
+
+    private fun buildUpdatedPerson(p: Person) = p.copy(
+        firstName      = _firstName.value.trim(),
+        lastName       = _lastName.value.trim().ifBlank { null },
+        gender         = _gender.value,
+        birthdate      = _birthdate.value,
+        birthdateNotify = _birthdateNotify.value,
+        city           = _city.value.trim().ifBlank { null },
+        cityLat        = _cityLat.value,
+        cityLng        = _cityLng.value,
+        cityNotify     = _cityNotify.value,
+        photoUri       = _photoUri.value,
+        notes          = _notes.value.trim().ifBlank { null },
+        likes          = _likes.value.trim().ifBlank { null },
+        origin         = _origin.value.trim().ifBlank { null }
+    )
 
     private fun copyPhotoToStorage(uri: Uri): String? = try {
         val context = getApplication<Application>().applicationContext

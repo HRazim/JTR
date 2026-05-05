@@ -3,13 +3,16 @@ package com.jtr.app.data.repository
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.jtr.app.JTRApplication
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.data.local.PersonDao
 import com.jtr.app.data.local.PersonCategoryDao
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.PersonCategoryJoin
+import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.utils.normalizeForSearch
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.File
 
@@ -24,6 +27,7 @@ class PersonRepository(context: Context) {
 
     private val dao: PersonDao = AppDatabase.getInstance(context).personDao()
     private val categoryDao: PersonCategoryDao = AppDatabase.getInstance(context).personCategoryDao()
+    private val socialLinkDao = AppDatabase.getInstance(context).socialLinkDao()
     private val appContext = context.applicationContext
 
     // =========================================================
@@ -64,7 +68,33 @@ class PersonRepository(context: Context) {
         categoryDao.getCategoryIdsForPersonSync(personId)
 
     // =========================================================
-    // ÉCRITURE
+    // SOCIAL LINKS
+    // =========================================================
+
+    fun getSocialLinks(personId: String) = socialLinkDao.getForPerson(personId)
+
+    fun getAllSocialLinks() = socialLinkDao.getAll()
+
+    suspend fun addSocialLink(link: SocialLinkEntity) = socialLinkDao.insert(link)
+
+    suspend fun removeSocialLink(id: String) = socialLinkDao.deleteById(id)
+
+    // =========================================================
+    // SYNCHRONISATION GEOFENCES
+    // =========================================================
+
+    /** Re-enregistre tous les geofences actifs. No-op si permission absente ou manager non initialisé. */
+    private suspend fun syncGeofences() {
+        val manager = JTRApplication.geofenceManager ?: return
+        val prefs = appContext.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
+        val radiusMeters = prefs.getFloat("proximity_radius_km", 5f) * 1000f
+        val persons = dao.getAllActive().first()
+        manager.unregisterAll()
+        manager.registerAll(persons, radiusMeters)
+    }
+
+    // =========================================================
+    // ÉCRITURE (CRUD)
     // =========================================================
 
     suspend fun add(person: Person) = dao.insert(person)
@@ -90,6 +120,7 @@ class PersonRepository(context: Context) {
             } catch (_: Exception) { person }
         } else person
         dao.insert(enriched)
+        syncGeofences()
         return enriched
     }
 
@@ -102,7 +133,10 @@ class PersonRepository(context: Context) {
         return enriched
     }
 
-    suspend fun update(person: Person) = dao.update(person)
+    suspend fun update(person: Person) {
+        dao.update(person)
+        syncGeofences()
+    }
 
     suspend fun updateWithGeocoding(person: Person, oldCity: String?): Person {
         val enriched = if (person.city != null && person.city != oldCity) {
@@ -113,10 +147,14 @@ class PersonRepository(context: Context) {
             } catch (_: Exception) { person }
         } else person
         dao.update(enriched)
+        syncGeofences()
         return enriched
     }
 
-    suspend fun softDelete(id: String) = dao.softDelete(id)
+    suspend fun softDelete(id: String) {
+        dao.softDelete(id)
+        syncGeofences()
+    }
 
     suspend fun hardDelete(id: String) = dao.hardDelete(id)
 
@@ -131,7 +169,10 @@ class PersonRepository(context: Context) {
         dao.purgeOldDeleted(thirtyDaysAgo)
     }
 
-    suspend fun restore(id: String) = dao.restore(id)
+    suspend fun restore(id: String) {
+        dao.restore(id)
+        syncGeofences()
+    }
 
     suspend fun hardDeleteAllDeleted() = dao.hardDeleteAllDeleted()
 

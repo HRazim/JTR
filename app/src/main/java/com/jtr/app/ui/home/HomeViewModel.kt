@@ -1,13 +1,20 @@
 package com.jtr.app.ui.home
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.location.LocationManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.data.repository.CategoryRepository
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
+import com.jtr.app.domain.model.SocialLinkEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -28,6 +35,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     val categories: StateFlow<List<Category>> = categoryRepository.getAllActive()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val isLocationEnabled: StateFlow<Boolean> = locationEnabledFlow(getApplication())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val socialLinksMap: StateFlow<Map<String, List<SocialLinkEntity>>> =
+        repository.getAllSocialLinks()
+            .map { links -> links.groupBy { it.personId } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val persons: StateFlow<List<Person>> = _searchQuery
@@ -89,4 +104,17 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             _selectedIds.value = emptySet()
         }
     }
+}
+
+private fun locationEnabledFlow(context: Context): Flow<Boolean> = callbackFlow {
+    val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    trySend(locationManager.isLocationEnabled)
+
+    val receiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context, intent: Intent) {
+            trySend(locationManager.isLocationEnabled)
+        }
+    }
+    context.registerReceiver(receiver, IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION))
+    awaitClose { context.unregisterReceiver(receiver) }
 }

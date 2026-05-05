@@ -7,6 +7,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.Person
+import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.utils.extractSocialLinks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +17,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
+
+/** Lien social en attente de persistance (avant que le personId soit connu). */
+data class PendingLink(val url: String, val platform: String)
 
 /**
  * Tout le state du formulaire vit ici pour survivre à la navigation vers MapScreen.
@@ -71,6 +76,21 @@ class AddPersonViewModel(
     private val _firstNameError = MutableStateFlow(false)
     val firstNameError: StateFlow<Boolean> = _firstNameError.asStateFlow()
 
+    // Liens sociaux en attente — persistés vers Room après création de la personne
+    private val _pendingLinks = MutableStateFlow<List<PendingLink>>(emptyList())
+    val pendingLinks: StateFlow<List<PendingLink>> = _pendingLinks.asStateFlow()
+
+    fun addPendingLink(url: String) {
+        val trimmed = url.trim().takeIf { it.isNotBlank() } ?: return
+        if (_pendingLinks.value.any { it.url == trimmed }) return
+        val platform = extractSocialLinks(trimmed).firstOrNull()?.platform?.displayName ?: "Lien"
+        _pendingLinks.value = _pendingLinks.value + PendingLink(trimmed, platform)
+    }
+
+    fun removePendingLink(url: String) {
+        _pendingLinks.value = _pendingLinks.value.filter { it.url != url }
+    }
+
     fun onCityFromMap(city: String, lat: Double?, lng: Double?) {
         _city.value = city
         _cityLat.value = lat
@@ -113,12 +133,19 @@ class AddPersonViewModel(
             val hasCoords = _cityLat.value != null && _cityLng.value != null
 
             if (presetCategoryId != null) {
-                // Depuis CategoryDetailScreen : assigne automatiquement à la catégorie
                 if (hasCoords) repository.addToCategory(person, presetCategoryId)
                 else repository.addWithGeocodingToCategory(person, presetCategoryId)
             } else {
                 if (hasCoords) repository.add(person)
                 else repository.addWithGeocoding(person)
+            }
+
+            // L'ID de la personne est connu dès sa création (UUID local) — on peut
+            // insérer tous les liens en attente sans attendre le retour de Room.
+            _pendingLinks.value.forEach { link ->
+                repository.addSocialLink(
+                    SocialLinkEntity(personId = person.id, url = link.url, platform = link.platform)
+                )
             }
 
             onSuccess()

@@ -8,21 +8,23 @@ import android.os.Build
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.jtr.app.utils.GeofenceManager
 import com.jtr.app.worker.ProximityCheckWorker
 import org.maplibre.android.MapLibre
 import java.util.concurrent.TimeUnit
 
 /**
- * JTRApplication — Classe Application (PP3).
+ * JTRApplication — Classe Application (v4.0).
  *
- * Initialise les éléments globaux : canaux de notification, WorkManager pour les
- * vérifications de proximité périodiques.
+ * Initialise les éléments globaux : MapLibre, GeofenceManager, canaux de notification
+ * et WorkManager pour les vérifications de proximité périodiques.
  */
 class JTRApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
         MapLibre.getInstance(this)
+        geofenceManager = GeofenceManager(this)
         createNotificationChannels()
         scheduleProximityChecks()
     }
@@ -73,5 +75,9 @@ class JTRApplication : Application() {
     companion object {
         const val CHANNEL_PROXIMITY = "proximity_channel"
         const val CHANNEL_BIRTHDAY = "birthday_channel"
+
+        /** Singleton initialisé dans onCreate() — null uniquement en tests unitaires JVM. */
+        var geofenceManager: GeofenceManager? = null
+            private set
     }
 }

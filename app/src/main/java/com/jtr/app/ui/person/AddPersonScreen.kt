@@ -19,15 +19,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.request.ImageRequest
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.jtr.app.utils.getSocialIcon
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -58,8 +65,10 @@ fun AddPersonScreen(
     val cityLat        by viewModel.cityLat.collectAsStateWithLifecycle()
     val photoUri       by viewModel.photoUri.collectAsStateWithLifecycle()
     val firstNameError by viewModel.firstNameError.collectAsStateWithLifecycle()
+    val pendingLinks   by viewModel.pendingLinks.collectAsStateWithLifecycle()
 
     val cityFocusRequester = remember { FocusRequester() }
+    var showAddLinkDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(cityFromMap) {
         val c = cityFromMap ?: return@LaunchedEffect
@@ -101,11 +110,23 @@ fun AddPersonScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Photo de profil
+            val context = LocalContext.current
             Box(
                 modifier = Modifier
                     .size(96.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .then(
+                        if (photoUri == null)
+                            Modifier.background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.secondary
+                                    )
+                                )
+                            )
+                        else Modifier.background(MaterialTheme.colorScheme.primaryContainer)
+                    )
                     .clickable {
                         photoPicker.launch(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
@@ -115,7 +136,8 @@ fun AddPersonScreen(
             ) {
                 if (photoUri != null) {
                     AsyncImage(
-                        model = photoUri,
+                        model = ImageRequest.Builder(context)
+                            .data(photoUri).crossfade(300).build(),
                         contentDescription = "Photo de profil",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -123,10 +145,10 @@ fun AddPersonScreen(
                 } else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.AddAPhoto, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            tint = Color.White,
                             modifier = Modifier.size(32.dp))
                         Text("Photo", style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            color = Color.White)
                     }
                 }
             }
@@ -212,6 +234,67 @@ fun AddPersonScreen(
                 }
             }
 
+            // ── Réseaux sociaux ───────────────────────────────────────────────
+            HorizontalDivider()
+            Text(
+                "Réseaux sociaux",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.Start)
+            )
+            if (pendingLinks.isNotEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    pendingLinks.forEach { link ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(getSocialIcon(link.url)),
+                                contentDescription = null,
+                                modifier = Modifier.size(22.dp),
+                                tint = Color.Unspecified
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    link.platform,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    link.url,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            IconButton(onClick = { viewModel.removePendingLink(link.url) }) {
+                                Icon(
+                                    Icons.Default.DeleteOutline,
+                                    contentDescription = "Supprimer",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            OutlinedButton(
+                onClick = { showAddLinkDialog = true },
+                modifier = Modifier.align(Alignment.Start),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.AddLink, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Ajouter un lien social")
+            }
+
             HorizontalDivider()
             Text("Informations personnelles",
                 style = MaterialTheme.typography.labelLarge,
@@ -255,6 +338,13 @@ fun AddPersonScreen(
             ) {
                 Text("Sauvegarder", style = MaterialTheme.typography.titleMedium)
             }
+        }
+
+        if (showAddLinkDialog) {
+            AddSocialLinkDialog(
+                onConfirm = { url -> viewModel.addPendingLink(url) },
+                onDismiss = { showAddLinkDialog = false }
+            )
         }
 
         if (showDatePicker) {
