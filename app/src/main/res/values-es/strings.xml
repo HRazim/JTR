@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">JTR</string>
+
+    <!-- ── Common actions ─────────────────────────────────────────────────── -->
+    <string name="common_cancel">Cancelar</string>
+    <string name="common_ok">Aceptar</string>
+    <string name="common_delete">Eliminar</string>
+    <string name="common_save">Guardar</string>
+    <string name="common_back">Volver</string>
+    <string name="common_edit">Editar</string>
+    <string name="common_add">Agregar</string>
+    <string name="common_create">Crear</string>
+    <string name="common_restore">Restaurar</string>
+    <string name="common_clear">Borrar</string>
+    <string name="common_photo">Foto</string>
+    <string name="common_name_label">Nombre</string>
+    <string name="common_color_label">Color</string>
+    <string name="separator_and"> y </string>
+
+    <!-- ── Home screen ────────────────────────────────────────────────────── -->
+    <string name="home_title">JTR — Mis Contactos</string>
+    <string name="home_selection_count">%1$d seleccionado(s)</string>
+    <string name="home_fab_add_person">Agregar una persona</string>
+    <string name="home_location_warning">Active la ubicación para los recordatorios de proximidad</string>
+    <string name="home_search_placeholder">Buscar un contacto…</string>
+    <string name="home_empty_title">No se encontraron contactos</string>
+    <string name="home_empty_subtitle">Toca + para agregar una persona</string>
+    <string name="home_btn_category">Categoría</string>
+    <string name="home_btn_delete">Eliminar</string>
+    <string name="home_favorite_cd">Favorito</string>
+
+    <!-- ── Category assign dialog ─────────────────────────────────────────── -->
+    <string name="dialog_assign_category_title">Asignar una categoría</string>
+    <string name="dialog_new_category_title">Nueva categoría</string>
+    <string name="dialog_create_category_cd">Crear una categoría</string>
+    <string name="dialog_create_new_category">Crear una nueva categoría</string>
+    <string name="dialog_create_and_assign">Crear y asignar</string>
+    <string name="dialog_category_name_label">Nombre de la categoría</string>
+
+    <!-- ── Categories screen ──────────────────────────────────────────────── -->
+    <string name="categories_title">Categorías</string>
+    <string name="categories_fab_add_cd">Agregar una categoría</string>
+    <string name="categories_empty_title">Sin categorías</string>
+    <string name="categories_empty_subtitle">Toca + para crear una</string>
+    <string name="categories_delete_title">¿Eliminar \"%1$s\"?</string>
+    <string name="categories_delete_with_contacts">Esta categoría contiene %1$d contacto(s). ¿Está seguro de eliminar la categoría y sus %1$d contacto(s)?\n\nPodrá restaurarlos desde la Papelera.</string>
+    <string name="categories_delete_empty">La categoría se moverá a la papelera. Podrá restaurarla.</string>
+    <string name="categories_person_count">%1$d contacto(s)</string>
+    <string name="categories_edit_dialog_title">Editar categoría</string>
+    <string name="categories_image_cd">Imagen de la categoría</string>
+    <string name="categories_remove_photo">Eliminar foto</string>
+    <string name="categories_new_dialog_title">Nueva categoría</string>
+
+    <!-- ── Category detail screen ─────────────────────────────────────────── -->
+    <string name="category_detail_search_placeholder">Buscar en esta categoría…</string>
+    <string name="category_detail_empty_title">Sin miembros en esta categoría</string>
+    <string name="category_detail_empty_subtitle">Toca + para agregar un contacto</string>
+    <string name="category_detail_fab_add">Agregar un contacto</string>
+    <string name="category_detail_btn_remove">Quitar</string>
+    <string name="category_detail_default_title">Categoría</string>
+
+    <!-- ── Add / Edit person ──────────────────────────────────────────────── -->
+    <string name="person_add_title">Agregar una persona</string>
+    <string name="person_edit_title">Editar contacto</string>
+    <string name="person_photo_cd">Foto de perfil</string>
+    <string name="person_first_name_label">Nombre *</string>
+    <string name="person_first_name_error">El nombre es obligatorio</string>
+    <string name="person_first_name_required">Obligatorio</string>
+    <string name="person_last_name_label">Apellido</string>
+    <string name="person_gender_label">Género</string>
+    <string name="person_gender_male">Hombre</string>
+    <string name="person_gender_female">Mujer</string>
+    <string name="person_gender_nonbinary">No binario</string>
+    <string name="person_gender_nonbinary_short">N-bin.</string>
+    <string name="person_birthday_label">Cumpleaños</string>
+    <string name="person_birthday_select">Seleccionar fecha</string>
+    <string name="person_birthday_modify">Cambiar fecha</string>
+    <string name="person_birthday_clear">Borrar</string>
+    <string name="person_birthday_notify">Notificar el día del cumpleaños</string>
+    <string name="person_city_label">Ciudad</string>
+    <string name="person_city_map_cd">Elegir en el mapa</string>
+    <string name="person_city_notify">Notificar si está cerca</string>
+    <string name="person_social_links_title">Redes sociales</string>
+    <string name="person_add_social_link">Agregar un enlace social</string>
+    <string name="person_social_delete_cd">Eliminar</string>
+    <string name="person_personal_info_title">Información personal</string>
+    <string name="person_origin_label">Origen</string>
+    <string name="person_likes_label">Lo que le gusta</string>
+    <string name="person_notes_label">Notas varias</string>
+    <string name="person_save">Guardar</string>
+    <string name="person_save_changes">Guardar cambios</string>
+
+    <!-- ── Person detail screen ───────────────────────────────────────────── -->
+    <string name="person_not_found">Persona no encontrada</string>
+    <string name="person_double_tap_hint">Doble toque para editar</string>
+    <string name="person_delete_dialog_title">¿Eliminar este contacto?</string>
+    <string name="person_delete_dialog_text">El contacto se colocará en la papelera durante 30 días.</string>
+    <string name="person_favorite_label">Favorito</string>
+    <string name="person_edit_photo_label">Editar</string>
+    <string name="person_map_cd">Mapa</string>
+    <string name="person_map_hide_cd">Ocultar</string>
+    <string name="person_add_link_dialog_title">Agregar un enlace social</string>
+    <string name="person_add_link_url_label">Pegar URL</string>
+    <string name="person_add_link_action">Agregar</string>
+
+    <!-- ── Map screen ─────────────────────────────────────────────────────── -->
+    <string name="map_title">Elegir una ciudad</string>
+    <string name="map_search_label">Buscar una ciudad</string>
+    <string name="map_save">Guardar</string>
+
+    <!-- ── Trash screen ───────────────────────────────────────────────────── -->
+    <string name="trash_title">Papelera</string>
+    <string name="trash_auto_purge_banner">Purga automática después de 30 días.</string>
+    <string name="trash_section_categories">Categorías eliminadas</string>
+    <string name="trash_section_contacts">Contactos eliminados</string>
+    <string name="trash_empty_title">La papelera está vacía</string>
+    <string name="trash_empty_subtitle">Los contactos y categorías eliminados aparecerán aquí.</string>
+    <string name="trash_btn_empty">Vaciar papelera</string>
+    <string name="trash_empty_cd">Vaciar papelera</string>
+    <string name="trash_empty_dialog_title">¿Vaciar la papelera?</string>
+    <string name="trash_empty_dialog_text">Esta acción es irreversible.\n%1$s serán eliminados permanentemente.</string>
+    <string name="trash_empty_dialog_part_categories">%1$d categoría(s)</string>
+    <string name="trash_empty_dialog_part_contacts">%1$d contacto(s)</string>
+    <string name="trash_empty_confirm">Vaciar definitivamente</string>
+    <string name="trash_delete_dialog_title">¿Eliminar definitivamente?</string>
+    <string name="trash_delete_category_with_contacts">La categoría \"%1$s\" y sus %2$d contacto(s) se perderán.</string>
+    <string name="trash_delete_category_empty">La categoría \"%1$s\" será eliminada definitivamente.</string>
+    <string name="trash_delete_person_text">%1$s será eliminado(a) de forma permanente.</string>
+    <string name="trash_restore_all_cd">Restaurar todo</string>
+    <string name="trash_delete_permanently_cd">Eliminar definitivamente</string>
+    <string name="trash_collapse_cd">Contraer</string>
+    <string name="trash_expand_cd">Ver miembros</string>
+    <string name="trash_restore_cd">Restaurar</string>
+    <string name="trash_deleted_at">Eliminado el %1$s</string>
+    <string name="trash_purge_imminent">Eliminación inminente</string>
+    <string name="trash_purge_1_day">Queda 1 día</string>
+    <string name="trash_purge_days">Quedan %1$d días</string>
+    <string name="trash_group_purge_imminent">eliminación inminente</string>
+    <string name="trash_group_purge_1_day">queda 1 día</string>
+    <string name="trash_group_purge_days">quedan %1$d días</string>
+    <string name="trash_group_status">%1$d contacto(s) · %2$s</string>
+
+    <!-- ── Settings screen ────────────────────────────────────────────────── -->
+    <string name="settings_title">Configuración</string>
+    <string name="settings_section_notifications">Notificaciones</string>
+    <string name="settings_notifications_title">Activar notificaciones</string>
+    <string name="settings_notifications_subtitle">Activar o desactivar todas las notificaciones</string>
+    <string name="settings_proximity_title">Recordatorios de proximidad</string>
+    <string name="settings_proximity_subtitle">Notificar cuando un contacto está cerca</string>
+    <string name="settings_proximity_radius_label">Radio de detección</string>
+    <string name="settings_proximity_radius_km">%1$d km</string>
+    <string name="settings_proximity_radius_min">1 km</string>
+    <string name="settings_proximity_radius_max">50 km</string>
+    <string name="settings_birthday_title">Recordatorios de cumpleaños</string>
+    <string name="settings_birthday_subtitle">Notificar el día de los cumpleaños</string>
+    <string name="settings_section_appearance">Apariencia</string>
+    <string name="settings_dark_mode_title">Modo oscuro</string>
+    <string name="settings_dark_mode_subtitle">Usar tema oscuro</string>
+    <string name="settings_section_customization">Personalización</string>
+    <string name="settings_color_palette">Paleta de colores</string>
+    <string name="settings_section_data">Datos</string>
+    <string name="settings_trash_title">Papelera</string>
+    <string name="settings_trash_subtitle">Contactos eliminados · purga automática después de 30 días</string>
+    <string name="settings_section_about">Acerca de</string>
+    <string name="settings_version_title">Versión</string>
+    <string name="settings_theme_cd">Tema %1$s</string>
+    <string name="settings_section_legal">Legal</string>
+    <string name="settings_privacy_title">Política de privacidad</string>
+    <string name="settings_privacy_subtitle">Cómo se usan sus datos</string>
+
+    <!-- ── Bottom navigation ──────────────────────────────────────────────── -->
+    <string name="nav_home">Inicio</string>
+    <string name="nav_categories">Categorías</string>
+    <string name="nav_settings">Configuración</string>
+
+    <!-- ── Notification channels ──────────────────────────────────────────── -->
+    <string name="notif_channel_proximity_name">Recordatorios de proximidad</string>
+    <string name="notif_channel_proximity_desc">Notificaciones cuando estás en la misma ciudad que un contacto</string>
+    <string name="notif_channel_birthday_name">Cumpleaños</string>
+    <string name="notif_channel_birthday_desc">Recordatorios de cumpleaños de contactos</string>
+
+    <!-- ── Notification content (Workers) ────────────────────────────────── -->
+    <string name="notif_birthday_title">🎂 ¡Cumpleaños hoy!</string>
+    <string name="notif_birthday_text">Hoy es el cumpleaños de %1$s. ¡No olvides felicitarlo!</string>
+    <string name="notif_proximity_title">¡%1$s está cerca!</string>
+    <string name="notif_proximity_text">Estás a %1$d km de %2$s (radio configurado: %3$d km). ¡Hace %5$d días que no contactas a %4$s!</string>
+    <string name="notif_geofence_title">¡%1$s está cerca!</string>
+    <string name="notif_geofence_text">Estás actualmente en %1$s — ¡hace %2$d días que no se ven!</string>
+    <string name="notif_geofence_city_fallback">esta ciudad</string>
+</resources>

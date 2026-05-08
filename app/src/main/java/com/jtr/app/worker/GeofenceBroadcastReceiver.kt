@@ -45,7 +45,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                         context = context,
                         notifId = person.id.hashCode(),
                         firstName = person.firstName,
-                        city = person.city ?: "cette ville",
+                        city = person.city ?: context.getString(R.string.notif_geofence_city_fallback),
                         daysSince = daysSince
                     )
                 }
@@ -70,11 +70,11 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val message = "Tu es actuellement à $city — ça fait $daysSince jours que vous ne vous êtes pas vus !"
+        val message = context.getString(R.string.notif_geofence_text, city, daysSince)
 
         val notification = NotificationCompat.Builder(context, JTRApplication.CHANNEL_PROXIMITY)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("$firstName est dans les parages !")
+            .setContentTitle(context.getString(R.string.notif_geofence_title, firstName))
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setContentIntent(pendingIntent)

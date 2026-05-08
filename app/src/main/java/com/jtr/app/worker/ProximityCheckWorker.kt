@@ -103,13 +103,18 @@ class ProximityCheckWorker(
         )
 
         val days = person.daysSinceLastContact() ?: 0
-        val message = "Tu es à ${distanceKm} km de ${person.city} " +
-                "(rayon configuré : ${radiusKm} km). " +
-                "Cela fait $days jours que tu n'as pas contacté ${person.firstName} !"
+        val message = context.getString(
+            R.string.notif_proximity_text,
+            distanceKm,
+            person.city ?: "",
+            radiusKm,
+            person.firstName,
+            days
+        )
 
         val notification = NotificationCompat.Builder(context, JTRApplication.CHANNEL_PROXIMITY)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("${person.firstName} est dans les parages !")
+            .setContentTitle(context.getString(R.string.notif_proximity_title, person.firstName))
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setContentIntent(pendingIntent)

@@ -14,6 +14,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.jtr.app.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -89,10 +91,10 @@ fun MapScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Choisir une ville") },
+                title = { Text(stringResource(R.string.map_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -175,7 +177,7 @@ fun MapScreen(
                         if (q.length >= 3) viewModel.search(q)
                         else if (q.isEmpty()) { viewModel.clearResults(); showResults = false }
                     },
-                    label = { Text("Rechercher une ville") },
+                    label = { Text(stringResource(R.string.map_search_label)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = {
                         when {
@@ -188,7 +190,7 @@ fun MapScreen(
                                 viewModel.clearResults()
                                 showResults = false
                             }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Effacer")
+                                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.common_clear))
                             }
                         }
                     },
@@ -276,7 +278,7 @@ fun MapScreen(
                             )
                         }
                         Button(onClick = { onLocationSelected(city, lat, lng) }) {
-                            Text("Enregistrer")
+                            Text(stringResource(R.string.map_save))
                         }
                     }
                 }

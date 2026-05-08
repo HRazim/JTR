@@ -23,10 +23,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,17 +56,12 @@ fun CategoriesScreen(
                 Icon(Icons.Default.Warning, contentDescription = null,
                     tint = MaterialTheme.colorScheme.error)
             },
-            title = { Text("Supprimer « ${category.name} » ?") },
+            title = { Text(stringResource(R.string.categories_delete_title, category.name)) },
             text = {
                 if (count > 0) {
-                    Text(
-                        "Cette catégorie contient $count contact(s). " +
-                        "Êtes-vous sûr de vouloir supprimer la catégorie ainsi que " +
-                        "les $count contact(s) qu'elle contient ?\n\n" +
-                        "Vous pourrez les restaurer depuis la Corbeille."
-                    )
+                    Text(stringResource(R.string.categories_delete_with_contacts, count))
                 } else {
-                    Text("La catégorie sera déplacée dans la corbeille. Vous pourrez la restaurer.")
+                    Text(stringResource(R.string.categories_delete_empty))
                 }
             },
             confirmButton = {
@@ -76,10 +73,12 @@ fun CategoriesScreen(
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
                     )
-                ) { Text("Supprimer") }
+                ) { Text(stringResource(R.string.common_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDeleteCategory = null }) { Text("Annuler") }
+                TextButton(onClick = { pendingDeleteCategory = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
             }
         )
     }
@@ -98,7 +97,7 @@ fun CategoriesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Catégories") },
+                title = { Text(stringResource(R.string.categories_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -107,7 +106,7 @@ fun CategoriesScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Ajouter une catégorie")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.categories_fab_add_cd))
             }
         }
     ) { padding ->
@@ -121,10 +120,10 @@ fun CategoriesScreen(
                         modifier = Modifier.size(64.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Aucune catégorie",
+                    Text(stringResource(R.string.categories_empty_title),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("Appuyez sur + pour en créer une",
+                    Text(stringResource(R.string.categories_empty_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -203,18 +202,18 @@ fun CategoryCard(
                 Text(text = category.name, style = MaterialTheme.typography.titleMedium)
                 if (personCount > 0) {
                     Text(
-                        text = "$personCount contact${if (personCount > 1) "s" else ""}",
+                        text = stringResource(R.string.categories_person_count, personCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
             IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Modifier",
+                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.common_edit),
                     tint = MaterialTheme.colorScheme.primary)
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Supprimer",
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.common_delete),
                     tint = MaterialTheme.colorScheme.error)
             }
         }
@@ -250,13 +249,12 @@ fun EditCategoryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Modifier la catégorie") },
+        title = { Text(stringResource(R.string.categories_edit_dialog_title)) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Photo de couverture
                 Box(
                     modifier = Modifier
                         .size(96.dp)
@@ -275,11 +273,10 @@ fun EditCategoryDialog(
                     if (imagePath != null) {
                         AsyncImage(
                             model = imagePath,
-                            contentDescription = "Image de la catégorie",
+                            contentDescription = stringResource(R.string.categories_image_cd),
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
-                        // Overlay crayon
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -294,7 +291,8 @@ fun EditCategoryDialog(
                             Icon(Icons.Default.AddAPhoto, contentDescription = null,
                                 tint = Color.White, modifier = Modifier.size(28.dp))
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text("Photo", style = MaterialTheme.typography.labelSmall,
+                            Text(stringResource(R.string.common_photo),
+                                style = MaterialTheme.typography.labelSmall,
                                 color = Color.White)
                         }
                     }
@@ -302,7 +300,8 @@ fun EditCategoryDialog(
 
                 if (imagePath != null) {
                     TextButton(onClick = { imagePath = null }) {
-                        Text("Supprimer la photo", color = MaterialTheme.colorScheme.error,
+                        Text(stringResource(R.string.categories_remove_photo),
+                            color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.labelSmall)
                     }
                 } else {
@@ -312,12 +311,13 @@ fun EditCategoryDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nom") },
+                    label = { Text(stringResource(R.string.common_name_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Couleur", style = MaterialTheme.typography.labelMedium,
+                Text(stringResource(R.string.common_color_label),
+                    style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.align(Alignment.Start))
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -343,10 +343,10 @@ fun EditCategoryDialog(
             TextButton(
                 onClick = { if (name.isNotBlank()) onConfirm(name, selectedColor, imagePath) },
                 enabled = name.isNotBlank()
-            ) { Text("Enregistrer") }
+            ) { Text(stringResource(R.string.common_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }
@@ -362,18 +362,19 @@ fun AddCategoryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nouvelle catégorie") },
+        title = { Text(stringResource(R.string.categories_new_dialog_title)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nom") },
+                    label = { Text(stringResource(R.string.common_name_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Couleur", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.common_color_label),
+                    style = MaterialTheme.typography.labelMedium)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     colors.forEach { color ->
@@ -398,10 +399,10 @@ fun AddCategoryDialog(
             TextButton(
                 onClick = { if (name.isNotBlank()) onConfirm(name, selectedColor) },
                 enabled = name.isNotBlank()
-            ) { Text("Créer") }
+            ) { Text(stringResource(R.string.common_create)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }

@@ -44,8 +44,8 @@ class BirthdayCheckWorker(
     private fun sendBirthdayNotification(firstName: String) {
         val notification = NotificationCompat.Builder(context, JTRApplication.CHANNEL_BIRTHDAY)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("🎂 Anniversaire aujourd'hui !")
-            .setContentText("C'est l'anniversaire de $firstName. Pense à lui souhaiter !")
+            .setContentTitle(context.getString(R.string.notif_birthday_title))
+            .setContentText(context.getString(R.string.notif_birthday_text, firstName))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .build()

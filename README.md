@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> **Carnet de contacts enrichi nouvelle génération** · Version `4.0-Final`  
+> **Carnet de contacts enrichi nouvelle génération** · Version `4.1`  
 > Projet personnel Android — Kotlin · Jetpack Compose · MVVM
 
 ---
@@ -14,18 +14,19 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 ## 📋 Table des matières
 
 1. [Aperçu visuel](#-aperçu-visuel)
-2. [Nouveautés v4.0](#-nouveautés-v40)
-3. [Arborescence du projet](#-arborescence-du-projet)
-4. [Architecture MVVM](#-architecture-mvvm)
-5. [Stack technologique](#-stack-technologique)
-6. [Répertoire des classes](#-répertoire-des-classes-et-composants)
-7. [Fonctionnalités clés](#-fonctionnalités-clés)
-8. [Base de données Room](#-base-de-données-room)
-9. [Guide d'installation](#-guide-dinstallation-et-configuration)
-10. [Permissions requises](#-permissions-requises)
-11. [Tests et qualité](#-tests-et-qualité)
-12. [Optimisations de performance](#-optimisations-de-performance)
-13. [Évolution par version](#-évolution-par-version)
+2. [Nouveautés v4.1](#-nouveautés-v41)
+3. [Nouveautés v4.0](#-nouveautés-v40)
+4. [Arborescence du projet](#-arborescence-du-projet)
+5. [Architecture MVVM](#-architecture-mvvm)
+6. [Stack technologique](#-stack-technologique)
+7. [Répertoire des classes](#-répertoire-des-classes-et-composants)
+8. [Fonctionnalités clés](#-fonctionnalités-clés)
+9. [Base de données Room](#-base-de-données-room)
+10. [Guide d'installation](#-guide-dinstallation-et-configuration)
+11. [Permissions requises](#-permissions-requises)
+12. [Tests et qualité](#-tests-et-qualité)
+13. [Optimisations de performance](#-optimisations-de-performance)
+14. [Évolution par version](#-évolution-par-version)
 
 ---
 
@@ -105,6 +106,127 @@ mapView.setOnTouchListener { v, event ->
 ```
 
 Corrigé dans `MapScreen.kt` (carte plein écran) **et** dans `MapLibreMiniMap` de `PersonDetailScreen.kt` (mini-carte à l'intérieur d'un `verticalScroll`).
+
+---
+
+## 🚀 Nouveautés v4.1
+
+### 1. Internationalisation complète (i18n) — 4 langues
+
+L'application prend désormais en charge **4 langues** : Anglais (défaut), Français, Espagnol, et Mandarin simplifié. Aucune chaîne de caractères n'est plus codée en dur dans le code Kotlin/Compose.
+
+**Fichiers de ressources créés :**
+
+| Fichier | Locale | Couverture |
+|---------|--------|-----------|
+| `res/values/strings.xml` | 🇬🇧 Anglais (défaut) | ~133 clés |
+| `res/values-fr/strings.xml` | 🇫🇷 Français | ~133 clés |
+| `res/values-es/strings.xml` | 🇪🇸 Espagnol | ~133 clés |
+| `res/values-zh/strings.xml` | 🇨🇳 Mandarin simplifié | ~133 clés |
+
+**Refactoring UI — couche Compose :**
+
+Tous les écrans ont été refactorisés pour utiliser `stringResource(R.string.key)` :
+
+| Écran | Changements notables |
+|-------|---------------------|
+| `HomeScreen.kt` | `Locale.FRENCH` → `Locale.getDefault()` pour le formatage des dates |
+| `AddPersonScreen.kt` | Genre, labels champs, dialogues |
+| `EditPersonScreen.kt` | Idem AddPersonScreen |
+| `PersonDetailScreen.kt` | ~35 chaînes (genre, anniversaire, ville, dialogues, liens sociaux) |
+| `CategoriesScreen.kt` | Dialogues de suppression avec format args `%1$s`, `%1$d` |
+| `CategoryDetailScreen.kt` | Recherche, sélection multiple, actions bas de page |
+| `MapScreen.kt` | Titre, recherche, bouton de sauvegarde |
+| `SettingsScreen.kt` | 25+ chaînes, `semantics { contentDescription }` calculé avant le bloc |
+| `TrashScreen.kt` | ~30 chaînes, `joinToString(stringResource(R.string.separator_and))` dynamique |
+
+**Refactoring hors-Compose :**
+
+```kotlin
+// JTRApplication.kt — canaux de notification
+getString(R.string.notif_channel_proximity_name)
+getString(R.string.notif_channel_birthday_name)
+
+// BirthdayCheckWorker.kt
+context.getString(R.string.notif_birthday_text, firstName)
+
+// ProximityCheckWorker.kt — args positionnels pour réordonner les mots selon la langue
+context.getString(R.string.notif_proximity_text, distanceKm, city, radiusKm, firstName, days)
+
+// GeofenceBroadcastReceiver.kt
+context.getString(R.string.notif_geofence_text, city, daysSince)
+```
+
+**Pattern `@StringRes Int` pour BottomNavItem :**
+
+Hors du scope `@Composable`, les labels de la barre de navigation ne peuvent pas utiliser `stringResource()`. Solution : stocker l'identifiant de ressource et le résoudre au moment du rendu.
+
+```kotlin
+data class BottomNavItem(val route: String, val icon: ImageVector, @StringRes val labelRes: Int)
+
+// Résolution dans le Composable
+Text(stringResource(item.labelRes))
+```
+
+**Format strings positionnels :**
+
+Les notifications contenant plusieurs arguments (distance, ville, prénom, jours) utilisent des paramètres positionnels (`%1$d`, `%2$s`, `%3$d`, `%4$s`, `%5$d`) permettant à chaque locale de réordonner librement les données dans la phrase.
+
+```xml
+<!-- Anglais -->
+<string name="notif_proximity_text">You are %1$d km from %2$s … %4$s in %5$d days!</string>
+<!-- Français — le nombre de jours (%5$d) précède le prénom (%4$s) -->
+<string name="notif_proximity_text">Tu es à %1$d km de %2$s … %5$d jours sans contacter %4$s !</string>
+```
+
+---
+
+### 2. Conformité RGPD — Politique de confidentialité intégrée
+
+**Objectif :** rendre l'application conforme au RGPD et aux exigences de transparence du Google Play Store.
+
+**Fichier `res/raw/privacy_policy.html` :**
+
+Document HTML autonome couvrant les 8 points légaux obligatoires :
+- Données collectées, stockage 100 % local (Room/SQLite)
+- Utilisation de la localisation (Haversine, ProximityCheckWorker)
+- Services tiers (Nominatim — seul tiers utilisé)
+- Notifications locales (WorkManager, Geofencing)
+- Droits de l'utilisateur (accès, modification, suppression, révocation des permissions)
+- Protection des mineurs, contact
+
+Le fichier intègre un système de thèmes CSS via la classe `html.dark` :
+
+```css
+:root          { --bg: #FFFFFF; --text-primary: #1A1A1A; ... }  /* clair */
+html.dark      { --bg: #121212; --text-primary: #E0E0E0; ... }  /* sombre */
+```
+
+**Intégration dans `SettingsScreen.kt` :**
+
+Nouvelle section "Légalité" entre "Données" et "À propos" :
+
+```
+Paramètres
+ ├── Notifications
+ ├── Apparence
+ ├── Personnalisation
+ ├── Données  (Corbeille)
+ ├── Légalité  ← nouveau
+ │    └── 🔒 Politique de confidentialité  →  ModalBottomSheet
+ └── À propos
+```
+
+Le composable `PrivacyPolicySheet` charge le HTML dans une `WebView` en injectant dynamiquement la classe `dark` selon l'état `isDarkMode` courant, sans dépendance supplémentaire ni JavaScript :
+
+```kotlin
+val themed = if (isDarkMode)
+    raw.replace("<html ", "<html class=\"dark\" ")
+else raw
+webView.loadDataWithBaseURL(null, themed, "text/html", "UTF-8", null)
+```
+
+La `WebView` est configurée de manière sécurisée : `javaScriptEnabled = false`, `domStorageEnabled = false`, `builtInZoomControls = false`.
 
 ---
 
@@ -426,7 +548,7 @@ DAO dédié à la table de jointure. **Aucune opération de ce DAO ne supprime d
 Configuration Retrofit pour Nominatim. Conforme aux [conditions d'utilisation OSM](https://operations.osmfoundation.org/policies/nominatim/) : User-Agent requis, intercepteur de logs en mode debug.
 
 ```kotlin
-.header("User-Agent", "JTR-App/4.0 (contact-manager Android)")
+.header("User-Agent", "JTR-App/4.1 (contact-manager Android)")
 ```
 
 ---
@@ -565,7 +687,7 @@ PersonRepository.addWithGeocoding(person)
     │
     ▼
 GET nominatim.openstreetmap.org/search?q=Chicoutimi&format=json
-    Header: User-Agent: JTR-App/4.0 (contact-manager Android)
+    Header: User-Agent: JTR-App/4.1 (contact-manager Android)
     │
     ▼
 person.copy(cityLat = 48.4286, cityLng = -71.0687) → Room
@@ -732,8 +854,8 @@ android {
         applicationId = "com.jtr.app"
         minSdk        = 26
         targetSdk     = 35
-        versionCode   = 4
-        versionName   = "4.0-Final"
+        versionCode   = 5
+        versionName   = "4.1"
     }
     kotlinOptions { jvmTarget = "17" }
     packaging {
@@ -869,6 +991,7 @@ MapLibre 11.5.0 + `useLegacyPackaging = false` garantit que les `.so` sont stock
 | **PP2 / v2.0** | Migration vers Room, photos Coil, favoris, recherche, corbeille, Navigation Compose, thèmes DataStore |
 | **PP3 / v3.0** | Géocodage Nominatim, coordonnées GPS, sélecteur carte **MapLibre natif**, catégories **Many-to-Many** (DB v6), WorkManager (proximité + anniversaires), notifications dual-canal, rayon configurable, recherche accent-insensitive, tests MockK/Turbine/Truth, édition catégories + photo de couverture |
 | **v4.0-Final** | **Dynamic Social Icon Mapping** (7 drawables brandés, `getSocialIcon`), **Liens sociaux à la création** (`PendingLink`, `AddPersonViewModel`), **Fix gestes MapLibre** (`requestDisallowInterceptTouchEvent` sur plein écran + mini-carte), **DB v7** (`social_links`, `SocialLinkDao`), User-Agent mis à jour |
+| **v4.1** | **Internationalisation i18n** (EN/FR/ES/ZH, ~133 clés, format args positionnels, `@StringRes` BottomNavItem, `Locale.getDefault()`), **RGPD** (politique de confidentialité HTML dark/light, `PrivacyPolicySheet` WebView sans JS), `versionCode = 5` |
 
 ---
 
@@ -890,4 +1013,4 @@ Les tuiles sont servies par [OpenFreeMap](https://openfreemap.org) (licence libr
 
 ---
 
-*JTR v4.0-Final — Kotlin · Jetpack Compose · MVVM*
+*JTR v4.1 — Kotlin · Jetpack Compose · MVVM*

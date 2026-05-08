@@ -17,10 +17,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
 import java.text.SimpleDateFormat
@@ -51,17 +53,18 @@ fun TrashScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Corbeille") },
+                title = { Text(stringResource(R.string.trash_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back))
                     }
                 },
                 actions = {
                     if (!isEmpty) {
                         IconButton(onClick = { showEmptyDialog = true }) {
                             Icon(Icons.Default.DeleteForever,
-                                contentDescription = "Vider la corbeille",
+                                contentDescription = stringResource(R.string.trash_empty_cd),
                                 tint = MaterialTheme.colorScheme.error)
                         }
                     }
@@ -75,7 +78,6 @@ fun TrashScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
 
-            // Bandeau purge auto
             Surface(
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 modifier = Modifier.fillMaxWidth()
@@ -89,7 +91,7 @@ fun TrashScreen(
                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.size(18.dp))
                     Text(
-                        "Purge automatique après 30 jours.",
+                        stringResource(R.string.trash_auto_purge_banner),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
@@ -101,12 +103,11 @@ fun TrashScreen(
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {
 
-                    // ── Section catégories ────────────────────────────────────
                     if (categoryGroups.isNotEmpty()) {
                         item {
                             TrashSectionHeader(
                                 icon = Icons.Default.Folder,
-                                title = "Catégories supprimées",
+                                title = stringResource(R.string.trash_section_categories),
                                 count = categoryGroups.size
                             )
                         }
@@ -123,12 +124,11 @@ fun TrashScreen(
                         }
                     }
 
-                    // ── Section contacts orphelins ────────────────────────────
                     if (orphanPersons.isNotEmpty()) {
                         item {
                             TrashSectionHeader(
                                 icon = Icons.Default.Person,
-                                title = "Contacts supprimés",
+                                title = stringResource(R.string.trash_section_contacts),
                                 count = orphanPersons.size
                             )
                         }
@@ -147,7 +147,6 @@ fun TrashScreen(
                     item { Spacer(Modifier.height(80.dp)) }
                 }
 
-                // Bouton vider en bas
                 Surface(shadowElevation = 4.dp) {
                     Button(
                         onClick = { showEmptyDialog = true },
@@ -159,17 +158,13 @@ fun TrashScreen(
                     ) {
                         Icon(Icons.Default.DeleteForever, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Vider la corbeille")
+                        Text(stringResource(R.string.trash_btn_empty))
                     }
                 }
             }
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Composables internes
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun TrashSectionHeader(
@@ -212,23 +207,27 @@ private fun DeletedCategoryGroupCard(
     if (showDeleteGroupDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteGroupDialog = false },
-            title = { Text("Supprimer définitivement ?") },
+            title = { Text(stringResource(R.string.trash_delete_dialog_title)) },
             text = {
                 val n = group.persons.size
                 if (n > 0)
-                    Text("La catégorie « ${group.category.name} » et ses $n contact(s) seront perdus.")
+                    Text(stringResource(R.string.trash_delete_category_with_contacts,
+                        group.category.name, n))
                 else
-                    Text("La catégorie « ${group.category.name} » sera supprimée définitivement.")
+                    Text(stringResource(R.string.trash_delete_category_empty,
+                        group.category.name))
             },
             confirmButton = {
                 TextButton(
                     onClick = { onDeleteGroup(); showDeleteGroupDialog = false },
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Supprimer") }
+                ) { Text(stringResource(R.string.common_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteGroupDialog = false }) { Text("Annuler") }
+                TextButton(onClick = { showDeleteGroupDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
             }
         )
     }
@@ -240,12 +239,10 @@ private fun DeletedCategoryGroupCard(
         shape = RoundedCornerShape(12.dp)
     ) {
         Column {
-            // En-tête de groupe
             Row(
                 modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Icône couleur catégorie
                 Box(
                     modifier = Modifier
                         .size(36.dp)
@@ -267,37 +264,39 @@ private fun DeletedCategoryGroupCard(
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val purgeColor = if (daysUntilPurge <= 3)
                         MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    val purgeText = when (daysUntilPurge) {
+                        0    -> stringResource(R.string.trash_group_purge_imminent)
+                        1    -> stringResource(R.string.trash_group_purge_1_day)
+                        else -> stringResource(R.string.trash_group_purge_days, daysUntilPurge)
+                    }
                     Text(
-                        text = "${group.persons.size} contact(s) · " + when (daysUntilPurge) {
-                            0 -> "suppression imminente"
-                            1 -> "encore 1 jour"
-                            else -> "encore $daysUntilPurge jours"
-                        },
+                        text = stringResource(R.string.trash_group_status,
+                            group.persons.size, purgeText),
                         style = MaterialTheme.typography.labelSmall,
                         color = purgeColor
                     )
                 }
-                // Actions groupe
                 IconButton(onClick = onRestoreGroup) {
-                    Icon(Icons.Default.Restore, contentDescription = "Restaurer tout",
+                    Icon(Icons.Default.Restore,
+                        contentDescription = stringResource(R.string.trash_restore_all_cd),
                         tint = MaterialTheme.colorScheme.primary)
                 }
                 IconButton(onClick = { showDeleteGroupDialog = true }) {
-                    Icon(Icons.Default.DeleteForever, contentDescription = "Supprimer définitivement",
+                    Icon(Icons.Default.DeleteForever,
+                        contentDescription = stringResource(R.string.trash_delete_permanently_cd),
                         tint = MaterialTheme.colorScheme.error)
                 }
-                // Toggle expansion
                 if (group.persons.isNotEmpty()) {
                     IconButton(onClick = { expanded = !expanded }) {
                         Icon(
                             if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = if (expanded) "Réduire" else "Voir les membres"
+                            contentDescription = if (expanded) stringResource(R.string.trash_collapse_cd)
+                                                 else stringResource(R.string.trash_expand_cd)
                         )
                     }
                 }
             }
 
-            // Liste des membres (expandable)
             AnimatedVisibility(
                 visible = expanded,
                 enter = expandVertically(),
@@ -333,17 +332,19 @@ private fun TrashPersonRow(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Supprimer définitivement ?") },
-            text = { Text("${person.fullName} sera supprimé(e) de façon permanente.") },
+            title = { Text(stringResource(R.string.trash_delete_dialog_title)) },
+            text = { Text(stringResource(R.string.trash_delete_person_text, person.fullName)) },
             confirmButton = {
                 TextButton(
                     onClick = { onDelete(); showDeleteDialog = false },
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Supprimer") }
+                ) { Text(stringResource(R.string.common_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("Annuler") }
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
             }
         )
     }
@@ -375,15 +376,15 @@ private fun TrashPersonRow(
             Column {
                 person.deletedAt?.let { ts ->
                     val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(ts))
-                    Text("Supprimé le $date",
+                    Text(stringResource(R.string.trash_deleted_at, date),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text(
                     text = when (daysUntilPurge) {
-                        0 -> "Suppression imminente"
-                        1 -> "Encore 1 jour"
-                        else -> "Encore $daysUntilPurge jours"
+                        0    -> stringResource(R.string.trash_purge_imminent)
+                        1    -> stringResource(R.string.trash_purge_1_day)
+                        else -> stringResource(R.string.trash_purge_days, daysUntilPurge)
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = purgeColor
@@ -393,12 +394,14 @@ private fun TrashPersonRow(
         trailingContent = {
             Row {
                 IconButton(onClick = onRestore) {
-                    Icon(Icons.Default.Restore, contentDescription = "Restaurer",
+                    Icon(Icons.Default.Restore,
+                        contentDescription = stringResource(R.string.trash_restore_cd),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(22.dp))
                 }
                 IconButton(onClick = { showDeleteDialog = true }) {
-                    Icon(Icons.Default.DeleteForever, contentDescription = "Supprimer définitivement",
+                    Icon(Icons.Default.DeleteForever,
+                        contentDescription = stringResource(R.string.trash_delete_permanently_cd),
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(22.dp))
                 }
@@ -414,25 +417,28 @@ private fun EmptyTrashDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val separatorAnd = stringResource(R.string.separator_and)
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.DeleteForever, contentDescription = null) },
-        title = { Text("Vider la corbeille ?") },
+        title = { Text(stringResource(R.string.trash_empty_dialog_title)) },
         text = {
             val parts = buildList {
-                if (categoryCount > 0) add("$categoryCount catégorie(s)")
-                if (personCount > 0) add("$personCount contact(s)")
+                if (categoryCount > 0)
+                    add(stringResource(R.string.trash_empty_dialog_part_categories, categoryCount))
+                if (personCount > 0)
+                    add(stringResource(R.string.trash_empty_dialog_part_contacts, personCount))
             }
-            Text("Cette action est irréversible.\n${parts.joinToString(" et ")} seront définitivement supprimés.")
+            Text(stringResource(R.string.trash_empty_dialog_text, parts.joinToString(separatorAnd)))
         },
         confirmButton = {
             TextButton(onClick = onConfirm,
                 colors = ButtonDefaults.textButtonColors(
                     contentColor = MaterialTheme.colorScheme.error)
-            ) { Text("Vider définitivement") }
+            ) { Text(stringResource(R.string.trash_empty_confirm)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }
@@ -448,11 +454,11 @@ private fun TrashEmptyState(modifier: Modifier = Modifier) {
             modifier = Modifier.size(72.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
         Spacer(Modifier.height(16.dp))
-        Text("La corbeille est vide",
+        Text(stringResource(R.string.trash_empty_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(4.dp))
-        Text("Les contacts et catégories supprimés apparaîtront ici.",
+        Text(stringResource(R.string.trash_empty_subtitle),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
     }

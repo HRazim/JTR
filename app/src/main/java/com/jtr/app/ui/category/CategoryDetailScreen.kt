@@ -11,9 +11,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jtr.app.R
 import com.jtr.app.ui.home.AssignCategoryDialog
 import com.jtr.app.ui.home.PersonCard
 
@@ -53,10 +55,11 @@ fun CategoryDetailScreen(
         topBar = {
             if (isSelectionMode) {
                 TopAppBar(
-                    title = { Text("${selectedIds.size} sélectionné(s)") },
+                    title = { Text(stringResource(R.string.home_selection_count, selectedIds.size)) },
                     navigationIcon = {
                         IconButton(onClick = { viewModel.clearSelection() }) {
-                            Icon(Icons.Default.Close, contentDescription = "Annuler")
+                            Icon(Icons.Default.Close,
+                                contentDescription = stringResource(R.string.common_cancel))
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -66,10 +69,13 @@ fun CategoryDetailScreen(
                 )
             } else {
                 TopAppBar(
-                    title = { Text(categoryName.ifBlank { "Catégorie" }) },
+                    title = {
+                        Text(categoryName.ifBlank { stringResource(R.string.category_detail_default_title) })
+                    },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.common_back))
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -79,13 +85,12 @@ fun CategoryDetailScreen(
                 )
             }
         },
-        // FAB : ajouter un contact directement dans cette catégorie
         floatingActionButton = {
             if (!isSelectionMode) {
                 ExtendedFloatingActionButton(
                     onClick = onNavigateToAddPerson,
                     icon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
-                    text = { Text("Ajouter un contact") },
+                    text = { Text(stringResource(R.string.category_detail_fab_add)) },
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
@@ -103,7 +108,6 @@ fun CategoryDetailScreen(
                             .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Retirer de cette catégorie (ne supprime pas le contact)
                         OutlinedButton(
                             onClick = { viewModel.removeSelectedFromCategory() },
                             modifier = Modifier.weight(1f)
@@ -111,9 +115,8 @@ fun CategoryDetailScreen(
                             Icon(Icons.Default.LinkOff, contentDescription = null,
                                 modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Retirer")
+                            Text(stringResource(R.string.category_detail_btn_remove))
                         }
-                        // Assigner à une autre catégorie (en plus)
                         OutlinedButton(
                             onClick = { showCategoryDialog = true },
                             modifier = Modifier.weight(1f)
@@ -121,9 +124,8 @@ fun CategoryDetailScreen(
                             Icon(Icons.Default.Label, contentDescription = null,
                                 modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Catégorie")
+                            Text(stringResource(R.string.home_btn_category))
                         }
-                        // Supprimer (soft-delete de la personne)
                         Button(
                             onClick = { viewModel.deleteSelected() },
                             modifier = Modifier.weight(1f),
@@ -134,7 +136,7 @@ fun CategoryDetailScreen(
                             Icon(Icons.Default.Delete, contentDescription = null,
                                 modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Supprimer")
+                            Text(stringResource(R.string.common_delete))
                         }
                     }
                 }
@@ -153,12 +155,13 @@ fun CategoryDetailScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Rechercher dans cette catégorie...") },
+                    placeholder = { Text(stringResource(R.string.category_detail_search_placeholder)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = ""; viewModel.onSearchQueryChanged("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Effacer")
+                                Icon(Icons.Default.Clear,
+                                    contentDescription = stringResource(R.string.common_clear))
                             }
                         }
                     },
@@ -181,13 +184,13 @@ fun CategoryDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            "Aucun membre dans cette catégorie",
+                            stringResource(R.string.category_detail_empty_title),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Appuyez sur + pour ajouter un contact",
+                            stringResource(R.string.category_detail_empty_subtitle),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

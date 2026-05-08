@@ -25,6 +25,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.core.graphics.toColorInt
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
@@ -47,7 +49,6 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel()
 ) {
     val persons by viewModel.persons.collectAsStateWithLifecycle()
-    // État local pour préserver la composition IME lors de la frappe de caractères accentués.
     var searchQuery by remember { mutableStateOf("") }
     val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
@@ -76,10 +77,10 @@ fun HomeScreen(
         topBar = {
             if (isSelectionMode) {
                 TopAppBar(
-                    title = { Text("${selectedIds.size} sélectionné(s)") },
+                    title = { Text(stringResource(R.string.home_selection_count, selectedIds.size)) },
                     navigationIcon = {
                         IconButton(onClick = { viewModel.clearSelection() }) {
-                            Icon(Icons.Default.Close, contentDescription = "Annuler")
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_cancel))
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -89,7 +90,7 @@ fun HomeScreen(
                 )
             } else {
                 TopAppBar(
-                    title = { Text("JTR — Mes Contacts") },
+                    title = { Text(stringResource(R.string.home_title)) },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -114,7 +115,7 @@ fun HomeScreen(
                             Icon(Icons.Default.Label, contentDescription = null,
                                 modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Catégorie")
+                            Text(stringResource(R.string.home_btn_category))
                         }
                         Button(
                             onClick = { viewModel.deleteSelected() },
@@ -126,7 +127,7 @@ fun HomeScreen(
                             Icon(Icons.Default.Delete, contentDescription = null,
                                 modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Supprimer")
+                            Text(stringResource(R.string.home_btn_delete))
                         }
                     }
                 }
@@ -138,13 +139,12 @@ fun HomeScreen(
                     onClick = onNavigateToAddPerson,
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Ajouter une personne")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.home_fab_add_person))
                 }
             }
         }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            // ── Bannière GPS désactivé ────────────────────────────────────────
             AnimatedVisibility(visible = !isLocationEnabled && !isSelectionMode) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -163,7 +163,7 @@ fun HomeScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Activez la localisation pour les rappels de proximité",
+                            text = stringResource(R.string.home_location_warning),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.weight(1f)
@@ -178,17 +178,17 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Rechercher un contact...") },
+                    placeholder = { Text(stringResource(R.string.home_search_placeholder)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = ""; viewModel.onSearchQueryChanged("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Effacer")
+                                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.common_clear))
                             }
                         }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(28.dp) // pill
+                    shape = RoundedCornerShape(28.dp)
                 )
             }
 
@@ -199,10 +199,10 @@ fun HomeScreen(
                             modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("Aucun contact trouvé",
+                        Text(stringResource(R.string.home_empty_title),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("Appuyez sur + pour ajouter une personne",
+                        Text(stringResource(R.string.home_empty_subtitle),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -246,12 +246,10 @@ fun AssignCategoryDialog(
     onCategorySelected: (String) -> Unit,
     onCreateAndAssign: (name: String, color: String) -> Unit
 ) {
-    // Démarre directement en création si aucune catégorie n'existe
     var mode by remember {
         mutableStateOf(if (categories.isEmpty()) CategoryDialogMode.CREATE else CategoryDialogMode.SELECT)
     }
 
-    // État formulaire de création
     var newName by remember { mutableStateOf("") }
     val colorOptions = listOf("#2E86C1", "#E74C3C", "#27AE60", "#F39C12", "#8E44AD", "#16A085")
     var selectedColor by remember { mutableStateOf(colorOptions.first()) }
@@ -262,17 +260,18 @@ fun AssignCategoryDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = if (mode == CategoryDialogMode.SELECT)
-                        "Assigner une catégorie" else "Nouvelle catégorie",
+                        stringResource(R.string.dialog_assign_category_title)
+                    else
+                        stringResource(R.string.dialog_new_category_title),
                     modifier = Modifier.weight(1f)
                 )
-                // Bouton "+" visible uniquement en mode sélection
                 if (mode == CategoryDialogMode.SELECT) {
                     IconButton(
                         onClick = { mode = CategoryDialogMode.CREATE },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(Icons.Default.AddCircleOutline,
-                            contentDescription = "Créer une catégorie",
+                            contentDescription = stringResource(R.string.dialog_create_category_cd),
                             tint = MaterialTheme.colorScheme.primary)
                     }
                 }
@@ -303,7 +302,6 @@ fun AssignCategoryDialog(
                                 }
                             }
                         }
-                        // Séparateur + bouton création en bas de liste
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         TextButton(
                             onClick = { mode = CategoryDialogMode.CREATE },
@@ -312,7 +310,7 @@ fun AssignCategoryDialog(
                             Icon(Icons.Default.Add, contentDescription = null,
                                 modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Créer une nouvelle catégorie")
+                            Text(stringResource(R.string.dialog_create_new_category))
                         }
                     }
                 }
@@ -322,11 +320,12 @@ fun AssignCategoryDialog(
                         OutlinedTextField(
                             value = newName,
                             onValueChange = { newName = it },
-                            label = { Text("Nom de la catégorie") },
+                            label = { Text(stringResource(R.string.dialog_category_name_label)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        Text("Couleur", style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.common_color_label),
+                            style = MaterialTheme.typography.labelMedium)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             colorOptions.forEach { color ->
                                 val isSelected = selectedColor == color
@@ -357,22 +356,24 @@ fun AssignCategoryDialog(
         },
         confirmButton = {
             when (mode) {
-                CategoryDialogMode.SELECT -> {} // sélection = action directe sur chaque item
+                CategoryDialogMode.SELECT -> {}
                 CategoryDialogMode.CREATE -> {
                     TextButton(
                         onClick = {
                             if (newName.isNotBlank()) onCreateAndAssign(newName.trim(), selectedColor)
                         },
                         enabled = newName.isNotBlank()
-                    ) { Text("Créer et assigner") }
+                    ) { Text(stringResource(R.string.dialog_create_and_assign)) }
                 }
             }
         },
         dismissButton = {
             if (mode == CategoryDialogMode.CREATE && categories.isNotEmpty()) {
-                TextButton(onClick = { mode = CategoryDialogMode.SELECT }) { Text("Retour") }
+                TextButton(onClick = { mode = CategoryDialogMode.SELECT }) {
+                    Text(stringResource(R.string.common_back))
+                }
             } else {
-                TextButton(onClick = onDismiss) { Text("Annuler") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
             }
         }
     )
@@ -404,7 +405,6 @@ fun PersonCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            // Ombre colorée : ambientColor reprend la teinte primaire du thème
             .shadow(
                 elevation = if (isSelected) 8.dp else 3.dp,
                 shape = RoundedCornerShape(24.dp),
@@ -413,7 +413,6 @@ fun PersonCard(
                 spotColor  = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
             )
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        // elevation = 0 : la shadow Modifier gère l'effet de profondeur
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
@@ -436,7 +435,6 @@ fun PersonCard(
                 )
             }
 
-            // ── Avatar ──────────────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -515,7 +513,7 @@ fun PersonCard(
                         )
                         Spacer(modifier = Modifier.width(3.dp))
                         Text(
-                            text = SimpleDateFormat("d MMMM yyyy", Locale.FRENCH)
+                            text = SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
                                 .format(Date(person.birthdate)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -545,7 +543,7 @@ fun PersonCard(
                     Icon(
                         imageVector = if (person.isFavorite) Icons.Default.Favorite
                         else Icons.Default.FavoriteBorder,
-                        contentDescription = "Favori",
+                        contentDescription = stringResource(R.string.home_favorite_cd),
                         tint = if (person.isFavorite) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                     )

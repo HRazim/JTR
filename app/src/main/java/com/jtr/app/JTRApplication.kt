@@ -38,18 +38,18 @@ class JTRApplication : Application() {
 
             val proximityChannel = NotificationChannel(
                 CHANNEL_PROXIMITY,
-                "Rappels de proximité",
+                getString(R.string.notif_channel_proximity_name),
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Notifications quand vous êtes dans la même ville qu'un contact"
+                description = getString(R.string.notif_channel_proximity_desc)
             }
 
             val birthdayChannel = NotificationChannel(
                 CHANNEL_BIRTHDAY,
-                "Anniversaires",
+                getString(R.string.notif_channel_birthday_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Rappels d'anniversaires des contacts"
+                description = getString(R.string.notif_channel_birthday_desc)
             }
 
             nm.createNotificationChannel(proximityChannel)

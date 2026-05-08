@@ -19,7 +19,7 @@ object ApiClient {
 
     private val userAgentInterceptor = okhttp3.Interceptor { chain ->
         val request = chain.request().newBuilder()
-            .header("User-Agent", "JTR-App/4.0 (contact-manager Android)")
+            .header("User-Agent", "JTR-App/4.1 (contact-manager Android)")
             .build()
         chain.proceed(request)
     }

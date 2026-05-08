@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">JTR</string>
+
+    <!-- ── Common actions ─────────────────────────────────────────────────── -->
+    <string name="common_cancel">取消</string>
+    <string name="common_ok">确定</string>
+    <string name="common_delete">删除</string>
+    <string name="common_save">保存</string>
+    <string name="common_back">返回</string>
+    <string name="common_edit">编辑</string>
+    <string name="common_add">添加</string>
+    <string name="common_create">创建</string>
+    <string name="common_restore">恢复</string>
+    <string name="common_clear">清除</string>
+    <string name="common_photo">照片</string>
+    <string name="common_name_label">名称</string>
+    <string name="common_color_label">颜色</string>
+    <string name="separator_and">和</string>
+
+    <!-- ── Home screen ────────────────────────────────────────────────────── -->
+    <string name="home_title">JTR — 我的联系人</string>
+    <string name="home_selection_count">已选 %1$d 个</string>
+    <string name="home_fab_add_person">添加联系人</string>
+    <string name="home_location_warning">请开启定位以使用附近提醒功能</string>
+    <string name="home_search_placeholder">搜索联系人…</string>
+    <string name="home_empty_title">未找到联系人</string>
+    <string name="home_empty_subtitle">点击 + 添加联系人</string>
+    <string name="home_btn_category">分类</string>
+    <string name="home_btn_delete">删除</string>
+    <string name="home_favorite_cd">收藏</string>
+
+    <!-- ── Category assign dialog ─────────────────────────────────────────── -->
+    <string name="dialog_assign_category_title">指定分类</string>
+    <string name="dialog_new_category_title">新建分类</string>
+    <string name="dialog_create_category_cd">创建分类</string>
+    <string name="dialog_create_new_category">创建新分类</string>
+    <string name="dialog_create_and_assign">创建并指定</string>
+    <string name="dialog_category_name_label">分类名称</string>
+
+    <!-- ── Categories screen ──────────────────────────────────────────────── -->
+    <string name="categories_title">分类</string>
+    <string name="categories_fab_add_cd">添加分类</string>
+    <string name="categories_empty_title">暂无分类</string>
+    <string name="categories_empty_subtitle">点击 + 创建分类</string>
+    <string name="categories_delete_title">删除"%1$s"？</string>
+    <string name="categories_delete_with_contacts">该分类包含 %1$d 个联系人。确定要删除该分类及其 %1$d 个联系人吗？\n\n您可以从回收站恢复。</string>
+    <string name="categories_delete_empty">该分类将被移入回收站，您可以随时恢复。</string>
+    <string name="categories_person_count">%1$d 个联系人</string>
+    <string name="categories_edit_dialog_title">编辑分类</string>
+    <string name="categories_image_cd">分类图片</string>
+    <string name="categories_remove_photo">删除照片</string>
+    <string name="categories_new_dialog_title">新建分类</string>
+
+    <!-- ── Category detail screen ─────────────────────────────────────────── -->
+    <string name="category_detail_search_placeholder">在此分类中搜索…</string>
+    <string name="category_detail_empty_title">此分类暂无成员</string>
+    <string name="category_detail_empty_subtitle">点击 + 添加联系人</string>
+    <string name="category_detail_fab_add">添加联系人</string>
+    <string name="category_detail_btn_remove">移除</string>
+    <string name="category_detail_default_title">分类</string>
+
+    <!-- ── Add / Edit person ──────────────────────────────────────────────── -->
+    <string name="person_add_title">添加联系人</string>
+    <string name="person_edit_title">编辑联系人</string>
+    <string name="person_photo_cd">头像</string>
+    <string name="person_first_name_label">名 *</string>
+    <string name="person_first_name_error">名字为必填项</string>
+    <string name="person_first_name_required">必填</string>
+    <string name="person_last_name_label">姓</string>
+    <string name="person_gender_label">性别</string>
+    <string name="person_gender_male">男</string>
+    <string name="person_gender_female">女</string>
+    <string name="person_gender_nonbinary">非二元</string>
+    <string name="person_gender_nonbinary_short">非二元</string>
+    <string name="person_birthday_label">生日</string>
+    <string name="person_birthday_select">选择日期</string>
+    <string name="person_birthday_modify">修改日期</string>
+    <string name="person_birthday_clear">清除</string>
+    <string name="person_birthday_notify">生日当天提醒</string>
+    <string name="person_city_label">城市</string>
+    <string name="person_city_map_cd">在地图上选择</string>
+    <string name="person_city_notify">在附近时提醒</string>
+    <string name="person_social_links_title">社交网络</string>
+    <string name="person_add_social_link">添加社交链接</string>
+    <string name="person_social_delete_cd">删除</string>
+    <string name="person_personal_info_title">个人信息</string>
+    <string name="person_origin_label">籍贯</string>
+    <string name="person_likes_label">兴趣爱好</string>
+    <string name="person_notes_label">其他备注</string>
+    <string name="person_save">保存</string>
+    <string name="person_save_changes">保存修改</string>
+
+    <!-- ── Person detail screen ───────────────────────────────────────────── -->
+    <string name="person_not_found">未找到该联系人</string>
+    <string name="person_double_tap_hint">双击以编辑</string>
+    <string name="person_delete_dialog_title">删除此联系人？</string>
+    <string name="person_delete_dialog_text">该联系人将在回收站中保留 30 天。</string>
+    <string name="person_favorite_label">收藏</string>
+    <string name="person_edit_photo_label">编辑</string>
+    <string name="person_map_cd">地图</string>
+    <string name="person_map_hide_cd">隐藏</string>
+    <string name="person_add_link_dialog_title">添加社交链接</string>
+    <string name="person_add_link_url_label">粘贴 URL</string>
+    <string name="person_add_link_action">添加</string>
+
+    <!-- ── Map screen ─────────────────────────────────────────────────────── -->
+    <string name="map_title">选择城市</string>
+    <string name="map_search_label">搜索城市</string>
+    <string name="map_save">保存</string>
+
+    <!-- ── Trash screen ───────────────────────────────────────────────────── -->
+    <string name="trash_title">回收站</string>
+    <string name="trash_auto_purge_banner">30 天后自动清除。</string>
+    <string name="trash_section_categories">已删除的分类</string>
+    <string name="trash_section_contacts">已删除的联系人</string>
+    <string name="trash_empty_title">回收站为空</string>
+    <string name="trash_empty_subtitle">已删除的联系人和分类将显示在这里。</string>
+    <string name="trash_btn_empty">清空回收站</string>
+    <string name="trash_empty_cd">清空回收站</string>
+    <string name="trash_empty_dialog_title">清空回收站？</string>
+    <string name="trash_empty_dialog_text">此操作不可撤销。\n%1$s 将被永久删除。</string>
+    <string name="trash_empty_dialog_part_categories">%1$d 个分类</string>
+    <string name="trash_empty_dialog_part_contacts">%1$d 个联系人</string>
+    <string name="trash_empty_confirm">永久清空</string>
+    <string name="trash_delete_dialog_title">永久删除？</string>
+    <string name="trash_delete_category_with_contacts">分类"%1$s"及其 %2$d 个联系人将被删除。</string>
+    <string name="trash_delete_category_empty">分类"%1$s"将被永久删除。</string>
+    <string name="trash_delete_person_text">%1$s 将被永久删除。</string>
+    <string name="trash_restore_all_cd">全部恢复</string>
+    <string name="trash_delete_permanently_cd">永久删除</string>
+    <string name="trash_collapse_cd">收起</string>
+    <string name="trash_expand_cd">查看成员</string>
+    <string name="trash_restore_cd">恢复</string>
+    <string name="trash_deleted_at">删除于 %1$s</string>
+    <string name="trash_purge_imminent">即将删除</string>
+    <string name="trash_purge_1_day">还剩 1 天</string>
+    <string name="trash_purge_days">还剩 %1$d 天</string>
+    <string name="trash_group_purge_imminent">即将删除</string>
+    <string name="trash_group_purge_1_day">还剩 1 天</string>
+    <string name="trash_group_purge_days">还剩 %1$d 天</string>
+    <string name="trash_group_status">%1$d 个联系人 · %2$s</string>
+
+    <!-- ── Settings screen ────────────────────────────────────────────────── -->
+    <string name="settings_title">设置</string>
+    <string name="settings_section_notifications">通知</string>
+    <string name="settings_notifications_title">启用通知</string>
+    <string name="settings_notifications_subtitle">开启或关闭所有通知</string>
+    <string name="settings_proximity_title">附近提醒</string>
+    <string name="settings_proximity_subtitle">当联系人在附近时通知</string>
+    <string name="settings_proximity_radius_label">检测半径</string>
+    <string name="settings_proximity_radius_km">%1$d km</string>
+    <string name="settings_proximity_radius_min">1 km</string>
+    <string name="settings_proximity_radius_max">50 km</string>
+    <string name="settings_birthday_title">生日提醒</string>
+    <string name="settings_birthday_subtitle">在生日当天发送通知</string>
+    <string name="settings_section_appearance">外观</string>
+    <string name="settings_dark_mode_title">深色模式</string>
+    <string name="settings_dark_mode_subtitle">使用深色主题</string>
+    <string name="settings_section_customization">个性化</string>
+    <string name="settings_color_palette">色彩方案</string>
+    <string name="settings_section_data">数据</string>
+    <string name="settings_trash_title">回收站</string>
+    <string name="settings_trash_subtitle">已删除的联系人 · 30 天后自动清除</string>
+    <string name="settings_section_about">关于</string>
+    <string name="settings_version_title">版本</string>
+    <string name="settings_theme_cd">主题 %1$s</string>
+    <string name="settings_section_legal">法律</string>
+    <string name="settings_privacy_title">隐私政策</string>
+    <string name="settings_privacy_subtitle">您的数据使用方式</string>
+
+    <!-- ── Bottom navigation ──────────────────────────────────────────────── -->
+    <string name="nav_home">首页</string>
+    <string name="nav_categories">分类</string>
+    <string name="nav_settings">设置</string>
+
+    <!-- ── Notification channels ──────────────────────────────────────────── -->
+    <string name="notif_channel_proximity_name">附近提醒</string>
+    <string name="notif_channel_proximity_desc">当您与联系人在同一城市时发送通知</string>
+    <string name="notif_channel_birthday_name">生日</string>
+    <string name="notif_channel_birthday_desc">联系人生日提醒</string>
+
+    <!-- ── Notification content (Workers) ────────────────────────────────── -->
+    <string name="notif_birthday_title">🎂 今天是生日！</string>
+    <string name="notif_birthday_text">今天是 %1$s 的生日，别忘了送上祝福！</string>
+    <string name="notif_proximity_title">%1$s 在附近！</string>
+    <string name="notif_proximity_text">您距离 %2$s 只有 %1$d km（设定半径：%3$d km）。您已 %5$d 天没有联系 %4$s 了！</string>
+    <string name="notif_geofence_title">%1$s 在附近！</string>
+    <string name="notif_geofence_text">您目前在 %1$s — 您们已经 %2$d 天没见面了！</string>
+    <string name="notif_geofence_city_fallback">这座城市</string>
+</resources>

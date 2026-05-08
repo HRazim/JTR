@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import coil.request.ImageRequest
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.jtr.app.R
 import com.jtr.app.utils.getSocialIcon
 import java.text.SimpleDateFormat
 import java.util.*
@@ -49,9 +51,6 @@ fun AddPersonScreen(
     onMapResultConsumed: () -> Unit = {},
     viewModel: AddPersonViewModel = viewModel()
 ) {
-    // Champs texte : état LOCAL pour ne pas briser la composition IME des accents (é, à, ç…).
-    // Le round-trip StateFlow→recomposition interrompt la séquence IME et avale le caractère.
-    // Le ViewModel reste notifié à chaque frappe pour persister l'état lors de la navigation.
     var firstName by remember { mutableStateOf(viewModel.firstName.value) }
     var lastName  by remember { mutableStateOf(viewModel.lastName.value) }
     var city      by remember { mutableStateOf(TextFieldValue(viewModel.city.value)) }
@@ -59,7 +58,6 @@ fun AddPersonScreen(
     var likes     by remember { mutableStateOf(viewModel.likes.value) }
     var notes     by remember { mutableStateOf(viewModel.notes.value) }
 
-    // Champs non-texte : pas de composition IME, le StateFlow est utilisé normalement.
     val gender         by viewModel.gender.collectAsStateWithLifecycle()
     val birthdate      by viewModel.birthdate.collectAsStateWithLifecycle()
     val cityLat        by viewModel.cityLat.collectAsStateWithLifecycle()
@@ -87,10 +85,11 @@ fun AddPersonScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ajouter une personne") },
+                title = { Text(stringResource(R.string.person_add_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -109,7 +108,6 @@ fun AddPersonScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Photo de profil
             val context = LocalContext.current
             Box(
                 modifier = Modifier
@@ -138,7 +136,7 @@ fun AddPersonScreen(
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(photoUri).crossfade(300).build(),
-                        contentDescription = "Photo de profil",
+                        contentDescription = stringResource(R.string.person_photo_cd),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
@@ -147,7 +145,8 @@ fun AddPersonScreen(
                         Icon(Icons.Default.AddAPhoto, contentDescription = null,
                             tint = Color.White,
                             modifier = Modifier.size(32.dp))
-                        Text("Photo", style = MaterialTheme.typography.labelSmall,
+                        Text(stringResource(R.string.common_photo),
+                            style = MaterialTheme.typography.labelSmall,
                             color = Color.White)
                     }
                 }
@@ -158,9 +157,11 @@ fun AddPersonScreen(
             OutlinedTextField(
                 value = firstName,
                 onValueChange = { firstName = it; viewModel.onFirstNameChanged(it) },
-                label = { Text("Prénom *") },
+                label = { Text(stringResource(R.string.person_first_name_label)) },
                 isError = firstNameError,
-                supportingText = { if (firstNameError) Text("Le prénom est obligatoire") },
+                supportingText = {
+                    if (firstNameError) Text(stringResource(R.string.person_first_name_error))
+                },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp)
@@ -169,34 +170,37 @@ fun AddPersonScreen(
             OutlinedTextField(
                 value = lastName,
                 onValueChange = { lastName = it; viewModel.onLastNameChanged(it) },
-                label = { Text("Nom de famille") },
+                label = { Text(stringResource(R.string.person_last_name_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp)
             )
 
-            Text("Genre", style = MaterialTheme.typography.labelLarge,
+            Text(stringResource(R.string.person_gender_label),
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.Start))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.align(Alignment.Start)) {
-                listOf("male" to "Homme", "female" to "Femme", "non-binary" to "Non-binaire")
-                    .forEach { (value, label) ->
-                        FilterChip(
-                            selected = gender == value,
-                            onClick = { viewModel.onGenderChanged(if (gender == value) null else value) },
-                            label = { Text(label) }
-                        )
-                    }
+                listOf(
+                    "male"       to stringResource(R.string.person_gender_male),
+                    "female"     to stringResource(R.string.person_gender_female),
+                    "non-binary" to stringResource(R.string.person_gender_nonbinary)
+                ).forEach { (value, label) ->
+                    FilterChip(
+                        selected = gender == value,
+                        onClick = { viewModel.onGenderChanged(if (gender == value) null else value) },
+                        label = { Text(label) }
+                    )
+                }
             }
 
-            // Fix datepicker : affichage en heure locale
             OutlinedTextField(
                 value = birthdate?.let {
-                    SimpleDateFormat("d MMMM yyyy", Locale.FRENCH).format(Date(it))
+                    SimpleDateFormat("d MMMM yyyy", Locale.getDefault()).format(Date(it))
                 } ?: "",
                 onValueChange = {},
-                label = { Text("Anniversaire") },
+                label = { Text(stringResource(R.string.person_birthday_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 readOnly = true, enabled = false,
                 shape = RoundedCornerShape(12.dp),
@@ -208,7 +212,10 @@ fun AddPersonScreen(
             )
             TextButton(onClick = { showDatePicker = true },
                 modifier = Modifier.align(Alignment.Start)) {
-                Text(if (birthdate == null) "Sélectionner une date" else "Modifier la date")
+                Text(
+                    if (birthdate == null) stringResource(R.string.person_birthday_select)
+                    else stringResource(R.string.person_birthday_modify)
+                )
             }
 
             Row(modifier = Modifier.fillMaxWidth(),
@@ -216,7 +223,7 @@ fun AddPersonScreen(
                 OutlinedTextField(
                     value = city,
                     onValueChange = { city = it; viewModel.onCityChanged(it.text) },
-                    label = { Text("Ville") },
+                    label = { Text(stringResource(R.string.person_city_label)) },
                     modifier = Modifier.weight(1f).focusRequester(cityFocusRequester),
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
@@ -229,15 +236,15 @@ fun AddPersonScreen(
                     }
                 )
                 IconButton(onClick = onNavigateToMap, modifier = Modifier.padding(top = 8.dp)) {
-                    Icon(Icons.Default.Map, contentDescription = "Choisir sur la carte",
+                    Icon(Icons.Default.Map,
+                        contentDescription = stringResource(R.string.person_city_map_cd),
                         tint = MaterialTheme.colorScheme.primary)
                 }
             }
 
-            // ── Réseaux sociaux ───────────────────────────────────────────────
             HorizontalDivider()
             Text(
-                "Réseaux sociaux",
+                stringResource(R.string.person_social_links_title),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
@@ -277,7 +284,7 @@ fun AddPersonScreen(
                             IconButton(onClick = { viewModel.removePendingLink(link.url) }) {
                                 Icon(
                                     Icons.Default.DeleteOutline,
-                                    contentDescription = "Supprimer",
+                                    contentDescription = stringResource(R.string.person_social_delete_cd),
                                     tint = MaterialTheme.colorScheme.error
                                 )
                             }
@@ -292,11 +299,11 @@ fun AddPersonScreen(
             ) {
                 Icon(Icons.Default.AddLink, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Ajouter un lien social")
+                Text(stringResource(R.string.person_add_social_link))
             }
 
             HorizontalDivider()
-            Text("Informations personnelles",
+            Text(stringResource(R.string.person_personal_info_title),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
@@ -305,7 +312,7 @@ fun AddPersonScreen(
             OutlinedTextField(
                 value = origin,
                 onValueChange = { origin = it; viewModel.onOriginChanged(it) },
-                label = { Text("Origine") },
+                label = { Text(stringResource(R.string.person_origin_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp)
@@ -314,7 +321,7 @@ fun AddPersonScreen(
             OutlinedTextField(
                 value = likes,
                 onValueChange = { likes = it; viewModel.onLikesChanged(it) },
-                label = { Text("Ce qu'il/elle aime") },
+                label = { Text(stringResource(R.string.person_likes_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2, maxLines = 4,
                 shape = RoundedCornerShape(12.dp)
@@ -323,7 +330,7 @@ fun AddPersonScreen(
             OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it; viewModel.onNotesChanged(it) },
-                label = { Text("Notes diverses") },
+                label = { Text(stringResource(R.string.person_notes_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3, maxLines = 6,
                 shape = RoundedCornerShape(12.dp)
@@ -336,7 +343,8 @@ fun AddPersonScreen(
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Sauvegarder", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.person_save),
+                    style = MaterialTheme.typography.titleMedium)
             }
         }
 
@@ -348,7 +356,6 @@ fun AddPersonScreen(
         }
 
         if (showDatePicker) {
-            // Fix datepicker : convertir le millis stocké (local) en UTC midnight pour l'affichage
             val initMillis = birthdate?.let { stored ->
                 val localCal = Calendar.getInstance().apply { timeInMillis = stored }
                 Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
@@ -366,7 +373,6 @@ fun AddPersonScreen(
                     TextButton(onClick = {
                         val raw = datePickerState.selectedDateMillis
                         if (raw != null) {
-                            // selectedDateMillis = minuit UTC → convertir en midi heure locale
                             val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
                                 .apply { timeInMillis = raw }
                             val localNoon = Calendar.getInstance().apply {
@@ -377,10 +383,12 @@ fun AddPersonScreen(
                             viewModel.onBirthdateChanged(localNoon)
                         }
                         showDatePicker = false
-                    }) { Text("OK") }
+                    }) { Text(stringResource(R.string.common_ok)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDatePicker = false }) { Text("Annuler") }
+                    TextButton(onClick = { showDatePicker = false }) {
+                        Text(stringResource(R.string.common_cancel))
+                    }
                 }
             ) { DatePicker(state = datePickerState) }
         }

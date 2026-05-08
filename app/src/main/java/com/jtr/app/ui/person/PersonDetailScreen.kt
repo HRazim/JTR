@@ -40,8 +40,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.jtr.app.R
 import com.jtr.app.utils.getSocialIcon
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -112,14 +114,16 @@ fun PersonDetailScreen(
         if (uri != null) editVm.onPhotoSelected(uri)
     }
 
-    // DatePicker state
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = vmBirthdate)
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(if (isEditing) "Modifier le contact" else person?.fullName ?: "Détail")
+                    Text(
+                        if (isEditing) stringResource(R.string.person_edit_title)
+                        else person?.fullName ?: stringResource(R.string.person_not_found)
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = {
@@ -128,18 +132,21 @@ fun PersonDetailScreen(
                         Icon(
                             imageVector = if (isEditing) Icons.Default.Close
                                           else Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = if (isEditing) "Annuler" else "Retour"
+                            contentDescription = if (isEditing) stringResource(R.string.common_cancel)
+                                                 else stringResource(R.string.common_back)
                         )
                     }
                 },
                 actions = {
                     if (!isEditing) {
                         IconButton(onClick = onEditClick) {
-                            Icon(Icons.Default.Edit, contentDescription = "Modifier",
+                            Icon(Icons.Default.Edit,
+                                contentDescription = stringResource(R.string.common_edit),
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                         IconButton(onClick = { showDeleteDialog = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Supprimer",
+                            Icon(Icons.Default.Delete,
+                                contentDescription = stringResource(R.string.common_delete),
                                 tint = MaterialTheme.colorScheme.error)
                         }
                     }
@@ -159,7 +166,7 @@ fun PersonDetailScreen(
                 exit = slideOutVertically { it } + fadeOut()
             ) {
                 ExtendedFloatingActionButton(
-                    text = { Text("Enregistrer") },
+                    text = { Text(stringResource(R.string.person_save)) },
                     icon = { Icon(Icons.Default.Check, contentDescription = null) },
                     onClick = { editVm.commitAllEdits() },
                     containerColor = MaterialTheme.colorScheme.primary
@@ -172,7 +179,7 @@ fun PersonDetailScreen(
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentAlignment = Alignment.Center) {
                 if (isLoading) CircularProgressIndicator()
-                else Text("Personne introuvable")
+                else Text(stringResource(R.string.person_not_found))
             }
             return@Scaffold
         }
@@ -189,24 +196,18 @@ fun PersonDetailScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // ── Hint double-tap ───────────────────────────────────────────────
             if (!isEditing) {
                 Text(
-                    "Double-tap pour modifier",
+                    stringResource(R.string.person_double_tap_hint),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
                 )
                 Spacer(Modifier.height(8.dp))
             }
 
-            // ── Avatar ────────────────────────────────────────────────────────
-            // Deux couches séparées : la photo (potentiellement floutée en mode édition)
-            // et l'overlay caméra (toujours net, au-dessus).
             Box(modifier = Modifier.size(96.dp)) {
                 val photoSrc = if (isEditing) vmPhotoUri else person.photoUri
 
-                // Couche 1 : fond dégradé + photo/initiales
-                // Modifier.blur() est un no-op sur API < 31 (Android 12) — fallback transparent
                 Box(
                     modifier = Modifier
                         .size(96.dp)
@@ -244,7 +245,6 @@ fun PersonDetailScreen(
                     }
                 }
 
-                // Couche 2 : overlay caméra (net, non affecté par le blur)
                 EditPhotoOverlay(isEditing = isEditing) {
                     photoPicker.launch(PickVisualMediaRequest(
                         ActivityResultContracts.PickVisualMedia.ImageOnly
@@ -254,7 +254,6 @@ fun PersonDetailScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ── Nom ────────────────────────────────────────────────────────────
             AnimatedContent(
                 targetState = isEditing,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -270,9 +269,11 @@ fun PersonDetailScreen(
                         OutlinedTextField(
                             value = localFirst,
                             onValueChange = { localFirst = it; editVm.onFirstNameChanged(it) },
-                            label = { Text("Prénom *") },
+                            label = { Text(stringResource(R.string.person_first_name_label)) },
                             isError = firstNameError,
-                            supportingText = if (firstNameError) ({ Text("Obligatoire") }) else null,
+                            supportingText = if (firstNameError) ({
+                                Text(stringResource(R.string.person_first_name_required))
+                            }) else null,
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
@@ -280,7 +281,7 @@ fun PersonDetailScreen(
                         OutlinedTextField(
                             value = localLast,
                             onValueChange = { localLast = it; editVm.onLastNameChanged(it) },
-                            label = { Text("Nom de famille") },
+                            label = { Text(stringResource(R.string.person_last_name_label)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
@@ -298,7 +299,8 @@ fun PersonDetailScreen(
                                     modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.error)
                                 Spacer(Modifier.width(4.dp))
-                                Text("Favori", style = MaterialTheme.typography.labelSmall,
+                                Text(stringResource(R.string.person_favorite_label),
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.error)
                             }
                         }
@@ -306,7 +308,6 @@ fun PersonDetailScreen(
                 }
             }
 
-            // ── Chips catégories ──────────────────────────────────────────────
             if (categoryNames.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -320,7 +321,6 @@ fun PersonDetailScreen(
                 }
             }
 
-            // ── Liens sociaux ─────────────────────────────────────────────────
             Spacer(Modifier.height(12.dp))
             SocialLinksSection(
                 links = socialLinks,
@@ -333,7 +333,6 @@ fun PersonDetailScreen(
             HorizontalDivider()
             Spacer(Modifier.height(12.dp))
 
-            // ── Genre ─────────────────────────────────────────────────────────
             AnimatedContent(
                 targetState = isEditing,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -344,45 +343,53 @@ fun PersonDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text("Genre", style = MaterialTheme.typography.labelLarge,
+                        Text(stringResource(R.string.person_gender_label),
+                            style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                            listOf("male" to "Homme", "female" to "Femme", "non-binary" to "Nbin.")
-                                .forEachIndexed { i, (value, label) ->
-                                    SegmentedButton(
-                                        selected = vmGender == value,
-                                        onClick = {
-                                            editVm.onGenderChanged(if (vmGender == value) null else value)
-                                        },
-                                        shape = SegmentedButtonDefaults.itemShape(index = i, count = 3)
-                                    ) { Text(label) }
-                                }
+                            listOf(
+                                "male"       to stringResource(R.string.person_gender_male),
+                                "female"     to stringResource(R.string.person_gender_female),
+                                "non-binary" to stringResource(R.string.person_gender_nonbinary_short)
+                            ).forEachIndexed { i, (value, label) ->
+                                SegmentedButton(
+                                    selected = vmGender == value,
+                                    onClick = {
+                                        editVm.onGenderChanged(if (vmGender == value) null else value)
+                                    },
+                                    shape = SegmentedButtonDefaults.itemShape(index = i, count = 3)
+                                ) { Text(label) }
+                            }
                         }
                     }
                 } else {
                     if (person.gender != null) {
-                        DetailRow(icon = Icons.Default.Person, label = "Genre",
+                        DetailRow(
+                            icon = Icons.Default.Person,
+                            label = stringResource(R.string.person_gender_label),
                             value = when (person.gender) {
-                                "male" -> "Homme"; "female" -> "Femme"
-                                "non-binary" -> "Non-binaire"; else -> person.gender
-                            })
+                                "male"       -> stringResource(R.string.person_gender_male)
+                                "female"     -> stringResource(R.string.person_gender_female)
+                                "non-binary" -> stringResource(R.string.person_gender_nonbinary)
+                                else         -> person.gender
+                            }
+                        )
                     } else {
                         Spacer(Modifier.height(0.dp))
                     }
                 }
             }
 
-            // ── Anniversaire ──────────────────────────────────────────────────
             if (isEditing) {
                 Spacer(Modifier.height(8.dp))
                 Column(modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     OutlinedTextField(
                         value = vmBirthdate?.let {
-                            SimpleDateFormat("d MMMM yyyy", Locale.FRENCH).format(Date(it))
+                            SimpleDateFormat("d MMMM yyyy", Locale.getDefault()).format(Date(it))
                         } ?: "",
                         onValueChange = {},
-                        label = { Text("Anniversaire") },
+                        label = { Text(stringResource(R.string.person_birthday_label)) },
                         modifier = Modifier.fillMaxWidth(),
                         readOnly = true, enabled = false,
                         shape = RoundedCornerShape(12.dp),
@@ -394,28 +401,34 @@ fun PersonDetailScreen(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = { showDatePicker = true }) {
-                            Text(if (vmBirthdate == null) "Sélectionner" else "Modifier la date")
+                            Text(
+                                if (vmBirthdate == null) stringResource(R.string.person_birthday_select)
+                                else stringResource(R.string.person_birthday_modify)
+                            )
                         }
                         if (vmBirthdate != null) {
                             TextButton(onClick = { editVm.onBirthdateChanged(null) }) {
-                                Text("Effacer", color = MaterialTheme.colorScheme.error)
+                                Text(stringResource(R.string.person_birthday_clear),
+                                    color = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = vmBirthdateNotify,
                             onCheckedChange = { editVm.onBirthdateNotifyChanged(it) })
-                        Text("Notifier le jour de l'anniversaire",
+                        Text(stringResource(R.string.person_birthday_notify),
                             style = MaterialTheme.typography.bodySmall)
                     }
                 }
             } else if (person.birthdate != null) {
-                DetailRow(icon = Icons.Default.Cake, label = "Anniversaire",
-                    value = SimpleDateFormat("d MMMM yyyy", Locale.FRENCH)
-                        .format(Date(person.birthdate)))
+                DetailRow(
+                    icon = Icons.Default.Cake,
+                    label = stringResource(R.string.person_birthday_label),
+                    value = SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
+                        .format(Date(person.birthdate))
+                )
             }
 
-            // ── Ville ─────────────────────────────────────────────────────────
             if (isEditing) {
                 Spacer(Modifier.height(8.dp))
                 var localCity by remember(vmCity) { mutableStateOf(vmCity) }
@@ -425,7 +438,7 @@ fun PersonDetailScreen(
                     OutlinedTextField(
                         value = localCity,
                         onValueChange = { localCity = it; editVm.onCityChanged(it) },
-                        label = { Text("Ville") },
+                        label = { Text(stringResource(R.string.person_city_label)) },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
@@ -438,47 +451,49 @@ fun PersonDetailScreen(
                         }
                     )
                     IconButton(onClick = onNavigateToMap, modifier = Modifier.padding(top = 4.dp)) {
-                        Icon(Icons.Default.Map, contentDescription = "Carte",
+                        Icon(Icons.Default.Map,
+                            contentDescription = stringResource(R.string.person_city_map_cd),
                             tint = MaterialTheme.colorScheme.primary)
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = vmCityNotify,
                         onCheckedChange = { editVm.onCityNotifyChanged(it) })
-                    Text("Notifier si à proximité", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.person_city_notify),
+                        style = MaterialTheme.typography.bodySmall)
                 }
             } else if (person.city != null) {
                 CityDetailRow(city = person.city,
                     cityLat = person.cityLat, cityLng = person.cityLng)
             }
 
-            // ── Origine ───────────────────────────────────────────────────────
             if (isEditing) {
                 Spacer(Modifier.height(8.dp))
                 var localOrigin by remember(vmOrigin) { mutableStateOf(vmOrigin) }
                 OutlinedTextField(
                     value = localOrigin,
                     onValueChange = { localOrigin = it; editVm.onOriginChanged(it) },
-                    label = { Text("Origine") },
+                    label = { Text(stringResource(R.string.person_origin_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
             } else if (person.origin != null) {
-                DetailRow(icon = Icons.Default.Public, label = "Origine", value = person.origin)
+                DetailRow(icon = Icons.Default.Public,
+                    label = stringResource(R.string.person_origin_label),
+                    value = person.origin)
             }
 
             Spacer(Modifier.height(12.dp))
             HorizontalDivider()
             Spacer(Modifier.height(12.dp))
 
-            // ── Ce qu'il/elle aime ────────────────────────────────────────────
             if (isEditing) {
                 var localLikes by remember(vmLikes) { mutableStateOf(vmLikes) }
                 OutlinedTextField(
                     value = localLikes,
                     onValueChange = { localLikes = it; editVm.onLikesChanged(it) },
-                    label = { Text("Ce qu'il/elle aime") },
+                    label = { Text(stringResource(R.string.person_likes_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2, maxLines = 4,
                     shape = RoundedCornerShape(12.dp)
@@ -486,28 +501,27 @@ fun PersonDetailScreen(
                 Spacer(Modifier.height(8.dp))
             } else if (person.likes != null) {
                 DetailTextBlock(icon = Icons.Default.Favorite,
-                    label = "Ce qu'il/elle aime", value = person.likes)
+                    label = stringResource(R.string.person_likes_label),
+                    value = person.likes)
             }
 
-            // ── Notes ─────────────────────────────────────────────────────────
             if (isEditing) {
                 var localNotes by remember(vmNotes) { mutableStateOf(vmNotes) }
                 OutlinedTextField(
                     value = localNotes,
                     onValueChange = { localNotes = it; editVm.onNotesChanged(it) },
-                    label = { Text("Notes") },
+                    label = { Text(stringResource(R.string.person_notes_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3, maxLines = 8,
                     shape = RoundedCornerShape(12.dp)
                 )
             } else if (person.notes != null) {
                 DetailTextBlock(icon = Icons.Filled.Notes,
-                    label = "Notes", value = person.notes)
+                    label = stringResource(R.string.person_notes_label),
+                    value = person.notes)
             }
         }
     }
-
-    // ── Dialogues ─────────────────────────────────────────────────────────────
 
     if (showDatePicker) {
         DatePickerDialog(
@@ -517,14 +531,17 @@ fun PersonDetailScreen(
                     showDatePicker = false
                     val raw = datePickerState.selectedDateMillis
                     if (raw != null) {
-                        // Ajustement timezone : stocker à midi heure locale
                         val tz = TimeZone.getDefault()
                         val adjusted = raw + tz.getOffset(raw)
                         editVm.onBirthdateChanged(adjusted)
                     }
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.common_ok)) }
             },
-            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Annuler") } }
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
         ) {
             DatePicker(state = datePickerState)
         }
@@ -541,23 +558,22 @@ fun PersonDetailScreen(
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Supprimer ce contact ?") },
-            text = { Text("Le contact sera placé dans la corbeille pendant 30 jours.") },
+            title = { Text(stringResource(R.string.person_delete_dialog_title)) },
+            text = { Text(stringResource(R.string.person_delete_dialog_text)) },
             confirmButton = {
                 TextButton(onClick = { showDeleteDialog = false; onDeleteClick() }) {
-                    Text("Supprimer", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.common_delete),
+                        color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("Annuler") }
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
             }
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Overlay photo édition
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun EditPhotoOverlay(isEditing: Boolean, onClick: () -> Unit) {
@@ -573,16 +589,13 @@ private fun EditPhotoOverlay(isEditing: Boolean, onClick: () -> Unit) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(Icons.Default.CameraAlt, contentDescription = null,
                     tint = Color.White, modifier = Modifier.size(24.dp))
-                Text("Modifier", color = Color.White,
+                Text(stringResource(R.string.person_edit_photo_label),
+                    color = Color.White,
                     style = MaterialTheme.typography.labelSmall)
             }
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Dialogue ajout lien social
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 internal fun AddSocialLinkDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
@@ -591,13 +604,13 @@ internal fun AddSocialLinkDialog(onConfirm: (String) -> Unit, onDismiss: () -> U
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Ajouter un lien social") },
+        title = { Text(stringResource(R.string.person_add_link_dialog_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("Coller l'URL") },
+                    label = { Text(stringResource(R.string.person_add_link_url_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
@@ -630,15 +643,13 @@ internal fun AddSocialLinkDialog(onConfirm: (String) -> Unit, onDismiss: () -> U
             TextButton(
                 onClick = { onConfirm(url); onDismiss() },
                 enabled = url.isNotBlank()
-            ) { Text("Ajouter") }
+            ) { Text(stringResource(R.string.person_add_link_action)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } }
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+        }
     )
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Section liens sociaux
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SocialLinksSection(
@@ -657,7 +668,6 @@ private fun SocialLinksSection(
             label = "social_links_content"
         ) { editing ->
             if (editing) {
-                // Mode édition : liste avec bouton supprimer + bouton ajouter
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     links.forEach { link ->
                         val platform = SocialPlatform.all.firstOrNull {
@@ -689,7 +699,8 @@ private fun SocialLinksSection(
                                     maxLines = 1)
                             }
                             IconButton(onClick = { onRemoveClick(link.id) }) {
-                                Icon(Icons.Default.DeleteOutline, contentDescription = "Supprimer",
+                                Icon(Icons.Default.DeleteOutline,
+                                    contentDescription = stringResource(R.string.person_social_delete_cd),
                                     tint = MaterialTheme.colorScheme.error)
                             }
                         }
@@ -700,11 +711,10 @@ private fun SocialLinksSection(
                     ) {
                         Icon(Icons.Default.AddLink, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Ajouter un lien social")
+                        Text(stringResource(R.string.person_add_social_link))
                     }
                 }
             } else {
-                // Mode lecture : icônes brandées cliquables uniquement
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -725,7 +735,8 @@ private fun SocialLinksSection(
                         )
                     }
                     FilledTonalIconButton(onClick = onAddClick, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = "Ajouter",
+                        Icon(Icons.Default.Add,
+                            contentDescription = stringResource(R.string.common_add),
                             modifier = Modifier.size(16.dp))
                     }
                 }
@@ -733,10 +744,6 @@ private fun SocialLinksSection(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Ville + mini-carte MapLibre
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun CityDetailRow(city: String, cityLat: Double?, cityLng: Double?) {
@@ -749,16 +756,20 @@ private fun CityDetailRow(city: String, cityLat: Double?, cityLng: Double?) {
             tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text("Ville", style = MaterialTheme.typography.labelSmall,
+            Text(stringResource(R.string.person_city_label),
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(city, style = MaterialTheme.typography.bodyLarge)
         }
         if (hasCoords) {
             IconButton(onClick = { showMap = !showMap }) {
-                Icon(if (showMap) Icons.Default.Map else Icons.Outlined.Map,
-                    contentDescription = if (showMap) "Masquer" else "Carte",
+                Icon(
+                    if (showMap) Icons.Default.Map else Icons.Outlined.Map,
+                    contentDescription = if (showMap) stringResource(R.string.person_map_hide_cd)
+                                         else stringResource(R.string.person_map_cd),
                     tint = if (showMap) MaterialTheme.colorScheme.primary
-                           else MaterialTheme.colorScheme.onSurfaceVariant)
+                           else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -834,10 +845,6 @@ private fun MapLibreMiniMap(lat: Double, lng: Double, cityName: String, modifier
         }
     }, modifier = modifier.clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)))
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Composables utilitaires
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun DetailRow(icon: ImageVector, label: String, value: String) {

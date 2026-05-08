@@ -16,7 +16,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
+import androidx.annotation.StringRes
+import com.jtr.app.R
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.Person
@@ -56,13 +59,13 @@ object Routes {
 data class BottomNavItem(
     val route: String,
     val icon: ImageVector,
-    val label: String
+    @StringRes val labelRes: Int
 )
 
 val bottomNavItems = listOf(
-    BottomNavItem(Routes.HOME, Icons.Default.Home, "Accueil"),
-    BottomNavItem(Routes.CATEGORIES, Icons.Default.Folder, "Catégories"),
-    BottomNavItem(Routes.SETTINGS, Icons.Default.Settings, "Paramètres"),
+    BottomNavItem(Routes.HOME, Icons.Default.Home, R.string.nav_home),
+    BottomNavItem(Routes.CATEGORIES, Icons.Default.Folder, R.string.nav_categories),
+    BottomNavItem(Routes.SETTINGS, Icons.Default.Settings, R.string.nav_settings),
 )
 
 @Composable
@@ -95,8 +98,8 @@ fun JTRMainScaffold(
                                     }
                                 }
                             },
-                            icon = { Icon(item.icon, contentDescription = item.label) },
-                            label = { Text(item.label) }
+                            icon = { Icon(item.icon, contentDescription = stringResource(item.labelRes)) },
+                            label = { Text(stringResource(item.labelRes)) }
                         )
                     }
                 }
