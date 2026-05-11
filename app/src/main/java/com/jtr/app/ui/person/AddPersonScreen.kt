@@ -58,12 +58,14 @@ fun AddPersonScreen(
     var likes     by remember { mutableStateOf(viewModel.likes.value) }
     var notes     by remember { mutableStateOf(viewModel.notes.value) }
 
-    val gender         by viewModel.gender.collectAsStateWithLifecycle()
-    val birthdate      by viewModel.birthdate.collectAsStateWithLifecycle()
-    val cityLat        by viewModel.cityLat.collectAsStateWithLifecycle()
-    val photoUri       by viewModel.photoUri.collectAsStateWithLifecycle()
-    val firstNameError by viewModel.firstNameError.collectAsStateWithLifecycle()
-    val pendingLinks   by viewModel.pendingLinks.collectAsStateWithLifecycle()
+    val gender          by viewModel.gender.collectAsStateWithLifecycle()
+    val birthdate       by viewModel.birthdate.collectAsStateWithLifecycle()
+    val birthdateNotify by viewModel.birthdateNotify.collectAsStateWithLifecycle()
+    val cityLat         by viewModel.cityLat.collectAsStateWithLifecycle()
+    val cityNotify      by viewModel.cityNotify.collectAsStateWithLifecycle()
+    val photoUri        by viewModel.photoUri.collectAsStateWithLifecycle()
+    val firstNameError  by viewModel.firstNameError.collectAsStateWithLifecycle()
+    val pendingLinks    by viewModel.pendingLinks.collectAsStateWithLifecycle()
 
     val cityFocusRequester = remember { FocusRequester() }
     var showAddLinkDialog by remember { mutableStateOf(false) }
@@ -109,6 +111,8 @@ fun AddPersonScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             val context = LocalContext.current
+
+            // ── Photo ────────────────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .size(96.dp)
@@ -154,6 +158,7 @@ fun AddPersonScreen(
 
             HorizontalDivider()
 
+            // ── Prénom ───────────────────────────────────────────────────────
             OutlinedTextField(
                 value = firstName,
                 onValueChange = { firstName = it; viewModel.onFirstNameChanged(it) },
@@ -167,6 +172,7 @@ fun AddPersonScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
+            // ── Nom ──────────────────────────────────────────────────────────
             OutlinedTextField(
                 value = lastName,
                 onValueChange = { lastName = it; viewModel.onLastNameChanged(it) },
@@ -176,72 +182,7 @@ fun AddPersonScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
-            Text(stringResource(R.string.person_gender_label),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.Start))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.align(Alignment.Start)) {
-                listOf(
-                    "male"       to stringResource(R.string.person_gender_male),
-                    "female"     to stringResource(R.string.person_gender_female),
-                    "non-binary" to stringResource(R.string.person_gender_nonbinary)
-                ).forEach { (value, label) ->
-                    FilterChip(
-                        selected = gender == value,
-                        onClick = { viewModel.onGenderChanged(if (gender == value) null else value) },
-                        label = { Text(label) }
-                    )
-                }
-            }
-
-            OutlinedTextField(
-                value = birthdate?.let {
-                    SimpleDateFormat("d MMMM yyyy", Locale.getDefault()).format(Date(it))
-                } ?: "",
-                onValueChange = {},
-                label = { Text(stringResource(R.string.person_birthday_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                readOnly = true, enabled = false,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                    disabledBorderColor = MaterialTheme.colorScheme.outline,
-                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
-            TextButton(onClick = { showDatePicker = true },
-                modifier = Modifier.align(Alignment.Start)) {
-                Text(
-                    if (birthdate == null) stringResource(R.string.person_birthday_select)
-                    else stringResource(R.string.person_birthday_modify)
-                )
-            }
-
-            Row(modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = city,
-                    onValueChange = { city = it; viewModel.onCityChanged(it.text) },
-                    label = { Text(stringResource(R.string.person_city_label)) },
-                    modifier = Modifier.weight(1f).focusRequester(cityFocusRequester),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    trailingIcon = {
-                        if (cityLat != null) {
-                            Icon(Icons.Default.MyLocation, contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp))
-                        }
-                    }
-                )
-                IconButton(onClick = onNavigateToMap, modifier = Modifier.padding(top = 8.dp)) {
-                    Icon(Icons.Default.Map,
-                        contentDescription = stringResource(R.string.person_city_map_cd),
-                        tint = MaterialTheme.colorScheme.primary)
-                }
-            }
-
+            // ── Réseaux sociaux ──────────────────────────────────────────────
             HorizontalDivider()
             Text(
                 stringResource(R.string.person_social_links_title),
@@ -301,7 +242,106 @@ fun AddPersonScreen(
                 Spacer(Modifier.width(6.dp))
                 Text(stringResource(R.string.person_add_social_link))
             }
+            HorizontalDivider()
 
+            // ── Genre ────────────────────────────────────────────────────────
+            Text(stringResource(R.string.person_gender_label),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.Start))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.align(Alignment.Start)) {
+                listOf(
+                    "male"       to stringResource(R.string.person_gender_male),
+                    "female"     to stringResource(R.string.person_gender_female),
+                    "non-binary" to stringResource(R.string.person_gender_nonbinary)
+                ).forEach { (value, label) ->
+                    FilterChip(
+                        selected = gender == value,
+                        onClick = { viewModel.onGenderChanged(if (gender == value) null else value) },
+                        label = { Text(label) }
+                    )
+                }
+            }
+
+            // ── Anniversaire ─────────────────────────────────────────────────
+            OutlinedTextField(
+                value = birthdate?.let {
+                    SimpleDateFormat("d MMMM yyyy", Locale.getDefault()).format(Date(it))
+                } ?: "",
+                onValueChange = {},
+                label = { Text(stringResource(R.string.person_birthday_label)) },
+                modifier = Modifier.fillMaxWidth(),
+                readOnly = true, enabled = false,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                    disabledBorderColor = MaterialTheme.colorScheme.outline,
+                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+            TextButton(onClick = { showDatePicker = true },
+                modifier = Modifier.align(Alignment.Start)) {
+                Text(
+                    if (birthdate == null) stringResource(R.string.person_birthday_select)
+                    else stringResource(R.string.person_birthday_modify)
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.align(Alignment.Start)
+            ) {
+                Switch(
+                    checked = birthdateNotify,
+                    onCheckedChange = { viewModel.onBirthdateNotifyChanged(it) }
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.person_birthday_notify),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            // ── Ville ────────────────────────────────────────────────────────
+            Row(modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = city,
+                    onValueChange = { city = it; viewModel.onCityChanged(it.text) },
+                    label = { Text(stringResource(R.string.person_city_label)) },
+                    modifier = Modifier.weight(1f).focusRequester(cityFocusRequester),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    trailingIcon = {
+                        if (cityLat != null) {
+                            Icon(Icons.Default.MyLocation, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp))
+                        }
+                    }
+                )
+                IconButton(onClick = onNavigateToMap, modifier = Modifier.padding(top = 8.dp)) {
+                    Icon(Icons.Default.Map,
+                        contentDescription = stringResource(R.string.person_city_map_cd),
+                        tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.align(Alignment.Start)
+            ) {
+                Switch(
+                    checked = cityNotify,
+                    onCheckedChange = { viewModel.onCityNotifyChanged(it) }
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.person_city_notify),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            // ── Infos personnelles ───────────────────────────────────────────
             HorizontalDivider()
             Text(stringResource(R.string.person_personal_info_title),
                 style = MaterialTheme.typography.labelLarge,

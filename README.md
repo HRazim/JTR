@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> **Carnet de contacts enrichi nouvelle génération** · Version `4.1`  
+> **Carnet de contacts enrichi nouvelle génération** · Version `4.2`  
 > Projet personnel Android — Kotlin · Jetpack Compose · MVVM
 
 ---
@@ -14,19 +14,20 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 ## 📋 Table des matières
 
 1. [Aperçu visuel](#-aperçu-visuel)
-2. [Nouveautés v4.1](#-nouveautés-v41)
-3. [Nouveautés v4.0](#-nouveautés-v40)
-4. [Arborescence du projet](#-arborescence-du-projet)
-5. [Architecture MVVM](#-architecture-mvvm)
-6. [Stack technologique](#-stack-technologique)
-7. [Répertoire des classes](#-répertoire-des-classes-et-composants)
-8. [Fonctionnalités clés](#-fonctionnalités-clés)
-9. [Base de données Room](#-base-de-données-room)
-10. [Guide d'installation](#-guide-dinstallation-et-configuration)
-11. [Permissions requises](#-permissions-requises)
-12. [Tests et qualité](#-tests-et-qualité)
-13. [Optimisations de performance](#-optimisations-de-performance)
-14. [Évolution par version](#-évolution-par-version)
+2. [Nouveautés v4.2](#-nouveautés-v42)
+3. [Nouveautés v4.1](#-nouveautés-v41)
+4. [Nouveautés v4.0](#-nouveautés-v40)
+5. [Arborescence du projet](#-arborescence-du-projet)
+6. [Architecture MVVM](#-architecture-mvvm)
+7. [Stack technologique](#-stack-technologique)
+8. [Répertoire des classes](#-répertoire-des-classes-et-composants)
+9. [Fonctionnalités clés](#-fonctionnalités-clés)
+10. [Base de données Room](#-base-de-données-room)
+11. [Guide d'installation](#-guide-dinstallation-et-configuration)
+12. [Permissions requises](#-permissions-requises)
+13. [Tests et qualité](#-tests-et-qualité)
+14. [Optimisations de performance](#-optimisations-de-performance)
+15. [Évolution par version](#-évolution-par-version)
 
 ---
 
@@ -35,6 +36,85 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 | Accueil | Détail contact | Carte MapLibre | Paramètres |
 |---------|---------------|----------------|------------|
 | Liste filtrée, icônes réseaux sociaux, favoris, recherche | Photo, mini-carte, liens sociaux brandés | Sélecteur GPS natif, zoom/pan libre | Thèmes, corbeille, rayon de proximité |
+
+---
+
+## 🚀 Nouveautés v4.2
+
+### 1. Unification de l'UX d'édition
+
+Le mode d'édition "terne" accessible via l'icône stylo (qui naviguait vers un `EditPersonScreen` séparé) a été supprimé. L'édition en place riche (double-tap) est désormais **le seul chemin d'édition**.
+
+**Changements :**
+- `onEditClick` retiré de la signature de `PersonDetailScreen` — le bouton stylo appelle directement `editVm.enterEditMode()`
+- Route `EDIT_PERSON` et fonction `Routes.editPerson()` supprimées de `Navigation.kt`
+- La gestion des résultats de la carte MapLibre (ville, latitude, longitude via `savedStateHandle`) a été ajoutée au composable `PERSON_DETAIL`, qui était auparavant uniquement disponible via l'écran d'édition séparé
+
+---
+
+### 2. Toggles de notification dans AddPersonScreen
+
+Les champs `birthdateNotify` (notifier pour l'anniversaire) et `cityNotify` (notifier si à proximité) sont désormais disponibles **dès la création d'un contact**, alignant le formulaire avec l'écran d'édition.
+
+**Ordre des champs unifié (création et édition) :**
+
+```
+Photo → Prénom → Nom → [Réseaux sociaux] → Genre
+→ Date de naissance + [Toggle anniversaire]
+→ Ville + Carte + [Toggle proximité] → Notes → Sauvegarder
+```
+
+`AddPersonViewModel` expose maintenant `birthdateNotify` et `cityNotify` comme `StateFlow<Boolean>` avec setters dédiés, et les inclut dans le constructeur `Person` lors de `savePerson()`.
+
+---
+
+### 3. Refonte du système de thèmes
+
+| Changement | Détail |
+|------------|--------|
+| Nouveau thème par défaut | **JTR Signature** — fond anthracite `#121212`, textes blancs `#ECECEC` en mode sombre |
+| Suppression | Palette `SLATE` retirée de l'enum `ThemePreset` |
+| Nouveau preset | `CUSTOM` — active un sélecteur de couleur libre dans `SettingsScreen` |
+| Nouvelle fonction | `buildCustomColorScheme(primary: Color, dark: Boolean): ColorScheme` — dérive `onPrimary` par luminance (seuil 0.55) |
+| Persistance | `customColor: Long` persisté dans `SharedPreferences` via `ThemeViewModel.setCustomColor()` |
+
+**Color picker (`ColorPickerDialog`) :**
+- Grille `LazyVerticalGrid(GridCells.Fixed(6))` de 24 pastilles ARGB prédéfinies
+- Champ `OutlinedTextField` pour saisie hexadécimale libre (`#RRGGBB`)
+- La carte du preset `CUSTOM` dans `SettingsScreen` ouvre automatiquement le dialogue
+
+---
+
+### 4. Recherche et tri dans les Catégories
+
+- `CategoriesScreen` : barre de recherche `OutlinedTextField` avec icône de recherche et bouton d'effacement
+- `CategoryViewModel` : flux `categories` combiné via `combine(repo.getAllActive(), _searchQuery)` — tri A-Z systématique, filtrage insensible à la casse
+- Aucun changement de DAO requis — le filtrage/tri est effectué en mémoire dans le ViewModel
+
+---
+
+### 5. Audit technique — Workers et tests
+
+#### BirthdayCheckWorker
+- **Correctif** : vérification des préférences globales `notifications_enabled` et `birthday_enabled` ajoutée en tête de `doWork()` — les notifications d'anniversaire étaient envoyées même si les notifications étaient globalement désactivées
+- `person.birthdate!!` remplacé par `val millis = person.birthdate ?: return@forEach`
+
+#### ProximityCheckWorker
+- `person.cityLat!!` / `person.cityLng!!` remplacés par des extractions sûres `?: return@forEach` (le filtre `hasGeoCoordinates` était le garde existant, mais la surface de crash est éliminée)
+
+#### PersonRepositoryTest — 6 nouveaux tests
+```
+birthdateNotify defaults to false
+cityNotify defaults to false
+birthdateNotify true with null birthdate excluded from birthday filter
+birthdateNotify true with birthdate included in birthday filter
+cityNotify true with coordinates eligible for proximity
+cityNotify true without coordinates excluded from proximity
+```
+
+### 6. Japonais — 5ᵉ langue supportée
+
+Fichiers ajoutés : `res/values-ja/strings.xml` (195 clés traduites) et `res/raw-ja/privacy_policy.html`. Aucun changement de code requis — la localisation Android système suffit.
 
 ---
 
@@ -113,16 +193,17 @@ Corrigé dans `MapScreen.kt` (carte plein écran) **et** dans `MapLibreMiniMap` 
 
 ### 1. Internationalisation complète (i18n) — 4 langues
 
-L'application prend désormais en charge **4 langues** : Anglais (défaut), Français, Espagnol, et Mandarin simplifié. Aucune chaîne de caractères n'est plus codée en dur dans le code Kotlin/Compose.
+L'application prend désormais en charge **5 langues** : Anglais (défaut), Français, Espagnol, Mandarin simplifié, et Japonais. Aucune chaîne de caractères n'est plus codée en dur dans le code Kotlin/Compose.
 
 **Fichiers de ressources créés :**
 
 | Fichier | Locale | Couverture |
 |---------|--------|-----------|
-| `res/values/strings.xml` | 🇬🇧 Anglais (défaut) | ~133 clés |
-| `res/values-fr/strings.xml` | 🇫🇷 Français | ~133 clés |
-| `res/values-es/strings.xml` | 🇪🇸 Espagnol | ~133 clés |
-| `res/values-zh/strings.xml` | 🇨🇳 Mandarin simplifié | ~133 clés |
+| `res/values/strings.xml` | 🇬🇧 Anglais (défaut) | ~195 clés |
+| `res/values-fr/strings.xml` | 🇫🇷 Français | ~195 clés |
+| `res/values-es/strings.xml` | 🇪🇸 Espagnol | ~195 clés |
+| `res/values-zh/strings.xml` | 🇨🇳 Mandarin simplifié | ~195 clés |
+| `res/values-ja/strings.xml` | 🇯🇵 Japonais | ~195 clés |
 
 **Refactoring UI — couche Compose :**
 
@@ -285,9 +366,9 @@ JTR_TP3/
 │       │       │   │   ├── HomeScreen.kt       # PersonCard avec icônes réseaux sociaux
 │       │       │   │   └── HomeViewModel.kt    # + socialLinksMap: StateFlow<Map<String,List<SocialLinkEntity>>>
 │       │       │   ├── person/
-│       │       │   │   ├── AddPersonScreen.kt  # Formulaire + section réseaux sociaux
-│       │       │   │   ├── AddPersonViewModel.kt  # + pendingLinks, addPendingLink/removePendingLink
-│       │       │   │   └── PersonDetailScreen.kt  # Mini-carte, SocialLinksSection, édition inline
+│       │       │   │   ├── AddPersonScreen.kt  # Formulaire + réseaux sociaux + toggles notif
+│       │       │   │   ├── AddPersonViewModel.kt  # + pendingLinks, birthdateNotify, cityNotify
+│       │       │   │   ├── PersonDetailScreen.kt  # Mini-carte, SocialLinksSection, édition inline
 │       │       │   │   └── EditPersonViewModel.kt # socialLinks réactif depuis Room
 │       │       │   ├── category/
 │       │       │   │   ├── CategoriesScreen.kt
@@ -548,7 +629,7 @@ DAO dédié à la table de jointure. **Aucune opération de ce DAO ne supprime d
 Configuration Retrofit pour Nominatim. Conforme aux [conditions d'utilisation OSM](https://operations.osmfoundation.org/policies/nominatim/) : User-Agent requis, intercepteur de logs en mode debug.
 
 ```kotlin
-.header("User-Agent", "JTR-App/4.1 (contact-manager Android)")
+.header("User-Agent", "JTR-App/4.2 (contact-manager Android)")
 ```
 
 ---
@@ -587,12 +668,12 @@ fun getSocialIcon(url: String): Int = try {
 | ViewModel | StateFlows exposés | Méthodes clés |
 |-----------|--------------------|---------------|
 | `HomeViewModel` | `persons`, `selectedIds`, `isSelectionMode`, `categories`, `isLocationEnabled`, **`socialLinksMap`** | `onSearchQueryChanged()`, `toggleFavorite()`, `toggleSelection()`, `deleteSelected()`, `assignCategoryToSelected()` |
-| `AddPersonViewModel` | `firstName`…`photoUri`, `firstNameError`, `cityLat`, **`pendingLinks`** | `onCityFromMap()`, `onPhotoSelected()`, `savePerson()`, **`addPendingLink()`**, **`removePendingLink()`** |
+| `AddPersonViewModel` | `firstName`…`photoUri`, `firstNameError`, `cityLat`, **`pendingLinks`**, **`birthdateNotify`**, **`cityNotify`** | `onCityFromMap()`, `onPhotoSelected()`, `savePerson()`, **`addPendingLink()`**, **`removePendingLink()`**, **`onBirthdateNotifyChanged()`**, **`onCityNotifyChanged()`** |
 | `EditPersonViewModel` | idem + `isLoading`, `isEditing`, **`socialLinks`** | `loadPerson()`, `commitAllEdits()`, `cancelEdit()`, **`addSocialLink()`**, **`removeSocialLink()`** |
-| `CategoryViewModel` | `categories`, `personCountByCategory` | `addCategory()`, `updateCategory()`, `deleteCategoryWithCascade()` |
+| `CategoryViewModel` | `categories`, `personCountByCategory`, **`searchQuery`** | `addCategory()`, `updateCategory()`, `deleteCategoryWithCascade()`, **`setSearchQuery()`** |
 | `CategoryDetailViewModel` | `category`, `persons`, `searchQuery`, `selectedIds` | `toggleSelection()`, `removeSelectedFromCategory()`, `assignPersonsToCategory()` |
 | `SettingsViewModel` | `notificationsEnabled`, `proximityEnabled`, `birthdayEnabled`, `proximityRadiusKm` | `setNotificationsEnabled()`, `setProximityEnabled()`, `setBirthdayEnabled()`, `setProximityRadiusKm()` |
-| `ThemeViewModel` | `isDarkMode`, `selectedPreset` | `setDarkMode()`, `setPreset()` |
+| `ThemeViewModel` | `isDarkMode`, `selectedPreset`, **`customColor`** | `setDarkMode()`, `setPreset()`, **`setCustomColor()`** |
 | `TrashViewModel` | `deletedPersons`, `deletedCategories` | `restore()`, `hardDelete()`, `hardDeleteAll()` |
 | `MapViewModel` | `searchResults`, `isSearching`, `selectedLocation`, `cameraEvent` | `search()` (debounce 400 ms), `selectFromSearch()`, `onMapClick()` |
 
@@ -854,8 +935,8 @@ android {
         applicationId = "com.jtr.app"
         minSdk        = 26
         targetSdk     = 35
-        versionCode   = 5
-        versionName   = "4.1"
+        versionCode   = 6
+        versionName   = "4.2"
     }
     kotlinOptions { jvmTarget = "17" }
     packaging {
@@ -910,11 +991,19 @@ android {
 ```
 getAllActive returns flow from dao
 daysSinceLastContact returns null when never contacted
-daysSinceLastContact returns correct days  // 3 jours = 3 × 86_400_000 ms
+daysSinceLastContact returns correct days        // 3 jours = 3 × 86_400_000 ms
 fullName combines firstName and lastName
+fullName uses only firstName when lastName is null
 initials uses first letter of first and last name
+hasGeoCoordinates returns false when coordinates missing
 hasGeoCoordinates returns true when both coordinates set
 softDelete calls dao with correct id
+birthdateNotify defaults to false
+cityNotify defaults to false
+birthdateNotify true with null birthdate excluded from birthday filter
+birthdateNotify true with birthdate included in birthday filter
+cityNotify true with coordinates eligible for proximity
+cityNotify true without coordinates excluded from proximity
 ```
 
 #### `DistanceCalculationTest.kt`
@@ -991,7 +1080,8 @@ MapLibre 11.5.0 + `useLegacyPackaging = false` garantit que les `.so` sont stock
 | **PP2 / v2.0** | Migration vers Room, photos Coil, favoris, recherche, corbeille, Navigation Compose, thèmes DataStore |
 | **PP3 / v3.0** | Géocodage Nominatim, coordonnées GPS, sélecteur carte **MapLibre natif**, catégories **Many-to-Many** (DB v6), WorkManager (proximité + anniversaires), notifications dual-canal, rayon configurable, recherche accent-insensitive, tests MockK/Turbine/Truth, édition catégories + photo de couverture |
 | **v4.0-Final** | **Dynamic Social Icon Mapping** (7 drawables brandés, `getSocialIcon`), **Liens sociaux à la création** (`PendingLink`, `AddPersonViewModel`), **Fix gestes MapLibre** (`requestDisallowInterceptTouchEvent` sur plein écran + mini-carte), **DB v7** (`social_links`, `SocialLinkDao`), User-Agent mis à jour |
-| **v4.1** | **Internationalisation i18n** (EN/FR/ES/ZH, ~133 clés, format args positionnels, `@StringRes` BottomNavItem, `Locale.getDefault()`), **RGPD** (politique de confidentialité HTML dark/light, `PrivacyPolicySheet` WebView sans JS), `versionCode = 5` |
+| **v4.1** | **Internationalisation i18n** (EN/FR/ES/ZH, ~195 clés, format args positionnels, `@StringRes` BottomNavItem, `Locale.getDefault()`), **RGPD** (politique de confidentialité HTML dark/light, `PrivacyPolicySheet` WebView sans JS), `versionCode = 5` |
+| **v4.2** | **Unification UX édition** (suppression route `EDIT_PERSON`, édition inline unique), **Toggles notif en création** (`birthdateNotify`/`cityNotify` dans `AddPersonScreen`), **Refonte thèmes** (`JTR_SIGNATURE` par défaut, suppression `SLATE`, preset `CUSTOM` + color picker libre, `buildCustomColorScheme`), **Recherche catégories** (barre + tri A-Z dans `CategoryViewModel`), **Audit workers** (guards globaux `BirthdayCheckWorker`, safe nulls `ProximityCheckWorker`), **Japonais** (5ᵉ langue, `values-ja/`), `versionCode = 6` |
 
 ---
 
@@ -1013,4 +1103,4 @@ Les tuiles sont servies par [OpenFreeMap](https://openfreemap.org) (licence libr
 
 ---
 
-*JTR v4.1 — Kotlin · Jetpack Compose · MVVM*
+*JTR v4.2 — Kotlin · Jetpack Compose · MVVM*

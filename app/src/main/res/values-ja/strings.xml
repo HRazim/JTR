@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">JTR</string>
+
+    <!-- ── Common actions ─────────────────────────────────────────────────── -->
+    <string name="common_cancel">キャンセル</string>
+    <string name="common_ok">OK</string>
+    <string name="common_delete">削除</string>
+    <string name="common_save">保存</string>
+    <string name="common_back">戻る</string>
+    <string name="common_edit">編集</string>
+    <string name="common_add">追加</string>
+    <string name="common_create">作成</string>
+    <string name="common_restore">復元</string>
+    <string name="common_clear">クリア</string>
+    <string name="common_photo">写真</string>
+    <string name="common_name_label">名前</string>
+    <string name="common_color_label">カラー</string>
+    <string name="separator_and">と</string>
+
+    <!-- ── Home screen ────────────────────────────────────────────────────── -->
+    <string name="home_title">JTR — マイ連絡先</string>
+    <string name="home_selection_count">%1$d件選択中</string>
+    <string name="home_fab_add_person">人を追加</string>
+    <string name="home_location_warning">近接リマインダーのために位置情報を有効にしてください</string>
+    <string name="home_search_placeholder">連絡先を検索…</string>
+    <string name="home_empty_title">連絡先が見つかりません</string>
+    <string name="home_empty_subtitle">＋をタップして追加</string>
+    <string name="home_btn_category">カテゴリー</string>
+    <string name="home_btn_delete">削除</string>
+    <string name="home_favorite_cd">お気に入り</string>
+
+    <!-- ── Category assign dialog (Home + CategoryDetail) ─────────────────── -->
+    <string name="dialog_assign_category_title">カテゴリーを割り当て</string>
+    <string name="dialog_new_category_title">新しいカテゴリー</string>
+    <string name="dialog_create_category_cd">カテゴリーを作成</string>
+    <string name="dialog_create_new_category">新しいカテゴリーを作成</string>
+    <string name="dialog_create_and_assign">作成して割り当て</string>
+    <string name="dialog_category_name_label">カテゴリー名</string>
+
+    <!-- ── Categories screen ──────────────────────────────────────────────── -->
+    <string name="categories_title">カテゴリー</string>
+    <string name="categories_fab_add_cd">カテゴリーを追加</string>
+    <string name="categories_empty_title">カテゴリーなし</string>
+    <string name="categories_empty_subtitle">＋をタップして作成</string>
+    <string name="categories_delete_title">\"%1$s\"を削除しますか？</string>
+    <string name="categories_delete_with_contacts">このカテゴリーには%1$d件の連絡先があります。カテゴリーと%1$d件の連絡先を削除してもよろしいですか？\n\nゴミ箱から復元できます。</string>
+    <string name="categories_delete_empty">カテゴリーはゴミ箱に移動されます。復元できます。</string>
+    <string name="categories_person_count">%1$d件の連絡先</string>
+    <string name="categories_edit_dialog_title">カテゴリーを編集</string>
+    <string name="categories_image_cd">カテゴリー画像</string>
+    <string name="categories_remove_photo">写真を削除</string>
+    <string name="categories_new_dialog_title">新しいカテゴリー</string>
+
+    <!-- ── Category detail screen ─────────────────────────────────────────── -->
+    <string name="category_detail_search_placeholder">このカテゴリー内を検索…</string>
+    <string name="category_detail_empty_title">このカテゴリーにメンバーがいません</string>
+    <string name="category_detail_empty_subtitle">＋をタップして連絡先を追加</string>
+    <string name="category_detail_fab_add">連絡先を追加</string>
+    <string name="category_detail_btn_remove">削除</string>
+    <string name="category_detail_default_title">カテゴリー</string>
+
+    <!-- ── Add / Edit person ──────────────────────────────────────────────── -->
+    <string name="person_add_title">人を追加</string>
+    <string name="person_edit_title">連絡先を編集</string>
+    <string name="person_photo_cd">プロフィール写真</string>
+    <string name="person_first_name_label">名 *</string>
+    <string name="person_first_name_error">名は必須です</string>
+    <string name="person_first_name_required">必須</string>
+    <string name="person_last_name_label">姓</string>
+    <string name="person_gender_label">性別</string>
+    <string name="person_gender_male">男性</string>
+    <string name="person_gender_female">女性</string>
+    <string name="person_gender_nonbinary">ノンバイナリー</string>
+    <string name="person_gender_nonbinary_short">N-bin.</string>
+    <string name="person_birthday_label">誕生日</string>
+    <string name="person_birthday_select">日付を選択</string>
+    <string name="person_birthday_modify">日付を変更</string>
+    <string name="person_birthday_clear">クリア</string>
+    <string name="person_birthday_notify">誕生日に通知</string>
+    <string name="person_city_label">市区町村</string>
+    <string name="person_city_map_cd">地図で選択</string>
+    <string name="person_city_notify">近くにいたら通知</string>
+    <string name="person_social_links_title">ソーシャルネットワーク</string>
+    <string name="person_add_social_link">ソーシャルリンクを追加</string>
+    <string name="person_social_delete_cd">削除</string>
+    <string name="person_personal_info_title">個人情報</string>
+    <string name="person_origin_label">出身</string>
+    <string name="person_likes_label">好きなこと</string>
+    <string name="person_notes_label">メモ</string>
+    <string name="person_save">保存</string>
+    <string name="person_save_changes">変更を保存</string>
+
+    <!-- ── Person detail screen ───────────────────────────────────────────── -->
+    <string name="person_not_found">人物が見つかりません</string>
+    <string name="person_double_tap_hint">ダブルタップして編集</string>
+    <string name="person_delete_dialog_title">この連絡先を削除しますか？</string>
+    <string name="person_delete_dialog_text">連絡先は30日間ゴミ箱に保存されます。</string>
+    <string name="person_favorite_label">お気に入り</string>
+    <string name="person_edit_photo_label">編集</string>
+    <string name="person_map_cd">地図</string>
+    <string name="person_map_hide_cd">非表示</string>
+    <string name="person_add_link_dialog_title">ソーシャルリンクを追加</string>
+    <string name="person_add_link_url_label">URLを貼り付け</string>
+    <string name="person_add_link_action">追加</string>
+
+    <!-- ── Map screen ─────────────────────────────────────────────────────── -->
+    <string name="map_title">市区町村を選択</string>
+    <string name="map_search_label">市区町村を検索</string>
+    <string name="map_save">保存</string>
+
+    <!-- ── Trash screen ───────────────────────────────────────────────────── -->
+    <string name="trash_title">ゴミ箱</string>
+    <string name="trash_auto_purge_banner">30日後に自動削除されます。</string>
+    <string name="trash_section_categories">削除されたカテゴリー</string>
+    <string name="trash_section_contacts">削除された連絡先</string>
+    <string name="trash_empty_title">ゴミ箱は空です</string>
+    <string name="trash_empty_subtitle">削除された連絡先とカテゴリーはここに表示されます。</string>
+    <string name="trash_btn_empty">ゴミ箱を空にする</string>
+    <string name="trash_empty_cd">ゴミ箱を空にする</string>
+    <string name="trash_empty_dialog_title">ゴミ箱を空にしますか？</string>
+    <string name="trash_empty_dialog_text">この操作は取り消せません。\n%1$sが完全に削除されます。</string>
+    <string name="trash_empty_dialog_part_categories">%1$dカテゴリー</string>
+    <string name="trash_empty_dialog_part_contacts">%1$d件の連絡先</string>
+    <string name="trash_empty_confirm">完全に空にする</string>
+    <string name="trash_delete_dialog_title">完全に削除しますか？</string>
+    <string name="trash_delete_category_with_contacts">カテゴリー\"%1$s\"と%2$d件の連絡先が失われます。</string>
+    <string name="trash_delete_category_empty">カテゴリー\"%1$s\"が完全に削除されます。</string>
+    <string name="trash_delete_person_text">%1$sが完全に削除されます。</string>
+    <string name="trash_restore_all_cd">すべて復元</string>
+    <string name="trash_delete_permanently_cd">完全に削除</string>
+    <string name="trash_collapse_cd">折りたたむ</string>
+    <string name="trash_expand_cd">メンバーを表示</string>
+    <string name="trash_restore_cd">復元</string>
+    <string name="trash_deleted_at">%1$sに削除</string>
+    <string name="trash_purge_imminent">まもなく削除</string>
+    <string name="trash_purge_1_day">残り1日</string>
+    <string name="trash_purge_days">残り%1$d日</string>
+    <string name="trash_group_purge_imminent">まもなく削除</string>
+    <string name="trash_group_purge_1_day">残り1日</string>
+    <string name="trash_group_purge_days">残り%1$d日</string>
+    <string name="trash_group_status">%1$d件の連絡先 · %2$s</string>
+
+    <!-- ── Settings screen ────────────────────────────────────────────────── -->
+    <string name="settings_title">設定</string>
+    <string name="settings_section_notifications">通知</string>
+    <string name="settings_notifications_title">通知を有効にする</string>
+    <string name="settings_notifications_subtitle">すべての通知を有効または無効にする</string>
+    <string name="settings_proximity_title">近接リマインダー</string>
+    <string name="settings_proximity_subtitle">連絡先が近くにいるときに通知</string>
+    <string name="settings_proximity_radius_label">検出範囲</string>
+    <string name="settings_proximity_radius_km">%1$d km</string>
+    <string name="settings_proximity_radius_min">1 km</string>
+    <string name="settings_proximity_radius_max">50 km</string>
+    <string name="settings_birthday_title">誕生日リマインダー</string>
+    <string name="settings_birthday_subtitle">誕生日に通知</string>
+    <string name="settings_section_appearance">外観</string>
+    <string name="settings_dark_mode_title">ダークモード</string>
+    <string name="settings_dark_mode_subtitle">ダークテーマを使用</string>
+    <string name="settings_section_customization">カスタマイズ</string>
+    <string name="settings_color_palette">カラーパレット</string>
+    <string name="settings_section_data">データ</string>
+    <string name="settings_trash_title">ゴミ箱</string>
+    <string name="settings_trash_subtitle">削除された連絡先 · 30日後に自動削除</string>
+    <string name="settings_section_about">アプリについて</string>
+    <string name="settings_version_title">バージョン</string>
+    <string name="settings_version_value" translatable="false">JTR 4.1</string>
+    <string name="settings_theme_cd">テーマ %1$s</string>
+    <string name="settings_section_legal">法的情報</string>
+    <string name="settings_privacy_title">プライバシーポリシー</string>
+    <string name="settings_privacy_subtitle">データの使用方法</string>
+
+    <!-- ── Bottom navigation ──────────────────────────────────────────────── -->
+    <string name="nav_home">ホーム</string>
+    <string name="nav_categories">カテゴリー</string>
+    <string name="nav_settings">設定</string>
+
+    <!-- ── Notification channels ──────────────────────────────────────────── -->
+    <string name="notif_channel_proximity_name">近接リマインダー</string>
+    <string name="notif_channel_proximity_desc">連絡先と同じ市区町村にいるときの通知</string>
+    <string name="notif_channel_birthday_name">誕生日</string>
+    <string name="notif_channel_birthday_desc">連絡先の誕生日リマインダー</string>
+
+    <!-- ── Notification content (Workers) ────────────────────────────────── -->
+    <string name="notif_birthday_title">🎂 今日は誕生日！</string>
+    <string name="notif_birthday_text">今日は%1$sの誕生日です。お祝いを忘れずに！</string>
+    <!-- args: 1=distanceKm 2=city 3=radiusKm 4=firstName 5=days -->
+    <string name="notif_proximity_title">%1$sが近くにいます！</string>
+    <string name="notif_proximity_text">%2$sまで%1$d kmです（設定範囲：%3$d km）。%4$sと連絡を取っていないのは%5$d日になります！</string>
+    <string name="notif_geofence_title">%1$sが近くにいます！</string>
+    <!-- args: 1=city 2=daysSince -->
+    <string name="notif_geofence_text">現在%1$sにいます — 最後に会ってから%2$d日が経ちました！</string>
+    <string name="notif_geofence_city_fallback">この市区町村</string>
+</resources>

@@ -5,8 +5,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.data.repository.CategoryRepository
 import com.jtr.app.domain.model.Category
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -14,12 +17,23 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
 
     private val repo = CategoryRepository(application.applicationContext)
 
-    val categories: StateFlow<List<Category>> = repo.getAllActive()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    val categories: StateFlow<List<Category>> = combine(
+        repo.getAllActive(),
+        _searchQuery
+    ) { list, query ->
+        val sorted = list.sortedBy { it.name.lowercase() }
+        if (query.isBlank()) sorted
+        else sorted.filter { it.name.contains(query, ignoreCase = true) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Nombre de contacts actifs par categoryId — utilisé pour le dialogue de confirmation. */
     val personCountByCategory: StateFlow<Map<String, Int>> = repo.getPersonCountsPerCategory()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    fun setSearchQuery(query: String) { _searchQuery.value = query }
 
     fun addCategory(name: String, color: String) {
         viewModelScope.launch { repo.add(Category(name = name, color = color)) }

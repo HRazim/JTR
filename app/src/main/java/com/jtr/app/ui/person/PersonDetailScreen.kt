@@ -72,7 +72,6 @@ fun PersonDetailScreen(
     person: Person?,
     categoryNames: List<String> = emptyList(),
     onNavigateBack: () -> Unit,
-    onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onNavigateToMap: () -> Unit = {},
     cityFromMap: String? = null,
@@ -139,7 +138,7 @@ fun PersonDetailScreen(
                 },
                 actions = {
                     if (!isEditing) {
-                        IconButton(onClick = onEditClick) {
+                        IconButton(onClick = { editVm.enterEditMode() }) {
                             Icon(Icons.Default.Edit,
                                 contentDescription = stringResource(R.string.common_edit),
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer)

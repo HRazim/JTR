@@ -3,9 +3,13 @@ package com.jtr.app.ui.settings
 import android.webkit.WebView
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,17 +38,29 @@ import com.jtr.app.R
 import com.jtr.app.ui.theme.ThemePreset
 import kotlin.math.roundToInt
 
+private val colorPickerSwatches = listOf(
+    0xFF1A1A1AL, 0xFF37474FL, 0xFF455A64L, 0xFF546E7AL,
+    0xFF1565C0L, 0xFF1976D2L, 0xFF0277BDL, 0xFF0288D1L,
+    0xFF00695CL, 0xFF00796BL, 0xFF2E7D32L, 0xFF388E3CL,
+    0xFFAD1457L, 0xFFE91E63L, 0xFF6A1B9AL, 0xFF7B1FA2L,
+    0xFFBF360CL, 0xFFE64A19L, 0xFFF57F17L, 0xFFF9A825L,
+    0xFF4527A0L, 0xFF283593L, 0xFF006064L, 0xFF004D40L,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     isDarkMode: Boolean = false,
     onDarkModeChange: (Boolean) -> Unit = {},
-    selectedPreset: ThemePreset = ThemePreset.AZURE,
+    selectedPreset: ThemePreset = ThemePreset.JTR_SIGNATURE,
     onPresetSelected: (ThemePreset) -> Unit = {},
+    customColor: Long = 0xFF1565C0L,
+    onCustomColorSelected: (Long) -> Unit = {},
     onNavigateToTrash: () -> Unit = {},
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
     var showPrivacySheet by remember { mutableStateOf(false) }
+    var showColorPickerDialog by remember { mutableStateOf(false) }
     val notificationsEnabled by settingsViewModel.notificationsEnabled.collectAsStateWithLifecycle()
     val proximityEnabled by settingsViewModel.proximityEnabled.collectAsStateWithLifecycle()
     val birthdayEnabled by settingsViewModel.birthdayEnabled.collectAsStateWithLifecycle()
@@ -166,7 +183,11 @@ fun SettingsScreen(
                     ThemePresetCard(
                         preset = preset,
                         isSelected = preset == selectedPreset,
-                        onClick = { onPresetSelected(preset) }
+                        customColor = if (preset == ThemePreset.CUSTOM) Color(customColor) else null,
+                        onClick = {
+                            onPresetSelected(preset)
+                            if (preset == ThemePreset.CUSTOM) showColorPickerDialog = true
+                        }
                     )
                 }
             }
@@ -226,12 +247,128 @@ fun SettingsScreen(
             onDismiss = { showPrivacySheet = false }
         )
     }
+
+    if (showColorPickerDialog) {
+        ColorPickerDialog(
+            currentColor = Color(customColor),
+            onColorSelected = { color ->
+                onCustomColorSelected(color.value.toLong())
+                showColorPickerDialog = false
+            },
+            onDismiss = { showColorPickerDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun ColorPickerDialog(
+    currentColor: Color,
+    onColorSelected: (Color) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selectedColor by remember { mutableStateOf(currentColor) }
+    var hexInput by remember { mutableStateOf(
+        "%06X".format(currentColor.value.toLong() and 0xFFFFFFL)
+    ) }
+    var hexError by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(selectedColor)
+                )
+                Text(stringResource(R.string.settings_color_palette),
+                    style = MaterialTheme.typography.titleMedium)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(6),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.height(180.dp)
+                ) {
+                    items(colorPickerSwatches) { argb ->
+                        val c = Color(argb)
+                        val isChosen = selectedColor == c
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(c)
+                                .then(
+                                    if (isChosen) Modifier.border(
+                                        2.dp,
+                                        MaterialTheme.colorScheme.onSurface,
+                                        CircleShape
+                                    ) else Modifier
+                                )
+                                .clickable {
+                                    selectedColor = c
+                                    hexInput = "%06X".format(argb and 0xFFFFFFL)
+                                    hexError = false
+                                }
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = hexInput,
+                    onValueChange = { v ->
+                        hexInput = v.uppercase().take(6)
+                        val parsed = v.trim().trimStart('#').takeIf { it.length == 6 }
+                            ?.toLongOrNull(16)
+                        if (parsed != null) {
+                            selectedColor = Color(0xFF000000L or parsed)
+                            hexError = false
+                        } else {
+                            hexError = v.isNotEmpty()
+                        }
+                    },
+                    label = { Text("Hex (#RRGGBB)") },
+                    isError = hexError,
+                    singleLine = true,
+                    leadingIcon = {
+                        Text("#", fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    },
+                    trailingIcon = {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .background(selectedColor)
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onColorSelected(selectedColor) }) {
+                Text(stringResource(R.string.common_ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.common_cancel))
+            }
+        }
+    )
 }
 
 @Composable
 private fun ThemePresetCard(
     preset: ThemePreset,
     isSelected: Boolean,
+    customColor: Color? = null,
     onClick: () -> Unit
 ) {
     val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
@@ -260,9 +397,9 @@ private fun ThemePresetCard(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ColorDot(color = preset.previewPrimary, size = 22)
-                ColorDot(color = preset.previewSecondary, size = 18)
-                ColorDot(color = preset.previewTertiary, size = 14)
+                ColorDot(color = customColor ?: preset.previewPrimary, size = 22)
+                ColorDot(color = customColor?.copy(alpha = 0.7f) ?: preset.previewSecondary, size = 18)
+                ColorDot(color = customColor?.copy(alpha = 0.3f) ?: preset.previewTertiary, size = 14)
             }
 
             Text(

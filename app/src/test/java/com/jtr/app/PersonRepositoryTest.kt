@@ -90,4 +90,44 @@ class PersonRepositoryTest {
         val person = Person(firstName = "Test", cityLat = 45.5, cityLng = -73.5)
         assertThat(person.hasGeoCoordinates).isTrue()
     }
+
+    @Test
+    fun `birthdateNotify defaults to false`() {
+        val person = Person(firstName = "Test")
+        assertThat(person.birthdateNotify).isFalse()
+    }
+
+    @Test
+    fun `cityNotify defaults to false`() {
+        val person = Person(firstName = "Test")
+        assertThat(person.cityNotify).isFalse()
+    }
+
+    @Test
+    fun `birthdateNotify true with null birthdate excluded from birthday filter`() {
+        val person = Person(firstName = "Test", birthdateNotify = true, birthdate = null)
+        val eligible = listOf(person).filter { it.birthdateNotify && it.birthdate != null }
+        assertThat(eligible).isEmpty()
+    }
+
+    @Test
+    fun `birthdateNotify true with birthdate included in birthday filter`() {
+        val person = Person(firstName = "Test", birthdateNotify = true, birthdate = System.currentTimeMillis())
+        val eligible = listOf(person).filter { it.birthdateNotify && it.birthdate != null }
+        assertThat(eligible).hasSize(1)
+    }
+
+    @Test
+    fun `cityNotify true with coordinates eligible for proximity`() {
+        val person = Person(firstName = "Test", cityNotify = true, cityLat = 45.5, cityLng = -73.5)
+        val eligible = listOf(person).filter { it.cityNotify && it.hasGeoCoordinates }
+        assertThat(eligible).hasSize(1)
+    }
+
+    @Test
+    fun `cityNotify true without coordinates excluded from proximity`() {
+        val person = Person(firstName = "Test", cityNotify = true, cityLat = null, cityLng = null)
+        val eligible = listOf(person).filter { it.cityNotify && it.hasGeoCoordinates }
+        assertThat(eligible).isEmpty()
+    }
 }

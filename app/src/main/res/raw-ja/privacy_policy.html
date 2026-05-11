@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>プライバシーポリシー — JTR</title>
+  <style>
+    :root {
+      --bg:           #FFFFFF;
+      --surface:      #F5F5F5;
+      --border:       #E0E0E0;
+      --text-primary: #1A1A1A;
+      --text-muted:   #555555;
+      --accent:       #1565C0;
+      --chip-bg:      #E3F2FD;
+      --chip-fg:      #0D47A1;
+      --ok:           #2E7D32;
+      --warn:         #E65100;
+    }
+    html.dark {
+      --bg:           #121212;
+      --surface:      #1E1E1E;
+      --border:       #333333;
+      --text-primary: #E0E0E0;
+      --text-muted:   #9E9E9E;
+      --accent:       #90CAF9;
+      --chip-bg:      #1A3A5C;
+      --chip-fg:      #90CAF9;
+      --ok:           #66BB6A;
+      --warn:         #FFA726;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Noto Sans JP", "Hiragino Sans", "Meiryo", "Roboto", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.65;
+      padding: 20px 16px 32px;
+    }
+    .header { margin-bottom: 20px; }
+    .header h1 { font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
+    .header .date { font-size: 11px; color: var(--text-muted); }
+    .summary {
+      background-color: var(--chip-bg);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+    }
+    .summary p { color: var(--chip-fg); font-size: 13px; }
+    h2 {
+      font-size: 15px; font-weight: 700; color: var(--text-primary);
+      margin-top: 24px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    h2 .num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
+      background-color: var(--accent); color: var(--bg);
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    p { color: var(--text-muted); margin-bottom: 8px; }
+    p:last-child { margin-bottom: 0; }
+    ul { padding-left: 18px; margin-bottom: 8px; }
+    li { color: var(--text-muted); margin-bottom: 4px; }
+    .card {
+      background-color: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px; margin: 8px 0;
+    }
+    .badge {
+      display: inline-block; background-color: var(--chip-bg); color: var(--chip-fg);
+      border-radius: 10px; padding: 2px 10px; font-size: 11px;
+      font-weight: 700; margin-bottom: 8px;
+    }
+    .ok   { color: var(--ok);   font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    strong { color: var(--text-primary); font-weight: 600; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 20px 0 0; }
+    footer { margin-top: 24px; font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.8; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>プライバシーポリシー</h1>
+    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; 最終更新：2025年5月</p>
+  </div>
+
+  <div class="summary">
+    <p><strong>概要：</strong>JTRは100%ローカルアプリです。<span class="ok">お客様の個人データはデバイスの外に出ることはありません</span>（都市のジオコーディング（Nominatim）を除く）。</p>
+  </div>
+
+  <h2><span class="num">1</span>収集するデータ</h2>
+  <p>アプリは<strong>連絡先の管理のみを目的として</strong>、以下の情報を保存します：</p>
+  <ul>
+    <li>名前、姓、性別</li>
+    <li>誕生日</li>
+    <li>居住地の市区町村およびGPS座標</li>
+    <li>ソーシャルネットワークのプロフィールリンク</li>
+    <li>出身地、趣味・関心、個人メモ</li>
+    <li>プロフィール写真（ローカル保存）</li>
+  </ul>
+
+  <h2><span class="num">2</span>データの保存</h2>
+  <div class="card">
+    <p><span class="ok">✓ 100%ローカル</span> — すべてのデータは、SQLiteデータベース（Room）を通じてお客様のデバイス上にのみ保存されます。<strong>リモートサーバーは使用しません。</strong></p>
+    <p style="margin-top:8px;"><span class="ok">✓ 完全削除</span> — アプリをアンインストールすると、関連するすべてのデータが完全に削除されます。</p>
+  </div>
+
+  <h2><span class="num">3</span>位置情報の使用</h2>
+  <p>位置情報の許可は<strong>近接リマインダー</strong>機能のためにのみ求められます：</p>
+  <ul>
+    <li>現在地と連絡先の居住都市間の距離計算（ハーバーサイン公式）</li>
+    <li>しばらく連絡していない連絡先の近くにいるときにローカル通知を送信</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> <strong>位置情報データ</strong>は第三者に送信されることも、デバイス外に保存されることもありません。</p>
+  </div>
+  <p>この機能はいつでも無効にできます：<strong>設定 → 近接リマインダー</strong></p>
+
+  <h2><span class="num">4</span>サードパーティサービス</h2>
+  <div class="card">
+    <span class="badge">Nominatim (OpenStreetMap)</span>
+    <p>市区町村を検索または選択する際、市区町村名はジオコーディングのためにNominatim APIに送信されます。<strong>個人データは送信されません。</strong></p>
+    <p style="margin-top:6px;font-size:12px;">利用規約：<a href="https://nominatim.org/release-docs/latest/api/Overview/">nominatim.org</a></p>
+  </div>
+  <p><span class="ok">✓</span> <strong>他のサードパーティサービス</strong>（分析、広告、クラッシュレポート）は一切統合されていません。</p>
+
+  <h2><span class="num">5</span>通知</h2>
+  <p>JTRの通知は<strong>完全にローカル</strong>で、いかなるサーバーも経由しません：</p>
+  <ul>
+    <li><strong>誕生日リマインダー</strong> — 当日にローカルでトリガー</li>
+    <li><strong>近接リマインダー</strong> — WorkManagerまたはジオフェンシングによりローカルでトリガー</li>
+  </ul>
+
+  <h2><span class="num">6</span>お客様の権利</h2>
+  <ul>
+    <li><strong>アクセスと変更</strong> — すべてのデータはアプリ内で確認・編集できます</li>
+    <li><strong>削除</strong> — すべての連絡先またはカテゴリーを削除できます（30日間のゴミ箱）</li>
+    <li><strong>完全削除</strong> — アプリをアンインストールするとすべてのデータが消去されます</li>
+    <li><strong>許可の管理</strong> — 位置情報と通知はAndroid設定でいつでも取り消すことができます</li>
+  </ul>
+
+  <h2><span class="num">7</span>未成年者</h2>
+  <p>JTRは13歳未満の方のデータを意図的に収集しておらず、そのような対象者に向けたものではありません。</p>
+
+  <h2><span class="num">8</span>お問い合わせ</h2>
+  <p>このポリシーに関するご質問は：</p>
+  <p><a href="mailto:justtorememberjtr@gmail.com">justtorememberjtr@gmail.com</a></p>
+
+  <hr>
+
+  <footer>
+    <p>JTR — Just To Remember &nbsp;·&nbsp; バージョン 4.1</p>
+    <p>このポリシーは更新される場合があります。適用されるバージョンはアプリ内で提供されているものです。</p>
+  </footer>
+
+</body>
+</html>

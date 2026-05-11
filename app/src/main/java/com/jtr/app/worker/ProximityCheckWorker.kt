@@ -59,9 +59,11 @@ class ProximityCheckWorker(
                 .filter { it.cityNotify && it.hasGeoCoordinates }
 
             contacts.forEach { person ->
+                val lat = person.cityLat ?: return@forEach
+                val lng = person.cityLng ?: return@forEach
                 val distance = calculateDistance(
                     location.latitude, location.longitude,
-                    person.cityLat!!, person.cityLng!!
+                    lat, lng
                 )
 
                 // Distance < rayon configuré ET pas contacté depuis 90+ jours

@@ -76,6 +76,12 @@ class AddPersonViewModel(
     private val _firstNameError = MutableStateFlow(false)
     val firstNameError: StateFlow<Boolean> = _firstNameError.asStateFlow()
 
+    private val _birthdateNotify = MutableStateFlow(false)
+    val birthdateNotify: StateFlow<Boolean> = _birthdateNotify.asStateFlow()
+
+    private val _cityNotify = MutableStateFlow(false)
+    val cityNotify: StateFlow<Boolean> = _cityNotify.asStateFlow()
+
     // Liens sociaux en attente — persistés vers Room après création de la personne
     private val _pendingLinks = MutableStateFlow<List<PendingLink>>(emptyList())
     val pendingLinks: StateFlow<List<PendingLink>> = _pendingLinks.asStateFlow()
@@ -102,6 +108,8 @@ class AddPersonViewModel(
     fun onGenderChanged(v: String?) { _gender.value = v }
     fun onBirthdateChanged(v: Long?) { _birthdate.value = v }
     fun onCityChanged(v: String) { _city.value = v; _cityLat.value = null; _cityLng.value = null }
+    fun onBirthdateNotifyChanged(v: Boolean) { _birthdateNotify.value = v }
+    fun onCityNotifyChanged(v: Boolean) { _cityNotify.value = v }
     fun onOriginChanged(v: String) { _origin.value = v }
     fun onLikesChanged(v: String) { _likes.value = v }
     fun onNotesChanged(v: String) { _notes.value = v }
@@ -121,9 +129,11 @@ class AddPersonViewModel(
                 lastName = _lastName.value.trim().ifBlank { null },
                 gender = _gender.value,
                 birthdate = _birthdate.value,
+                birthdateNotify = _birthdateNotify.value,
                 city = _city.value.trim().ifBlank { null },
                 cityLat = _cityLat.value,
                 cityLng = _cityLng.value,
+                cityNotify = _cityNotify.value,
                 photoUri = _photoUri.value,
                 notes = _notes.value.trim().ifBlank { null },
                 likes = _likes.value.trim().ifBlank { null },

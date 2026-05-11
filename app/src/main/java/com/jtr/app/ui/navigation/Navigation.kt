@@ -38,7 +38,6 @@ object Routes {
     // Route optionnelle : categoryId pré-remplit la catégorie lors de la création
     const val ADD_PERSON = "add_person?categoryId={categoryId}"
     const val PERSON_DETAIL = "person_detail/{personId}"
-    const val EDIT_PERSON = "edit_person/{personId}"
     const val CATEGORIES = "categories"
     const val CATEGORY_DETAIL = "category_detail/{categoryId}"
     const val SETTINGS = "settings"
@@ -46,7 +45,6 @@ object Routes {
     const val TRASH = "trash"
 
     fun personDetail(personId: String) = "person_detail/$personId"
-    fun editPerson(personId: String) = "edit_person/$personId"
     fun categoryDetail(categoryId: String) = "category_detail/$categoryId"
 
     /** Navigation vers AddPersonScreen depuis une catégorie (contact pré-assigné). */
@@ -75,7 +73,9 @@ fun JTRMainScaffold(
     isDarkMode: Boolean,
     onDarkModeChange: (Boolean) -> Unit,
     selectedPreset: ThemePreset,
-    onPresetSelected: (ThemePreset) -> Unit
+    onPresetSelected: (ThemePreset) -> Unit,
+    customColor: Long = 0xFF1565C0L,
+    onCustomColorSelected: (Long) -> Unit = {}
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -161,34 +161,6 @@ fun JTRMainScaffold(
                 var categoryNames by remember { mutableStateOf<List<String>>(emptyList()) }
                 val scope = rememberCoroutineScope()
                 val db = AppDatabase.getInstance(LocalContext.current)
-
-                LaunchedEffect(personId) {
-                    person = repository.getById(personId)
-                    // Récupère tous les noms de catégories via la table de jointure (Many-to-Many)
-                    val categoryIds = db.personCategoryDao().getCategoryIdsForPersonSync(personId)
-                    categoryNames = categoryIds.mapNotNull { db.categoryDao().getById(it)?.name }
-                    repository.markAsContacted(personId)
-                }
-
-                PersonDetailScreen(
-                    person = person,
-                    categoryNames = categoryNames,
-                    onNavigateBack = { navController.popBackStack() },
-                    onEditClick = { navController.navigate(Routes.editPerson(personId)) },
-                    onDeleteClick = {
-                        scope.launch {
-                            repository.softDelete(personId)
-                            navController.popBackStack()
-                        }
-                    }
-                )
-            }
-
-            composable(
-                route = Routes.EDIT_PERSON,
-                arguments = listOf(navArgument("personId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val personId = backStackEntry.arguments?.getString("personId") ?: ""
                 val cityFromMap by backStackEntry.savedStateHandle
                     .getStateFlow<String?>("selected_city", null)
                     .collectAsStateWithLifecycle()
@@ -198,9 +170,24 @@ fun JTRMainScaffold(
                 val lngFromMap by backStackEntry.savedStateHandle
                     .getStateFlow<Double?>("selected_lng", null)
                     .collectAsStateWithLifecycle()
-                EditPersonScreen(
-                    personId = personId,
+
+                LaunchedEffect(personId) {
+                    person = repository.getById(personId)
+                    val categoryIds = db.personCategoryDao().getCategoryIdsForPersonSync(personId)
+                    categoryNames = categoryIds.mapNotNull { db.categoryDao().getById(it)?.name }
+                    repository.markAsContacted(personId)
+                }
+
+                PersonDetailScreen(
+                    person = person,
+                    categoryNames = categoryNames,
                     onNavigateBack = { navController.popBackStack() },
+                    onDeleteClick = {
+                        scope.launch {
+                            repository.softDelete(personId)
+                            navController.popBackStack()
+                        }
+                    },
                     onNavigateToMap = { navController.navigate(Routes.MAP_PICKER) },
                     cityFromMap = cityFromMap,
                     latFromMap = latFromMap,
@@ -260,6 +247,8 @@ fun JTRMainScaffold(
                     onDarkModeChange = onDarkModeChange,
                     selectedPreset = selectedPreset,
                     onPresetSelected = onPresetSelected,
+                    customColor = customColor,
+                    onCustomColorSelected = onCustomColorSelected,
                     onNavigateToTrash = { navController.navigate(Routes.TRASH) }
                 )
             }

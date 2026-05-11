@@ -44,6 +44,7 @@ fun CategoriesScreen(
 ) {
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val personCountByCategory by viewModel.personCountByCategory.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var pendingDeleteCategory by remember { mutableStateOf<Category?>(null) }
     var pendingEditCategory by remember { mutableStateOf<Category?>(null) }
@@ -110,39 +111,60 @@ fun CategoriesScreen(
             }
         }
     ) { padding ->
-        if (categories.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Folder, contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(stringResource(R.string.categories_empty_title),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(stringResource(R.string.categories_empty_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.setSearchQuery(it) },
+                placeholder = { Text(stringResource(R.string.home_search_placeholder)) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                            Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.common_clear))
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
+            if (categories.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.Folder, contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(stringResource(R.string.categories_empty_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.categories_empty_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(categories, key = { it.id }) { category ->
-                    val count = personCountByCategory[category.id] ?: 0
-                    CategoryCard(
-                        category = category,
-                        personCount = count,
-                        onClick = { onCategoryClick(category.id) },
-                        onEdit = { pendingEditCategory = category },
-                        onDelete = { pendingDeleteCategory = category }
-                    )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(categories, key = { it.id }) { category ->
+                        val count = personCountByCategory[category.id] ?: 0
+                        CategoryCard(
+                            category = category,
+                            personCount = count,
+                            onClick = { onCategoryClick(category.id) },
+                            onEdit = { pendingEditCategory = category },
+                            onDelete = { pendingDeleteCategory = category }
+                        )
+                    }
                 }
             }
         }

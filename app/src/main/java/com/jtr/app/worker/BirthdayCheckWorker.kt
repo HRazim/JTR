@@ -22,6 +22,10 @@ class BirthdayCheckWorker(
     private val repository = PersonRepository(context)
 
     override suspend fun doWork(): Result {
+        val prefs = context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("notifications_enabled", true) ||
+            !prefs.getBoolean("birthday_enabled", true)) return Result.success()
+
         val today = Calendar.getInstance()
         val todayDay = today.get(Calendar.DAY_OF_MONTH)
         val todayMonth = today.get(Calendar.MONTH)
@@ -30,9 +34,8 @@ class BirthdayCheckWorker(
             .filter { it.birthdateNotify && it.birthdate != null }
 
         persons.forEach { person ->
-            val birthday = Calendar.getInstance().apply {
-                timeInMillis = person.birthdate!!
-            }
+            val millis = person.birthdate ?: return@forEach
+            val birthday = Calendar.getInstance().apply { timeInMillis = millis }
             if (birthday.get(Calendar.DAY_OF_MONTH) == todayDay &&
                 birthday.get(Calendar.MONTH) == todayMonth) {
                 sendBirthdayNotification(person.firstName)
