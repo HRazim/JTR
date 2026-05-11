@@ -20,11 +20,6 @@ class ThemeViewModel(application: Application) : AndroidViewModel(application) {
     )
     val selectedPreset: StateFlow<ThemePreset> = _selectedPreset.asStateFlow()
 
-    private val _customColor = MutableStateFlow(
-        prefs.getLong("custom_color", 0xFF1565C0L)
-    )
-    val customColor: StateFlow<Long> = _customColor.asStateFlow()
-
     fun setDarkMode(enabled: Boolean) {
         _isDarkMode.value = enabled
         prefs.edit().putBoolean("dark_mode", enabled).apply()
@@ -33,10 +28,5 @@ class ThemeViewModel(application: Application) : AndroidViewModel(application) {
     fun setPreset(preset: ThemePreset) {
         _selectedPreset.value = preset
         prefs.edit().putString("theme_preset", preset.name).apply()
-    }
-
-    fun setCustomColor(color: Long) {
-        _customColor.value = color
-        prefs.edit().putLong("custom_color", color).apply()
     }
 }

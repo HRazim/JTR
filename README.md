@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> **Carnet de contacts enrichi nouvelle génération** · Version `4.2`  
+> **Carnet de contacts enrichi nouvelle génération** · Version `4.3`  
 > Projet personnel Android — Kotlin · Jetpack Compose · MVVM
 
 ---
@@ -14,20 +14,21 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 ## 📋 Table des matières
 
 1. [Aperçu visuel](#-aperçu-visuel)
-2. [Nouveautés v4.2](#-nouveautés-v42)
-3. [Nouveautés v4.1](#-nouveautés-v41)
-4. [Nouveautés v4.0](#-nouveautés-v40)
-5. [Arborescence du projet](#-arborescence-du-projet)
-6. [Architecture MVVM](#-architecture-mvvm)
-7. [Stack technologique](#-stack-technologique)
-8. [Répertoire des classes](#-répertoire-des-classes-et-composants)
-9. [Fonctionnalités clés](#-fonctionnalités-clés)
-10. [Base de données Room](#-base-de-données-room)
-11. [Guide d'installation](#-guide-dinstallation-et-configuration)
-12. [Permissions requises](#-permissions-requises)
-13. [Tests et qualité](#-tests-et-qualité)
-14. [Optimisations de performance](#-optimisations-de-performance)
-15. [Évolution par version](#-évolution-par-version)
+2. [Nouveautés v4.3](#-nouveautés-v43)
+3. [Nouveautés v4.2](#-nouveautés-v42)
+4. [Nouveautés v4.1](#-nouveautés-v41)
+5. [Nouveautés v4.0](#-nouveautés-v40)
+6. [Arborescence du projet](#-arborescence-du-projet)
+7. [Architecture MVVM](#-architecture-mvvm)
+8. [Stack technologique](#-stack-technologique)
+9. [Répertoire des classes](#-répertoire-des-classes-et-composants)
+10. [Fonctionnalités clés](#-fonctionnalités-clés)
+11. [Base de données Room](#-base-de-données-room)
+12. [Guide d'installation](#-guide-dinstallation-et-configuration)
+13. [Permissions requises](#-permissions-requises)
+14. [Tests et qualité](#-tests-et-qualité)
+15. [Optimisations de performance](#-optimisations-de-performance)
+16. [Évolution par version](#-évolution-par-version)
 
 ---
 
@@ -36,6 +37,43 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 | Accueil | Détail contact | Carte MapLibre | Paramètres |
 |---------|---------------|----------------|------------|
 | Liste filtrée, icônes réseaux sociaux, favoris, recherche | Photo, mini-carte, liens sociaux brandés | Sélecteur GPS natif, zoom/pan libre | Thèmes, corbeille, rayon de proximité |
+
+---
+
+## 🚀 Nouveautés v4.3
+
+### 1. Simplification du système de thèmes
+
+La fonctionnalité de couleur personnalisée — preset `CUSTOM`, color picker à 3 canaux et persistance des couleurs hex — a été **entièrement supprimée** pour réduire la complexité du code et de l'interface.
+
+**Ce qui a été retiré :**
+
+| Composant supprimé | Localisation |
+|--------------------|-------------|
+| Preset `CUSTOM` | `ThemePreset.kt` — l'enum passe de 7 à 6 entrées |
+| `buildCustomColorScheme()` + helpers `lighten()`, `darken()`, `colorLuminance()` | `ThemePreset.kt` |
+| `ColorPickerDialog` et `ColorSwatchPicker` | `SettingsScreen.kt` |
+| Liste `colorPickerSwatches` (24 pastilles ARGB) | `SettingsScreen.kt` |
+| `customColor`, `customSecondary`, `customTertiary` StateFlows + clés SharedPreferences | `ThemeViewModel.kt` |
+| Paramètres `customColor` / `customSecondary` / `customTertiary` | `JTRTheme`, `JTRMainScaffold`, `MainActivity` |
+| Chaînes `theme_name_custom`, `color_picker_title`, `color_role_*` | 5 fichiers `strings.xml` (EN/FR/ES/ZH/JA) |
+
+**Résultat — `Theme.kt` réduit à une expression unique :**
+
+```kotlin
+val colorScheme = if (darkTheme) preset.toDarkColorScheme() else preset.toLightColorScheme()
+```
+
+**`ThemeViewModel` ne persiste plus que deux états :**
+
+| Clé SharedPreferences | Type | Valeur par défaut |
+|-----------------------|------|------------------|
+| `dark_mode` | `Boolean` | `false` |
+| `theme_preset` | `String` (nom enum) | `JTR_SIGNATURE` |
+
+**Presets disponibles (6) :** JTR Signature · Azure · Emerald · Coral · Violet · Rose
+
+Les noms localisés (`@StringRes labelRes`) et l'affichage des trois pastilles de prévisualisation dans `ThemePresetCard` sont conservés tels quels depuis v4.2.
 
 ---
 
@@ -673,7 +711,7 @@ fun getSocialIcon(url: String): Int = try {
 | `CategoryViewModel` | `categories`, `personCountByCategory`, **`searchQuery`** | `addCategory()`, `updateCategory()`, `deleteCategoryWithCascade()`, **`setSearchQuery()`** |
 | `CategoryDetailViewModel` | `category`, `persons`, `searchQuery`, `selectedIds` | `toggleSelection()`, `removeSelectedFromCategory()`, `assignPersonsToCategory()` |
 | `SettingsViewModel` | `notificationsEnabled`, `proximityEnabled`, `birthdayEnabled`, `proximityRadiusKm` | `setNotificationsEnabled()`, `setProximityEnabled()`, `setBirthdayEnabled()`, `setProximityRadiusKm()` |
-| `ThemeViewModel` | `isDarkMode`, `selectedPreset`, **`customColor`** | `setDarkMode()`, `setPreset()`, **`setCustomColor()`** |
+| `ThemeViewModel` | `isDarkMode`, `selectedPreset` | `setDarkMode()`, `setPreset()` |
 | `TrashViewModel` | `deletedPersons`, `deletedCategories` | `restore()`, `hardDelete()`, `hardDeleteAll()` |
 | `MapViewModel` | `searchResults`, `isSearching`, `selectedLocation`, `cameraEvent` | `search()` (debounce 400 ms), `selectFromSearch()`, `onMapClick()` |
 
@@ -935,8 +973,8 @@ android {
         applicationId = "com.jtr.app"
         minSdk        = 26
         targetSdk     = 35
-        versionCode   = 6
-        versionName   = "4.2"
+        versionCode   = 7
+        versionName   = "4.3"
     }
     kotlinOptions { jvmTarget = "17" }
     packaging {
@@ -1082,6 +1120,7 @@ MapLibre 11.5.0 + `useLegacyPackaging = false` garantit que les `.so` sont stock
 | **v4.0-Final** | **Dynamic Social Icon Mapping** (7 drawables brandés, `getSocialIcon`), **Liens sociaux à la création** (`PendingLink`, `AddPersonViewModel`), **Fix gestes MapLibre** (`requestDisallowInterceptTouchEvent` sur plein écran + mini-carte), **DB v7** (`social_links`, `SocialLinkDao`), User-Agent mis à jour |
 | **v4.1** | **Internationalisation i18n** (EN/FR/ES/ZH, ~195 clés, format args positionnels, `@StringRes` BottomNavItem, `Locale.getDefault()`), **RGPD** (politique de confidentialité HTML dark/light, `PrivacyPolicySheet` WebView sans JS), `versionCode = 5` |
 | **v4.2** | **Unification UX édition** (suppression route `EDIT_PERSON`, édition inline unique), **Toggles notif en création** (`birthdateNotify`/`cityNotify` dans `AddPersonScreen`), **Refonte thèmes** (`JTR_SIGNATURE` par défaut, suppression `SLATE`, preset `CUSTOM` + color picker libre, `buildCustomColorScheme`), **Recherche catégories** (barre + tri A-Z dans `CategoryViewModel`), **Audit workers** (guards globaux `BirthdayCheckWorker`, safe nulls `ProximityCheckWorker`), **Japonais** (5ᵉ langue, `values-ja/`), `versionCode = 6` |
+| **v4.3** | **Simplification thèmes** — suppression du preset `CUSTOM`, de `buildCustomColorScheme`, du `ColorPickerDialog` et des 3 StateFlows de couleur dans `ThemeViewModel` ; 6 presets fixes uniquement (JTR Signature · Azure · Emerald · Coral · Violet · Rose) ; `Theme.kt` réduit à une expression unique ; nettoyage des chaînes `color_role_*` / `theme_name_custom` dans les 5 locales, `versionCode = 7` |
 
 ---
 
@@ -1103,4 +1142,4 @@ Les tuiles sont servies par [OpenFreeMap](https://openfreemap.org) (licence libr
 
 ---
 
-*JTR v4.2 — Kotlin · Jetpack Compose · MVVM*
+*JTR v4.3 — Kotlin · Jetpack Compose · MVVM*

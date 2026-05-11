@@ -141,6 +141,13 @@
     <string name="trash_group_purge_days">残り%1$d日</string>
     <string name="trash_group_status">%1$d件の連絡先 · %2$s</string>
 
+    <!-- ── Theme presets ────────────────────────────────────────────────── -->
+    <string name="theme_name_jtr">JTR</string>
+    <string name="theme_name_azure">アジュール</string>
+    <string name="theme_name_emerald">エメラルド</string>
+    <string name="theme_name_coral">コーラル</string>
+    <string name="theme_name_violet">バイオレット</string>
+    <string name="theme_name_rose">ローズ</string>
     <!-- ── Settings screen ────────────────────────────────────────────────── -->
     <string name="settings_title">設定</string>
     <string name="settings_section_notifications">通知</string>

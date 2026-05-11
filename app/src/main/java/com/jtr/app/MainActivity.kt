@@ -29,9 +29,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val isDarkMode by themeViewModel.isDarkMode.collectAsState()
             val selectedPreset by themeViewModel.selectedPreset.collectAsState()
-            val customColor by themeViewModel.customColor.collectAsState()
 
-            JTRTheme(darkTheme = isDarkMode, preset = selectedPreset, customColor = customColor) {
+            JTRTheme(darkTheme = isDarkMode, preset = selectedPreset) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -43,9 +42,7 @@ class MainActivity : ComponentActivity() {
                         isDarkMode = isDarkMode,
                         onDarkModeChange = { themeViewModel.setDarkMode(it) },
                         selectedPreset = selectedPreset,
-                        onPresetSelected = { themeViewModel.setPreset(it) },
-                        customColor = customColor,
-                        onCustomColorSelected = { themeViewModel.setCustomColor(it) }
+                        onPresetSelected = { themeViewModel.setPreset(it) }
                     )
                 }
             }

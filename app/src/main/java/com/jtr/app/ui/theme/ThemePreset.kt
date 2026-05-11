@@ -1,57 +1,53 @@
 package com.jtr.app.ui.theme
 
+import androidx.annotation.StringRes
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import com.jtr.app.R
 
 enum class ThemePreset(
-    val displayName: String,
+    @StringRes val labelRes: Int,
     val previewPrimary: Color,
     val previewSecondary: Color,
     val previewTertiary: Color
 ) {
     JTR_SIGNATURE(
-        displayName = "JTR",
+        labelRes = R.string.theme_name_jtr,
         previewPrimary = Color(0xFF1A1A1A),
         previewSecondary = Color(0xFF444444),
         previewTertiary = Color(0xFFE0E0E0)
     ),
     AZURE(
-        displayName = "Azure",
+        labelRes = R.string.theme_name_azure,
         previewPrimary = Color(0xFF1565C0),
         previewSecondary = Color(0xFF0288D1),
         previewTertiary = Color(0xFFBBDEFB)
     ),
     EMERALD(
-        displayName = "Émeraude",
+        labelRes = R.string.theme_name_emerald,
         previewPrimary = Color(0xFF00695C),
         previewSecondary = Color(0xFF26A69A),
         previewTertiary = Color(0xFFE0F2F1)
     ),
     CORAL(
-        displayName = "Corail",
+        labelRes = R.string.theme_name_coral,
         previewPrimary = Color(0xFFBF360C),
         previewSecondary = Color(0xFFFF7043),
         previewTertiary = Color(0xFFFBE9E7)
     ),
     VIOLET(
-        displayName = "Violet",
+        labelRes = R.string.theme_name_violet,
         previewPrimary = Color(0xFF6A1B9A),
         previewSecondary = Color(0xFFAB47BC),
         previewTertiary = Color(0xFFF3E5F5)
     ),
     ROSE(
-        displayName = "Rose",
+        labelRes = R.string.theme_name_rose,
         previewPrimary = Color(0xFFAD1457),
         previewSecondary = Color(0xFFE91E63),
         previewTertiary = Color(0xFFFCE4EC)
-    ),
-    CUSTOM(
-        displayName = "Personnalisé",
-        previewPrimary = Color(0xFF888888),
-        previewSecondary = Color(0xFFAAAAAA),
-        previewTertiary = Color(0xFFCCCCCC)
     )
 }
 
@@ -152,22 +148,6 @@ fun ThemePreset.toLightColorScheme(): ColorScheme = when (this) {
         surfaceVariant = Color(0xFFF3DEE5),
         onSurfaceVariant = Color(0xFF514349),
     )
-    ThemePreset.CUSTOM -> lightColorScheme(
-        primary = Color(0xFF1565C0),
-        onPrimary = Color.White,
-        primaryContainer = Color(0xFFD3E4FF),
-        onPrimaryContainer = Color(0xFF001C39),
-        secondary = Color(0xFF0277BD),
-        onSecondary = Color.White,
-        secondaryContainer = Color(0xFFCBE6FF),
-        onSecondaryContainer = Color(0xFF001E31),
-        background = Color(0xFFFAFDFF),
-        onBackground = Color(0xFF001F2A),
-        surface = Color(0xFFFAFDFF),
-        onSurface = Color(0xFF001F2A),
-        surfaceVariant = Color(0xFFDDE3EA),
-        onSurfaceVariant = Color(0xFF41484D),
-    )
 }
 
 fun ThemePreset.toDarkColorScheme(): ColorScheme = when (this) {
@@ -266,55 +246,5 @@ fun ThemePreset.toDarkColorScheme(): ColorScheme = when (this) {
         onSurface = Color(0xFFFFD9E3),
         surfaceVariant = Color(0xFF514349),
         onSurfaceVariant = Color(0xFFD5C2C8),
-    )
-    ThemePreset.CUSTOM -> darkColorScheme(
-        primary = Color(0xFF9ECAFF),
-        onPrimary = Color(0xFF003060),
-        primaryContainer = Color(0xFF004789),
-        onPrimaryContainer = Color(0xFFD3E4FF),
-        secondary = Color(0xFF90C8FF),
-        onSecondary = Color(0xFF003353),
-        secondaryContainer = Color(0xFF004B76),
-        onSecondaryContainer = Color(0xFFCBE6FF),
-        background = Color(0xFF001F2A),
-        onBackground = Color(0xFFBFE9FF),
-        surface = Color(0xFF001F2A),
-        onSurface = Color(0xFFBFE9FF),
-        surfaceVariant = Color(0xFF41484D),
-        onSurfaceVariant = Color(0xFFC1C7CE),
-    )
-}
-
-/** Construit un ColorScheme à partir d'une couleur primaire arbitraire (preset CUSTOM). */
-fun buildCustomColorScheme(primary: Color, dark: Boolean): ColorScheme {
-    val onPrimary = if (primary.red * 0.299f + primary.green * 0.587f + primary.blue * 0.114f > 0.55f)
-        Color(0xFF000000) else Color(0xFFFFFFFF)
-    val container = primary.copy(
-        red = (primary.red * 0.7f + 1f * 0.3f).coerceIn(0f, 1f),
-        green = (primary.green * 0.7f + 1f * 0.3f).coerceIn(0f, 1f),
-        blue = (primary.blue * 0.7f + 1f * 0.3f).coerceIn(0f, 1f)
-    )
-    return if (dark) darkColorScheme(
-        primary = primary,
-        onPrimary = onPrimary,
-        primaryContainer = container.copy(alpha = 0.4f),
-        onPrimaryContainer = Color(0xFFECECEC),
-        background = Color(0xFF121212),
-        onBackground = Color(0xFFECECEC),
-        surface = Color(0xFF1E1E1E),
-        onSurface = Color(0xFFECECEC),
-        surfaceVariant = Color(0xFF2A2A2A),
-        onSurfaceVariant = Color(0xFFB0B0B0),
-    ) else lightColorScheme(
-        primary = primary,
-        onPrimary = onPrimary,
-        primaryContainer = container.copy(alpha = 0.2f),
-        onPrimaryContainer = Color(0xFF0D0D0D),
-        background = Color(0xFFFFFFFF),
-        onBackground = Color(0xFF0D0D0D),
-        surface = Color(0xFFFAFAFA),
-        onSurface = Color(0xFF0D0D0D),
-        surfaceVariant = Color(0xFFEEEEEE),
-        onSurfaceVariant = Color(0xFF444444),
     )
 }

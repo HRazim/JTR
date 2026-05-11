@@ -1,5 +1,6 @@
 package com.jtr.app.ui.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -74,8 +75,6 @@ fun JTRMainScaffold(
     onDarkModeChange: (Boolean) -> Unit,
     selectedPreset: ThemePreset,
     onPresetSelected: (ThemePreset) -> Unit,
-    customColor: Long = 0xFF1565C0L,
-    onCustomColorSelected: (Long) -> Unit = {}
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -83,6 +82,7 @@ fun JTRMainScaffold(
     val showBottomBar = currentRoute in listOf(Routes.HOME, Routes.CATEGORIES, Routes.SETTINGS)
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0),
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
@@ -247,8 +247,6 @@ fun JTRMainScaffold(
                     onDarkModeChange = onDarkModeChange,
                     selectedPreset = selectedPreset,
                     onPresetSelected = onPresetSelected,
-                    customColor = customColor,
-                    onCustomColorSelected = onCustomColorSelected,
                     onNavigateToTrash = { navController.navigate(Routes.TRASH) }
                 )
             }

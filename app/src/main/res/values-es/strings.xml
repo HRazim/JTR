@@ -141,6 +141,13 @@
     <string name="trash_group_purge_days">quedan %1$d días</string>
     <string name="trash_group_status">%1$d contacto(s) · %2$s</string>
 
+    <!-- ── Theme presets ────────────────────────────────────────────────── -->
+    <string name="theme_name_jtr">JTR</string>
+    <string name="theme_name_azure">Azul</string>
+    <string name="theme_name_emerald">Esmeralda</string>
+    <string name="theme_name_coral">Coral</string>
+    <string name="theme_name_violet">Violeta</string>
+    <string name="theme_name_rose">Rosa</string>
     <!-- ── Settings screen ────────────────────────────────────────────────── -->
     <string name="settings_title">Configuración</string>
     <string name="settings_section_notifications">Notificaciones</string>

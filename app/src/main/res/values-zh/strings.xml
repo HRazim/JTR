@@ -141,6 +141,13 @@
     <string name="trash_group_purge_days">还剩 %1$d 天</string>
     <string name="trash_group_status">%1$d 个联系人 · %2$s</string>
 
+    <!-- ── Theme presets ────────────────────────────────────────────────── -->
+    <string name="theme_name_jtr">JTR</string>
+    <string name="theme_name_azure">天蓝</string>
+    <string name="theme_name_emerald">翠绿</string>
+    <string name="theme_name_coral">珊瑚</string>
+    <string name="theme_name_violet">紫罗兰</string>
+    <string name="theme_name_rose">玫瑰</string>
     <!-- ── Settings screen ────────────────────────────────────────────────── -->
     <string name="settings_title">设置</string>
     <string name="settings_section_notifications">通知</string>
