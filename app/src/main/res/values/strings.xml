@@ -4,11 +4,16 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">Cancel</string>
+    <string name="crop_action">Crop</string>
+    <string name="crop_hint">Pinch to zoom · drag to reframe</string>
     <string name="common_ok">OK</string>
     <string name="common_delete">Delete</string>
     <string name="common_save">Save</string>
     <string name="common_back">Back</string>
     <string name="common_edit">Edit</string>
+    <string name="common_more_actions">More actions</string>
+    <string name="categories_view_list_cd">Switch to list view</string>
+    <string name="categories_view_grid_cd">Switch to grid view</string>
     <string name="common_add">Add</string>
     <string name="common_create">Create</string>
     <string name="common_restore">Restore</string>
@@ -80,7 +85,9 @@
     <string name="person_birthday_notify">Notify on birthday</string>
     <string name="person_city_label">City</string>
     <string name="person_city_map_cd">Choose on map</string>
-    <string name="person_city_notify">Notify if nearby</string>
+    <string name="person_city_notify">Alert me when I pass near this city</string>
+    <string name="person_proximity_disabled_hint">Disabled in settings</string>
+    <string name="person_proximity_blocked_snackbar">Enable proximity notifications in Settings first</string>
     <string name="person_social_links_title">Social networks</string>
     <string name="person_add_social_link">Add a social link</string>
     <string name="person_social_delete_cd">Delete</string>
@@ -100,6 +107,11 @@
     <string name="person_edit_photo_label">Edit</string>
     <string name="person_map_cd">Map</string>
     <string name="person_map_hide_cd">Hide</string>
+    <string name="person_phone_label">Phone</string>
+    <string name="person_email_label">Email</string>
+    <string name="person_action_call">Call</string>
+    <string name="person_action_sms">SMS</string>
+    <string name="person_action_email">Email</string>
     <string name="person_add_link_dialog_title">Add a social link</string>
     <string name="person_add_link_url_label">Paste URL</string>
     <string name="person_add_link_action">Add</string>
@@ -155,10 +167,10 @@
     <string name="settings_notifications_subtitle">Enable or disable all notifications</string>
     <string name="settings_proximity_title">Proximity reminders</string>
     <string name="settings_proximity_subtitle">Notify when a contact is nearby</string>
-    <string name="settings_proximity_radius_label">Detection radius</string>
-    <string name="settings_proximity_radius_km">%1$d km</string>
-    <string name="settings_proximity_radius_min">1 km</string>
-    <string name="settings_proximity_radius_max">50 km</string>
+    <string name="settings_location_denied">Location permission denied — proximity stays off</string>
+    <string name="settings_location_bg_title">Background location</string>
+    <string name="settings_location_bg_message">JTR needs permanent location access to alert you when you pass near a contact, even when the app is closed.</string>
+    <string name="settings_location_bg_open">Open settings</string>
     <string name="settings_birthday_title">Birthday reminders</string>
     <string name="settings_birthday_subtitle">Notify on birthdays</string>
     <string name="settings_section_appearance">Appearance</string>
@@ -198,4 +210,8 @@
     <!-- args: 1=city 2=daysSince -->
     <string name="notif_geofence_text">You are currently in %1$s — it\'s been %2$d days since you last saw each other!</string>
     <string name="notif_geofence_city_fallback">this city</string>
+
+    <!-- ── Profile edit: secondary fields ─────────────────────────────────── -->
+    <string name="person_more_info_show">Add more information</string>
+    <string name="person_more_info_hide">Hide additional information</string>
 </resources>

@@ -32,6 +32,7 @@ import com.jtr.app.ui.person.*
 import com.jtr.app.ui.settings.SettingsScreen
 import com.jtr.app.ui.theme.ThemePreset
 import com.jtr.app.ui.trash.TrashScreen
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 object Routes {
@@ -171,11 +172,16 @@ fun JTRMainScaffold(
                     .getStateFlow<Double?>("selected_lng", null)
                     .collectAsStateWithLifecycle()
 
+                // Chargement unique des métadonnées (catégories), puis écoute réactive
+                // de la personne via Flow Room : toute sauvegarde (commitAllEdits) déclenche
+                // une recomposition immédiate sans quitter l'écran.
                 LaunchedEffect(personId) {
-                    person = repository.getById(personId)
                     val categoryIds = db.personCategoryDao().getCategoryIdsForPersonSync(personId)
                     categoryNames = categoryIds.mapNotNull { db.categoryDao().getById(it)?.name }
                     repository.markAsContacted(personId)
+                    repository.observeById(personId).collect { updated ->
+                        if (updated != null) person = updated
+                    }
                 }
 
                 PersonDetailScreen(

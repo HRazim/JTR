@@ -1,7 +1,13 @@
 package com.jtr.app.ui.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.webkit.WebView
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,11 +33,14 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jtr.app.R
+import kotlinx.coroutines.launch
 import com.jtr.app.ui.theme.ThemePreset
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +56,59 @@ fun SettingsScreen(
     val notificationsEnabled by settingsViewModel.notificationsEnabled.collectAsStateWithLifecycle()
     val proximityEnabled by settingsViewModel.proximityEnabled.collectAsStateWithLifecycle()
     val birthdayEnabled by settingsViewModel.birthdayEnabled.collectAsStateWithLifecycle()
-    val proximityRadiusKm by settingsViewModel.proximityRadiusKm.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var showBackgroundRationale by remember { mutableStateOf(false) }
+
+    val locationDeniedMsg = stringResource(R.string.settings_location_denied)
+
+    fun hasForegroundLocation(): Boolean =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+
+    fun hasBackgroundLocation(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+
+    // Étape 1 — Localisation au premier plan (pop-up système standard).
+    val foregroundLocationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                      permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (granted) {
+            settingsViewModel.setProximityEnabled(true)
+            // Étape 2 — propose la localisation en arrière-plan si requise par le Worker.
+            if (!hasBackgroundLocation()) showBackgroundRationale = true
+        } else {
+            // Refus / annulation → le Switch repasse à false + retour visuel.
+            settingsViewModel.setProximityEnabled(false)
+            scope.launch { snackbarHostState.showSnackbar(locationDeniedMsg) }
+        }
+    }
+
+    // Étape 3 — Synchronisation dynamique au retour sur l'écran (ON_RESUME), ce qui
+    // inclut le retour depuis les paramètres système du téléphone. La proximité
+    // exige la localisation au premier plan ET en arrière-plan : si l'une des deux
+    // manque réellement, on force le Switch à false (lecture + écriture synchrones,
+    // donc pas de clignotement — un seul recompose avec l'état correct).
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME &&
+                settingsViewModel.proximityEnabled.value &&
+                !(hasForegroundLocation() && hasBackgroundLocation())
+            ) {
+                settingsViewModel.setProximityEnabled(false)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Scaffold(
         topBar = {
@@ -58,7 +119,8 @@ fun SettingsScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -82,55 +144,22 @@ fun SettingsScreen(
                 subtitle = stringResource(R.string.settings_proximity_subtitle),
                 checked = proximityEnabled && notificationsEnabled,
                 enabled = notificationsEnabled,
-                onCheckedChange = { settingsViewModel.setProximityEnabled(it) }
-            )
-
-            if (proximityEnabled && notificationsEnabled) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = stringResource(R.string.settings_proximity_radius_label),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = stringResource(R.string.settings_proximity_radius_km, proximityRadiusKm.roundToInt()),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    Slider(
-                        value = proximityRadiusKm,
-                        onValueChange = { settingsViewModel.setProximityRadiusKm(it) },
-                        valueRange = 1f..50f,
-                        steps = 48,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            stringResource(R.string.settings_proximity_radius_min),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            stringResource(R.string.settings_proximity_radius_max),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                onCheckedChange = { enabled ->
+                    if (!enabled) {
+                        settingsViewModel.setProximityEnabled(false)
+                    } else if (hasForegroundLocation()) {
+                        settingsViewModel.setProximityEnabled(true)
+                        if (!hasBackgroundLocation()) showBackgroundRationale = true
+                    } else {
+                        foregroundLocationLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
                         )
                     }
                 }
-            }
+            )
 
             SettingsSwitch(
                 icon = Icons.Default.Cake,
@@ -244,6 +273,32 @@ fun SettingsScreen(
 
     if (showPrivacySheet) {
         PrivacyPolicySheet(isDarkMode = isDarkMode, onDismiss = { showPrivacySheet = false })
+    }
+
+    // Dialogue de rationale pour la localisation en arrière-plan : sur Android
+    // moderne, elle ne peut s'accorder que depuis les paramètres système.
+    if (showBackgroundRationale) {
+        AlertDialog(
+            onDismissRequest = { showBackgroundRationale = false },
+            icon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+            title = { Text(stringResource(R.string.settings_location_bg_title)) },
+            text = { Text(stringResource(R.string.settings_location_bg_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showBackgroundRationale = false
+                    val intent = android.content.Intent(
+                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        android.net.Uri.fromParts("package", context.packageName, null)
+                    )
+                    context.startActivity(intent)
+                }) { Text(stringResource(R.string.settings_location_bg_open)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBackgroundRationale = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
     }
 }
 

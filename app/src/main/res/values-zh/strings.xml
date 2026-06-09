@@ -4,11 +4,16 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">取消</string>
+    <string name="crop_action">裁剪</string>
+    <string name="crop_hint">捏合缩放 · 拖动重新构图</string>
     <string name="common_ok">确定</string>
     <string name="common_delete">删除</string>
     <string name="common_save">保存</string>
     <string name="common_back">返回</string>
     <string name="common_edit">编辑</string>
+    <string name="common_more_actions">更多操作</string>
+    <string name="categories_view_list_cd">切换到列表视图</string>
+    <string name="categories_view_grid_cd">切换到网格视图</string>
     <string name="common_add">添加</string>
     <string name="common_create">创建</string>
     <string name="common_restore">恢复</string>
@@ -80,7 +85,9 @@
     <string name="person_birthday_notify">生日当天提醒</string>
     <string name="person_city_label">城市</string>
     <string name="person_city_map_cd">在地图上选择</string>
-    <string name="person_city_notify">在附近时提醒</string>
+    <string name="person_city_notify">当我经过这座城市附近时提醒我</string>
+    <string name="person_proximity_disabled_hint">已在设置中禁用</string>
+    <string name="person_proximity_blocked_snackbar">请先在设置中启用附近提醒</string>
     <string name="person_social_links_title">社交网络</string>
     <string name="person_add_social_link">添加社交链接</string>
     <string name="person_social_delete_cd">删除</string>
@@ -155,10 +162,10 @@
     <string name="settings_notifications_subtitle">开启或关闭所有通知</string>
     <string name="settings_proximity_title">附近提醒</string>
     <string name="settings_proximity_subtitle">当联系人在附近时通知</string>
-    <string name="settings_proximity_radius_label">检测半径</string>
-    <string name="settings_proximity_radius_km">%1$d km</string>
-    <string name="settings_proximity_radius_min">1 km</string>
-    <string name="settings_proximity_radius_max">50 km</string>
+    <string name="settings_location_denied">位置权限被拒绝 — 附近提醒保持关闭</string>
+    <string name="settings_location_bg_title">后台位置信息</string>
+    <string name="settings_location_bg_message">JTR 需要持续的位置信息访问权限，以便在您经过联系人附近时提醒您，即使应用已关闭。</string>
+    <string name="settings_location_bg_open">打开设置</string>
     <string name="settings_birthday_title">生日提醒</string>
     <string name="settings_birthday_subtitle">在生日当天发送通知</string>
     <string name="settings_section_appearance">外观</string>
@@ -195,4 +202,8 @@
     <string name="notif_geofence_title">%1$s 在附近！</string>
     <string name="notif_geofence_text">您目前在 %1$s — 您们已经 %2$d 天没见面了！</string>
     <string name="notif_geofence_city_fallback">这座城市</string>
+
+    <!-- ── 个人资料编辑：次要字段 ─────────────────────────────────────────── -->
+    <string name="person_more_info_show">添加更多信息</string>
+    <string name="person_more_info_hide">隐藏其他信息</string>
 </resources>

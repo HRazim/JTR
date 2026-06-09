@@ -74,7 +74,14 @@ class JTRApplication : Application() {
 
     companion object {
         const val CHANNEL_PROXIMITY = "proximity_channel"
-        const val CHANNEL_BIRTHDAY = "birthday_channel"
+        const val CHANNEL_BIRTHDAY  = "birthday_channel"
+
+        /**
+         * Rayon de détection de proximité, fixé automatiquement (approche « zéro
+         * friction » : plus aucune sélection manuelle). 20 km couvre une métropole
+         * et sa périphérie (ex. Toulouse).
+         */
+        const val PROXIMITY_RADIUS_KM = 20f
 
         /** Singleton initialisé dans onCreate() — null uniquement en tests unitaires JVM. */
         var geofenceManager: GeofenceManager? = null

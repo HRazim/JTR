@@ -20,12 +20,14 @@ interface PersonDao {
         SELECT * FROM persons
         WHERE deletedAt IS NULL
         AND (
-            firstName LIKE '%' || :query || '%'
+            firstName   LIKE '%' || :query || '%'
             OR lastName  LIKE '%' || :query || '%'
             OR city      LIKE '%' || :query || '%'
             OR notes     LIKE '%' || :query || '%'
             OR likes     LIKE '%' || :query || '%'
             OR origin    LIKE '%' || :query || '%'
+            OR phoneNumber LIKE '%' || :query || '%'
+            OR email     LIKE '%' || :query || '%'
         )
         ORDER BY isFavorite DESC, firstName ASC
     """)
@@ -33,6 +35,10 @@ interface PersonDao {
 
     @Query("SELECT * FROM persons WHERE id = :id")
     suspend fun getById(id: String): Person?
+
+    /** Flow réactif — émet à chaque écriture sur cette ligne. */
+    @Query("SELECT * FROM persons WHERE id = :id")
+    fun observeById(id: String): Flow<Person?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(person: Person)

@@ -1,6 +1,7 @@
 package com.jtr.app.ui.person
 
 import android.app.Application
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
@@ -34,6 +35,12 @@ class AddPersonViewModel(
 ) : AndroidViewModel(application) {
 
     private val repository = PersonRepository(application.applicationContext)
+    private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
+
+    /** La notif de proximité ne peut être vraie que si tout est activé globalement. */
+    private fun proximityAllowed(): Boolean =
+        prefs.getBoolean("notifications_enabled", false) &&
+            prefs.getBoolean("proximity_enabled", false)
 
     // categoryId transmis depuis CategoryDetailScreen (peut être null ou vide)
     private val presetCategoryId: String? =
@@ -69,6 +76,12 @@ class AddPersonViewModel(
 
     private val _notes = MutableStateFlow("")
     val notes: StateFlow<String> = _notes.asStateFlow()
+
+    private val _phoneNumber = MutableStateFlow("")
+    val phoneNumber: StateFlow<String> = _phoneNumber.asStateFlow()
+
+    private val _email = MutableStateFlow("")
+    val email: StateFlow<String> = _email.asStateFlow()
 
     private val _photoUri = MutableStateFlow<String?>(null)
     val photoUri: StateFlow<String?> = _photoUri.asStateFlow()
@@ -113,6 +126,8 @@ class AddPersonViewModel(
     fun onOriginChanged(v: String) { _origin.value = v }
     fun onLikesChanged(v: String) { _likes.value = v }
     fun onNotesChanged(v: String) { _notes.value = v }
+    fun onPhoneNumberChanged(v: String) { _phoneNumber.value = v }
+    fun onEmailChanged(v: String) { _email.value = v }
 
     fun onPhotoSelected(uri: Uri) {
         viewModelScope.launch {
@@ -133,11 +148,13 @@ class AddPersonViewModel(
                 city = _city.value.trim().ifBlank { null },
                 cityLat = _cityLat.value,
                 cityLng = _cityLng.value,
-                cityNotify = _cityNotify.value,
+                cityNotify = _cityNotify.value && proximityAllowed(),
                 photoUri = _photoUri.value,
                 notes = _notes.value.trim().ifBlank { null },
                 likes = _likes.value.trim().ifBlank { null },
-                origin = _origin.value.trim().ifBlank { null }
+                origin = _origin.value.trim().ifBlank { null },
+                phoneNumber = _phoneNumber.value.trim().ifBlank { null },
+                email = _email.value.trim().ifBlank { null }
             )
 
             val hasCoords = _cityLat.value != null && _cityLng.value != null

@@ -25,8 +25,8 @@ import kotlin.math.*
  * ProximityCheckWorker — Vérifie la proximité sociale toutes les 6h.
  *
  * [PP3 — Fonctionnalité créative] : "Rappel de proximité sociale".
- * Notifie quand l'utilisateur est à moins de N km d'un contact (N configurable
- * dans les Paramètres, persisté dans SharedPreferences sous "proximity_radius_km").
+ * Notifie quand l'utilisateur est à moins de [JTRApplication.PROXIMITY_RADIUS_KM]
+ * d'un contact — rayon fixe et automatique (approche « zéro friction »).
  */
 class ProximityCheckWorker(
     private val context: Context,
@@ -49,8 +49,8 @@ class ProximityCheckWorker(
         val proximityEnabled = prefs.getBoolean("proximity_enabled", true)
         if (!notificationsEnabled || !proximityEnabled) return Result.success()
 
-        // Rayon configurable par l'utilisateur (défaut : 5 km)
-        val radiusKm = prefs.getFloat("proximity_radius_km", PROXIMITY_RADIUS_DEFAULT_KM).toDouble()
+        // Rayon automatique fixe (zéro friction) — plus de sélection manuelle.
+        val radiusKm = JTRApplication.PROXIMITY_RADIUS_KM.toDouble()
 
         return try {
             val location = fusedLocationClient.lastLocation.await() ?: return Result.success()
@@ -128,8 +128,4 @@ class ProximityCheckWorker(
         nm.notify(person.id.hashCode(), notification)
     }
 
-    companion object {
-        // Rayon par défaut si jamais l'utilisateur n'a pas modifié les paramètres
-        const val PROXIMITY_RADIUS_DEFAULT_KM = 5f
-    }
 }

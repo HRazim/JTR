@@ -1,3 +1,7 @@
+// L'API d'annotations MapLibre (Marker/MarkerOptions) est dépréciée au profit du
+// plugin Annotation/SymbolManager, mais reste fonctionnelle et suffisante ici.
+@file:Suppress("DEPRECATION")
+
 package com.jtr.app.ui.map
 
 import android.view.MotionEvent

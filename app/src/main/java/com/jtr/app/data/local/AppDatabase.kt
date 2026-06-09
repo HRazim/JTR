@@ -10,13 +10,15 @@ import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
 
 /**
- * AppDatabase — Version 7.
+ * AppDatabase — Version 11.
  *
- * v7 : Ajout de la table social_links (relation 1:N avec Person, CASCADE delete).
+ * v11 : Retrait de l'entité InteractionLog (journal d'interactions abandonné).
+ * v10 : Retrait de reminderIntervalMonths / lastReminderSentAt sur Person
+ *       (suppression du système de rappels périodiques).
  */
 @Database(
     entities = [Person::class, Category::class, PersonCategoryJoin::class, SocialLinkEntity::class],
-    version = 7,
+    version = 11,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

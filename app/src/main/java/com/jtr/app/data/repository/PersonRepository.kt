@@ -46,7 +46,8 @@ class PersonRepository(context: Context) {
             persons.filter { person ->
                 listOfNotNull(
                     person.firstName, person.lastName, person.city,
-                    person.notes, person.likes, person.origin
+                    person.notes, person.likes, person.origin,
+                    person.phoneNumber, person.email
                 ).any { field -> field.normalizeForSearch().contains(normalizedQuery) }
             }
         }
@@ -62,6 +63,8 @@ class PersonRepository(context: Context) {
     fun getAllCategoryJoins(): Flow<List<PersonCategoryJoin>> = categoryDao.getAllJoins()
 
     suspend fun getById(id: String): Person? = dao.getById(id)
+
+    fun observeById(id: String): kotlinx.coroutines.flow.Flow<Person?> = dao.observeById(id)
 
     /** IDs des catégories d'une personne (version suspend). */
     suspend fun getCategoryIdsForPerson(personId: String): List<String> =
@@ -86,8 +89,8 @@ class PersonRepository(context: Context) {
     /** Re-enregistre tous les geofences actifs. No-op si permission absente ou manager non initialisé. */
     private suspend fun syncGeofences() {
         val manager = JTRApplication.geofenceManager ?: return
-        val prefs = appContext.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
-        val radiusMeters = prefs.getFloat("proximity_radius_km", 5f) * 1000f
+        // Rayon automatique fixe (zéro friction) — voir JTRApplication.PROXIMITY_RADIUS_KM.
+        val radiusMeters = JTRApplication.PROXIMITY_RADIUS_KM * 1000f
         val persons = dao.getAllActive().first()
         manager.unregisterAll()
         manager.registerAll(persons, radiusMeters)

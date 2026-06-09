@@ -4,11 +4,16 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">Cancelar</string>
+    <string name="crop_action">Recortar</string>
+    <string name="crop_hint">Pellizca para zoom · desliza para reencuadrar</string>
     <string name="common_ok">Aceptar</string>
     <string name="common_delete">Eliminar</string>
     <string name="common_save">Guardar</string>
     <string name="common_back">Volver</string>
     <string name="common_edit">Editar</string>
+    <string name="common_more_actions">Más acciones</string>
+    <string name="categories_view_list_cd">Cambiar a vista de lista</string>
+    <string name="categories_view_grid_cd">Cambiar a vista de cuadrícula</string>
     <string name="common_add">Agregar</string>
     <string name="common_create">Crear</string>
     <string name="common_restore">Restaurar</string>
@@ -80,7 +85,9 @@
     <string name="person_birthday_notify">Notificar el día del cumpleaños</string>
     <string name="person_city_label">Ciudad</string>
     <string name="person_city_map_cd">Elegir en el mapa</string>
-    <string name="person_city_notify">Notificar si está cerca</string>
+    <string name="person_city_notify">Avisarme si paso cerca de esta ciudad</string>
+    <string name="person_proximity_disabled_hint">Desactivado en los ajustes</string>
+    <string name="person_proximity_blocked_snackbar">Activa primero las notificaciones de proximidad en Ajustes</string>
     <string name="person_social_links_title">Redes sociales</string>
     <string name="person_add_social_link">Agregar un enlace social</string>
     <string name="person_social_delete_cd">Eliminar</string>
@@ -155,10 +162,10 @@
     <string name="settings_notifications_subtitle">Activar o desactivar todas las notificaciones</string>
     <string name="settings_proximity_title">Recordatorios de proximidad</string>
     <string name="settings_proximity_subtitle">Notificar cuando un contacto está cerca</string>
-    <string name="settings_proximity_radius_label">Radio de detección</string>
-    <string name="settings_proximity_radius_km">%1$d km</string>
-    <string name="settings_proximity_radius_min">1 km</string>
-    <string name="settings_proximity_radius_max">50 km</string>
+    <string name="settings_location_denied">Permiso de ubicación denegado — la proximidad queda desactivada</string>
+    <string name="settings_location_bg_title">Ubicación en segundo plano</string>
+    <string name="settings_location_bg_message">JTR necesita acceso permanente a la ubicación para avisarte cuando pasas cerca de un contacto, incluso con la app cerrada.</string>
+    <string name="settings_location_bg_open">Abrir ajustes</string>
     <string name="settings_birthday_title">Recordatorios de cumpleaños</string>
     <string name="settings_birthday_subtitle">Notificar el día de los cumpleaños</string>
     <string name="settings_section_appearance">Apariencia</string>
@@ -195,4 +202,8 @@
     <string name="notif_geofence_title">¡%1$s está cerca!</string>
     <string name="notif_geofence_text">Estás actualmente en %1$s — ¡hace %2$d días que no se ven!</string>
     <string name="notif_geofence_city_fallback">esta ciudad</string>
+
+    <!-- ── Edición de perfil: campos secundarios ─────────────────────────── -->
+    <string name="person_more_info_show">Añadir más información</string>
+    <string name="person_more_info_hide">Ocultar información adicional</string>
 </resources>

@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -112,7 +113,7 @@ fun HomeScreen(
                             onClick = { showCategoryDialog = true },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Label, contentDescription = null,
+                            Icon(Icons.AutoMirrored.Filled.Label, contentDescription = null,
                                 modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.home_btn_category))
@@ -137,7 +138,8 @@ fun HomeScreen(
             if (!isSelectionMode) {
                 FloatingActionButton(
                     onClick = onNavigateToAddPerson,
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 ) {
                     Icon(Icons.Default.Add, contentDescription = stringResource(R.string.home_fab_add_person))
                 }

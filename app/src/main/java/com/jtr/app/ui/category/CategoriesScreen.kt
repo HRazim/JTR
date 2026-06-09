@@ -2,28 +2,39 @@ package com.jtr.app.ui.category
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.jtr.app.ui.person.CropShape
+import com.jtr.app.ui.person.ImageCropDialog
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -35,6 +46,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
+
+/** Modes d'affichage de la liste des catégories. */
+enum class CategoryViewMode { LIST, GRID }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +62,18 @@ fun CategoriesScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var pendingDeleteCategory by remember { mutableStateOf<Category?>(null) }
     var pendingEditCategory by remember { mutableStateOf<Category?>(null) }
+    var contextMenuCategory by remember { mutableStateOf<Category?>(null) }
+    // Mode d'affichage persistant (survit aux rotations et à la mort du processus).
+    var viewMode by rememberSaveable { mutableStateOf(CategoryViewMode.GRID) }
+
+    contextMenuCategory?.let { category ->
+        CategoryActionsDialog(
+            category = category,
+            onEdit = { pendingEditCategory = category; contextMenuCategory = null },
+            onDelete = { pendingDeleteCategory = category; contextMenuCategory = null },
+            onDismiss = { contextMenuCategory = null }
+        )
+    }
 
     pendingDeleteCategory?.let { category ->
         val count = personCountByCategory[category.id] ?: 0
@@ -99,14 +125,39 @@ fun CategoriesScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.categories_title)) },
+                actions = {
+                    IconButton(onClick = {
+                        viewMode = if (viewMode == CategoryViewMode.GRID)
+                            CategoryViewMode.LIST else CategoryViewMode.GRID
+                    }) {
+                        if (viewMode == CategoryViewMode.GRID) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.List,
+                                contentDescription = stringResource(R.string.categories_view_list_cd),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.GridView,
+                                contentDescription = stringResource(R.string.categories_view_grid_cd),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.categories_fab_add_cd))
             }
         }
@@ -150,20 +201,46 @@ fun CategoriesScreen(
                     }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(categories, key = { it.id }) { category ->
-                        val count = personCountByCategory[category.id] ?: 0
-                        CategoryCard(
-                            category = category,
-                            personCount = count,
-                            onClick = { onCategoryClick(category.id) },
-                            onEdit = { pendingEditCategory = category },
-                            onDelete = { pendingDeleteCategory = category }
-                        )
+                // Tri alphabétique A-Z (insensible à la casse), mémoïsé.
+                val sortedCategories = remember(categories) {
+                    categories.sortedBy { it.name.lowercase() }
+                }
+                when (viewMode) {
+                    CategoryViewMode.GRID -> LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 160.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(sortedCategories, key = { it.id }) { category ->
+                            val count = personCountByCategory[category.id] ?: 0
+                            CategoryGridTile(
+                                category = category,
+                                personCount = count,
+                                onClick = { onCategoryClick(category.id) },
+                                onLongClick = { contextMenuCategory = category },
+                                onEdit = { pendingEditCategory = category },
+                                onDelete = { pendingDeleteCategory = category }
+                            )
+                        }
+                    }
+                    CategoryViewMode.LIST -> LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(sortedCategories, key = { it.id }) { category ->
+                            val count = personCountByCategory[category.id] ?: 0
+                            CategoryListRow(
+                                category = category,
+                                personCount = count,
+                                onClick = { onCategoryClick(category.id) },
+                                onLongClick = { contextMenuCategory = category },
+                                onEdit = { pendingEditCategory = category },
+                                onDelete = { pendingDeleteCategory = category }
+                            )
+                        }
                     }
                 }
             }
@@ -181,31 +258,143 @@ fun CategoriesScreen(
     }
 }
 
+/**
+ * Tuile de catégorie style « Galerie » : la photo de couverture remplit le fond,
+ * le nom (et le nombre de contacts) est superposé en bas sur un dégradé sombre
+ * pour rester lisible. Clic court → ouvre ; clic long → menu Modifier/Supprimer.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun CategoryCard(
+fun CategoryGridTile(
     category: Category,
     personCount: Int = 0,
     onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {},
     onEdit: () -> Unit = {},
-    onDelete: () -> Unit
+    onDelete: () -> Unit = {}
 ) {
+    val accent = remember(category.color) {
+        try { Color(android.graphics.Color.parseColor(category.color)) }
+        catch (e: Exception) { Color(0xFF2E86C1) }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(16.dp))
+            .background(accent)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+    ) {
+        // Fond : photo de couverture en grand format, sinon icône centrée.
+        if (category.imagePath != null) {
+            AsyncImage(
+                model = category.imagePath,
+                contentDescription = category.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Icon(
+                Icons.Default.Folder,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.size(56.dp).align(Alignment.Center)
+            )
+        }
+
+        // Léger voile en haut : assure la lisibilité du menu « 3 points ».
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .align(Alignment.TopCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.30f), Color.Transparent)
+                    )
+                )
+        )
+
+        // Dégradé sombre en bas pour la lisibilité du texte superposé.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f)),
+                        startY = 200f
+                    )
+                )
+        )
+
+        // Menu « 3 points » superposé en haut à droite, sur le voile.
+        CategoryOverflowMenu(
+            tint = Color.White,
+            onEdit = onEdit,
+            onDelete = onDelete,
+            modifier = Modifier.align(Alignment.TopEnd)
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Text(
+                text = category.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                maxLines = 2
+            )
+            if (personCount > 0) {
+                Text(
+                    text = stringResource(R.string.categories_person_count, personCount),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.85f)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Ligne de catégorie en mode Liste : avatar circulaire + nom + compteur, avec
+ * le menu « 3 points » à droite. Clic court → ouvre ; clic long → menu d'actions.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun CategoryListRow(
+    category: Category,
+    personCount: Int = 0,
+    onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {},
+    onEdit: () -> Unit = {},
+    onDelete: () -> Unit = {}
+) {
+    val accent = remember(category.color) {
+        try { Color(android.graphics.Color.parseColor(category.color)) }
+        catch (e: Exception) { Color(0xFF2E86C1) }
+    }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        onClick = onClick
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(
-                        try { Color(android.graphics.Color.parseColor(category.color)) }
-                        catch (e: Exception) { Color(0xFF2E86C1) }
-                    ),
+                    .background(accent),
                 contentAlignment = Alignment.Center
             ) {
                 if (category.imagePath != null) {
@@ -230,16 +419,96 @@ fun CategoryCard(
                     )
                 }
             }
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.common_edit),
-                    tint = MaterialTheme.colorScheme.primary)
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.common_delete),
-                    tint = MaterialTheme.colorScheme.error)
-            }
+            CategoryOverflowMenu(
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                onEdit = onEdit,
+                onDelete = onDelete
+            )
         }
     }
+}
+
+/**
+ * Icône « 3 points » (More vert) + DropdownMenu Material 3 (Modifier / Supprimer).
+ * Réutilisé par la tuile Grille et la ligne Liste.
+ */
+@Composable
+private fun CategoryOverflowMenu(
+    tint: Color,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                Icons.Default.MoreVert,
+                contentDescription = stringResource(R.string.common_more_actions),
+                tint = tint
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.common_edit)) },
+                onClick = { expanded = false; onEdit() },
+                leadingIcon = {
+                    Icon(Icons.Default.Edit, contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary)
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.common_delete)) },
+                onClick = { expanded = false; onDelete() },
+                leadingIcon = {
+                    Icon(Icons.Default.Delete, contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error)
+                }
+            )
+        }
+    }
+}
+
+/**
+ * Menu d'actions affiché sur clic long d'une tuile de catégorie.
+ */
+@Composable
+private fun CategoryActionsDialog(
+    category: Category,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(category.name) },
+        text = {
+            Column {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.common_edit)) },
+                    leadingContent = {
+                        Icon(Icons.Default.Edit, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary)
+                    },
+                    modifier = Modifier.clickable(onClick = onEdit),
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                )
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.common_delete)) },
+                    leadingContent = {
+                        Icon(Icons.Default.Delete, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error)
+                    },
+                    modifier = Modifier.clickable(onClick = onDelete),
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+        }
+    )
 }
 
 @Composable
@@ -255,18 +524,29 @@ fun EditCategoryDialog(
     val presetColors = listOf("#2E86C1", "#E74C3C", "#27AE60", "#F39C12", "#8E44AD", "#16A085")
     var selectedColor by remember { mutableStateOf(category.color) }
     var imagePath by remember { mutableStateOf(category.imagePath) }
+    var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
 
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
-        if (uri != null) {
-            scope.launch {
-                val path = withContext(Dispatchers.IO) {
-                    copyCategoryPhotoToStorage(context, uri)
+        if (uri != null) pendingCropUri = uri
+    }
+
+    pendingCropUri?.let { uri ->
+        ImageCropDialog(
+            sourceUri = uri,
+            cropShape = CropShape.RECTANGLE,
+            onCropComplete = { croppedUri ->
+                scope.launch {
+                    val path = withContext(Dispatchers.IO) {
+                        copyCategoryPhotoToStorage(context, croppedUri)
+                    }
+                    if (path != null) imagePath = path
                 }
-                if (path != null) imagePath = path
-            }
-        }
+                pendingCropUri = null
+            },
+            onDismiss = { pendingCropUri = null }
+        )
     }
 
     AlertDialog(

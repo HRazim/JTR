@@ -15,24 +15,30 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.view.MotionEvent
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import coil.request.ImageRequest
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -46,12 +52,15 @@ import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.utils.getSocialIcon
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import kotlinx.coroutines.launch
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.utils.SocialPlatform
@@ -59,7 +68,6 @@ import com.jtr.app.utils.extractSocialLinks
 import com.jtr.app.utils.icon
 import com.jtr.app.utils.openSocialLink
 import com.jtr.app.utils.SocialLink
-import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
@@ -82,6 +90,8 @@ fun PersonDetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showAddLinkDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showPhotoZoom by remember { mutableStateOf(false) }
+    var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
 
     val editVm: EditPersonViewModel = viewModel()
     val isEditing by editVm.isEditing.collectAsStateWithLifecycle()
@@ -100,6 +110,9 @@ fun PersonDetailScreen(
     val vmPhotoUri by editVm.photoUri.collectAsStateWithLifecycle()
     val firstNameError by editVm.firstNameError.collectAsStateWithLifecycle()
     val socialLinks by editVm.socialLinks.collectAsStateWithLifecycle()
+    val vmPhoneNumber by editVm.phoneNumber.collectAsStateWithLifecycle()
+    val vmEmail by editVm.email.collectAsStateWithLifecycle()
+    val vmPendingPhotoUri        by editVm.pendingPhotoUri.collectAsStateWithLifecycle()
 
     LaunchedEffect(person?.id) { person?.id?.let { editVm.loadPerson(it) } }
 
@@ -110,10 +123,19 @@ fun PersonDetailScreen(
     }
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) editVm.onPhotoSelected(uri)
+        if (uri != null) pendingCropUri = uri
     }
 
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = vmBirthdate)
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val proximityBlockedMsg = stringResource(R.string.person_proximity_blocked_snackbar)
+    // Verrou proximité : la notif de proximité n'est activable que si les
+    // notifications globales ET la proximité sont actives dans les paramètres.
+    val proximityAllowed = remember {
+        val p = context.getSharedPreferences("jtr_prefs", android.content.Context.MODE_PRIVATE)
+        p.getBoolean("notifications_enabled", false) && p.getBoolean("proximity_enabled", false)
+    }
 
     Scaffold(
         topBar = {
@@ -168,10 +190,12 @@ fun PersonDetailScreen(
                     text = { Text(stringResource(R.string.person_save)) },
                     icon = { Icon(Icons.Default.Check, contentDescription = null) },
                     onClick = { editVm.commitAllEdits() },
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
 
         if (isLoading || person == null) {
@@ -187,6 +211,7 @@ fun PersonDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .pointerInput(isEditing) {
                     if (!isEditing) detectTapGestures(onDoubleTap = { editVm.enterEditMode() })
@@ -205,7 +230,10 @@ fun PersonDetailScreen(
             }
 
             Box(modifier = Modifier.size(96.dp)) {
-                val photoSrc = if (isEditing) vmPhotoUri else person.photoUri
+                // Affiche la photo en attente (sélectionnée, non encore sauvegardée)
+                // sinon la photo persistée dans Room
+                val photoSrc = vmPendingPhotoUri?.path
+                    ?: if (isEditing) vmPhotoUri else person.photoUri
 
                 Box(
                     modifier = Modifier
@@ -223,7 +251,12 @@ fun PersonDetailScreen(
                                 )
                             else Modifier.background(MaterialTheme.colorScheme.primaryContainer)
                         )
-                        .then(if (isEditing) Modifier.blur(8.dp) else Modifier),
+                        .then(if (isEditing) Modifier.blur(8.dp) else Modifier)
+                        .then(
+                            if (!isEditing && photoSrc != null)
+                                Modifier.clickable { showPhotoZoom = true }
+                            else Modifier
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     if (photoSrc != null) {
@@ -328,222 +361,146 @@ fun PersonDetailScreen(
                 onRemoveClick = { editVm.removeSocialLink(it) }
             )
 
+            if (!isEditing && (person.phoneNumber != null || person.email != null)) {
+                Spacer(Modifier.height(16.dp))
+                val ctx = LocalContext.current
+                QuickActionsSection(
+                    phoneNumber = person.phoneNumber,
+                    email = person.email,
+                    onCall = {
+                        ctx.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${person.phoneNumber}")))
+                        editVm.markAsContacted()
+                    },
+                    onSms = {
+                        ctx.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${person.phoneNumber}")))
+                        editVm.markAsContacted()
+                    },
+                    onEmail = {
+                        ctx.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${person.email}")))
+                        editVm.markAsContacted()
+                    }
+                )
+            }
+
             Spacer(Modifier.height(16.dp))
             HorizontalDivider()
             Spacer(Modifier.height(12.dp))
 
-            AnimatedContent(
-                targetState = isEditing,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "gender_section"
-            ) { editing ->
-                if (editing) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(stringResource(R.string.person_gender_label),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                            listOf(
-                                "male"       to stringResource(R.string.person_gender_male),
-                                "female"     to stringResource(R.string.person_gender_female),
-                                "non-binary" to stringResource(R.string.person_gender_nonbinary_short)
-                            ).forEachIndexed { i, (value, label) ->
-                                SegmentedButton(
-                                    selected = vmGender == value,
-                                    onClick = {
-                                        editVm.onGenderChanged(if (vmGender == value) null else value)
-                                    },
-                                    shape = SegmentedButtonDefaults.itemShape(index = i, count = 3)
-                                ) { Text(label) }
-                            }
-                        }
-                    }
-                } else {
-                    if (person.gender != null) {
-                        DetailRow(
-                            icon = Icons.Default.Person,
-                            label = stringResource(R.string.person_gender_label),
-                            value = when (person.gender) {
-                                "male"       -> stringResource(R.string.person_gender_male)
-                                "female"     -> stringResource(R.string.person_gender_female)
-                                "non-binary" -> stringResource(R.string.person_gender_nonbinary)
-                                else         -> person.gender
-                            }
-                        )
-                    } else {
-                        Spacer(Modifier.height(0.dp))
-                    }
-                }
-            }
-
             if (isEditing) {
-                Spacer(Modifier.height(8.dp))
-                Column(modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    OutlinedTextField(
-                        value = vmBirthdate?.let {
-                            SimpleDateFormat("d MMMM yyyy", Locale.getDefault()).format(Date(it))
-                        } ?: "",
-                        onValueChange = {},
-                        label = { Text(stringResource(R.string.person_birthday_label)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        readOnly = true, enabled = false,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline,
-                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { showDatePicker = true }) {
-                            Text(
-                                if (vmBirthdate == null) stringResource(R.string.person_birthday_select)
-                                else stringResource(R.string.person_birthday_modify)
-                            )
-                        }
-                        if (vmBirthdate != null) {
-                            TextButton(onClick = { editVm.onBirthdateChanged(null) }) {
-                                Text(stringResource(R.string.person_birthday_clear),
-                                    color = MaterialTheme.colorScheme.error)
-                            }
-                        }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = vmBirthdateNotify,
-                            onCheckedChange = { editVm.onBirthdateNotifyChanged(it) })
-                        Text(stringResource(R.string.person_birthday_notify),
-                            style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            } else if (person.birthdate != null) {
-                DetailRow(
-                    icon = Icons.Default.Cake,
-                    label = stringResource(R.string.person_birthday_label),
-                    value = SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
-                        .format(Date(person.birthdate))
+                ProfileFormFields(
+                    notes = vmNotes,
+                    onNotesChange = { editVm.onNotesChanged(it) },
+                    likes = vmLikes,
+                    onLikesChange = { editVm.onLikesChanged(it) },
+                    gender = vmGender,
+                    onGenderChange = { editVm.onGenderChanged(it) },
+                    birthdate = vmBirthdate,
+                    onPickBirthday = { showDatePicker = true },
+                    onClearBirthday = { editVm.onBirthdateChanged(null) },
+                    birthdateNotify = vmBirthdateNotify,
+                    onBirthdateNotifyChange = { editVm.onBirthdateNotifyChanged(it) },
+                    city = vmCity,
+                    cityHasCoords = vmCityLat != null,
+                    onCityChange = { editVm.onCityChanged(it) },
+                    onNavigateToMap = onNavigateToMap,
+                    cityNotify = vmCityNotify,
+                    onCityNotifyChange = { editVm.onCityNotifyChanged(it) },
+                    proximityAllowed = proximityAllowed,
+                    onProximityBlocked = {
+                        scope.launch { snackbarHostState.showSnackbar(proximityBlockedMsg) }
+                    },
+                    origin = vmOrigin,
+                    onOriginChange = { editVm.onOriginChanged(it) },
+                    phone = vmPhoneNumber,
+                    onPhoneChange = { editVm.onPhoneNumberChanged(it) },
+                    email = vmEmail,
+                    onEmailChange = { editVm.onEmailChanged(it) }
                 )
-            }
-
-            if (isEditing) {
-                Spacer(Modifier.height(8.dp))
-                var localCity by remember(vmCity) { mutableStateOf(vmCity) }
-                Row(modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = localCity,
-                        onValueChange = { localCity = it; editVm.onCityChanged(it) },
-                        label = { Text(stringResource(R.string.person_city_label)) },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        trailingIcon = {
-                            if (vmCityLat != null) {
-                                Icon(Icons.Default.MyLocation, null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp))
-                            }
+            } else {
+                // ── Mode lecture : détails secondaires, puis Ce qu'il aime / Notes ──
+                if (person.gender != null) {
+                    DetailRow(
+                        icon = Icons.Default.Person,
+                        label = stringResource(R.string.person_gender_label),
+                        value = when (person.gender) {
+                            "male"       -> stringResource(R.string.person_gender_male)
+                            "female"     -> stringResource(R.string.person_gender_female)
+                            "non-binary" -> stringResource(R.string.person_gender_nonbinary)
+                            else         -> person.gender
                         }
                     )
-                    IconButton(onClick = onNavigateToMap, modifier = Modifier.padding(top = 4.dp)) {
-                        Icon(Icons.Default.Map,
-                            contentDescription = stringResource(R.string.person_city_map_cd),
-                            tint = MaterialTheme.colorScheme.primary)
-                    }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = vmCityNotify,
-                        onCheckedChange = { editVm.onCityNotifyChanged(it) })
-                    Text(stringResource(R.string.person_city_notify),
-                        style = MaterialTheme.typography.bodySmall)
+                if (person.birthdate != null) {
+                    DetailRow(
+                        icon = Icons.Default.Cake,
+                        label = stringResource(R.string.person_birthday_label),
+                        value = SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
+                            .format(Date(person.birthdate))
+                    )
                 }
-            } else if (person.city != null) {
-                CityDetailRow(city = person.city,
-                    cityLat = person.cityLat, cityLng = person.cityLng)
-            }
+                if (person.city != null) {
+                    CityDetailRow(city = person.city,
+                        cityLat = person.cityLat, cityLng = person.cityLng)
+                }
+                if (person.origin != null) {
+                    DetailRow(icon = Icons.Default.Public,
+                        label = stringResource(R.string.person_origin_label),
+                        value = person.origin)
+                }
+                if (person.phoneNumber != null) {
+                    DetailRow(icon = Icons.Default.Phone,
+                        label = stringResource(R.string.person_phone_label),
+                        value = person.phoneNumber)
+                }
+                if (person.email != null) {
+                    DetailRow(icon = Icons.Default.Email,
+                        label = stringResource(R.string.person_email_label),
+                        value = person.email)
+                }
 
-            if (isEditing) {
-                Spacer(Modifier.height(8.dp))
-                var localOrigin by remember(vmOrigin) { mutableStateOf(vmOrigin) }
-                OutlinedTextField(
-                    value = localOrigin,
-                    onValueChange = { localOrigin = it; editVm.onOriginChanged(it) },
-                    label = { Text(stringResource(R.string.person_origin_label)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-            } else if (person.origin != null) {
-                DetailRow(icon = Icons.Default.Public,
-                    label = stringResource(R.string.person_origin_label),
-                    value = person.origin)
-            }
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(12.dp))
 
-            Spacer(Modifier.height(12.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(12.dp))
-
-            if (isEditing) {
-                var localLikes by remember(vmLikes) { mutableStateOf(vmLikes) }
-                OutlinedTextField(
-                    value = localLikes,
-                    onValueChange = { localLikes = it; editVm.onLikesChanged(it) },
-                    label = { Text(stringResource(R.string.person_likes_label)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2, maxLines = 4,
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(Modifier.height(8.dp))
-            } else if (person.likes != null) {
-                DetailTextBlock(icon = Icons.Default.Favorite,
-                    label = stringResource(R.string.person_likes_label),
-                    value = person.likes)
-            }
-
-            if (isEditing) {
-                var localNotes by remember(vmNotes) { mutableStateOf(vmNotes) }
-                OutlinedTextField(
-                    value = localNotes,
-                    onValueChange = { localNotes = it; editVm.onNotesChanged(it) },
-                    label = { Text(stringResource(R.string.person_notes_label)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3, maxLines = 8,
-                    shape = RoundedCornerShape(12.dp)
-                )
-            } else if (person.notes != null) {
-                DetailTextBlock(icon = Icons.Filled.Notes,
-                    label = stringResource(R.string.person_notes_label),
-                    value = person.notes)
+                if (person.likes != null) {
+                    DetailTextBlock(icon = Icons.Default.Favorite,
+                        label = stringResource(R.string.person_likes_label),
+                        value = person.likes)
+                }
+                if (person.notes != null) {
+                    DetailTextBlock(icon = Icons.AutoMirrored.Filled.Notes,
+                        label = stringResource(R.string.person_notes_label),
+                        value = person.notes)
+                }
             }
         }
     }
 
-    if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDatePicker = false
-                    val raw = datePickerState.selectedDateMillis
-                    if (raw != null) {
-                        val tz = TimeZone.getDefault()
-                        val adjusted = raw + tz.getOffset(raw)
-                        editVm.onBirthdateChanged(adjusted)
-                    }
-                }) { Text(stringResource(R.string.common_ok)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
-        ) {
-            DatePicker(state = datePickerState)
+    if (showPhotoZoom && !isEditing) {
+        val zoomUri = vmPendingPhotoUri?.path ?: person?.photoUri
+        if (zoomUri != null) {
+            PhotoZoomDialog(photoUri = zoomUri, onDismiss = { showPhotoZoom = false })
         }
+    }
+
+    pendingCropUri?.let { uri ->
+        ImageCropDialog(
+            sourceUri = uri,
+            cropShape = CropShape.CIRCLE,
+            onCropComplete = { croppedUri ->
+                editVm.onPhotoSelected(croppedUri)
+                pendingCropUri = null
+            },
+            onDismiss = { pendingCropUri = null }
+        )
+    }
+
+    if (showDatePicker) {
+        BirthdayPickerDialog(
+            initialMillis = vmBirthdate,
+            onConfirm = { editVm.onBirthdateChanged(it) },
+            onDismiss = { showDatePicker = false }
+        )
     }
 
     if (showAddLinkDialog) {
@@ -571,6 +528,112 @@ fun PersonDetailScreen(
                 }
             }
         )
+    }
+}
+
+// ── Quick Actions ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun QuickActionsSection(
+    phoneNumber: String?,
+    email: String?,
+    onCall: () -> Unit,
+    onSms: () -> Unit,
+    onEmail: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (phoneNumber != null) {
+            QuickActionButton(icon = Icons.Default.Phone,
+                label = stringResource(R.string.person_action_call), onClick = onCall)
+            Spacer(Modifier.width(20.dp))
+            QuickActionButton(icon = Icons.AutoMirrored.Filled.Message,
+                label = stringResource(R.string.person_action_sms), onClick = onSms)
+        }
+        if (email != null) {
+            if (phoneNumber != null) Spacer(Modifier.width(20.dp))
+            QuickActionButton(icon = Icons.Default.Email,
+                label = stringResource(R.string.person_action_email), onClick = onEmail)
+        }
+    }
+}
+
+@Composable
+private fun QuickActionButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        FilledTonalIconButton(
+            onClick = onClick,
+            modifier = Modifier.size(52.dp),
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+        scale = (scale * zoomChange).coerceIn(1f, 5f)
+        offsetX += panChange.x * scale
+        offsetY += panChange.y * scale
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.92f))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { onDismiss() },
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(photoUri).crossfade(200).build(),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offsetX
+                        translationY = offsetY
+                    }
+                    .transformable(state = transformState)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) {}
+            )
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Default.Close, contentDescription = null, tint = Color.White)
+            }
+        }
     }
 }
 
@@ -838,7 +901,8 @@ private fun MapLibreMiniMap(lat: Double, lng: Double, cityName: String, modifier
                     map.uiSettings.isZoomGesturesEnabled = true
                     map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), 12.0))
                     @Suppress("DEPRECATION")
-                    map.addMarker(MarkerOptions().position(LatLng(lat, lng)).title(cityName))
+                    map.addMarker(org.maplibre.android.annotations.MarkerOptions()
+                        .position(LatLng(lat, lng)).title(cityName))
                 }
             }
         }

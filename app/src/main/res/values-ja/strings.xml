@@ -4,11 +4,16 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">キャンセル</string>
+    <string name="crop_action">切り抜く</string>
+    <string name="crop_hint">ピンチでズーム · ドラッグで構図調整</string>
     <string name="common_ok">OK</string>
     <string name="common_delete">削除</string>
     <string name="common_save">保存</string>
     <string name="common_back">戻る</string>
     <string name="common_edit">編集</string>
+    <string name="common_more_actions">その他の操作</string>
+    <string name="categories_view_list_cd">リスト表示に切り替え</string>
+    <string name="categories_view_grid_cd">グリッド表示に切り替え</string>
     <string name="common_add">追加</string>
     <string name="common_create">作成</string>
     <string name="common_restore">復元</string>
@@ -80,7 +85,9 @@
     <string name="person_birthday_notify">誕生日に通知</string>
     <string name="person_city_label">市区町村</string>
     <string name="person_city_map_cd">地図で選択</string>
-    <string name="person_city_notify">近くにいたら通知</string>
+    <string name="person_city_notify">この街の近くを通ったら通知</string>
+    <string name="person_proximity_disabled_hint">設定で無効になっています</string>
+    <string name="person_proximity_blocked_snackbar">先に設定で付近の通知を有効にしてください</string>
     <string name="person_social_links_title">ソーシャルネットワーク</string>
     <string name="person_add_social_link">ソーシャルリンクを追加</string>
     <string name="person_social_delete_cd">削除</string>
@@ -155,10 +162,10 @@
     <string name="settings_notifications_subtitle">すべての通知を有効または無効にする</string>
     <string name="settings_proximity_title">近接リマインダー</string>
     <string name="settings_proximity_subtitle">連絡先が近くにいるときに通知</string>
-    <string name="settings_proximity_radius_label">検出範囲</string>
-    <string name="settings_proximity_radius_km">%1$d km</string>
-    <string name="settings_proximity_radius_min">1 km</string>
-    <string name="settings_proximity_radius_max">50 km</string>
+    <string name="settings_location_denied">位置情報の許可が拒否されました — 付近通知はオフのままです</string>
+    <string name="settings_location_bg_title">バックグラウンドの位置情報</string>
+    <string name="settings_location_bg_message">アプリが閉じていても連絡先の近くを通ったときに通知するため、JTR は位置情報への常時アクセスを必要とします。</string>
+    <string name="settings_location_bg_open">設定を開く</string>
     <string name="settings_birthday_title">誕生日リマインダー</string>
     <string name="settings_birthday_subtitle">誕生日に通知</string>
     <string name="settings_section_appearance">外観</string>
@@ -198,4 +205,8 @@
     <!-- args: 1=city 2=daysSince -->
     <string name="notif_geofence_text">現在%1$sにいます — 最後に会ってから%2$d日が経ちました！</string>
     <string name="notif_geofence_city_fallback">この市区町村</string>
+
+    <!-- ── プロフィール編集：補足項目 ────────────────────────────────────── -->
+    <string name="person_more_info_show">他の情報を追加</string>
+    <string name="person_more_info_hide">追加情報を非表示</string>
 </resources>

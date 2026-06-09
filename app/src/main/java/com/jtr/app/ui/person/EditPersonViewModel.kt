@@ -1,6 +1,7 @@
 package com.jtr.app.ui.person
 
 import android.app.Application
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
@@ -9,8 +10,10 @@ import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.utils.extractSocialLinks
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -23,6 +26,12 @@ class EditPersonViewModel(
 ) : AndroidViewModel(application) {
 
     private val repository = PersonRepository(application.applicationContext)
+    private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
+
+    /** La notif de proximité ne peut être vraie que si tout est activé globalement. */
+    private fun proximityAllowed(): Boolean =
+        prefs.getBoolean("notifications_enabled", false) &&
+            prefs.getBoolean("proximity_enabled", false)
 
     private val _person = MutableStateFlow<Person?>(null)
     val person: StateFlow<Person?> = _person.asStateFlow()
@@ -74,11 +83,40 @@ class EditPersonViewModel(
     private val _notes = MutableStateFlow("")
     val notes: StateFlow<String> = _notes.asStateFlow()
 
+    private val _phoneNumber = MutableStateFlow("")
+    val phoneNumber: StateFlow<String> = _phoneNumber.asStateFlow()
+
+    private val _email = MutableStateFlow("")
+    val email: StateFlow<String> = _email.asStateFlow()
+
     private val _photoUri = MutableStateFlow<String?>(null)
     val photoUri: StateFlow<String?> = _photoUri.asStateFlow()
 
+    /**
+     * Photo sélectionnée mais pas encore persistée (filesDir/crops/).
+     * Sauvegardée dans SavedStateHandle pour survivre à la mort du processus.
+     * La copie vers filesDir/photos/ et la mise à jour Room n'ont lieu que
+     * dans onCleared() — c'est-à-dire quand l'utilisateur quitte définitivement
+     * l'écran (back stack entry détruite).
+     */
+    private val _pendingPhotoUri = MutableStateFlow<Uri?>(
+        savedStateHandle.get<Uri>("pending_photo_uri")?.takeIf { uri ->
+            uri.path?.let { File(it).exists() } == true
+        }
+    )
+    val pendingPhotoUri: StateFlow<Uri?> = _pendingPhotoUri.asStateFlow()
+
     private val _firstNameError = MutableStateFlow(false)
     val firstNameError: StateFlow<Boolean> = _firstNameError.asStateFlow()
+    // ─────────────────────────────────────────────────────────────────────────
+
+    fun markAsContacted() {
+        val id = _person.value?.id ?: return
+        viewModelScope.launch {
+            repository.markAsContacted(id)
+            _person.value = _person.value?.copy(lastContactedAt = System.currentTimeMillis())
+        }
+    }
     // ─────────────────────────────────────────────────────────────────────────
 
     // ── Liens sociaux (réactifs depuis Room) ──────────────────────────────────
@@ -137,6 +175,8 @@ class EditPersonViewModel(
         _origin.value = p.origin ?: ""
         _likes.value = p.likes ?: ""
         _notes.value = p.notes ?: ""
+        _phoneNumber.value = p.phoneNumber ?: ""
+        _email.value = p.email ?: ""
         _photoUri.value = p.photoUri
         personLoaded = true
     }
@@ -148,15 +188,19 @@ class EditPersonViewModel(
     fun onBirthdateNotifyChanged(v: Boolean) { _birthdateNotify.value = v }
     fun onCityChanged(v: String)         { _city.value = v; _cityLat.value = null; _cityLng.value = null }
     fun onCityNotifyChanged(v: Boolean)  { _cityNotify.value = v }
-    fun onOriginChanged(v: String)       { _origin.value = v }
+    fun onOriginChanged(v: String)        { _origin.value = v }
     fun onLikesChanged(v: String)        { _likes.value = v }
     fun onNotesChanged(v: String)        { _notes.value = v }
+    fun onPhoneNumberChanged(v: String)  { _phoneNumber.value = v }
+    fun onEmailChanged(v: String)        { _email.value = v }
 
     fun onPhotoSelected(uri: Uri) {
-        viewModelScope.launch {
-            val path = withContext(Dispatchers.IO) { copyPhotoToStorage(uri) }
-            _photoUri.value = path
+        // Nettoie l'éventuel fichier crops/ précédent avant de le remplacer
+        _pendingPhotoUri.value?.path?.let { old ->
+            if (old != uri.path) File(old).delete()
         }
+        _pendingPhotoUri.value = uri
+        savedStateHandle["pending_photo_uri"] = uri
     }
 
     /** Sauvegarde globale depuis PersonDetailScreen — reste sur l'écran. */
@@ -207,12 +251,34 @@ class EditPersonViewModel(
         city           = _city.value.trim().ifBlank { null },
         cityLat        = _cityLat.value,
         cityLng        = _cityLng.value,
-        cityNotify     = _cityNotify.value,
+        cityNotify     = _cityNotify.value && proximityAllowed(),
         photoUri       = _photoUri.value,
         notes          = _notes.value.trim().ifBlank { null },
         likes          = _likes.value.trim().ifBlank { null },
-        origin         = _origin.value.trim().ifBlank { null }
+        origin         = _origin.value.trim().ifBlank { null },
+        phoneNumber    = _phoneNumber.value.trim().ifBlank { null },
+        email          = _email.value.trim().ifBlank { null }
     )
+
+    /**
+     * Déclenché quand la back-stack entry est définitivement détruite (back, finish…).
+     * Lance la persistance de la photo dans un CoroutineScope indépendant du
+     * viewModelScope (déjà en cours d'annulation à ce stade) pour garantir que
+     * l'opération I/O + Room se termine même si le ViewModel est nettoyé.
+     */
+    override fun onCleared() {
+        super.onCleared()
+        val pendingUri = _pendingPhotoUri.value ?: return
+        val personId   = _person.value?.id      ?: return
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            val permanentPath = copyPhotoToStorage(pendingUri) ?: return@launch
+            // Lecture fraîche en DB pour intégrer d'éventuels commits antérieurs
+            val latest = repository.getById(personId) ?: return@launch
+            repository.update(latest.copy(photoUri = permanentPath))
+            // Supprime le fichier temporaire filesDir/crops/
+            pendingUri.path?.let { File(it).delete() }
+        }
+    }
 
     private fun copyPhotoToStorage(uri: Uri): String? = try {
         val context = getApplication<Application>().applicationContext

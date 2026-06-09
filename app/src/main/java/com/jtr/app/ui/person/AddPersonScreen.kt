@@ -1,5 +1,6 @@
 package com.jtr.app.ui.person
 
+import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,18 +19,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.request.ImageRequest
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,8 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.jtr.app.R
 import com.jtr.app.utils.getSocialIcon
-import java.text.SimpleDateFormat
-import java.util.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,34 +47,43 @@ fun AddPersonScreen(
     onMapResultConsumed: () -> Unit = {},
     viewModel: AddPersonViewModel = viewModel()
 ) {
+    // Prénom / Nom restent discrets en haut.
     var firstName by remember { mutableStateOf(viewModel.firstName.value) }
     var lastName  by remember { mutableStateOf(viewModel.lastName.value) }
-    var city      by remember { mutableStateOf(TextFieldValue(viewModel.city.value)) }
-    var origin    by remember { mutableStateOf(viewModel.origin.value) }
-    var likes     by remember { mutableStateOf(viewModel.likes.value) }
-    var notes     by remember { mutableStateOf(viewModel.notes.value) }
 
     val gender          by viewModel.gender.collectAsStateWithLifecycle()
     val birthdate       by viewModel.birthdate.collectAsStateWithLifecycle()
     val birthdateNotify by viewModel.birthdateNotify.collectAsStateWithLifecycle()
+    val city            by viewModel.city.collectAsStateWithLifecycle()
     val cityLat         by viewModel.cityLat.collectAsStateWithLifecycle()
     val cityNotify      by viewModel.cityNotify.collectAsStateWithLifecycle()
+    val origin          by viewModel.origin.collectAsStateWithLifecycle()
+    val likes           by viewModel.likes.collectAsStateWithLifecycle()
+    val notes           by viewModel.notes.collectAsStateWithLifecycle()
+    val phone           by viewModel.phoneNumber.collectAsStateWithLifecycle()
+    val email           by viewModel.email.collectAsStateWithLifecycle()
     val photoUri        by viewModel.photoUri.collectAsStateWithLifecycle()
     val firstNameError  by viewModel.firstNameError.collectAsStateWithLifecycle()
     val pendingLinks    by viewModel.pendingLinks.collectAsStateWithLifecycle()
 
-    val cityFocusRequester = remember { FocusRequester() }
     var showAddLinkDialog by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val proximityBlockedMsg = stringResource(R.string.person_proximity_blocked_snackbar)
+    // Verrou proximité : activable uniquement si notifications + proximité globales actives.
+    val proximityAllowed = remember {
+        val p = context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
+        p.getBoolean("notifications_enabled", false) && p.getBoolean("proximity_enabled", false)
+    }
 
     LaunchedEffect(cityFromMap) {
         val c = cityFromMap ?: return@LaunchedEffect
-        city = TextFieldValue(c, TextRange(c.length))
         viewModel.onCityFromMap(c, latFromMap, lngFromMap)
         onMapResultConsumed()
-        cityFocusRequester.requestFocus()
     }
-
-    var showDatePicker by remember { mutableStateOf(false) }
 
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -99,19 +104,19 @@ fun AddPersonScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val context = LocalContext.current
-
             // ── Photo ────────────────────────────────────────────────────────
             Box(
                 modifier = Modifier
@@ -242,138 +247,38 @@ fun AddPersonScreen(
                 Spacer(Modifier.width(6.dp))
                 Text(stringResource(R.string.person_add_social_link))
             }
+
             HorizontalDivider()
 
-            // ── Genre ────────────────────────────────────────────────────────
-            Text(stringResource(R.string.person_gender_label),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.Start))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.align(Alignment.Start)) {
-                listOf(
-                    "male"       to stringResource(R.string.person_gender_male),
-                    "female"     to stringResource(R.string.person_gender_female),
-                    "non-binary" to stringResource(R.string.person_gender_nonbinary)
-                ).forEach { (value, label) ->
-                    FilterChip(
-                        selected = gender == value,
-                        onClick = { viewModel.onGenderChanged(if (gender == value) null else value) },
-                        label = { Text(label) }
-                    )
-                }
-            }
-
-            // ── Anniversaire ─────────────────────────────────────────────────
-            OutlinedTextField(
-                value = birthdate?.let {
-                    SimpleDateFormat("d MMMM yyyy", Locale.getDefault()).format(Date(it))
-                } ?: "",
-                onValueChange = {},
-                label = { Text(stringResource(R.string.person_birthday_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                readOnly = true, enabled = false,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                    disabledBorderColor = MaterialTheme.colorScheme.outline,
-                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
-            TextButton(onClick = { showDatePicker = true },
-                modifier = Modifier.align(Alignment.Start)) {
-                Text(
-                    if (birthdate == null) stringResource(R.string.person_birthday_select)
-                    else stringResource(R.string.person_birthday_modify)
-                )
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.align(Alignment.Start)
-            ) {
-                Switch(
-                    checked = birthdateNotify,
-                    onCheckedChange = { viewModel.onBirthdateNotifyChanged(it) }
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    stringResource(R.string.person_birthday_notify),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
-            // ── Ville ────────────────────────────────────────────────────────
-            Row(modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = city,
-                    onValueChange = { city = it; viewModel.onCityChanged(it.text) },
-                    label = { Text(stringResource(R.string.person_city_label)) },
-                    modifier = Modifier.weight(1f).focusRequester(cityFocusRequester),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    trailingIcon = {
-                        if (cityLat != null) {
-                            Icon(Icons.Default.MyLocation, contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp))
-                        }
-                    }
-                )
-                IconButton(onClick = onNavigateToMap, modifier = Modifier.padding(top = 8.dp)) {
-                    Icon(Icons.Default.Map,
-                        contentDescription = stringResource(R.string.person_city_map_cd),
-                        tint = MaterialTheme.colorScheme.primary)
-                }
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.align(Alignment.Start)
-            ) {
-                Switch(
-                    checked = cityNotify,
-                    onCheckedChange = { viewModel.onCityNotifyChanged(it) }
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    stringResource(R.string.person_city_notify),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
-            // ── Infos personnelles ───────────────────────────────────────────
-            HorizontalDivider()
-            Text(stringResource(R.string.person_personal_info_title),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.Start))
-
-            OutlinedTextField(
-                value = origin,
-                onValueChange = { origin = it; viewModel.onOriginChanged(it) },
-                label = { Text(stringResource(R.string.person_origin_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            OutlinedTextField(
-                value = likes,
-                onValueChange = { likes = it; viewModel.onLikesChanged(it) },
-                label = { Text(stringResource(R.string.person_likes_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2, maxLines = 4,
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            OutlinedTextField(
-                value = notes,
-                onValueChange = { notes = it; viewModel.onNotesChanged(it) },
-                label = { Text(stringResource(R.string.person_notes_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3, maxLines = 6,
-                shape = RoundedCornerShape(12.dp)
+            // ── Notes / Likes prioritaires + section repliable (PARTAGÉ avec l'édition) ──
+            ProfileFormFields(
+                notes = notes,
+                onNotesChange = viewModel::onNotesChanged,
+                likes = likes,
+                onLikesChange = viewModel::onLikesChanged,
+                gender = gender,
+                onGenderChange = viewModel::onGenderChanged,
+                birthdate = birthdate,
+                onPickBirthday = { showDatePicker = true },
+                onClearBirthday = { viewModel.onBirthdateChanged(null) },
+                birthdateNotify = birthdateNotify,
+                onBirthdateNotifyChange = viewModel::onBirthdateNotifyChanged,
+                city = city,
+                cityHasCoords = cityLat != null,
+                onCityChange = viewModel::onCityChanged,
+                onNavigateToMap = onNavigateToMap,
+                cityNotify = cityNotify,
+                onCityNotifyChange = viewModel::onCityNotifyChanged,
+                proximityAllowed = proximityAllowed,
+                onProximityBlocked = {
+                    scope.launch { snackbarHostState.showSnackbar(proximityBlockedMsg) }
+                },
+                origin = origin,
+                onOriginChange = viewModel::onOriginChanged,
+                phone = phone,
+                onPhoneChange = viewModel::onPhoneNumberChanged,
+                email = email,
+                onEmailChange = viewModel::onEmailChanged
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -396,41 +301,11 @@ fun AddPersonScreen(
         }
 
         if (showDatePicker) {
-            val initMillis = birthdate?.let { stored ->
-                val localCal = Calendar.getInstance().apply { timeInMillis = stored }
-                Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
-                    set(localCal.get(Calendar.YEAR), localCal.get(Calendar.MONTH),
-                        localCal.get(Calendar.DAY_OF_MONTH), 0, 0, 0)
-                    set(Calendar.MILLISECOND, 0)
-                }.timeInMillis
-            }
-            val datePickerState = rememberDatePickerState(
-                initialSelectedDateMillis = initMillis ?: System.currentTimeMillis()
+            BirthdayPickerDialog(
+                initialMillis = birthdate,
+                onConfirm = { viewModel.onBirthdateChanged(it) },
+                onDismiss = { showDatePicker = false }
             )
-            DatePickerDialog(
-                onDismissRequest = { showDatePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        val raw = datePickerState.selectedDateMillis
-                        if (raw != null) {
-                            val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-                                .apply { timeInMillis = raw }
-                            val localNoon = Calendar.getInstance().apply {
-                                set(utcCal.get(Calendar.YEAR), utcCal.get(Calendar.MONTH),
-                                    utcCal.get(Calendar.DAY_OF_MONTH), 12, 0, 0)
-                                set(Calendar.MILLISECOND, 0)
-                            }.timeInMillis
-                            viewModel.onBirthdateChanged(localNoon)
-                        }
-                        showDatePicker = false
-                    }) { Text(stringResource(R.string.common_ok)) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDatePicker = false }) {
-                        Text(stringResource(R.string.common_cancel))
-                    }
-                }
-            ) { DatePicker(state = datePickerState) }
         }
     }
 }
