@@ -109,11 +109,29 @@ class CategoryGroupDetailViewModel(
         viewModelScope.launch { repo.assignToGroup(ids, groupId) }
     }
 
-    /** Crée une nouvelle catégorie directement dans ce groupe. */
-    fun createInGroup(name: String, color: String) {
+    /** Crée une catégorie dans ce groupe — image définissable DÈS la création. */
+    fun createInGroup(name: String, color: String, imagePath: String? = null) {
         val trimmed = name.trim()
         if (trimmed.isBlank()) return
-        viewModelScope.launch { repo.add(Category(name = trimmed, color = color, parentGroupId = groupId)) }
+        viewModelScope.launch {
+            repo.add(Category(name = trimmed, color = color,
+                imagePath = imagePath, parentGroupId = groupId))
+        }
+    }
+
+    /**
+     * Met le dossier à la CORBEILLE : ses catégories (et leurs contacts) passent
+     * en soft-delete, ses sous-groupes REMONTENT d'un niveau (jamais orphelins),
+     * puis la ligne du groupe est supprimée.
+     */
+    fun deleteGroupToTrash() {
+        viewModelScope.launch {
+            val parent = group.value?.parentGroupId
+            subGroups.value.forEach { repo.updateGroup(it.copy(parentGroupId = parent)) }
+            val memberIds = members.value.map { it.id }
+            if (memberIds.isNotEmpty()) repo.softDeleteMultipleWithCascade(memberIds)
+            repo.deleteGroupRow(groupId)
+        }
     }
 
     /** Défait le groupe : ses catégories redeviennent indépendantes (racine). */

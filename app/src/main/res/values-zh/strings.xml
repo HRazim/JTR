@@ -24,7 +24,7 @@
     <string name="separator_and">和</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
-    <string name="home_title">JTR — 我的联系人</string>
+    <string name="home_title">JTR 联系人</string>
     <string name="home_selection_count">已选 %1$d 个</string>
     <string name="home_fab_add_person">添加联系人</string>
     <string name="home_location_warning">请开启定位以使用附近提醒功能</string>
@@ -170,7 +170,7 @@
     <string name="settings_location_bg_title">后台位置信息</string>
     <string name="settings_location_bg_message">JTR 需要持续的位置信息访问权限，以便在您经过联系人附近时提醒您，即使应用已关闭。</string>
     <string name="settings_location_bg_open">打开设置</string>
-    <string name="settings_birthday_title">重要日期提醒（通知）</string>
+    <string name="settings_birthday_title">重要日期</string>
     <string name="settings_birthday_subtitle">在生日和重要日期发送通知</string>
     <string name="settings_section_appearance">外观</string>
     <string name="settings_dark_mode_title">深色模式</string>
@@ -273,7 +273,7 @@
     <!-- v4.5 (DB v14) — 收藏、个人资料信息、分类分组 -->
     <string name="person_favorite_toggle_cd">切换收藏</string>
     <string name="person_info_menu">个人资料信息</string>
-    <string name="person_info_title">个人资料信息</string>
+    <string name="person_info_title">信息</string>
     <string name="person_info_created">创建于</string>
     <string name="person_info_updated">最后修改</string>
     <string name="categories_favorite">添加到收藏</string>
@@ -306,6 +306,7 @@
     <string name="categories_dissolve_confirm_text">这些分类将重新变为独立分类。</string>
     <string name="categories_no_candidates">没有可用的分类</string>
     <string name="categories_group_counter">%1$d 个分类，%2$d 个分组</string>
+    <string name="categories_folder_counter">%1$d 个分类 · %2$d 位联系人</string>
     <string name="categories_move_out">移出分组</string>
     <string name="categories_delete_group_title">删除分组「%1$s」？</string>
     <string name="categories_delete_group_text">确定要删除分组「%1$s」及其包含的 %2$d 个分类吗？</string>
@@ -349,4 +350,20 @@
     <string name="backup_confirm_title">恢复此备份？</string>
     <string name="backup_confirm_text">数据将与当前数据合并；相同标识的条目将被覆盖。此操作不可撤销。</string>
     <string name="backup_confirm_action">恢复</string>
+    <!-- v5.3 — 引导/原生导入、校验、回收站、收藏、定位权限 -->
+    <string name="save_requires_first_name">保存至少需要填写名字。</string>
+    <string name="city_map_hint">点击地图图标以确认精确地址。</string>
+    <string name="location_denied_settings">定位权限已被拒绝。请前往手机设置进行授权。</string>
+    <string name="favorites_category">收藏</string>
+    <string name="action_move_to_trash">移至回收站</string>
+    <string name="action_trash_short">回收站</string>
+    <string name="category_trash_confirm_title">将此分类移至回收站？</string>
+    <string name="category_trash_confirm_text">该分类及其联系人将被移至回收站。</string>
+    <string name="welcome_title">欢迎使用 JTR</string>
+    <string name="welcome_subtitle">JTR 是一本记忆手册。</string>
+    <string name="welcome_import_button">导入手机联系人</string>
+    <string name="welcome_skip">不导入，直接开始</string>
+    <string name="welcome_importing">正在导入 %1$d 位联系人…</string>
+    <string name="welcome_import_failed">导入失败。</string>
+    <string name="contacts_permission_denied">通讯录权限被拒绝 — 无法导入。</string>
 </resources>

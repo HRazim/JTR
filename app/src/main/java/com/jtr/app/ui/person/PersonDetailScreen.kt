@@ -32,9 +32,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import androidx.core.content.ContextCompat
 import android.view.MotionEvent
 import android.widget.Toast
 import androidx.compose.ui.draw.blur
@@ -143,11 +146,32 @@ fun PersonDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val proximityBlockedMsg = stringResource(R.string.person_proximity_blocked_snackbar)
+    val firstNameRequiredMsg = stringResource(R.string.save_requires_first_name)
+    val locationDeniedMsg = stringResource(R.string.location_denied_settings)
     // Verrou proximité : la notif de proximité n'est activable que si les
     // notifications globales ET la proximité sont actives dans les paramètres.
     val proximityAllowed = remember {
         val p = context.getSharedPreferences("jtr_prefs", android.content.Context.MODE_PRIVATE)
         p.getBoolean("notifications_enabled", false) && p.getBoolean("proximity_enabled", false)
+    }
+
+    // Permission GPS demandée IMMÉDIATEMENT à l'activation du rappel de proximité ;
+    // refus → message explicite orientant vers les paramètres du téléphone.
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) editVm.onCityNotifyChanged(true)
+        else scope.launch { snackbarHostState.showSnackbar(locationDeniedMsg) }
+    }
+    val onProximityToggle: (Boolean) -> Unit = { wanted ->
+        if (wanted && ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        } else {
+            editVm.onCityNotifyChanged(wanted)
+        }
     }
 
     Scaffold(
@@ -233,7 +257,14 @@ fun PersonDetailScreen(
                 ExtendedFloatingActionButton(
                     text = { Text(stringResource(R.string.person_save)) },
                     icon = { Icon(Icons.Default.Check, contentDescription = null) },
-                    onClick = { editVm.commitAllEdits() },
+                    onClick = {
+                        // Le ViewModel bloque déjà la sauvegarde (firstNameError) ;
+                        // on double d'un message clair et actionnable.
+                        if (vmFirstName.isBlank()) {
+                            scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
+                        }
+                        editVm.commitAllEdits()
+                    },
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
@@ -401,7 +432,7 @@ fun PersonDetailScreen(
                     onCityChange = { editVm.onCityChanged(it) },
                     onNavigateToMap = onNavigateToMap,
                     cityNotify = vmCityNotify,
-                    onCityNotifyChange = { editVm.onCityNotifyChanged(it) },
+                    onCityNotifyChange = onProximityToggle,
                     proximityAllowed = proximityAllowed,
                     onProximityBlocked = {
                         scope.launch { snackbarHostState.showSnackbar(proximityBlockedMsg) }

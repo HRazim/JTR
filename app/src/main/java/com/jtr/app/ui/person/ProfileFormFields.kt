@@ -1,8 +1,11 @@
 package com.jtr.app.ui.person
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -15,8 +18,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
@@ -28,6 +33,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.domain.model.DynamicLine
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
@@ -44,7 +50,7 @@ import java.util.Locale
  * ViewModel ; le repli vers Room a lieu au submit. Le champ « Nom » fusionne
  * intelligemment prénom + nom de famille (1er mot = prénom, le reste = nom).
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ProfileFormFields(
     firstName: String,
@@ -104,13 +110,29 @@ fun ProfileFormFields(
         )
 
         // ── 2. Notes (accessible instantanément — approche Note-First) ─────────
+        // Auto-scroll : le grand champ grandit au fil de la frappe ; à chaque
+        // saisie (et à la prise de focus), bringIntoView() ramène le champ dans
+        // la zone visible au-dessus du clavier — le texte ne sort plus de l'écran.
         var localNotes by remember(notes) { mutableStateOf(notes) }
+        val notesBringIntoView = remember { BringIntoViewRequester() }
+        val notesScope = rememberCoroutineScope()
         OutlinedTextField(
             value = localNotes,
-            onValueChange = { localNotes = it; onNotesChange(it) },
+            onValueChange = {
+                localNotes = it
+                onNotesChange(it)
+                notesScope.launch { notesBringIntoView.bringIntoView() }
+            },
             label = { Text(stringResource(R.string.person_notes_label)) },
             leadingIcon = { Icon(Icons.AutoMirrored.Filled.Notes, null) },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .bringIntoViewRequester(notesBringIntoView)
+                .onFocusEvent { focusState ->
+                    if (focusState.isFocused) {
+                        notesScope.launch { notesBringIntoView.bringIntoView() }
+                    }
+                },
             minLines = 4, maxLines = 10,
             shape = RoundedCornerShape(12.dp),
             keyboardOptions = sentences
@@ -247,7 +269,16 @@ fun ProfileFormFields(
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp))
                             }
-                        }
+                        },
+                        // Ville saisie SANS coordonnées → guide très visible vers
+                        // l'icône carte (validation de l'adresse précise).
+                        supportingText = if (localCity.isNotBlank() && !cityHasCoords) ({
+                            Text(
+                                text = stringResource(R.string.city_map_hint),
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }) else null
                     )
                     IconButton(onClick = onNavigateToMap, modifier = Modifier.padding(top = 4.dp)) {
                         Icon(Icons.Default.Map,

@@ -64,6 +64,14 @@ class CategoryDetailViewModel(
     private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
     private val sortPrefKey = "cat_sort_$categoryId"
 
+    /**
+     * Catégorie VIRTUELLE « Favoris » : générée dynamiquement (≥ 2 favoris) en
+     * tête de l'écran Catégories — aucune ligne Room, donc ni édition, ni
+     * corbeille, ni retrait/ajout de membres : seuls la consultation, le tri et
+     * la recherche s'appliquent.
+     */
+    val isVirtualFavorites: Boolean = categoryId == FAVORITES_CATEGORY_ID
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -101,17 +109,34 @@ class CategoryDetailViewModel(
     val categories: StateFlow<List<Category>> = categoryDao.getAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _categoryName = MutableStateFlow("")
-    val categoryName: StateFlow<String> = _categoryName.asStateFlow()
+    /** Catégorie observée en direct (null pour la virtuelle « Favoris »). */
+    val category: StateFlow<Category?> =
+        if (isVirtualFavorites) MutableStateFlow(null)
+        else categoryDao.observeById(categoryId)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val categoryName: StateFlow<String> =
+        if (isVirtualFavorites) {
+            MutableStateFlow(application.getString(R.string.favorites_category))
+        } else {
+            category.map { it?.name ?: "" }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+        }
 
     // Libellés localisés des types de relation (moteur multi-critères partagé).
     private val relationTypeLabels: Map<String, String> =
         FieldTypes.RELATION.filter { it.key != FieldTypes.CUSTOM }
             .associate { it.key to application.getString(it.labelRes).normalizeForSearch() }
 
+    // Source : membres de la catégorie, OU tous les favoris pour la virtuelle.
+    private val personsSource =
+        if (isVirtualFavorites) repository.getAllActive()
+            .map { list -> list.filter { it.isFavorite } }
+        else repository.getByCategory(categoryId)
+
     // Filtrage multi-critères + tri sur Dispatchers.Default (UI 120 Hz préservée).
     val persons: StateFlow<List<Person>> = combine(
-        repository.getByCategory(categoryId),
+        personsSource,
         _searchQuery,
         _sortOrder
     ) { allPersons, query, order ->
@@ -126,10 +151,16 @@ class CategoryDetailViewModel(
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    init {
-        viewModelScope.launch {
-            _categoryName.value = categoryDao.getById(categoryId)?.name ?: ""
-        }
+    /** Met à jour nom / couleur / image de la catégorie (menu « Modifier »). */
+    fun updateCategory(updated: Category) {
+        if (isVirtualFavorites) return
+        viewModelScope.launch { categoryRepo.update(updated) }
+    }
+
+    /** Met la catégorie À LA CORBEILLE (cascade : ses contacts aussi). */
+    fun deleteCategoryToTrash() {
+        if (isVirtualFavorites) return
+        viewModelScope.launch { categoryRepo.softDeleteWithCascade(categoryId) }
     }
 
     fun onSearchQueryChanged(query: String) { _searchQuery.value = query }
@@ -192,5 +223,8 @@ class CategoryDetailViewModel(
 
     companion object {
         private const val VIEW_PREF_KEY = "category_detail_view_mode"
+
+        /** Id sentinelle de la catégorie virtuelle « Favoris » (aucune ligne Room). */
+        const val FAVORITES_CATEGORY_ID = "jtr_favorites"
     }
 }

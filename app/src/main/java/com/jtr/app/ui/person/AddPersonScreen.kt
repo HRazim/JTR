@@ -1,6 +1,8 @@
 package com.jtr.app.ui.person
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -74,10 +77,31 @@ fun AddPersonScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val proximityBlockedMsg = stringResource(R.string.person_proximity_blocked_snackbar)
+    val firstNameRequiredMsg = stringResource(R.string.save_requires_first_name)
+    val locationDeniedMsg = stringResource(R.string.location_denied_settings)
     // Verrou proximité : activable uniquement si notifications + proximité globales actives.
     val proximityAllowed = remember {
         val p = context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
         p.getBoolean("notifications_enabled", false) && p.getBoolean("proximity_enabled", false)
+    }
+
+    // Permission GPS demandée IMMÉDIATEMENT à l'activation du rappel de proximité ;
+    // refus → message explicite orientant vers les paramètres du téléphone.
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) viewModel.onCityNotifyChanged(true)
+        else scope.launch { snackbarHostState.showSnackbar(locationDeniedMsg) }
+    }
+    val onProximityToggle: (Boolean) -> Unit = { wanted ->
+        if (wanted && ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        } else {
+            viewModel.onCityNotifyChanged(wanted)
+        }
     }
 
     LaunchedEffect(cityFromMap) {
@@ -255,7 +279,7 @@ fun AddPersonScreen(
                 onCityChange = viewModel::onCityChanged,
                 onNavigateToMap = onNavigateToMap,
                 cityNotify = cityNotify,
-                onCityNotifyChange = viewModel::onCityNotifyChanged,
+                onCityNotifyChange = onProximityToggle,
                 proximityAllowed = proximityAllowed,
                 onProximityBlocked = {
                     scope.launch { snackbarHostState.showSnackbar(proximityBlockedMsg) }
@@ -273,7 +297,14 @@ fun AddPersonScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(
-                onClick = { viewModel.savePerson(onSuccess = onNavigateBack) },
+                onClick = {
+                    // Le ViewModel bloque déjà la sauvegarde (firstNameError) ;
+                    // on double d'un message clair et actionnable.
+                    if (firstName.isBlank()) {
+                        scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
+                    }
+                    viewModel.savePerson(onSuccess = onNavigateBack)
+                },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {

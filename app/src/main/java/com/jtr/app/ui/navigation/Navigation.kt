@@ -41,10 +41,13 @@ import com.jtr.app.ui.person.*
 import com.jtr.app.ui.settings.SettingsScreen
 import com.jtr.app.ui.theme.ThemePreset
 import com.jtr.app.ui.trash.TrashScreen
+import com.jtr.app.ui.welcome.WelcomeScreen
+import com.jtr.app.ui.welcome.WelcomeViewModel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 object Routes {
+    const val WELCOME = "welcome"
     const val HOME = "home"
     // Route optionnelle : categoryId pré-remplit la catégorie lors de la création
     const val ADD_PERSON = "add_person?categoryId={categoryId}"
@@ -94,6 +97,13 @@ fun JTRMainScaffold(
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // Onboarding : première ouverture → écran de Bienvenue (flag persistant).
+    val appContext = LocalContext.current.applicationContext
+    val startDestination = remember {
+        val prefs = appContext.getSharedPreferences("jtr_prefs", android.content.Context.MODE_PRIVATE)
+        if (prefs.getBoolean(WelcomeViewModel.FIRST_LAUNCH_KEY, true)) Routes.WELCOME else Routes.HOME
+    }
 
     // Modes sélection (« Samsung Galerie ») hoissés ici : ils masquent la
     // BottomNavigationBar globale et laissent place au footer contextuel de l'écran.
@@ -161,9 +171,19 @@ fun JTRMainScaffold(
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = Routes.HOME,
+            startDestination = startDestination,
             modifier = Modifier.padding(paddingValues)
         ) {
+            composable(Routes.WELCOME) {
+                WelcomeScreen(
+                    onFinished = {
+                        navController.navigate(Routes.HOME) {
+                            popUpTo(Routes.WELCOME) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
             composable(Routes.HOME) {
                 HomeScreen(
                     onNavigateToAddPerson = { navController.navigate(Routes.addPerson()) },

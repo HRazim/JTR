@@ -40,6 +40,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -61,8 +62,9 @@ import com.jtr.app.R
 import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
-import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
+import com.jtr.app.ui.components.JtrSortMenuButton
+import com.jtr.app.ui.components.JtrViewMenuButton
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.share.CategoriesSharePreview
 import com.jtr.app.ui.share.ShareCategoryItem
@@ -115,6 +117,7 @@ fun CategoriesScreen(
     val personCountByCategory by viewModel.personCountByCategory.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
+    val favoritePersonCount by viewModel.favoritePersonCount.collectAsStateWithLifecycle()
     // Mode d'affichage persistant (LIST / GRID / DETAIL), restauré depuis jtr_prefs.
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
@@ -428,8 +431,11 @@ fun CategoriesScreen(
                                 contentDescription = stringResource(R.string.categories_fab_add_cd)
                             )
                         }
-                        JtrOverflowMenu(
-                            sortOptions = categorySortOptions(sortOrder) { viewModel.setSortOrder(it) },
+                        // v5.3 : Tri et Affichage sortis du menu caché — accès direct.
+                        JtrSortMenuButton(
+                            sortOptions = categorySortOptions(sortOrder) { viewModel.setSortOrder(it) }
+                        )
+                        JtrViewMenuButton(
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
                         )
@@ -583,7 +589,13 @@ fun CategoriesScreen(
                     onCategoryClick = onCategoryClick,
                     onGroupClick = onGroupClick,
                     onCategoryLongClick = { startSelectionCategory(it) },
-                    onGroupLongClick = { startSelectionGroup(it) }
+                    onGroupLongClick = { startSelectionGroup(it) },
+                    // Tuile virtuelle « Favoris » : hors recherche et hors mode cible
+                    // (elle ne peut pas recevoir de contacts déplacés).
+                    favoritesCount = if (isSearching || isPickingMoveTarget) 0 else favoritePersonCount,
+                    onFavoritesClick = {
+                        onCategoryClick(CategoryDetailViewModel.FAVORITES_CATEGORY_ID)
+                    }
                 )
             }
         }
@@ -591,8 +603,8 @@ fun CategoriesScreen(
 
     if (showAddDialog) {
         AddCategoryDialog(
-            onConfirm = { name, color ->
-                viewModel.addCategory(name, color)
+            onConfirm = { name, color, imagePath ->
+                viewModel.addCategory(name, color, imagePath)
                 showAddDialog = false
             },
             onDismiss = { showAddDialog = false }
@@ -601,10 +613,31 @@ fun CategoriesScreen(
 }
 
 /**
+ * Calque de protection des tuiles à image : dégradé vertical ASYMÉTRIQUE
+ * (transparent → noir 70 %) démarrant à mi-tuile (45 % de la hauteur) et
+ * s'assombrissant vers le bas — n'importe quelle photo (claire, sombre,
+ * paysage, portrait) laisse le texte blanc lisible.
+ *
+ * Performance 120 Hz : dessiné via [drawWithCache] — le [Brush] n'est recréé
+ * QUE si la taille de la tuile change. Les translations du drag & drop passent
+ * par graphicsLayer (aucune re-mesure) : zéro recomposition, zéro réallocation
+ * de shader pendant le glissement.
+ */
+private fun Modifier.bottomScrim(): Modifier = drawWithCache {
+    val brush = Brush.verticalGradient(
+        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
+        startY = size.height * 0.45f,
+        endY = size.height
+    )
+    onDrawBehind { drawRect(brush) }
+}
+
+/**
  * Tuile de catégorie style « Galerie » : la photo de couverture remplit le fond,
- * le nom (et le nombre de contacts) est superposé en bas sur un dégradé sombre.
- * Clic court → ouvre ; clic long → mode sélection. Aucun menu d'action individuel :
- * l'appui long + le footer contextuel sont les seuls maîtres.
+ * le nom (et le nombre de contacts) est superposé en bas sur le calque de
+ * protection [bottomScrim]. Clic court → ouvre ; clic long → mode sélection.
+ * Aucun menu d'action individuel : l'appui long + le footer contextuel sont les
+ * seuls maîtres.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -644,17 +677,8 @@ fun CategoryGridTile(
             )
         }
 
-        // Dégradé sombre en bas pour la lisibilité du texte superposé.
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f)),
-                        startY = 200f
-                    )
-                )
-        )
+        // Calque de protection proportionnel (mi-tuile → bas), mis en cache.
+        Box(modifier = Modifier.fillMaxSize().bottomScrim())
 
         // Étoile « favori » en haut à DROITE (indicateur de statut, non interactif).
         if (category.isFavorite) {
@@ -666,6 +690,7 @@ fun CategoryGridTile(
             )
         }
 
+        // Identité incrustée : titre sur UNE ligne + compteur de contacts.
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -677,13 +702,13 @@ fun CategoryGridTile(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Text(
                 text = stringResource(R.string.categories_person_count, personCount),
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.85f),
+                color = Color.White.copy(alpha = 0.8f),
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
@@ -779,8 +804,13 @@ internal fun TopEntriesBrowser(
     onCategoryClick: (String) -> Unit,
     onGroupClick: (Long) -> Unit,
     onCategoryLongClick: (String) -> Unit,
-    onGroupLongClick: (Long) -> Unit
+    onGroupLongClick: (Long) -> Unit,
+    favoritesCount: Int = 0,
+    onFavoritesClick: () -> Unit = {}
 ) {
+    // Catégorie VIRTUELLE « Favoris » : visible dès 2 contacts favoris, toujours
+    // en tête (les favoris restent par ailleurs premiers dans leurs catégories).
+    val showFavorites = favoritesCount >= 2
     when (viewMode) {
         JtrViewMode.GRID -> LazyVerticalGrid(
             columns = GridCells.Fixed(2),
@@ -789,6 +819,11 @@ internal fun TopEntriesBrowser(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (showFavorites) {
+                item(key = "jtr_favorites") {
+                    FavoritesGridTile(count = favoritesCount, onClick = onFavoritesClick)
+                }
+            }
             items(entries, key = { topEntryKey(it) }) { entry ->
                 when (entry) {
                     is TopEntry.Folder -> FolderGridTile(
@@ -796,7 +831,9 @@ internal fun TopEntriesBrowser(
                         memberCount = entry.members.size,
                         subGroupCount = entry.subGroupCount,
                         onClick = { onGroupClick(entry.group.id) },
-                        onLongClick = { onGroupLongClick(entry.group.id) })
+                        onLongClick = { onGroupLongClick(entry.group.id) },
+                        // Cumul des contacts du dossier (somme des compteurs membres).
+                        personTotal = entry.members.sumOf { countOf(it.id) })
                     is TopEntry.Single -> CategoryGridTile(
                         entry.category, countOf(entry.category.id),
                         onClick = { onCategoryClick(entry.category.id) },
@@ -810,6 +847,12 @@ internal fun TopEntriesBrowser(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            if (showFavorites) {
+                item(key = "jtr_favorites") {
+                    FavoritesRow(count = favoritesCount, showCount = true,
+                        onClick = onFavoritesClick)
+                }
+            }
             items(entries, key = { topEntryKey(it) }) { entry ->
                 when (entry) {
                     is TopEntry.Folder -> FolderListRow(
@@ -831,6 +874,12 @@ internal fun TopEntriesBrowser(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            if (showFavorites) {
+                item(key = "jtr_favorites") {
+                    FavoritesRow(count = favoritesCount, showCount = false,
+                        onClick = onFavoritesClick)
+                }
+            }
             items(entries, key = { topEntryKey(it) }) { entry ->
                 when (entry) {
                     is TopEntry.Folder -> EntryCompactRow(
@@ -855,6 +904,102 @@ internal fun TopEntriesBrowser(
                             onClick = { onCategoryClick(entry.category.id) },
                             onLongClick = { onCategoryLongClick(entry.category.id) })
                     }
+                }
+            }
+        }
+    }
+}
+
+/** Tuile (grille) de la catégorie virtuelle « Favoris » : or + étoile + compteur. */
+@Composable
+private fun FavoritesGridTile(count: Int, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFFFFD54F), Color(0xFFFFA000))
+                )
+            )
+            .clickable(onClick = onClick)
+    ) {
+        Icon(
+            Icons.Default.Star,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.9f),
+            modifier = Modifier.size(56.dp).align(Alignment.Center)
+        )
+        Box(modifier = Modifier.fillMaxSize().bottomScrim())
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.favorites_category),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            Text(
+                text = stringResource(R.string.categories_person_count, count),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.8f),
+                maxLines = 1
+            )
+        }
+    }
+}
+
+/** Ligne (liste/détail) de la catégorie virtuelle « Favoris ». */
+@Composable
+private fun FavoritesRow(count: Int, showCount: Boolean, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(if (showCount) 48.dp else 40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(Color(0xFFFFD54F), Color(0xFFFFA000))
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Star, contentDescription = null,
+                    tint = Color.White, modifier = Modifier.size(22.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.favorites_category),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                if (showCount) {
+                    Text(
+                        text = stringResource(R.string.categories_person_count, count),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
                 }
             }
         }
@@ -1058,7 +1203,8 @@ internal fun FolderGridTile(
     memberCount: Int,
     subGroupCount: Int,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    personTotal: Int = 0
 ) {
     Box(
         modifier = Modifier
@@ -1068,23 +1214,19 @@ internal fun FolderGridTile(
             .background(MaterialTheme.colorScheme.primaryContainer)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
+        // Compteur enrichi : sous-catégories + CUMUL des contacts du dossier.
+        val counter = stringResource(R.string.categories_folder_counter, memberCount, personTotal)
         if (group.imagePath != null) {
             AsyncImage(model = group.imagePath, contentDescription = group.name,
                 modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            Box(
-                modifier = Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f)),
-                        startY = 200f
-                    )
-                )
-            )
+            // Calque de protection proportionnel (mi-tuile → bas), mis en cache.
+            Box(modifier = Modifier.fillMaxSize().bottomScrim())
             Column(modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(12.dp)) {
                 Text(group.name, style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 2,
+                    fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                Text(stringResource(R.string.categories_group_counter, memberCount, subGroupCount),
-                    style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f),
+                Text(counter,
+                    style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f),
                     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
         } else {
@@ -1099,12 +1241,37 @@ internal fun FolderGridTile(
                 Spacer(Modifier.height(6.dp))
                 Text(group.name, style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer, maxLines = 2,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer, maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                Text(stringResource(R.string.categories_group_counter, memberCount, subGroupCount),
+                Text(counter,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
+        }
+
+        // Sous-groupes éventuels : pastille discrète en haut à gauche (icône + nombre,
+        // purement numérique — l'intitulé complet reste dans les vues Liste/Détail).
+        if (subGroupCount > 0) {
+            val badgeTint = if (group.imagePath != null) Color.White
+            else MaterialTheme.colorScheme.onPrimaryContainer
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (group.imagePath != null) Color.Black.copy(alpha = 0.35f)
+                        else MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Icon(Icons.Default.Folder, contentDescription = null,
+                    tint = badgeTint, modifier = Modifier.size(12.dp))
+                Spacer(Modifier.width(3.dp))
+                Text("$subGroupCount", style = MaterialTheme.typography.labelSmall,
+                    color = badgeTint)
             }
         }
     }
@@ -1381,8 +1548,10 @@ internal fun ReorderableTopGrid(
                     isFolder = true,
                     name = entry.group.name,
                     isFavorite = entry.group.isFavorite,
-                    subtitle = stringResource(R.string.categories_group_counter, entry.members.size, entry.subGroupCount),
-                    imagePath = null,
+                    // Compteur enrichi : sous-catégories + cumul des contacts.
+                    subtitle = stringResource(R.string.categories_folder_counter,
+                        entry.members.size, entry.members.sumOf { countOf(it.id) }),
+                    imagePath = entry.group.imagePath,
                     accent = MaterialTheme.colorScheme.primaryContainer,
                     selected = isGroupSelected(entry.group.id),
                     mergeHighlight = mergeHighlight,
@@ -1747,17 +1916,8 @@ internal fun TopSelectionTile(
                 modifier = Modifier.size(56.dp).align(Alignment.Center))
         }
 
-        // Dégradé bas pour la lisibilité du nom.
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f)),
-                        startY = 200f
-                    )
-                )
-        )
+        // Calque de protection proportionnel (mi-tuile → bas), mis en cache.
+        Box(modifier = Modifier.fillMaxSize().bottomScrim())
 
         // Voile bleuté quand sélectionné.
         if (selected) {
@@ -1792,14 +1952,19 @@ internal fun TopSelectionTile(
                 modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(22.dp))
         }
 
+        // Identité incrustée bas-gauche : la case à cocher vit en HAUT-gauche, donc
+        // aucun chevauchement ; titre sur UNE ligne pour rester net sous le halo
+        // de fusion qui englobe toute la tuile.
         Column(
             modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(12.dp)
         ) {
             Text(name, style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 2)
+                fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             if (subtitle != null) {
                 Text(subtitle, style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.85f), maxLines = 1)
+                    color = Color.White.copy(alpha = 0.8f), maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
         }
     }
@@ -1840,19 +2005,58 @@ internal fun TextPromptDialog(
     )
 }
 
+/** Édition d'une catégorie existante — délègue au formulaire unifié. */
 @Composable
 fun EditCategoryDialog(
     category: Category,
+    onConfirm: (name: String, color: String, imagePath: String?) -> Unit,
+    onDismiss: () -> Unit
+) = CategoryFormDialog(
+    title = stringResource(R.string.categories_edit_dialog_title),
+    initialName = category.name,
+    initialColor = category.color,
+    initialImagePath = category.imagePath,
+    confirmLabel = stringResource(R.string.common_save),
+    onConfirm = onConfirm,
+    onDismiss = onDismiss
+)
+
+/**
+ * Création d'une catégorie — MÊME formulaire que l'édition (v5.3) : l'image de
+ * couverture se choisit et se recadre DÈS la création, sans étape de retouche.
+ */
+@Composable
+fun AddCategoryDialog(
+    onConfirm: (name: String, color: String, imagePath: String?) -> Unit,
+    onDismiss: () -> Unit
+) = CategoryFormDialog(
+    title = stringResource(R.string.categories_new_dialog_title),
+    initialName = "",
+    initialColor = "#2E86C1",
+    initialImagePath = null,
+    confirmLabel = stringResource(R.string.common_create),
+    onConfirm = onConfirm,
+    onDismiss = onDismiss
+)
+
+/** Formulaire de catégorie UNIFIÉ (création ET édition) : nom + couleur + image. */
+@Composable
+private fun CategoryFormDialog(
+    title: String,
+    initialName: String,
+    initialColor: String,
+    initialImagePath: String?,
+    confirmLabel: String,
     onConfirm: (name: String, color: String, imagePath: String?) -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var name by remember { mutableStateOf(category.name) }
+    var name by remember { mutableStateOf(initialName) }
     val presetColors = listOf("#2E86C1", "#E74C3C", "#27AE60", "#F39C12", "#8E44AD", "#16A085")
-    var selectedColor by remember { mutableStateOf(category.color) }
-    var imagePath by remember { mutableStateOf(category.imagePath) }
+    var selectedColor by remember { mutableStateOf(initialColor) }
+    var imagePath by remember { mutableStateOf(initialImagePath) }
     var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
 
     val photoPicker = rememberLauncherForActivityResult(
@@ -1880,7 +2084,7 @@ fun EditCategoryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.categories_edit_dialog_title)) },
+        title = { Text(title) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -1974,63 +2178,7 @@ fun EditCategoryDialog(
             TextButton(
                 onClick = { if (name.isNotBlank()) onConfirm(name, selectedColor, imagePath) },
                 enabled = name.isNotBlank()
-            ) { Text(stringResource(R.string.common_save)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-        }
-    )
-}
-
-@Composable
-fun AddCategoryDialog(
-    onConfirm: (name: String, color: String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    val colors = listOf("#2E86C1", "#E74C3C", "#27AE60", "#F39C12", "#8E44AD", "#16A085")
-    var selectedColor by remember { mutableStateOf(colors.first()) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.categories_new_dialog_title)) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.common_name_label)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(stringResource(R.string.common_color_label),
-                    style = MaterialTheme.typography.labelMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    colors.forEach { color ->
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(Color(android.graphics.Color.parseColor(color)))
-                                .clickable { selectedColor = color },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (selectedColor == color) {
-                                Icon(Icons.Default.Check, contentDescription = null,
-                                    tint = Color.White, modifier = Modifier.size(20.dp))
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { if (name.isNotBlank()) onConfirm(name, selectedColor) },
-                enabled = name.isNotBlank()
-            ) { Text(stringResource(R.string.common_create)) }
+            ) { Text(confirmLabel) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }

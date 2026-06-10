@@ -14,6 +14,9 @@
     <!-- Notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Lecture des contacts natifs (importation à l'onboarding, v5.3) -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
     <!-- Broadcast pour réveiller l'app après redémarrage -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 

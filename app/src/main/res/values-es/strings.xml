@@ -24,7 +24,7 @@
     <string name="separator_and"> y </string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
-    <string name="home_title">JTR — Mis Contactos</string>
+    <string name="home_title">JTR Contacts</string>
     <string name="home_selection_count">%1$d seleccionado(s)</string>
     <string name="home_fab_add_person">Agregar una persona</string>
     <string name="home_location_warning">Active la ubicación para los recordatorios de proximidad</string>
@@ -170,7 +170,7 @@
     <string name="settings_location_bg_title">Ubicación en segundo plano</string>
     <string name="settings_location_bg_message">JTR necesita acceso permanente a la ubicación para avisarte cuando pasas cerca de un contacto, incluso con la app cerrada.</string>
     <string name="settings_location_bg_open">Abrir ajustes</string>
-    <string name="settings_birthday_title">Recordatorio de fechas importantes (Notificaciones)</string>
+    <string name="settings_birthday_title">Fechas importantes</string>
     <string name="settings_birthday_subtitle">Notificar cumpleaños y fechas importantes</string>
     <string name="settings_section_appearance">Apariencia</string>
     <string name="settings_dark_mode_title">Modo oscuro</string>
@@ -273,7 +273,7 @@
     <!-- v4.5 (DB v14) — favoritos, info del perfil, grupos de categorías -->
     <string name="person_favorite_toggle_cd">Alternar favorito</string>
     <string name="person_info_menu">Información del perfil</string>
-    <string name="person_info_title">Información del perfil</string>
+    <string name="person_info_title">Información</string>
     <string name="person_info_created">Creado el</string>
     <string name="person_info_updated">Última modificación</string>
     <string name="categories_favorite">Añadir a favoritos</string>
@@ -306,6 +306,7 @@
     <string name="categories_dissolve_confirm_text">Las categorías volverán a ser independientes.</string>
     <string name="categories_no_candidates">No hay categorías disponibles</string>
     <string name="categories_group_counter">%1$d categorías, %2$d grupos</string>
+    <string name="categories_folder_counter">%1$d cat. · %2$d contactos</string>
     <string name="categories_move_out">Sacar del grupo</string>
     <string name="categories_delete_group_title">¿Eliminar el grupo «%1$s»?</string>
     <string name="categories_delete_group_text">¿Seguro que quieres eliminar el grupo «%1$s» y las %2$d categorías que contiene?</string>
@@ -349,4 +350,20 @@
     <string name="backup_confirm_title">¿Restaurar esta copia?</string>
     <string name="backup_confirm_text">Los datos se fusionarán con los actuales; las fichas con el mismo identificador se sobrescribirán. Acción irreversible.</string>
     <string name="backup_confirm_action">Restaurar</string>
+    <!-- v5.3 — onboarding/importación nativa, validación, papelera, favoritos, GPS -->
+    <string name="save_requires_first_name">Se requiere al menos un nombre para guardar.</string>
+    <string name="city_map_hint">Pulsa el icono del mapa para validar la dirección precisa.</string>
+    <string name="location_denied_settings">El permiso de ubicación fue denegado. Ve a los ajustes del teléfono para permitirlo.</string>
+    <string name="favorites_category">Favoritos</string>
+    <string name="action_move_to_trash">Mover a la papelera</string>
+    <string name="action_trash_short">Papelera</string>
+    <string name="category_trash_confirm_title">¿Mover esta categoría a la papelera?</string>
+    <string name="category_trash_confirm_text">La categoría y sus contactos se moverán a la papelera.</string>
+    <string name="welcome_title">Bienvenido a JTR</string>
+    <string name="welcome_subtitle">JTR es un cuaderno de memoria.</string>
+    <string name="welcome_import_button">Importar los contactos del teléfono</string>
+    <string name="welcome_skip">Empezar sin importar</string>
+    <string name="welcome_importing">Importando %1$d contactos…</string>
+    <string name="welcome_import_failed">Error al importar.</string>
+    <string name="contacts_permission_denied">Permiso de contactos denegado: no se puede importar.</string>
 </resources>

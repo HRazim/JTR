@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.R
 import com.jtr.app.data.repository.CategoryRepository
+import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -53,7 +55,16 @@ internal fun sortTopEntries(entries: List<TopEntry>, order: CategorySortOrder): 
 class CategoryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repo = CategoryRepository(application.applicationContext)
+    private val personRepo = PersonRepository(application.applicationContext)
     private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
+
+    /**
+     * Nombre de contacts favoris actifs — pilote la catégorie VIRTUELLE
+     * « Favoris » (affichée en tête dès 2 favoris, cf. TopEntriesBrowser).
+     */
+    val favoritePersonCount: StateFlow<Int> = personRepo.getAllActive()
+        .map { list -> list.count { it.isFavorite } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -104,8 +115,9 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
     /** Réinitialise la recherche (appelé quand l'écran quitte la composition). */
     fun clearSearch() { _searchQuery.value = "" }
 
-    fun addCategory(name: String, color: String) {
-        viewModelScope.launch { repo.add(Category(name = name, color = color)) }
+    /** Crée une catégorie — image de couverture définissable DÈS la création. */
+    fun addCategory(name: String, color: String, imagePath: String? = null) {
+        viewModelScope.launch { repo.add(Category(name = name, color = color, imagePath = imagePath)) }
     }
 
     fun updateCategory(category: Category) {

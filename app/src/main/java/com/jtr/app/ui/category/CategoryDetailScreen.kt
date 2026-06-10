@@ -36,13 +36,59 @@ fun CategoryDetailScreen(
     val categoryName by viewModel.categoryName.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
+    val category by viewModel.category.collectAsStateWithLifecycle()
+    // Catégorie virtuelle « Favoris » : lecture seule (ni ajout, ni édition, ni retrait).
+    val isVirtual = viewModel.isVirtualFavorites
 
     var showCategoryDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var showTrashConfirm by remember { mutableStateOf(false) }
     // Mode recherche de la TopAppBar (état d'UI local ; la query vient du ViewModel).
     var searchActive by remember { mutableStateOf(false) }
 
     // Sortie d'écran → réinitialisation du filtre : aucune query fantôme au retour.
     DisposableEffect(Unit) { onDispose { viewModel.clearSearch() } }
+
+    // « Modifier » : même formulaire unifié que la création (nom, couleur, image).
+    if (showEditDialog) {
+        category?.let { current ->
+            EditCategoryDialog(
+                category = current,
+                onConfirm = { name, color, imagePath ->
+                    viewModel.updateCategory(
+                        current.copy(name = name, color = color, imagePath = imagePath))
+                    showEditDialog = false
+                },
+                onDismiss = { showEditDialog = false }
+            )
+        }
+    }
+
+    // « Mettre à la corbeille » : confirmation explicite (cascade sur les contacts).
+    if (showTrashConfirm) {
+        AlertDialog(
+            onDismissRequest = { showTrashConfirm = false },
+            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(stringResource(R.string.category_trash_confirm_title)) },
+            text = { Text(stringResource(R.string.category_trash_confirm_text)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showTrashConfirm = false
+                        viewModel.deleteCategoryToTrash()
+                        onNavigateBack()
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.action_move_to_trash)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTrashConfirm = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
 
     if (showCategoryDialog) {
         AssignCategoryDialog(
@@ -92,15 +138,34 @@ fun CategoryDetailScreen(
                         }
                     },
                     actions = {
-                        AddContactMenu(
-                            onAddExisting = onAddExistingContacts,
-                            onCreateNew = onNavigateToAddPerson
-                        )
+                        if (!isVirtual) {
+                            AddContactMenu(
+                                onAddExisting = onAddExistingContacts,
+                                onCreateNew = onNavigateToAddPerson
+                            )
+                        }
                         JtrOverflowMenu(
                             sortOptions = contactSortOptions(sortOrder) { viewModel.setSortOrder(it) },
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
-                        )
+                        ) { dismiss ->
+                            // Actions sur la catégorie elle-même (v5.3) — masquées
+                            // pour la catégorie virtuelle « Favoris ».
+                            if (!isVirtual) {
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.common_edit)) },
+                                    leadingIcon = { Icon(Icons.Default.Edit, null) },
+                                    onClick = { dismiss(); showEditDialog = true }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_move_to_trash)) },
+                                    leadingIcon = { Icon(Icons.Default.Delete, null,
+                                        tint = MaterialTheme.colorScheme.error) },
+                                    onClick = { dismiss(); showTrashConfirm = true }
+                                )
+                            }
+                        }
                     }
                 )
             }
@@ -117,14 +182,18 @@ fun CategoryDetailScreen(
                             .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedButton(
-                            onClick = { viewModel.removeSelectedFromCategory() },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.LinkOff, contentDescription = null,
-                                modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.category_detail_btn_remove))
+                        // « Retirer de la catégorie » : enlève SEULEMENT le lien —
+                        // sans objet pour la catégorie virtuelle « Favoris ».
+                        if (!isVirtual) {
+                            OutlinedButton(
+                                onClick = { viewModel.removeSelectedFromCategory() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.LinkOff, contentDescription = null,
+                                    modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.category_detail_btn_remove))
+                            }
                         }
                         OutlinedButton(
                             onClick = { showCategoryDialog = true },
@@ -135,6 +204,7 @@ fun CategoryDetailScreen(
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.home_btn_category))
                         }
+                        // Sémantique v5.3 : suppression GLOBALE du profil = corbeille.
                         Button(
                             onClick = { viewModel.deleteSelected() },
                             modifier = Modifier.weight(1f),
@@ -145,7 +215,7 @@ fun CategoryDetailScreen(
                             Icon(Icons.Default.Delete, contentDescription = null,
                                 modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.common_delete))
+                            Text(stringResource(R.string.action_trash_short))
                         }
                     }
                 }

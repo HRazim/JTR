@@ -70,6 +70,10 @@ interface PersonDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(person: Person)
 
+    /** Insertion par lots (importation des contacts natifs, restauration). */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(persons: List<Person>)
+
     @Update
     suspend fun update(person: Person)
 

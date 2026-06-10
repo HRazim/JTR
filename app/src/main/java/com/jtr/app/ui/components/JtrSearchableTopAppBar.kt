@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
@@ -168,8 +169,67 @@ fun JtrSearchableTopAppBar(
     }
 }
 
+/** Entrées du sélecteur de mode d'affichage (icône + libellé localisé). */
+private fun viewModeEntries() = listOf(
+    Triple(JtrViewMode.LIST, R.string.view_mode_list, Icons.AutoMirrored.Filled.ViewList),
+    Triple(JtrViewMode.GRID, R.string.view_mode_grid, Icons.Default.GridView),
+    Triple(JtrViewMode.DETAIL, R.string.view_mode_detail, Icons.Default.ViewAgenda)
+)
+
 /**
- * Menu « 3 points » harmonisé (Accueil, Catégories, Dossiers, détail de catégorie) :
+ * Bouton « Trier » DIRECTEMENT visible dans la TopAppBar (sorti du menu 3 points
+ * en v5.3 pour un accès rapide) : icône tri + menu des critères.
+ */
+@Composable
+fun JtrSortMenuButton(sortOptions: List<JtrSortOption>) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.AutoMirrored.Filled.Sort,
+                contentDescription = stringResource(R.string.sort_title))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            sortOptions.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(option.labelRes)) },
+                    leadingIcon = { SelectedCheckIcon(option.selected) },
+                    onClick = { option.onSelect(); expanded = false }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Bouton « Affichage » DIRECTEMENT visible dans la TopAppBar : l'icône reflète
+ * le mode courant (liste / grille / détail), le menu commute les trois modes.
+ */
+@Composable
+fun JtrViewMenuButton(
+    viewMode: JtrViewMode,
+    onViewModeChange: (JtrViewMode) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val currentIcon = viewModeEntries().first { it.first == viewMode }.third
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(currentIcon, contentDescription = stringResource(R.string.view_mode_title))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            viewModeEntries().forEach { (mode, labelRes, icon) ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(labelRes)) },
+                    leadingIcon = { SelectedCheckIcon(viewMode == mode) },
+                    trailingIcon = { Icon(icon, contentDescription = null) },
+                    onClick = { onViewModeChange(mode); expanded = false }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Menu « 3 points » harmonisé (Dossiers, détail de catégorie) :
  * deux sous-sections — Tri ([sortOptions], fournies par l'écran) puis Affichage
  * (LIST / GRID / DETAIL). [extraContent] permet d'ajouter des actions propres à
  * l'écran (ex. « Défaire le groupe ») sous un séparateur.
@@ -201,13 +261,7 @@ fun JtrOverflowMenu(
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
             MenuSectionLabel(stringResource(R.string.view_mode_title))
-            val viewEntries = listOf(
-                Triple(JtrViewMode.LIST, R.string.view_mode_list,
-                    Icons.AutoMirrored.Filled.ViewList),
-                Triple(JtrViewMode.GRID, R.string.view_mode_grid, Icons.Default.GridView),
-                Triple(JtrViewMode.DETAIL, R.string.view_mode_detail, Icons.Default.ViewAgenda)
-            )
-            viewEntries.forEach { (mode, labelRes, icon) ->
+            viewModeEntries().forEach { (mode, labelRes, icon) ->
                 DropdownMenuItem(
                     text = { Text(stringResource(labelRes)) },
                     leadingIcon = { SelectedCheckIcon(viewMode == mode) },

@@ -28,6 +28,10 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE id = :id")
     suspend fun getById(id: String): Category?
 
+    /** Flow réactif d'une catégorie — édition en direct depuis son écran de détail. */
+    @Query("SELECT * FROM categories WHERE id = :id")
+    fun observeById(id: String): Flow<Category?>
+
     @Query("UPDATE categories SET deletedAt = :timestamp WHERE id = :id")
     suspend fun softDelete(id: String, timestamp: Long = System.currentTimeMillis())
 

@@ -76,6 +76,7 @@ fun CategoryGroupDetailScreen(
     // Mode recherche de la TopAppBar (état d'UI local ; la query vient du ViewModel).
     var searchActive by remember { mutableStateOf(false) }
     var showAddExisting by remember { mutableStateOf(false) }
+    var showGroupTrashConfirm by remember { mutableStateOf(false) }
     var showCreate by remember { mutableStateOf(false) }
     var showDissolveConfirm by remember { mutableStateOf(false) }
 
@@ -155,7 +156,9 @@ fun CategoryGroupDetailScreen(
     }
     if (showCreate) {
         AddCategoryDialog(
-            onConfirm = { name, color -> viewModel.createInGroup(name, color); showCreate = false },
+            onConfirm = { name, color, imagePath ->
+                viewModel.createInGroup(name, color, imagePath); showCreate = false
+            },
             onDismiss = { showCreate = false }
         )
     }
@@ -250,6 +253,35 @@ fun CategoryGroupDetailScreen(
             }
         )
     }
+    // « Mettre à la corbeille » le dossier : catégories + contacts en corbeille,
+    // sous-groupes remontés d'un niveau (confirmation explicite avant cascade).
+    if (showGroupTrashConfirm) {
+        val groupName = group?.name.orEmpty()
+        AlertDialog(
+            onDismissRequest = { showGroupTrashConfirm = false },
+            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(stringResource(R.string.categories_delete_group_title, groupName)) },
+            text = { Text(stringResource(R.string.categories_delete_group_text,
+                groupName, members.size)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showGroupTrashConfirm = false
+                        viewModel.deleteGroupToTrash()
+                        onNavigateBack()
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.action_move_to_trash)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGroupTrashConfirm = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
+    }
+
     if (showDissolveConfirm) {
         AlertDialog(
             onDismissRequest = { showDissolveConfirm = false },
@@ -332,12 +364,37 @@ fun CategoryGroupDetailScreen(
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
                         ) { dismiss ->
+                            // Actions sur le dossier lui-même (v5.3) : Modifier
+                            // (nom / image) et mise à la corbeille.
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.categories_rename)) },
+                                leadingIcon = { Icon(Icons.Default.DriveFileRenameOutline, null) },
+                                onClick = {
+                                    dismiss()
+                                    group?.let { renameGroupTarget = it }
+                                })
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.categories_change_image)) },
+                                leadingIcon = { Icon(Icons.Default.Image, null) },
+                                onClick = {
+                                    dismiss()
+                                    group?.let {
+                                        groupImageTarget = it
+                                        groupPhotoPicker.launch(PickVisualMediaRequest(
+                                            ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    }
+                                })
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.categories_dissolve_group)) },
                                 leadingIcon = { Icon(Icons.Default.FolderOff, null,
                                     tint = MaterialTheme.colorScheme.error) },
                                 onClick = { dismiss(); showDissolveConfirm = true })
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_move_to_trash)) },
+                                leadingIcon = { Icon(Icons.Default.Delete, null,
+                                    tint = MaterialTheme.colorScheme.error) },
+                                onClick = { dismiss(); showGroupTrashConfirm = true })
                         }
                     }
                 )

@@ -24,7 +24,7 @@
     <string name="separator_and">と</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
-    <string name="home_title">JTR — マイ連絡先</string>
+    <string name="home_title">JTR 連絡先</string>
     <string name="home_selection_count">%1$d件選択中</string>
     <string name="home_fab_add_person">人を追加</string>
     <string name="home_location_warning">近接リマインダーのために位置情報を有効にしてください</string>
@@ -62,7 +62,7 @@
     <string name="category_detail_empty_title">このカテゴリーにメンバーがいません</string>
     <string name="category_detail_empty_subtitle">＋をタップして連絡先を追加</string>
     <string name="category_detail_fab_add">連絡先を追加</string>
-    <string name="category_detail_btn_remove">削除</string>
+    <string name="category_detail_btn_remove">取り除く</string>
     <string name="category_detail_default_title">カテゴリー</string>
 
     <!-- ── Add / Edit person ──────────────────────────────────────────────── -->
@@ -170,7 +170,7 @@
     <string name="settings_location_bg_title">バックグラウンドの位置情報</string>
     <string name="settings_location_bg_message">アプリが閉じていても連絡先の近くを通ったときに通知するため、JTR は位置情報への常時アクセスを必要とします。</string>
     <string name="settings_location_bg_open">設定を開く</string>
-    <string name="settings_birthday_title">大切な日のリマインダー（通知）</string>
+    <string name="settings_birthday_title">大切な日</string>
     <string name="settings_birthday_subtitle">誕生日や大切な日に通知</string>
     <string name="settings_section_appearance">外観</string>
     <string name="settings_dark_mode_title">ダークモード</string>
@@ -182,7 +182,7 @@
     <string name="settings_trash_subtitle">削除された連絡先 · 30日後に自動削除</string>
     <string name="settings_section_about">アプリについて</string>
     <string name="settings_version_title">バージョン</string>
-    <string name="settings_version_value" translatable="false">JTR 4.1</string>
+    <string name="settings_version_value" translatable="false">JTR 5.3.0</string>
     <string name="settings_theme_cd">テーマ %1$s</string>
     <string name="settings_section_legal">法的情報</string>
     <string name="settings_privacy_title">プライバシーポリシー</string>
@@ -276,7 +276,7 @@
     <!-- v4.5 (DB v14) — お気に入り、プロフィール情報、カテゴリグループ -->
     <string name="person_favorite_toggle_cd">お気に入りを切り替え</string>
     <string name="person_info_menu">プロフィール情報</string>
-    <string name="person_info_title">プロフィール情報</string>
+    <string name="person_info_title">情報</string>
     <string name="person_info_created">作成日</string>
     <string name="person_info_updated">最終更新</string>
     <string name="categories_favorite">お気に入りに追加</string>
@@ -309,6 +309,7 @@
     <string name="categories_dissolve_confirm_text">カテゴリは再び独立します。</string>
     <string name="categories_no_candidates">利用可能なカテゴリがありません</string>
     <string name="categories_group_counter">%1$d 個のカテゴリ、%2$d 個のグループ</string>
+    <string name="categories_folder_counter">カテゴリ %1$d · 連絡先 %2$d</string>
     <string name="categories_move_out">グループから出す</string>
     <string name="categories_delete_group_title">グループ「%1$s」を削除しますか？</string>
     <string name="categories_delete_group_text">グループ「%1$s」と、その中の %2$d 個のカテゴリを削除してもよろしいですか？</string>
@@ -352,4 +353,20 @@
     <string name="backup_confirm_title">このバックアップを復元しますか？</string>
     <string name="backup_confirm_text">データは現在のデータと統合され、同じ ID の項目は上書きされます。この操作は元に戻せません。</string>
     <string name="backup_confirm_action">復元</string>
+    <!-- v5.3 — オンボーディング/ネイティブ取り込み、検証、ゴミ箱、お気に入り、位置情報 -->
+    <string name="save_requires_first_name">保存するには名前（名）が必要です。</string>
+    <string name="city_map_hint">地図アイコンをタップして正確な住所を確定してください。</string>
+    <string name="location_denied_settings">位置情報の権限が拒否されました。端末の設定から許可してください。</string>
+    <string name="favorites_category">お気に入り</string>
+    <string name="action_move_to_trash">ゴミ箱に移動</string>
+    <string name="action_trash_short">ゴミ箱</string>
+    <string name="category_trash_confirm_title">このカテゴリをゴミ箱に移動しますか？</string>
+    <string name="category_trash_confirm_text">カテゴリとその連絡先はゴミ箱に移動されます。</string>
+    <string name="welcome_title">JTR へようこそ</string>
+    <string name="welcome_subtitle">JTR は記憶のノートです。</string>
+    <string name="welcome_import_button">電話の連絡先をインポート</string>
+    <string name="welcome_skip">インポートせずに始める</string>
+    <string name="welcome_importing">%1$d 件の連絡先をインポート中…</string>
+    <string name="welcome_import_failed">インポートに失敗しました。</string>
+    <string name="contacts_permission_denied">連絡先の権限が拒否されたため、インポートできません。</string>
 </resources>

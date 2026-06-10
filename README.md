@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> **Carnet de contacts enrichi nouvelle génération** · Version `5.2.0`  
+> **Carnet de contacts enrichi nouvelle génération** · Version `5.3.0`  
 > Projet personnel Android — Kotlin · Jetpack Compose · MVVM
 
 ---
@@ -9,7 +9,7 @@
 
 JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'application maintient une **mémoire sociale active** : elle enregistre le contexte humain de chaque relation (goûts, anniversaires, ville, notes, réseaux sociaux), géocode automatiquement les villes via OpenStreetMap, et notifie proactivement l'utilisateur lorsqu'il se retrouve physiquement proche d'un contact qu'il n'a pas vu depuis longtemps. Le tout, sans service cloud, sans clé API propriétaire, et avec un stockage 100 % local.
 
-> **État actuel — Juin 2026.** Le cycle de développement de la **Version 4 (v4.x)** est officiellement **clos** : stable, mature, et couronné par un moteur d'ergonomie tactile abouti (Drag & Drop fluide, dossiers récursifs, mode sélection « Galerie »). Le cycle **Version 5** est en plein essor : la **v5.2.0** livre le partage graphique (TEXTE/PNG/PDF), le moteur de recherche multi-critères, le bandeau d'événements et le module de sauvegarde `.jtr`. Voir [Le Grand Bilan de la Version 4](#-le-grand-bilan-de-la-version-4) et [Version 5 — Cycle en cours](#-version-50--en-cours-de-développement).
+> **État actuel — Juin 2026.** Le cycle de développement de la **Version 4 (v4.x)** est officiellement **clos** : stable, mature, et couronné par un moteur d'ergonomie tactile abouti (Drag & Drop fluide, dossiers récursifs, mode sélection « Galerie »). Le cycle **Version 5** est en plein essor : la **v5.3.0** livre l'onboarding avec importation native des contacts (`ContactsContract`), la catégorie virtuelle « Favoris », l'alignement UX des menus et la sémantique stricte Retirer/Corbeille. Voir [Le Grand Bilan de la Version 4](#-le-grand-bilan-de-la-version-4) et [Version 5 — Cycle en cours](#-version-50--en-cours-de-développement).
 
 ---
 
@@ -48,16 +48,37 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 
 ## 🚧 Version 5.0 — En cours de développement
 
-> **Cycle actif — dernière livraison : v5.2.0**
+> **Cycle actif — dernière livraison : v5.3.0**
 
 La Version 5 ouvre une nouvelle ère pour JTR, après la clôture définitive et stable du cycle v4.x. Cette section est enrichie au fil du développement.
 
 | Statut | Détail |
 |--------|--------|
-| 🏗️ **Jalon** | `versionName = "5.2.0"` · `versionCode = 10` |
+| 🏗️ **Jalon** | `versionName = "5.3.0"` · `versionCode = 11` |
 | 🧱 **Fondations héritées** | Moteur tactile « Galerie » + dossiers récursifs (Room v16) consolidés en v4, étendus en v5 |
 | ✅ **Livré (v5.0 → v5.1)** | TopAppBar harmonisée avec recherche intégrée (`JtrSearchableTopAppBar`), menu Tri/Affichage unifié, 3 modes de vue persistés (Liste/Grille/Détail), footer de sélection transformable à l'Accueil, déplacement de contacts sans dialogue, recadrage d'image refondu (EXIF, cadre déplaçable/redimensionnable), Drag & Drop grille/liste harmonisé (zone centrale = fusion) |
 | 🎯 **Cap** | Capitaliser sur l'ergonomie tactile mature pour la prochaine génération de fonctionnalités |
+
+### 🚀 Version 5.3.0 — Onboarding, Importation Native & Alignement UX (QoL)
+
+* **🚀 Module d'Onboarding & Importation Native (`ContactsContract`) :**
+    * Création d'un écran de bienvenue (`WelcomeScreen`) exclusif au premier lancement (`is_first_launch`).
+    * Moteur d'importation asynchrone (`ContactsImporter`) sur `Dispatchers.IO` lisant la base native d'Android via une requête optimisée à plat (mimetypes groupés).
+    * Extraction complète : Prénom, Nom (avec fallback), Téléphones/Emails multiples, Entreprise, Poste et Notes.
+    * Duplication physique sécurisée de la `PHOTO_URI` native vers le stockage interne (`filesDir/photos/`) afin de prémunir l'application contre les révocations ultérieures de permissions.
+    * Traitement par lots de 25 via `PersonDao.insertAll` avec indicateur de progression en temps réel (`LinearProgressIndicator`).
+* **✍️ Perfectionnement des Formulaires & Validation :**
+    * Gestion réactive du clavier virtuel : implémentation de `BringIntoViewRequester` sur le champ Notes pour un auto-scroll automatique et fluide à la saisie.
+    * Sécurité des données : Blocage de la sauvegarde et levée d'une Snackbar corrective si le prénom obligatoire est manquant.
+    * Guidage contextuel : Ajout d'un `supportingText` d'aide sous le champ Ville si l'adresse n'a pas fait l'objet d'un géocodage/validation via l'icône carte.
+* **🗂️ Refonte de l'Architecture des Catégories & Menus :**
+    * Alignement fonctionnel : Prise en charge de l'attribution d'image et du recadrage immédiat dès la création d'une catégorie (`CategoryFormDialog` unifié).
+    * Actions internes complètes : Intégration des options "Modifier" et "Mettre à la corbeille" à l'intérieur même du détail des catégories et dossiers (avec gestion de la cascade pour éviter les éléments orphelins).
+    * Clarté sémantique : Distinction stricte dans toute l'UI (5 langues) entre "Retirer" (rupture de liaison) et "Mettre à la corbeille" (suppression).
+    * Accessibilité : Extraction des contrôles "Trier" (`JtrSortMenuButton`) et "Affichage" (`JtrViewMenuButton`) du menu global pour une exposition directe dans le Header.
+    * Catégorie Virtuelle "Favoris" : Génération automatique d'une section dorée prioritaire dès le seuil de 2 profils favoris atteint, encapsulant un mode lecture filtré.
+* **📍 Permissions de Localisation :**
+    * Demande à la volée (`ACCESS_FINE_LOCATION`) lors de l'activation du toggle de proximité avec message de redirection explicite vers les paramètres système en cas de refus.
 
 ### 🚀 Version 5.2.0 — Partage Graphique, Moteur de Recherche Étendu & Module de Sauvegarde (.jtr)
 
