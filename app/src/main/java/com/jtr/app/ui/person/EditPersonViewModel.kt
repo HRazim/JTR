@@ -203,6 +203,11 @@ class EditPersonViewModel(
 
     private var personLoaded = false
 
+    /**
+     * Résultat de la carte : FUSION ciblée — seuls ville + lat/lng sont mis à
+     * jour, le reste de l'état du formulaire (notes, origine, relations…) est
+     * strictement préservé.
+     */
     fun onCityFromMap(city: String, lat: Double?, lng: Double?) {
         _city.value = city
         _cityLat.value = lat
@@ -210,7 +215,14 @@ class EditPersonViewModel(
     }
 
     fun loadPerson(personId: String) {
+        // Garde d'idempotence ARMÉE (hotfix v5.3.3) : le formulaire n'est peuplé
+        // qu'UNE seule fois par cycle de vie du ViewModel. Au retour de l'écran
+        // Map, la recomposition complète rappelle loadPerson() — sans cette garde,
+        // populateFields() écrasait les saisies en cours (notes, relations,
+        // origine…) avec les valeurs Room, pendant que seule la ville survivait
+        // via onCityFromMap. La garde était déclarée mais jamais mise à true.
         if (personLoaded) return
+        personLoaded = true
         viewModelScope.launch {
             _isLoading.value = true
             val p = repository.getById(personId)

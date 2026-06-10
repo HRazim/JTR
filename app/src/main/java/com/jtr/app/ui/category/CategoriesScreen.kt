@@ -2,11 +2,8 @@ package com.jtr.app.ui.category
 
 import android.net.Uri
 import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
 import com.jtr.app.ui.person.CropShape
 import com.jtr.app.ui.person.ImageCropDialog
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -65,6 +62,7 @@ import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.components.JtrViewMode
+import com.jtr.app.ui.components.rememberGalleryImagePicker
 import com.jtr.app.ui.share.CategoriesSharePreview
 import com.jtr.app.ui.share.ShareCategoryItem
 import com.jtr.app.ui.share.ShareFormatSheet
@@ -110,6 +108,7 @@ fun CategoriesScreen(
     onSelectionModeChange: (Boolean) -> Unit = {},
     isPickingMoveTarget: Boolean = false,
     onCancelMoveTarget: () -> Unit = {},
+    onCreateMoveTarget: (name: String, color: String, imagePath: String?) -> Unit = { _, _, _ -> },
     viewModel: CategoryViewModel = viewModel()
 ) {
     val categories by viewModel.categories.collectAsStateWithLifecycle()
@@ -141,9 +140,8 @@ fun CategoriesScreen(
     var pendingGroupCropUri by remember { mutableStateOf<Uri?>(null) }
     val screenContext = LocalContext.current
     val screenScope = rememberCoroutineScope()
-    val groupPhotoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? -> if (uri != null) pendingGroupCropUri = uri }
+    // Galerie native par ALBUMS (v5.3.4).
+    val groupPhotoPicker = rememberGalleryImagePicker { uri -> pendingGroupCropUri = uri }
 
     // Reporte l'état de sélection au conteneur (masque la nav globale).
     LaunchedEffect(isSelectionActive) { onSelectionModeChange(isSelectionActive) }
@@ -357,6 +355,19 @@ fun CategoriesScreen(
         )
     }
 
+    // Création de catégorie À LA VOLÉE pendant le déplacement de contacts (mode
+    // cible) : MÊME formulaire unifié que partout (nom + couleur + image + crop).
+    var showCreateTargetDialog by remember { mutableStateOf(false) }
+    if (showCreateTargetDialog) {
+        AddCategoryDialog(
+            onConfirm = { name, color, imagePath ->
+                showCreateTargetDialog = false
+                onCreateMoveTarget(name, color, imagePath)
+            },
+            onDismiss = { showCreateTargetDialog = false }
+        )
+    }
+
     // Partage contextuel : instantané de la sélection (catégories + dossiers).
     var shareItems by remember { mutableStateOf<List<ShareCategoryItem>?>(null) }
     shareItems?.let { items ->
@@ -511,8 +522,7 @@ fun CategoriesScreen(
                             pendingEditCategory = cat
                         } else selectedGroups.singleOrNull()?.let { g ->
                             groupImageTarget = g
-                            groupPhotoPicker.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            groupPhotoPicker()
                         }
                     }
                 )
@@ -576,6 +586,22 @@ fun CategoriesScreen(
                     }
                 }
             } else {
+                // Mode cible : « ➕ Nouvelle catégorie » en PREMIER choix fixe — crée
+                // la cible à la volée et y déplace immédiatement les contacts cochés.
+                if (isPickingMoveTarget) {
+                    OutlinedButton(
+                        onClick = { showCreateTargetDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null,
+                            modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.move_create_category))
+                    }
+                }
                 // Recherche : entrées filtrées à plat (catégories seules, sans dossiers) ;
                 // sinon arborescence complète. Rendu commutable LIST / GRID / DETAIL.
                 val entries =
@@ -2057,11 +2083,8 @@ private fun CategoryFormDialog(
     var imagePath by remember { mutableStateOf(initialImagePath) }
     var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
 
-    val photoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        if (uri != null) pendingCropUri = uri
-    }
+    // Galerie native par ALBUMS (v5.3.4).
+    val photoPicker = rememberGalleryImagePicker { uri -> pendingCropUri = uri }
 
     pendingCropUri?.let { uri ->
         ImageCropDialog(
@@ -2096,11 +2119,7 @@ private fun CategoryFormDialog(
                             try { Color(android.graphics.Color.parseColor(selectedColor)) }
                             catch (e: Exception) { Color(0xFF2E86C1) }
                         )
-                        .clickable {
-                            photoPicker.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        },
+                        .clickable { photoPicker() },
                     contentAlignment = Alignment.Center
                 ) {
                     if (imagePath != null) {

@@ -207,9 +207,22 @@ fun ImageCropDialog(
 
             fun applyImageGesture(zoomChange: Float, panChange: Offset) {
                 val bmp = srcBitmap ?: return
-                scale = (scale * zoomChange).coerceIn(currentMinScale(bmp), 8f)
-                offsetX += panChange.x
-                offsetY += panChange.y
+                val newScale = (scale * zoomChange).coerceIn(currentMinScale(bmp), 8f)
+                // STABILITÉ (v5.3.4) : le zoom est ANCRÉ au centre du cadre de
+                // rognage, pas au centre de l'écran. Le point de l'image visé par
+                // le cadre reste immobile pendant le pincement — fini le fond qui
+                // « fuit » hors de la zone quand l'image est décalée. Dérivation :
+                // offset' = d·(1−k) + offset·k, avec d = centre cadre − centre
+                // conteneur et k = rapport d'échelle.
+                val k = if (scale != 0f) newScale / scale else 1f
+                val fc = curFrameCenter()
+                val dX = fc.x - cW / 2f
+                val dY = fc.y - cH / 2f
+                offsetX = dX * (1f - k) + offsetX * k + panChange.x
+                offsetY = dY * (1f - k) + offsetY * k + panChange.y
+                scale = newScale
+                // Verrou de translation : l'image ne peut JAMAIS découvrir le cadre
+                // (bornes recalculées à chaque évènement du geste).
                 clampImageOffsets(bmp)
             }
 

@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.jtr.app.R
+import com.jtr.app.ui.components.rememberGalleryImagePicker
 import com.jtr.app.utils.getSocialIcon
 import kotlinx.coroutines.launch
 
@@ -110,9 +110,8 @@ fun AddPersonScreen(
         onMapResultConsumed()
     }
 
-    val photoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> if (uri != null) viewModel.onPhotoSelected(uri) }
+    // Galerie native par ALBUMS (v5.3.4) — état du formulaire préservé au retour.
+    val photoPicker = rememberGalleryImagePicker { uri -> viewModel.onPhotoSelected(uri) }
 
     Scaffold(
         topBar = {
@@ -161,11 +160,7 @@ fun AddPersonScreen(
                             )
                         else Modifier.background(MaterialTheme.colorScheme.primaryContainer)
                     )
-                    .clickable {
-                        photoPicker.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    },
+                    .clickable { photoPicker() },
                 contentAlignment = Alignment.Center
             ) {
                 if (photoUri != null) {

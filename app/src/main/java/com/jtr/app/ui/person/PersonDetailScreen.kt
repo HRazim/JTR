@@ -1,7 +1,6 @@
 package com.jtr.app.ui.person
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -58,6 +57,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.jtr.app.R
+import com.jtr.app.ui.components.rememberGalleryImagePicker
 import com.jtr.app.utils.getSocialIcon
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -88,9 +88,11 @@ import java.util.*
 @Composable
 fun PersonDetailScreen(
     person: Person?,
-    categoryNames: List<String> = emptyList(),
+    /** Catégories du profil sous forme de paires (id, nom) — badges cliquables. */
+    categories: List<Pair<String, String>> = emptyList(),
     onNavigateBack: () -> Unit,
     onNavigateToPerson: (String) -> Unit = {},
+    onNavigateToCategory: (String) -> Unit = {},
     onDeleteClick: () -> Unit,
     onNavigateToMap: () -> Unit = {},
     cityFromMap: String? = null,
@@ -138,9 +140,8 @@ fun PersonDetailScreen(
         onMapResultConsumed()
     }
 
-    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) pendingCropUri = uri
-    }
+    // Galerie native par ALBUMS (v5.3.4) — état du formulaire préservé au retour.
+    val photoPicker = rememberGalleryImagePicker { uri -> pendingCropUri = uri }
 
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -355,9 +356,7 @@ fun PersonDetailScreen(
                 }
 
                 EditPhotoOverlay(isEditing = isEditing) {
-                    photoPicker.launch(PickVisualMediaRequest(
-                        ActivityResultContracts.PickVisualMedia.ImageOnly
-                    ))
+                    photoPicker()
                 }
             }
 
@@ -380,12 +379,13 @@ fun PersonDetailScreen(
                 }
             }
 
-            if (categoryNames.isNotEmpty()) {
+            if (categories.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    categoryNames.forEach { name ->
+                    // Badges INTERACTIFS (v5.3.4) : un tap ouvre le détail de la catégorie.
+                    categories.forEach { (categoryId, name) ->
                         SuggestionChip(
-                            onClick = {},
+                            onClick = { onNavigateToCategory(categoryId) },
                             label = { Text(name) },
                             icon = { Icon(Icons.Default.Folder, null, Modifier.size(16.dp)) }
                         )

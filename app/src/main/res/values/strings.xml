@@ -187,7 +187,7 @@
     <string name="settings_trash_subtitle">Deleted contacts · auto-purge after 30 days</string>
     <string name="settings_section_about">About</string>
     <string name="settings_version_title">Version</string>
-    <string name="settings_version_value" translatable="false">JTR 5.3.1</string>
+    <string name="settings_version_value" translatable="false">JTR 5.3.4</string>
     <string name="settings_theme_cd">Theme %1$s</string>
     <string name="settings_section_legal">Legal</string>
     <string name="settings_privacy_title">Privacy policy</string>
@@ -374,4 +374,6 @@
     <string name="welcome_importing">Importing %1$d contacts…</string>
     <string name="welcome_import_failed">Import failed.</string>
     <string name="contacts_permission_denied">Contacts permission denied — import is impossible.</string>
+    <!-- v5.3.2 — création de catégorie à la volée pendant le déplacement -->
+    <string name="move_create_category">New category</string>
 </resources>

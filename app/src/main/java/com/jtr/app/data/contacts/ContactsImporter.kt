@@ -136,6 +136,13 @@ class ContactsImporter(context: Context) {
     }
 
     /**
+     * Clé de comparaison d'un numéro : chiffres (et préfixe « + ») uniquement —
+     * espaces, tirets, points et parenthèses ignorés. « (514) 555-0001 » et
+     * « 514 555 0001 » et « 514.555.0001 » produisent la même clé.
+     */
+    private fun phoneKey(raw: String): String = raw.filter { it.isDigit() || it == '+' }
+
+    /**
      * Convertit un brouillon en [Person] JTR. Le prénom est OBLIGATOIRE :
      * repli sur le premier mot du nom affiché, sinon le contact est ignoré.
      * Les listes téléphones/emails alimentent les lignes dynamiques ET les
@@ -149,17 +156,25 @@ class ContactsImporter(context: Context) {
         val last = familyName?.trim()?.takeIf { it.isNotBlank() }
             ?: display.substringAfter(' ', "").trim().takeIf { it.isNotBlank() && givenName == null }
 
+        // Déduplication STRICTE (hotfix v5.3.3) : un même numéro enregistré sous
+        // plusieurs étiquettes natives (Mobile, Principal…) ou avec des formats
+        // différents n'est conservé qu'une seule fois (comparaison normalisée) ;
+        // les emails sont comparés en minuscules. Coût O(n) par contact — aucun
+        // ralentissement du traitement par lots sur Dispatchers.IO.
+        val uniquePhones = phones.toList().distinctBy { phoneKey(it) }
+        val uniqueEmails = emails.toList().distinctBy { it.lowercase() }
+
         return Person(
             firstName = first,
             lastName = last,
             photoUri = copyNativePhoto(photoUri),
-            phoneNumber = phones.firstOrNull(),
-            email = emails.firstOrNull(),
+            phoneNumber = uniquePhones.firstOrNull(),
+            email = uniqueEmails.firstOrNull(),
             company = company,
             notes = note,
-            phoneLines = phones.map { DynamicLine(value = it, label = FieldTypes.PHONE_MOBILE) }
+            phoneLines = uniquePhones.map { DynamicLine(value = it, label = FieldTypes.PHONE_MOBILE) }
                 .takeIf { it.isNotEmpty() },
-            emailLines = emails.map { DynamicLine(value = it, label = FieldTypes.EMAIL_HOME) }
+            emailLines = uniqueEmails.map { DynamicLine(value = it, label = FieldTypes.EMAIL_HOME) }
                 .takeIf { it.isNotEmpty() }
         )
     }

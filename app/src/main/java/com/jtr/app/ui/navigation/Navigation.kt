@@ -29,7 +29,9 @@ import com.jtr.app.R
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.jtr.app.data.local.AppDatabase
+import com.jtr.app.data.repository.CategoryRepository
 import com.jtr.app.data.repository.PersonRepository
+import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
 import com.jtr.app.ui.category.CategoriesScreen
 import com.jtr.app.ui.category.CategoryDetailScreen
@@ -43,8 +45,10 @@ import com.jtr.app.ui.theme.ThemePreset
 import com.jtr.app.ui.trash.TrashScreen
 import com.jtr.app.ui.welcome.WelcomeScreen
 import com.jtr.app.ui.welcome.WelcomeViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 object Routes {
     const val WELCOME = "welcome"
@@ -132,6 +136,26 @@ fun JTRMainScaffold(
         scope.launch {
             repository.assignCategory(ids, categoryId)
             navController.navigate(Routes.categoryDetail(categoryId)) {
+                launchSingleTop = true
+            }
+        }
+    }
+
+    val categoryRepository = remember { CategoryRepository(appContext) }
+
+    // Création de catégorie À LA VOLÉE pendant le déplacement (v5.3.2) : insertion
+    // de la catégorie + association PAR LOTS des contacts cochés sur Dispatchers.IO,
+    // puis redirection vers le détail de la nouvelle cible (navigation sur Main).
+    fun createTargetAndAssignPending(name: String, color: String, imagePath: String?) {
+        val ids = pendingMovePersonIds ?: return
+        pendingMovePersonIds = null
+        scope.launch {
+            val category = Category(name = name, color = color, imagePath = imagePath)
+            withContext(Dispatchers.IO) {
+                categoryRepository.add(category)
+                repository.assignCategory(ids, category.id)
+            }
+            navController.navigate(Routes.categoryDetail(category.id)) {
                 launchSingleTop = true
             }
         }
@@ -241,7 +265,9 @@ fun JTRMainScaffold(
             ) { backStackEntry ->
                 val personId = backStackEntry.arguments?.getString("personId") ?: ""
                 var person by remember { mutableStateOf<Person?>(null) }
-                var categoryNames by remember { mutableStateOf<List<String>>(emptyList()) }
+                // Paires (id, nom) : les badges de catégories du profil sont CLIQUABLES
+                // et naviguent vers le détail de la catégorie (v5.3.4).
+                var personCategories by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
                 val scope = rememberCoroutineScope()
                 val db = AppDatabase.getInstance(LocalContext.current)
                 val cityFromMap by backStackEntry.savedStateHandle
@@ -259,7 +285,9 @@ fun JTRMainScaffold(
                 // une recomposition immédiate sans quitter l'écran.
                 LaunchedEffect(personId) {
                     val categoryIds = db.personCategoryDao().getCategoryIdsForPersonSync(personId)
-                    categoryNames = categoryIds.mapNotNull { db.categoryDao().getById(it)?.name }
+                    personCategories = categoryIds.mapNotNull { id ->
+                        db.categoryDao().getById(id)?.name?.let { id to it }
+                    }
                     repository.markAsContacted(personId)
                     repository.observeById(personId).collect { updated ->
                         if (updated != null) person = updated
@@ -268,9 +296,11 @@ fun JTRMainScaffold(
 
                 PersonDetailScreen(
                     person = person,
-                    categoryNames = categoryNames,
+                    categories = personCategories,
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToPerson = { id -> navController.navigate(Routes.personDetail(id)) },
+                    // Badge de catégorie → détail de la catégorie, instantanément.
+                    onNavigateToCategory = { id -> navController.navigate(Routes.categoryDetail(id)) },
                     onDeleteClick = {
                         scope.launch {
                             repository.softDelete(personId)
@@ -318,7 +348,10 @@ fun JTRMainScaffold(
                     },
                     onSelectionModeChange = { categoriesSelectionMode = it },
                     isPickingMoveTarget = pendingMovePersonIds != null,
-                    onCancelMoveTarget = { pendingMovePersonIds = null }
+                    onCancelMoveTarget = { pendingMovePersonIds = null },
+                    onCreateMoveTarget = { name, color, imagePath ->
+                        createTargetAndAssignPending(name, color, imagePath)
+                    }
                 )
             }
 

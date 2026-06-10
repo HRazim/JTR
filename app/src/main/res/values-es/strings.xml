@@ -366,4 +366,6 @@
     <string name="welcome_importing">Importando %1$d contactos…</string>
     <string name="welcome_import_failed">Error al importar.</string>
     <string name="contacts_permission_denied">Permiso de contactos denegado: no se puede importar.</string>
+    <!-- v5.3.2 — creación de categoría sobre la marcha durante el traslado -->
+    <string name="move_create_category">Nueva categoría</string>
 </resources>

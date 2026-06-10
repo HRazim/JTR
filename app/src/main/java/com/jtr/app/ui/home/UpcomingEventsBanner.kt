@@ -46,9 +46,11 @@ fun UpcomingEventsBanner(
 ) {
     if (events.isEmpty()) return
 
+    // NB : rendu en EN-TÊTE de PersonListContent (v5.3.4) — les marges horizontales
+    // sont fournies par le contentPadding de la liste/grille hôte (16 dp).
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp),
+            modifier = Modifier.padding(top = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -65,7 +67,7 @@ fun UpcomingEventsBanner(
             )
         }
         LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(

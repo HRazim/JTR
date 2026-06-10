@@ -366,4 +366,6 @@
     <string name="welcome_importing">正在导入 %1$d 位联系人…</string>
     <string name="welcome_import_failed">导入失败。</string>
     <string name="contacts_permission_denied">通讯录权限被拒绝 — 无法导入。</string>
+    <!-- v5.3.2 — 移动过程中即时新建分类 -->
+    <string name="move_create_category">新建分类</string>
 </resources>

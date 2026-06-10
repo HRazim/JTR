@@ -1,9 +1,6 @@
 package com.jtr.app.ui.category
 
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -37,6 +34,7 @@ import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.components.JtrViewMode
+import com.jtr.app.ui.components.rememberGalleryImagePicker
 import com.jtr.app.ui.person.CropShape
 import com.jtr.app.ui.person.ImageCropDialog
 import com.jtr.app.ui.share.CategoriesSharePreview
@@ -94,9 +92,8 @@ fun CategoryGroupDetailScreen(
 
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    val groupPhotoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? -> if (uri != null) pendingGroupCropUri = uri }
+    // Galerie native par ALBUMS (v5.3.4).
+    val groupPhotoPicker = rememberGalleryImagePicker { uri -> pendingGroupCropUri = uri }
 
     LaunchedEffect(members, subGroups) {
         selectedIds.retainAll(members.map { it.id }.toSet())
@@ -381,8 +378,7 @@ fun CategoryGroupDetailScreen(
                                     dismiss()
                                     group?.let {
                                         groupImageTarget = it
-                                        groupPhotoPicker.launch(PickVisualMediaRequest(
-                                            ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                        groupPhotoPicker()
                                     }
                                 })
                             DropdownMenuItem(
@@ -458,8 +454,7 @@ fun CategoryGroupDetailScreen(
                         if (cat != null) editTarget = cat
                         else selectedGroups.singleOrNull()?.let { g ->
                             groupImageTarget = g
-                            groupPhotoPicker.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            groupPhotoPicker()
                         }
                     },
                     canMoveOut = totalSelected >= 1,

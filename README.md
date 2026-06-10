@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> **Carnet de contacts enrichi nouvelle génération** · Version `5.3.1`  
+> **Carnet de contacts enrichi nouvelle génération** · Version `5.3.4`  
 > Projet personnel Android — Kotlin · Jetpack Compose · MVVM
 
 ---
@@ -9,7 +9,7 @@
 
 JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'application maintient une **mémoire sociale active** : elle enregistre le contexte humain de chaque relation (goûts, anniversaires, ville, notes, réseaux sociaux), géocode automatiquement les villes via OpenStreetMap, et notifie proactivement l'utilisateur lorsqu'il se retrouve physiquement proche d'un contact qu'il n'a pas vu depuis longtemps. Le tout, sans service cloud, sans clé API propriétaire, et avec un stockage 100 % local.
 
-> **État actuel — Juin 2026.** Le cycle de développement de la **Version 4 (v4.x)** est officiellement **clos** : stable, mature, et couronné par un moteur d'ergonomie tactile abouti (Drag & Drop fluide, dossiers récursifs, mode sélection « Galerie »). Le cycle **Version 5** est en plein essor : la **v5.3.0** livre l'onboarding avec importation native des contacts (`ContactsContract`), la catégorie virtuelle « Favoris », l'alignement UX des menus et la sémantique stricte Retirer/Corbeille. Voir [Le Grand Bilan de la Version 4](#-le-grand-bilan-de-la-version-4) et [Version 5 — Cycle en cours](#-version-50--en-cours-de-développement).
+> **État actuel — Juin 2026.** Le cycle de développement de la **Version 4 (v4.x)** est officiellement **clos** : stable, mature, et couronné par un moteur d'ergonomie tactile abouti (Drag & Drop fluide, dossiers récursifs, mode sélection « Galerie »). Le cycle **Version 5** est en plein essor : la **v5.3.4** parachève la branche 5.3 — onboarding avec importation native des contacts (`ContactsContract`), catégorie virtuelle « Favoris », recherche persistante en mode sélection, navigation profil ↔ catégorie, rognage stabilisé et galerie par albums. Voir [Le Grand Bilan de la Version 4](#-le-grand-bilan-de-la-version-4) et [Version 5 — Cycle en cours](#-version-50--en-cours-de-développement).
 
 ---
 
@@ -48,16 +48,39 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 
 ## 🚧 Version 5.0 — En cours de développement
 
-> **Cycle actif — dernière livraison : v5.3.1**
+> **Cycle actif — dernière livraison : v5.3.4**
 
 La Version 5 ouvre une nouvelle ère pour JTR, après la clôture définitive et stable du cycle v4.x. Cette section est enrichie au fil du développement.
 
 | Statut | Détail |
 |--------|--------|
-| 🏗️ **Jalon** | `versionName = "5.3.1"` · `versionCode = 12` |
+| 🏗️ **Jalon** | `versionName = "5.3.4"` · `versionCode = 15` |
 | 🧱 **Fondations héritées** | Moteur tactile « Galerie » + dossiers récursifs (Room v16) consolidés en v4, étendus en v5 |
 | ✅ **Livré (v5.0 → v5.1)** | TopAppBar harmonisée avec recherche intégrée (`JtrSearchableTopAppBar`), menu Tri/Affichage unifié, 3 modes de vue persistés (Liste/Grille/Détail), footer de sélection transformable à l'Accueil, déplacement de contacts sans dialogue, recadrage d'image refondu (EXIF, cadre déplaçable/redimensionnable), Drag & Drop grille/liste harmonisé (zone centrale = fusion) |
 | 🎯 **Cap** | Capitaliser sur l'ergonomie tactile mature pour la prochaine génération de fonctionnalités |
+
+### 🚀 Version 5.3.4 — Navigation Bidirectionnelle, Grilles Responsives & Galerie Avancée
+
+* **🧭 Navigation Contextuelle Profil ──► Catégorie :**
+    * Refonte des ponts de navigation (`Navigation.kt`) pour encapsuler des paires réactives (ID, Nom).
+    * Activation du clic sur les badges `SuggestionChip` au sein de `PersonDetailScreen` pour permettre une redirection instantanée vers le détail de la catégorie cible avec gestion native du BackStack.
+* **🗂️ Hub d'Événements Fluide et Adaptatif :**
+    * Restructuration de la mise en page de l'Accueil : le bandeau des événements imminents (fenêtre de 7 jours) est converti en en-tête dynamique interne à `PersonListContent`.
+    * En mode Grille, calcul automatique de la surface via un span complet (`GridItemSpan(maxLineSpan)`) garantissant un alignement esthétique parfait avec les tuiles carrées. Le composant s'intègre au défilement global pour libérer l'espace écran.
+* **📸 Rognage Mathématique Stabilisé & Sélecteur d'Albums "Style Instagram" :**
+    * Correction de la physique du crop (`ImageCropDialog`) : ancrage matriciel du zoom pincé sur le centre géométrique du cadre de rognage (`offset' = d·(1−k) + offset·k`). Blocage strict des dérives et interdiction absolue pour l'image de découvrir le fond du cadre.
+    * Remplacement du PhotoPicker plat par `rememberGalleryImagePicker` via une intention native `ACTION_PICK` indexée sur le `EXTERNAL_CONTENT_URI` du `MediaStore`. Offre un accès instantané à la structure par dossiers de l'appareil (Albums, WhatsApp, Caméra, Captures) avec repli sur `ACTION_GET_CONTENT`.
+    * Préservation de l'architecture UDF : l'aller-retour via le registre de résultats d'activité isole complètement l'état du formulaire, garantissant zéro perte des textes pré-saisis.
+
+### 🩹 Hotfix 5.3.3 — Intégrité des Données
+
+* **Déduplication à l'importation native :** comparaison normalisée des numéros (espaces/tirets/parenthèses ignorés) et des emails (minuscules) — plus aucun doublon `phoneLines`/`emailLines` par contact.
+* **Protection du formulaire au retour de la Map :** garde d'idempotence armée dans `EditPersonViewModel.loadPerson` — le formulaire n'est peuplé qu'une fois par cycle de vie ; le résultat de la carte fusionne uniquement ville + coordonnées, sans écraser notes, origine ou relations.
+
+### ⚡ Version 5.3.2 — Flux de Sélection à Grande Échelle
+
+* **Recherche contextuelle persistante en mode sélection (Accueil) :** loupe disponible pendant la sélection multiple ; la requête filtre l'affichage sans jamais toucher aux éléments cochés (`selectAll` additif, actions de masse sur la liste non filtrée).
+* **Création de catégorie à la volée :** bouton fixe « ➕ Nouvelle catégorie » en tête du mode cible du déplacement — formulaire unifié (nom/couleur/image), association par lots sur `Dispatchers.IO`, redirection automatique vers la nouvelle catégorie.
 
 ### 🩹 Hotfix 5.3.1 — Épuration UI & Minimalisme
 

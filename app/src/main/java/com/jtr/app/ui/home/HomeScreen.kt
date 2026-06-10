@@ -71,6 +71,7 @@ fun HomeScreen(
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val upcomingEvents by viewModel.upcomingEvents.collectAsStateWithLifecycle()
+    val allActivePersons by viewModel.allActivePersons.collectAsStateWithLifecycle()
 
     // Mode recherche de la TopAppBar (état d'UI local ; la query vient du ViewModel).
     var searchActive by remember { mutableStateOf(false) }
@@ -110,8 +111,20 @@ fun HomeScreen(
         // on les neutralise ici pour supprimer la bande blanche au-dessus du footer.
         contentWindowInsets = WindowInsets(0),
         topBar = {
-            if (isSelectionMode) {
-                // Gauche : « Tout sélectionner (n) » · Droite : « Annuler ».
+            if (isSelectionMode && searchActive) {
+                // Recherche CONTEXTUELLE pendant la sélection : filtre l'affichage
+                // sans JAMAIS toucher au Set des ids cochés (persistance stricte UDF) —
+                // fermer la recherche efface la query, pas la sélection.
+                JtrSearchableTopAppBar(
+                    title = "",
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
+                    searchActive = true,
+                    onSearchActiveChange = { searchActive = it },
+                    searchPlaceholder = stringResource(R.string.home_search_placeholder)
+                )
+            } else if (isSelectionMode) {
+                // Gauche : « Tout sélectionner (n) » · Droite : Loupe + « Annuler ».
                 TopAppBar(
                     title = { Text(stringResource(R.string.select_all_count, selectedIds.size)) },
                     navigationIcon = {
@@ -121,6 +134,12 @@ fun HomeScreen(
                         }
                     },
                     actions = {
+                        // Loupe accessible EN mode sélection (grands volumes) : on
+                        // cherche, on coche, on recommence — les coches survivent.
+                        IconButton(onClick = { searchActive = true }) {
+                            Icon(Icons.Default.Search,
+                                contentDescription = stringResource(R.string.action_search))
+                        }
                         TextButton(onClick = { viewModel.clearSelection() }) {
                             Text(stringResource(R.string.common_cancel),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer)
@@ -129,7 +148,8 @@ fun HomeScreen(
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 )
             } else {
@@ -185,7 +205,9 @@ fun HomeScreen(
                             stringResource(R.string.share_action),
                             enabled = selectedIds.isNotEmpty(),
                             onClick = {
-                                shareTargets = persons.filter { it.id in selectedIds }
+                                // Liste NON filtrée : les contacts cochés sous une autre
+                                // recherche font bien partie du partage.
+                                shareTargets = allActivePersons.filter { it.id in selectedIds }
                             }
                         )
                     }
@@ -218,14 +240,6 @@ fun HomeScreen(
         }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            // Bandeau « Événements à venir » (7 jours), tout en haut du contenu.
-            // Se masque seul si aucun événement, et s'efface en mode sélection.
-            if (!isSelectionMode) {
-                UpcomingEventsBanner(
-                    events = upcomingEvents,
-                    onEventClick = { onNavigateToPersonDetail(it.person.id) }
-                )
-            }
             if (persons.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -242,7 +256,9 @@ fun HomeScreen(
                     }
                 }
             } else {
-                // Rendu commutable LIST / GRID / DETAIL (composant partagé).
+                // Rendu commutable LIST / GRID / DETAIL (composant partagé). Le hub
+                // des événements est injecté EN EN-TÊTE de la liste/grille (v5.3.4) :
+                // il défile avec le contenu et s'étale sur toute la largeur en Grille.
                 PersonListContent(
                     viewMode = viewMode,
                     persons = persons,
@@ -254,7 +270,15 @@ fun HomeScreen(
                         else onNavigateToPersonDetail(person.id)
                     },
                     onLongClick = { viewModel.toggleSelection(it.id) },
-                    onFavoriteClick = { viewModel.toggleFavorite(it) }
+                    onFavoriteClick = { viewModel.toggleFavorite(it) },
+                    header = if (!isSelectionMode && upcomingEvents.isNotEmpty()) {
+                        {
+                            UpcomingEventsBanner(
+                                events = upcomingEvents,
+                                onEventClick = { onNavigateToPersonDetail(it.person.id) }
+                            )
+                        }
+                    } else null
                 )
             }
         }

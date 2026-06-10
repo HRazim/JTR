@@ -107,6 +107,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /**
+     * Liste active NON filtrée — sert aux actions de masse (partage…) : un contact
+     * coché sous la recherche « A » reste ciblé même quand la requête devient « B »
+     * et qu'il n'est plus affiché. La sélection ne dépend JAMAIS du filtre.
+     */
+    val allActivePersons: StateFlow<List<Person>> = repository.getAllActive()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /**
      * Anniversaires et dates clés des 7 PROCHAINS JOURS, triés chronologiquement.
      * Les dates dynamiques (dateLines) priment ; repli sur le scalaire birthdate
      * pour les profils legacy. Calcul hors thread principal.
@@ -175,9 +183,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _selectedIds.update { if (id in it) it - id else it + id }
     }
 
-    /** Coche tous les profils actuellement affichés (recherche comprise). */
+    /**
+     * Coche tous les profils actuellement AFFICHÉS (recherche comprise) — ADDITIF :
+     * les coches faites sous une autre requête de recherche ne sont jamais perdues.
+     */
     fun selectAll() {
-        _selectedIds.value = persons.value.mapTo(HashSet()) { it.id }
+        _selectedIds.update { current -> current + persons.value.map { it.id } }
     }
 
     fun clearSelection() { _selectedIds.value = emptySet() }

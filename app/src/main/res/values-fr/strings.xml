@@ -366,4 +366,6 @@
     <string name="welcome_importing">Importation de %1$d contacts…</string>
     <string name="welcome_import_failed">Échec de l\'importation.</string>
     <string name="contacts_permission_denied">Permission contacts refusée — importation impossible.</string>
+    <!-- v5.3.2 — création de catégorie à la volée pendant le déplacement -->
+    <string name="move_create_category">Nouvelle catégorie</string>
 </resources>

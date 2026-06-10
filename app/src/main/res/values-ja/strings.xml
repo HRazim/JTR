@@ -182,7 +182,7 @@
     <string name="settings_trash_subtitle">削除された連絡先 · 30日後に自動削除</string>
     <string name="settings_section_about">アプリについて</string>
     <string name="settings_version_title">バージョン</string>
-    <string name="settings_version_value" translatable="false">JTR 5.3.1</string>
+    <string name="settings_version_value" translatable="false">JTR 5.3.4</string>
     <string name="settings_theme_cd">テーマ %1$s</string>
     <string name="settings_section_legal">法的情報</string>
     <string name="settings_privacy_title">プライバシーポリシー</string>
@@ -369,4 +369,6 @@
     <string name="welcome_importing">%1$d 件の連絡先をインポート中…</string>
     <string name="welcome_import_failed">インポートに失敗しました。</string>
     <string name="contacts_permission_denied">連絡先の権限が拒否されたため、インポートできません。</string>
+    <!-- v5.3.2 — 移動中のカテゴリー即時作成 -->
+    <string name="move_create_category">新しいカテゴリー</string>
 </resources>

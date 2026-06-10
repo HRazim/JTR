@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -67,7 +68,13 @@ fun PersonListContent(
     isSelectionMode: Boolean = false,
     onClick: (Person) -> Unit,
     onLongClick: (Person) -> Unit = {},
-    onFavoriteClick: (Person) -> Unit = {}
+    onFavoriteClick: (Person) -> Unit = {},
+    /**
+     * En-tête optionnel (hub des événements à venir…) rendu À L'INTÉRIEUR de la
+     * liste/grille : il défile avec le contenu et, en mode Grille, s'étale sur
+     * TOUTE la largeur via [GridItemSpan] (harmonie avec les tuiles carrées).
+     */
+    header: (@Composable () -> Unit)? = null
 ) {
     when (viewMode) {
         JtrViewMode.LIST -> LazyColumn(
@@ -75,6 +82,7 @@ fun PersonListContent(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            header?.let { item(key = "jtr_header") { it() } }
             items(items = persons, key = { it.id }) { person ->
                 PersonCompactRow(
                     person = person,
@@ -93,6 +101,10 @@ fun PersonListContent(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Pleine largeur : l'en-tête occupe la ligne entière de la grille.
+            header?.let {
+                item(key = "jtr_header", span = { GridItemSpan(maxLineSpan) }) { it() }
+            }
             items(items = persons, key = { it.id }) { person ->
                 PersonGridTile(
                     person = person,
@@ -109,6 +121,7 @@ fun PersonListContent(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            header?.let { item(key = "jtr_header") { it() } }
             items(items = persons, key = { it.id }) { person ->
                 PersonCard(
                     person = person,
