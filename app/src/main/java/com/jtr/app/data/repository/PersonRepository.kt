@@ -1,12 +1,14 @@
 package com.jtr.app.data.repository
 
 import android.content.Context
+import androidx.room.withTransaction
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.jtr.app.JTRApplication
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.data.local.PersonDao
 import com.jtr.app.data.local.PersonCategoryDao
+import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
@@ -24,11 +26,31 @@ import java.io.File
  * (table de jointure) au lieu du champ Person.categoryId.
  * Supprimer un contact d'une catégorie ne supprime PAS le contact.
  */
+/**
+ * Dictionnaire de réciprocité des types de relation (clés stables du catalogue
+ * FieldTypes.RELATION). Les types symétriques se reflètent à l'identique ;
+ * « mère »/« père » se reflètent en « enfant ». Tout type inconnu ou
+ * personnalisé (« Cousin », « Collègue »…) est appliqué TEXTUELLEMENT en miroir.
+ */
+private val MIRROR_RELATION_LABELS = mapOf(
+    "mother" to "child",
+    "father" to "child",
+    "brother" to "brother",
+    "sister" to "sister",
+    "spouse" to "spouse",
+    "friend" to "friend",
+)
+
+/** Type de la relation inverse (réciprocité), identique par défaut. */
+internal fun mirrorRelationLabel(label: String): String =
+    MIRROR_RELATION_LABELS[label] ?: label
+
 class PersonRepository(context: Context) {
 
-    private val dao: PersonDao = AppDatabase.getInstance(context).personDao()
-    private val categoryDao: PersonCategoryDao = AppDatabase.getInstance(context).personCategoryDao()
-    private val socialLinkDao = AppDatabase.getInstance(context).socialLinkDao()
+    private val db = AppDatabase.getInstance(context)
+    private val dao: PersonDao = db.personDao()
+    private val categoryDao: PersonCategoryDao = db.personCategoryDao()
+    private val socialLinkDao = db.socialLinkDao()
     private val appContext = context.applicationContext
 
     // =========================================================
@@ -187,6 +209,72 @@ class PersonRepository(context: Context) {
     suspend fun hardDeleteAllDeleted() = dao.hardDeleteAllDeleted()
 
     suspend fun softDeleteMultiple(ids: List<String>) = dao.softDeleteMultiple(ids)
+
+    // =========================================================
+    // RELATIONS MIROIRS AUTOMATIQUES (v5.4.1)
+    // =========================================================
+
+    /**
+     * Synchronise les fiches LIÉES après la sauvegarde de [person], dans UNE
+     * transaction Room :
+     *  - chaque relation AJOUTÉE (présente maintenant, absente de
+     *    [previousLines]) insère la relation INVERSE — type résolu par
+     *    [mirrorRelationLabel] — sur la fiche cible, résolue par NOM comme les
+     *    liens cliquables ([PersonDao.findIdByName]) ;
+     *  - chaque relation SUPPRIMÉE nettoie instantanément son miroir (même nom
+     *    + même type inverse) — aucune donnée fantôme.
+     *
+     * Idempotent : un miroir déjà présent n'est jamais dupliqué. Les valeurs ne
+     * résolvant aucun contact (nom libre) sont ignorées silencieusement.
+     */
+    suspend fun syncMirrorRelations(person: Person, previousLines: List<DynamicLine>?) {
+        val selfName = person.fullName.trim()
+        if (selfName.isBlank()) return
+
+        fun keyOf(line: DynamicLine) = line.value.trim().lowercase() to line.label
+        val current = person.relationLines.orEmpty().filter { it.value.isNotBlank() }
+        val previous = previousLines.orEmpty().filter { it.value.isNotBlank() }
+        val currentKeys = current.map(::keyOf).toSet()
+        val previousKeys = previous.map(::keyOf).toSet()
+        val added = current.filter { keyOf(it) !in previousKeys }
+        val removed = previous.filter { keyOf(it) !in currentKeys }
+        if (added.isEmpty() && removed.isEmpty()) return
+
+        db.withTransaction {
+            added.forEach { line ->
+                val targetId = dao.findIdByName(line.value.trim()) ?: return@forEach
+                if (targetId == person.id) return@forEach
+                val target = dao.getById(targetId) ?: return@forEach
+                val mirrorLabel = mirrorRelationLabel(line.label)
+                val lines = target.relationLines.orEmpty()
+                val alreadyMirrored = lines.any {
+                    it.value.trim().equals(selfName, ignoreCase = true) && it.label == mirrorLabel
+                }
+                if (!alreadyMirrored) {
+                    dao.update(target.copy(
+                        relationLines = lines + DynamicLine(value = selfName, label = mirrorLabel),
+                        updatedAt = System.currentTimeMillis()
+                    ))
+                }
+            }
+            removed.forEach { line ->
+                val targetId = dao.findIdByName(line.value.trim()) ?: return@forEach
+                if (targetId == person.id) return@forEach
+                val target = dao.getById(targetId) ?: return@forEach
+                val mirrorLabel = mirrorRelationLabel(line.label)
+                val original = target.relationLines.orEmpty()
+                val filtered = original.filterNot {
+                    it.value.trim().equals(selfName, ignoreCase = true) && it.label == mirrorLabel
+                }
+                if (filtered.size != original.size) {
+                    dao.update(target.copy(
+                        relationLines = filtered.takeIf { it.isNotEmpty() },
+                        updatedAt = System.currentTimeMillis()
+                    ))
+                }
+            }
+        }
+    }
 
     // =========================================================
     // GESTION MANY-TO-MANY DES CATÉGORIES

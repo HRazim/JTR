@@ -372,4 +372,8 @@
     <string name="notif_proximity_v2_title">¡Proximidad detectada! 📍</string>
     <string name="notif_proximity_v2_text">Estás pasando cerca de %1$s. %2$s anda por la zona, ¿por qué no saludarle? 👋</string>
     <string name="permission_allow">Permitir</string>
+    <!-- v5.4.1 — importación selectiva de contactos nativos -->
+    <string name="welcome_select_button">Elegir los contactos a importar</string>
+    <string name="contact_selection_title">Elegir contactos</string>
+    <string name="import_selected_count">Importar los %1$d contactos seleccionados</string>
 </resources>

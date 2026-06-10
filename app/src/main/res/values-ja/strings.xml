@@ -182,7 +182,7 @@
     <string name="settings_trash_subtitle">削除された連絡先 · 30日後に自動削除</string>
     <string name="settings_section_about">アプリについて</string>
     <string name="settings_version_title">バージョン</string>
-    <string name="settings_version_value" translatable="false">JTR 5.4.0</string>
+    <string name="settings_version_value" translatable="false">JTR 5.4.1</string>
     <string name="settings_theme_cd">テーマ %1$s</string>
     <string name="settings_section_legal">法的情報</string>
     <string name="settings_privacy_title">プライバシーポリシー</string>
@@ -375,4 +375,8 @@
     <string name="notif_proximity_v2_title">近くにいます！📍</string>
     <string name="notif_proximity_v2_text">%1$s の近くを通っています。%2$s がこの辺りにいます。ちょっと挨拶してみませんか？👋</string>
     <string name="permission_allow">許可</string>
+    <!-- v5.4.1 — ネイティブ連絡先の選択インポート -->
+    <string name="welcome_select_button">インポートする連絡先を選ぶ</string>
+    <string name="contact_selection_title">連絡先を選択</string>
+    <string name="import_selected_count">選択した %1$d 件をインポート</string>
 </resources>

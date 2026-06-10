@@ -29,10 +29,54 @@ import java.util.UUID
  * les vignettes restent visibles même si la permission READ_CONTACTS est
  * révoquée plus tard. Tout s'exécute sur [Dispatchers.IO].
  */
+/**
+ * Contact natif LÉGER pour l'écran de sélection de l'onboarding (v5.4.1) :
+ * id + nom + vignette — ~quelques dizaines d'octets par entrée, un répertoire
+ * de 3 000+ contacts reste négligeable en mémoire (les photos sont chargées
+ * paresseusement par Coil, ligne par ligne, dans la LazyColumn).
+ */
+data class DeviceContact(
+    val id: Long,
+    val displayName: String,
+    val photoUri: String?
+)
+
 class ContactsImporter(context: Context) {
 
     private val appContext = context.applicationContext
     private val personDao = AppDatabase.getInstance(appContext).personDao()
+
+    /**
+     * Liste ALPHABÉTIQUE des contacts du répertoire natif (projection minimale
+     * id / nom / vignette) — alimente l'écran d'importation sélective.
+     */
+    suspend fun listDeviceContacts(): List<DeviceContact> = withContext(Dispatchers.IO) {
+        val result = ArrayList<DeviceContact>()
+        appContext.contentResolver.query(
+            ContactsContract.Contacts.CONTENT_URI,
+            arrayOf(
+                ContactsContract.Contacts._ID,
+                ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+                ContactsContract.Contacts.PHOTO_THUMBNAIL_URI
+            ),
+            null, null,
+            "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} COLLATE NOCASE ASC"
+        )?.use { cursor ->
+            val idIdx = cursor.getColumnIndexOrThrow(ContactsContract.Contacts._ID)
+            val nameIdx = cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
+            val photoIdx = cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_THUMBNAIL_URI)
+            while (cursor.moveToNext()) {
+                val name = cursor.getString(nameIdx)?.trim().orEmpty()
+                if (name.isBlank()) continue
+                result.add(DeviceContact(
+                    id = cursor.getLong(idIdx),
+                    displayName = name,
+                    photoUri = cursor.getString(photoIdx)
+                ))
+            }
+        }
+        result
+    }
 
     /** Brouillon d'un contact natif en cours d'agrégation. */
     private class ContactDraft {
@@ -51,12 +95,19 @@ class ContactsImporter(context: Context) {
      * [BATCH_SIZE] dans Room (REPLACE). [onProgress] est rappelé après chaque
      * lot avec (insérés, total) pour piloter la barre de progression de l'UI.
      *
+     * @param selectedIds importation SÉLECTIVE (v5.4.1) : seuls ces contacts
+     *   natifs sont agrégés (les autres lignes sont ignorées dès le curseur —
+     *   aucune allocation pour les non-cochés). `null` = tout importer.
+     *   La déduplication v5.3.3 (téléphones normalisés, emails) reste active.
      * @return le nombre de contacts importés.
      */
-    suspend fun import(onProgress: (done: Int, total: Int) -> Unit): Result<Int> =
+    suspend fun import(
+        selectedIds: Set<Long>? = null,
+        onProgress: (done: Int, total: Int) -> Unit
+    ): Result<Int> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val drafts = readDeviceContacts()
+                val drafts = readDeviceContacts(selectedIds)
                 val total = drafts.size
                 var done = 0
                 onProgress(0, total)
@@ -70,8 +121,8 @@ class ContactsImporter(context: Context) {
             }
         }
 
-    /** Requête unique sur Data + agrégation par contact. */
-    private fun readDeviceContacts(): List<ContactDraft> {
+    /** Requête unique sur Data + agrégation par contact (filtrée si [selectedIds]). */
+    private fun readDeviceContacts(selectedIds: Set<Long>? = null): List<ContactDraft> {
         val drafts = LinkedHashMap<Long, ContactDraft>()
         val projection = arrayOf(
             ContactsContract.Data.CONTACT_ID,
@@ -106,6 +157,10 @@ class ContactsImporter(context: Context) {
 
             while (cursor.moveToNext()) {
                 val contactId = cursor.getLong(idIdx)
+                // Importation sélective : ignore les contacts non cochés AVANT
+                // toute allocation (zéro surconsommation mémoire). NB : « selection »
+                // est déjà pris par la clause SQL locale, d'où « selectedIds ».
+                if (selectedIds != null && contactId !in selectedIds) continue
                 val draft = drafts.getOrPut(contactId) { ContactDraft() }
                 if (draft.displayName == null) draft.displayName = cursor.getString(nameIdx)
                 if (draft.photoUri == null) draft.photoUri = cursor.getString(photoIdx)

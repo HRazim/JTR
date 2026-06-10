@@ -227,6 +227,10 @@ class AddPersonViewModel(
                 )
             }
 
+            // Relations miroirs (v5.4.1) : création → toutes les relations sont
+            // « nouvelles » (aucune snapshot antérieure).
+            repository.syncMirrorRelations(person, previousLines = null)
+
             onSuccess()
         }
     }

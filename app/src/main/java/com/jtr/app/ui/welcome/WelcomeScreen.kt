@@ -19,11 +19,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.ChecklistRtl
 import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -58,23 +60,57 @@ fun WelcomeScreen(
     viewModel: WelcomeViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val filteredDeviceContacts by viewModel.filteredDeviceContacts.collectAsStateWithLifecycle()
+    val selectedContactIds by viewModel.selectedContactIds.collectAsStateWithLifecycle()
+    val contactSearch by viewModel.contactSearch.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var permissionDenied by remember { mutableStateOf(false) }
+    // Importation sélective (v5.4.1) : bascule plein écran vers la liste native.
+    var selecting by remember { mutableStateOf(false) }
+    // Intention portée par la demande de permission : tout importer OU choisir.
+    var pendingSelectMode by remember { mutableStateOf(false) }
 
     val contactsPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
             permissionDenied = false
-            viewModel.startImport()
+            if (pendingSelectMode) {
+                viewModel.loadDeviceContacts()
+                selecting = true
+            } else {
+                viewModel.startImport()
+            }
         } else {
             permissionDenied = true
         }
+        pendingSelectMode = false
     }
+    fun hasContactsPermission(): Boolean = ContextCompat.checkSelfPermission(
+        context, Manifest.permission.READ_CONTACTS
+    ) == PackageManager.PERMISSION_GRANTED
 
     // Fin d'importation → cap sur l'Accueil (le flag est déjà consommé).
     LaunchedEffect(state) {
         if (state is WelcomeUiState.Done) onFinished()
+    }
+
+    // Écran de sélection : les coches et la recherche vivent dans le ViewModel —
+    // elles survivent au scroll, au filtre et aux allers-retours.
+    if (selecting) {
+        ContactSelectionScreen(
+            contacts = filteredDeviceContacts,
+            selectedIds = selectedContactIds,
+            searchQuery = contactSearch,
+            onSearchChange = { viewModel.setContactSearch(it) },
+            onToggle = { viewModel.toggleContact(it) },
+            onBack = { selecting = false },
+            onConfirm = {
+                selecting = false
+                viewModel.startImport(selectedContactIds)
+            }
+        )
+        return
     }
 
     Box(
@@ -169,14 +205,9 @@ fun WelcomeScreen(
                     }
                     Button(
                         onClick = {
-                            if (ContextCompat.checkSelfPermission(
-                                    context, Manifest.permission.READ_CONTACTS
-                                ) == PackageManager.PERMISSION_GRANTED
-                            ) {
-                                viewModel.startImport()
-                            } else {
-                                contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
-                            }
+                            pendingSelectMode = false
+                            if (hasContactsPermission()) viewModel.startImport()
+                            else contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -188,6 +219,28 @@ fun WelcomeScreen(
                         Spacer(Modifier.width(10.dp))
                         Text(stringResource(R.string.welcome_import_button),
                             style = MaterialTheme.typography.titleMedium)
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    // Importation SÉLECTIVE : ouvre la liste native cochable.
+                    OutlinedButton(
+                        onClick = {
+                            if (hasContactsPermission()) {
+                                viewModel.loadDeviceContacts()
+                                selecting = true
+                            } else {
+                                pendingSelectMode = true
+                                contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Icon(Icons.Default.ChecklistRtl, contentDescription = null,
+                            modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(stringResource(R.string.welcome_select_button))
                     }
                     Spacer(Modifier.height(8.dp))
                     TextButton(onClick = {

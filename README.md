@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> **Carnet de contacts enrichi nouvelle génération** · Version `5.4.0`  
+> **Carnet de contacts enrichi nouvelle génération** · Version `5.4.1`  
 > Projet personnel Android — Kotlin · Jetpack Compose · MVVM
 
 ---
@@ -48,16 +48,28 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 
 ## 🚧 Version 5.0 — En cours de développement
 
-> **Cycle actif — dernière livraison : v5.4.0**
+> **Cycle actif — dernière livraison : v5.4.1**
 
 La Version 5 ouvre une nouvelle ère pour JTR, après la clôture définitive et stable du cycle v4.x. Cette section est enrichie au fil du développement.
 
 | Statut | Détail |
 |--------|--------|
-| 🏗️ **Jalon** | `versionName = "5.4.0"` · `versionCode = 16` · Room v17 |
+| 🏗️ **Jalon** | `versionName = "5.4.1"` · `versionCode = 17` · Room v17 |
 | 🧱 **Fondations héritées** | Moteur tactile « Galerie » + dossiers récursifs (Room v16) consolidés en v4, étendus en v5 |
 | ✅ **Livré (v5.0 → v5.1)** | TopAppBar harmonisée avec recherche intégrée (`JtrSearchableTopAppBar`), menu Tri/Affichage unifié, 3 modes de vue persistés (Liste/Grille/Détail), footer de sélection transformable à l'Accueil, déplacement de contacts sans dialogue, recadrage d'image refondu (EXIF, cadre déplaçable/redimensionnable), Drag & Drop grille/liste harmonisé (zone centrale = fusion) |
 | 🎯 **Cap** | Capitaliser sur l'ergonomie tactile mature pour la prochaine génération de fonctionnalités |
+
+### 🚀 Version 5.4.1 — Symétrie Relationnelle Transac & Onboarding Sélectif
+
+* **🔄 Injection Automatique de Relations Miroirs (`@Transaction`) :**
+    * Implémentation du moteur de synchronisation asynchrone `PersonRepository.syncMirrorRelations` au sein d'une transaction Room isolée.
+    * Algorithme de calcul de différentiel précis (Ajouts/Suppressions par clé normalisée) entre la snapshot d'avant-édition et le nouvel état d'UI.
+    * Dictionnaire de réciprocité intelligent : typage croisé automatique (`brother` ──► `brother`, `mother` ──► `child`) et duplication textuelle par défaut pour les labels sur-mesure (ex: "Cousin"). Clean-up instantané des relations miroires en cas de suppression pour éviter les données orphelines.
+    * Interconnexion réactive aux trois points d'ancrage (`AddPersonViewModel`, `EditPersonViewModel` et `updatePerson`) avec rafraîchissement instantané des vues via les Flow de Room.
+* **🗂️ Pipeline d'Importation Sélective à Faible Empreinte Mémoire :**
+    * Mutation de l'onboarding vers un mode hybride : intégration du modèle ultra-léger `DeviceContact` et projection restreinte sur `ContactsContract`.
+    * Optimisation radicale de la mémoire : application du filtre de sélection directement au niveau du curseur natif avant allocation, protégeant le tas (RAM) contre les répertoires volumineux (3000+).
+    * Création de `ContactSelectionScreen` : `LazyColumn` hautement optimisée avec clés stables (`key = { it.id }`), chargement paresseux des vignettes via Coil à 120 Hz, recherche textuelle insensible à la casse et conteneur de rétention d'état dans `WelcomeViewModel` (survie stricte au défilement et aux recompositions).
 
 ### 🚀 Version 5.4.0 — Moteur de Proximité Actif & Unification Géographique
 

@@ -333,6 +333,9 @@ class EditPersonViewModel(
             } else {
                 repository.update(updated)
             }
+            // Relations miroirs (v5.4.1) : reflète les ajouts/retraits de
+            // relations sur les fiches liées (diff avec la snapshot d'avant édition).
+            repository.syncMirrorRelations(updated, p.relationLines)
             _person.value = updated
             _isEditing.value = false
         }
@@ -357,6 +360,7 @@ class EditPersonViewModel(
             } else {
                 repository.update(updated)
             }
+            repository.syncMirrorRelations(updated, p.relationLines)
             onSuccess()
         }
     }

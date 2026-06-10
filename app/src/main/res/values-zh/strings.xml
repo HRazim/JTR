@@ -372,4 +372,8 @@
     <string name="notif_proximity_v2_title">检测到附近联系人！📍</string>
     <string name="notif_proximity_v2_text">您正路过 %1$s 附近。%2$s 就在附近，何不打个招呼？👋</string>
     <string name="permission_allow">允许</string>
+    <!-- v5.4.1 — 选择性导入原生联系人 -->
+    <string name="welcome_select_button">选择要导入的联系人</string>
+    <string name="contact_selection_title">选择联系人</string>
+    <string name="import_selected_count">导入所选的 %1$d 位联系人</string>
 </resources>
