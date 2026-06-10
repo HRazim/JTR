@@ -9,6 +9,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.jtr.app.utils.GeofenceManager
+import com.jtr.app.worker.ImportantDateCheckWorker
 import com.jtr.app.worker.ProximityCheckWorker
 import org.maplibre.android.MapLibre
 import java.util.concurrent.TimeUnit
@@ -27,6 +28,7 @@ class JTRApplication : Application() {
         geofenceManager = GeofenceManager(this)
         createNotificationChannels()
         scheduleProximityChecks()
+        scheduleImportantDateChecks()
     }
 
     /**
@@ -67,6 +69,22 @@ class JTRApplication : Application() {
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "proximity_check",
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
+    }
+
+    /**
+     * Planifie le balayage quotidien des dates importantes (anniversaires et dates
+     * personnalisées marquées « notifier »). Voir [ImportantDateCheckWorker].
+     */
+    private fun scheduleImportantDateChecks() {
+        val request = PeriodicWorkRequestBuilder<ImportantDateCheckWorker>(
+            1, TimeUnit.DAYS
+        ).build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "important_date_check",
             ExistingPeriodicWorkPolicy.KEEP,
             request
         )

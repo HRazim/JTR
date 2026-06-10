@@ -98,7 +98,13 @@ fun ImageCropDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        // decorFitsSystemWindows = false : rendu plein écran edge-to-edge ET les
+        // WindowInsets (barres système) sont dispatchés aux composables, ce qui
+        // permet à navigationBarsPadding() de remonter correctement les boutons.
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
     ) {
         BoxWithConstraints(
             modifier = Modifier
@@ -284,11 +290,14 @@ fun ImageCropDialog(
             }
 
             // ── Barre du bas : Annuler / Recadrer ─────────────────────────────
+            // navigationBarsPadding() remonte la rangée juste au-dessus de la barre
+            // de gestes / des touches système (le Dialog est plein écran, edge-to-edge).
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 32.dp),
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.CenterVertically
             ) {

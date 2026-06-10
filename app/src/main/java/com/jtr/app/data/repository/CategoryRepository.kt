@@ -3,13 +3,21 @@ package com.jtr.app.data.repository
 import android.content.Context
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.domain.model.Category
+import com.jtr.app.domain.model.CategoryGroup
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+
+/** Référence d'entrée de premier niveau pour le tri global (dossier OU catégorie). */
+sealed interface TopOrderRef {
+    data class Group(val id: Long) : TopOrderRef
+    data class Cat(val id: String) : TopOrderRef
+}
 
 class CategoryRepository(context: Context) {
 
     private val db = AppDatabase.getInstance(context)
     private val categoryDao = db.categoryDao()
+    private val categoryGroupDao = db.categoryGroupDao()
     private val personDao = db.personDao()
     private val personCategoryDao = db.personCategoryDao()
 
@@ -17,9 +25,78 @@ class CategoryRepository(context: Context) {
 
     fun getDeleted(): Flow<List<Category>> = categoryDao.getDeleted()
 
-    suspend fun add(category: Category) = categoryDao.insert(category)
+    /** Insère une catégorie À LA FIN (position = max + 1), jamais selon l'alphabet. */
+    suspend fun add(category: Category) {
+        val pos = categoryDao.maxPosition() + 1
+        categoryDao.insert(category.copy(position = pos))
+    }
 
     suspend fun update(category: Category) = categoryDao.update(category)
+
+    // ── v4.5 : favoris, tri personnalisé, regroupement et actions de masse ──────
+    fun getGroups(): Flow<List<CategoryGroup>> = categoryGroupDao.getAll()
+
+    suspend fun setFavorite(id: String, favorite: Boolean) =
+        categoryDao.setFavorite(id, favorite)
+
+    suspend fun setPosition(id: String, position: Int) =
+        categoryDao.setPosition(id, position)
+
+    /** Persiste un nouvel ordre complet (drag & drop) : position = index. */
+    suspend fun persistOrder(orderedIds: List<String>) {
+        orderedIds.forEachIndexed { index, id -> categoryDao.setPosition(id, index) }
+    }
+
+    suspend fun softDeleteMultipleWithCascade(categoryIds: List<String>) {
+        categoryIds.forEach { softDeleteWithCascade(it) }
+    }
+
+    /**
+     * Crée un groupe À LA FIN (position = max + 1) et y rattache les catégories.
+     * [parentGroupId] non nul → SOUS-GROUPE imbriqué dans ce groupe parent.
+     */
+    suspend fun createGroupWith(
+        name: String, categoryIds: List<String>, parentGroupId: Long? = null
+    ): Long {
+        val pos = categoryGroupDao.maxPosition() + 1
+        val groupId = categoryGroupDao.insert(
+            CategoryGroup(name = name, position = pos, parentGroupId = parentGroupId))
+        categoryDao.assignGroup(categoryIds, groupId)
+        return groupId
+    }
+
+    suspend fun assignToGroup(categoryIds: List<String>, groupId: Long?) =
+        categoryDao.assignGroup(categoryIds, groupId)
+
+    suspend fun renameGroup(group: CategoryGroup, name: String) =
+        categoryGroupDao.update(group.copy(name = name))
+
+    suspend fun setGroupFavorite(id: Long, favorite: Boolean) =
+        categoryGroupDao.setFavorite(id, favorite)
+
+    suspend fun updateGroup(group: CategoryGroup) = categoryGroupDao.update(group)
+
+    /** Dissout un groupe : détache ses catégories puis supprime le groupe. */
+    suspend fun deleteGroup(groupId: Long, memberIds: List<String>) {
+        categoryDao.assignGroup(memberIds, null)
+        categoryGroupDao.delete(groupId)
+    }
+
+    /** Supprime la SEULE ligne de groupe (membres déjà réaffectés ailleurs — fusion). */
+    suspend fun deleteGroupRow(groupId: Long) = categoryGroupDao.delete(groupId)
+
+    /**
+     * Persiste l'ordre GLOBAL des entrées de premier niveau (dossiers + catégories
+     * indépendantes mélangés) : `position = index`, dans la table correspondante.
+     */
+    suspend fun persistTopOrder(refs: List<TopOrderRef>) {
+        refs.forEachIndexed { index, ref ->
+            when (ref) {
+                is TopOrderRef.Group -> categoryGroupDao.setPosition(ref.id, index)
+                is TopOrderRef.Cat -> categoryDao.setPosition(ref.id, index)
+            }
+        }
+    }
 
     /**
      * Soft-delete de la catégorie + tous ses membres actifs en cascade.

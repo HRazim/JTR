@@ -64,6 +64,9 @@ class PersonRepository(context: Context) {
 
     suspend fun getById(id: String): Person? = dao.getById(id)
 
+    /** Résout l'id d'un contact par son nom (relations cliquables). */
+    suspend fun findIdByName(name: String): String? = dao.findIdByName(name)
+
     fun observeById(id: String): kotlinx.coroutines.flow.Flow<Person?> = dao.observeById(id)
 
     /** IDs des catégories d'une personne (version suspend). */

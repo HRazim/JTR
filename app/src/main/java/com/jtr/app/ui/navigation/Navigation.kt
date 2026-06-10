@@ -1,5 +1,12 @@
 package com.jtr.app.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -26,6 +33,7 @@ import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.Person
 import com.jtr.app.ui.category.CategoriesScreen
 import com.jtr.app.ui.category.CategoryDetailScreen
+import com.jtr.app.ui.category.CategoryGroupDetailScreen
 import com.jtr.app.ui.home.HomeScreen
 import com.jtr.app.ui.map.MapScreen
 import com.jtr.app.ui.person.*
@@ -42,12 +50,14 @@ object Routes {
     const val PERSON_DETAIL = "person_detail/{personId}"
     const val CATEGORIES = "categories"
     const val CATEGORY_DETAIL = "category_detail/{categoryId}"
+    const val CATEGORY_GROUP_DETAIL = "category_group_detail/{groupId}"
     const val SETTINGS = "settings"
     const val MAP_PICKER = "map_picker"
     const val TRASH = "trash"
 
     fun personDetail(personId: String) = "person_detail/$personId"
     fun categoryDetail(categoryId: String) = "category_detail/$categoryId"
+    fun categoryGroupDetail(groupId: Long) = "category_group_detail/$groupId"
 
     /** Navigation vers AddPersonScreen depuis une catégorie (contact pré-assigné). */
     fun addPersonInCategory(categoryId: String) = "add_person?categoryId=$categoryId"
@@ -80,12 +90,24 @@ fun JTRMainScaffold(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val showBottomBar = currentRoute in listOf(Routes.HOME, Routes.CATEGORIES, Routes.SETTINGS)
+    // Mode sélection des catégories (« Samsung Galerie ») hoissé ici : il masque la
+    // BottomNavigationBar globale et laisse place au footer contextuel de l'écran.
+    var categoriesSelectionMode by remember { mutableStateOf(false) }
+    LaunchedEffect(currentRoute) {
+        if (currentRoute != Routes.CATEGORIES) categoriesSelectionMode = false
+    }
+
+    val showBottomBar = currentRoute in listOf(Routes.HOME, Routes.CATEGORIES, Routes.SETTINGS) &&
+        !categoriesSelectionMode
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
-            if (showBottomBar) {
+            AnimatedVisibility(
+                visible = showBottomBar,
+                enter = slideInVertically { it } + fadeIn(),
+                exit = slideOutVertically { it } + fadeOut()
+            ) {
                 NavigationBar {
                     bottomNavItems.forEach { item ->
                         NavigationBarItem(
@@ -188,6 +210,7 @@ fun JTRMainScaffold(
                     person = person,
                     categoryNames = categoryNames,
                     onNavigateBack = { navController.popBackStack() },
+                    onNavigateToPerson = { id -> navController.navigate(Routes.personDetail(id)) },
                     onDeleteClick = {
                         scope.launch {
                             repository.softDelete(personId)
@@ -226,6 +249,30 @@ fun JTRMainScaffold(
                 CategoriesScreen(
                     onCategoryClick = { categoryId ->
                         navController.navigate(Routes.categoryDetail(categoryId))
+                    },
+                    onGroupClick = { groupId ->
+                        navController.navigate(Routes.categoryGroupDetail(groupId))
+                    },
+                    onSelectionModeChange = { categoriesSelectionMode = it }
+                )
+            }
+
+            // Intérieur d'un dossier (drill-down) — transition latérale standard.
+            composable(
+                route = Routes.CATEGORY_GROUP_DETAIL,
+                arguments = listOf(navArgument("groupId") { type = NavType.LongType }),
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+            ) {
+                CategoryGroupDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCategoryClick = { categoryId ->
+                        navController.navigate(Routes.categoryDetail(categoryId))
+                    },
+                    onGroupClick = { subGroupId ->
+                        navController.navigate(Routes.categoryGroupDetail(subGroupId))
                     }
                 )
             }

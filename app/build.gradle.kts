@@ -14,8 +14,8 @@ android {
         applicationId = "com.jtr.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "4.4"
+        versionCode = 9
+        versionName = "5.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -38,6 +38,20 @@ android {
             useLegacyPackaging = false
         }
     }
+
+    // Les schémas Room exportés ($projectDir/schemas) sont packagés dans les assets
+    // du test APK pour que MigrationTestHelper puisse les charger au runtime.
+    sourceSets {
+        getByName("androidTest") {
+            assets.srcDirs(files("$projectDir/schemas"))
+        }
+    }
+}
+
+// Exporte le schéma Room (JSON versionné) — requis par exportSchema = true et par
+// le test de migration. Sans cet argument KSP, Room émet un warning de build.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

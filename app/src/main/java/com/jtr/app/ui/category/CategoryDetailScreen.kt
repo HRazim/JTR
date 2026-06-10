@@ -34,6 +34,7 @@ fun CategoryDetailScreen(
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val categoryName by viewModel.categoryName.collectAsStateWithLifecycle()
+    val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
 
     var showCategoryDialog by remember { mutableStateOf(false) }
 
@@ -79,9 +80,16 @@ fun CategoryDetailScreen(
                                 contentDescription = stringResource(R.string.common_back))
                         }
                     },
+                    actions = {
+                        ContactSortMenu(
+                            current = sortOrder,
+                            onSelect = { viewModel.setSortOrder(it) }
+                        )
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 )
             }
@@ -217,6 +225,43 @@ fun CategoryDetailScreen(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Menu de tri (3 points) des contacts d'une catégorie : 4 critères persistés. */
+@Composable
+private fun ContactSortMenu(
+    current: ContactSortOrder,
+    onSelect: (ContactSortOrder) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val options = listOf(
+        ContactSortOrder.NAME_ASC to R.string.sort_name_asc,
+        ContactSortOrder.NAME_DESC to R.string.sort_name_desc,
+        ContactSortOrder.CREATED_DESC to R.string.sort_created_desc,
+        ContactSortOrder.UPDATED_DESC to R.string.sort_updated_desc,
+    )
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.AutoMirrored.Filled.Sort,
+                contentDescription = stringResource(R.string.sort_title))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { (order, labelRes) ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(labelRes)) },
+                    onClick = { onSelect(order); expanded = false },
+                    leadingIcon = {
+                        if (order == current) {
+                            Icon(Icons.Default.Check, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary)
+                        } else {
+                            Spacer(Modifier.size(24.dp))
+                        }
+                    }
+                )
             }
         }
     }

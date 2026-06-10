@@ -1,6 +1,5 @@
 package com.jtr.app.ui.home
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -54,7 +53,6 @@ fun HomeScreen(
     val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
-    val isLocationEnabled by viewModel.isLocationEnabled.collectAsStateWithLifecycle()
     val socialLinksMap by viewModel.socialLinksMap.collectAsStateWithLifecycle()
 
     var showCategoryDialog by remember { mutableStateOf(false) }
@@ -147,32 +145,6 @@ fun HomeScreen(
         }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            AnimatedVisibility(visible = !isLocationEnabled && !isSelectionMode) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    tonalElevation = 2.dp
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.GpsOff,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.home_location_warning),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
             if (!isSelectionMode) {
                 OutlinedTextField(
                     value = searchQuery,
@@ -543,10 +515,10 @@ fun PersonCard(
             if (!isSelectionMode) {
                 IconButton(onClick = onFavoriteClick) {
                     Icon(
-                        imageVector = if (person.isFavorite) Icons.Default.Favorite
-                        else Icons.Default.FavoriteBorder,
+                        imageVector = if (person.isFavorite) Icons.Default.Star
+                        else Icons.Default.StarBorder,
                         contentDescription = stringResource(R.string.home_favorite_cd),
-                        tint = if (person.isFavorite) MaterialTheme.colorScheme.error
+                        tint = if (person.isFavorite) Color(0xFFFFD600)
                         else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                     )
                 }

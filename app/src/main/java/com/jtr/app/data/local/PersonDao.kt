@@ -36,6 +36,21 @@ interface PersonDao {
     @Query("SELECT * FROM persons WHERE id = :id")
     suspend fun getById(id: String): Person?
 
+    /**
+     * Cherche l'id d'un contact actif par son nom (prénom, nom, ou « prénom nom »),
+     * insensible à la casse — utilisé par les relations cliquables du profil.
+     */
+    @Query("""
+        SELECT id FROM persons
+        WHERE deletedAt IS NULL AND (
+            LOWER(firstName) = LOWER(:name)
+            OR LOWER(TRIM(firstName || ' ' || COALESCE(lastName, ''))) = LOWER(:name)
+            OR LOWER(lastName) = LOWER(:name)
+        )
+        LIMIT 1
+    """)
+    suspend fun findIdByName(name: String): String?
+
     /** Flow réactif — émet à chaque écriture sur cette ligne. */
     @Query("SELECT * FROM persons WHERE id = :id")
     fun observeById(id: String): Flow<Person?>

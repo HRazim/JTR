@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.data.repository.PersonRepository
+import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.utils.extractSocialLinks
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Locale
 import java.util.UUID
 
 class EditPersonViewModel(
@@ -59,9 +61,6 @@ class EditPersonViewModel(
     private val _birthdate = MutableStateFlow<Long?>(null)
     val birthdate: StateFlow<Long?> = _birthdate.asStateFlow()
 
-    private val _birthdateNotify = MutableStateFlow(false)
-    val birthdateNotify: StateFlow<Boolean> = _birthdateNotify.asStateFlow()
-
     private val _city = MutableStateFlow("")
     val city: StateFlow<String> = _city.asStateFlow()
 
@@ -77,6 +76,15 @@ class EditPersonViewModel(
     private val _origin = MutableStateFlow("")
     val origin: StateFlow<String> = _origin.asStateFlow()
 
+    private val _jobTitle = MutableStateFlow("")
+    val jobTitle: StateFlow<String> = _jobTitle.asStateFlow()
+
+    private val _department = MutableStateFlow("")
+    val department: StateFlow<String> = _department.asStateFlow()
+
+    private val _company = MutableStateFlow("")
+    val company: StateFlow<String> = _company.asStateFlow()
+
     private val _likes = MutableStateFlow("")
     val likes: StateFlow<String> = _likes.asStateFlow()
 
@@ -88,6 +96,39 @@ class EditPersonViewModel(
 
     private val _email = MutableStateFlow("")
     val email: StateFlow<String> = _email.asStateFlow()
+
+    // ── Listes dynamiques « Contacts Google » (v4.5) ──────────────────────────
+    private val _nameDetails = MutableStateFlow(NameDetails())
+    val nameDetails: StateFlow<NameDetails> = _nameDetails.asStateFlow()
+
+    private val _phoneLines = MutableStateFlow(listOf(DynamicLine(label = FieldTypes.PHONE_MOBILE)))
+    val phoneLines: StateFlow<List<DynamicLine>> = _phoneLines.asStateFlow()
+
+    private val _emailLines = MutableStateFlow(listOf(DynamicLine(label = FieldTypes.EMAIL_HOME)))
+    val emailLines: StateFlow<List<DynamicLine>> = _emailLines.asStateFlow()
+
+    private val _dateLines = MutableStateFlow(listOf(DynamicLine(label = FieldTypes.DATE_BIRTHDAY)))
+    val dateLines: StateFlow<List<DynamicLine>> = _dateLines.asStateFlow()
+
+    private val _relationLines = MutableStateFlow(listOf(DynamicLine(label = FieldTypes.RELATION_FRIEND)))
+    val relationLines: StateFlow<List<DynamicLine>> = _relationLines.asStateFlow()
+
+    fun onNameDetailsChanged(v: NameDetails) { _nameDetails.value = v }
+    fun onPhoneLinesChanged(v: List<DynamicLine>) { _phoneLines.value = v }
+    fun onEmailLinesChanged(v: List<DynamicLine>) { _emailLines.value = v }
+    fun onDateLinesChanged(v: List<DynamicLine>) { _dateLines.value = v }
+    fun onRelationLinesChanged(v: List<DynamicLine>) { _relationLines.value = v }
+
+    /** Noms des autres contacts — alimente l'autocomplétion des relations. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val relationSuggestions: StateFlow<List<String>> = _person
+        .flatMapLatest { p ->
+            repository.getAllActive().map { list ->
+                list.filter { it.id != p?.id }.map { it.fullName }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    // ──────────────────────────────────────────────────────────────────────────
 
     private val _photoUri = MutableStateFlow<String?>(null)
     val photoUri: StateFlow<String?> = _photoUri.asStateFlow()
@@ -116,6 +157,23 @@ class EditPersonViewModel(
             repository.markAsContacted(id)
             _person.value = _person.value?.copy(lastContactedAt = System.currentTimeMillis())
         }
+    }
+
+    /**
+     * Résout (en arrière-plan, Coroutine) l'id d'un contact par son nom, pour les
+     * relations cliquables. [onResult] est rappelé sur le thread principal.
+     */
+    fun findPersonIdByName(name: String, onResult: (String?) -> Unit) {
+        if (name.isBlank()) { onResult(null); return }
+        viewModelScope.launch { onResult(repository.findIdByName(name.trim())) }
+    }
+
+    /** Bascule le favori instantanément en base (sans toucher à updatedAt). */
+    fun toggleFavorite() {
+        val p = _person.value ?: return
+        val updated = p.copy(isFavorite = !p.isFavorite)
+        _person.value = updated
+        viewModelScope.launch { repository.update(updated) }
     }
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -167,28 +225,76 @@ class EditPersonViewModel(
         _lastName.value = p.lastName ?: ""
         _gender.value = p.gender
         _birthdate.value = p.birthdate
-        _birthdateNotify.value = p.birthdateNotify
         _city.value = p.city ?: ""
         _cityLat.value = p.cityLat
         _cityLng.value = p.cityLng
         _cityNotify.value = p.cityNotify
         _origin.value = p.origin ?: ""
+        _jobTitle.value = p.jobTitle ?: ""
+        _department.value = p.department ?: ""
+        _company.value = p.company ?: ""
         _likes.value = p.likes ?: ""
         _notes.value = p.notes ?: ""
         _phoneNumber.value = p.phoneNumber ?: ""
         _email.value = p.email ?: ""
         _photoUri.value = p.photoUri
+
+        // Listes dynamiques : on lit en priorité le JSON désérialisé (DB v12).
+        // Repli legacy : si la liste est absente (profil pré-v12), on reconstruit
+        // depuis les colonnes scalaires conservées. Toujours ≥ 1 ligne pour l'UI.
+        val spec = resolveDateFormatSpec(Locale.getDefault())
+        _nameDetails.value = NameDetails(
+            prefix = p.prefix ?: "",
+            middleName = p.middleName ?: "",
+            suffix = p.suffix ?: "",
+            phonetic = p.phonetic ?: "",
+            nickname = p.nickname ?: ""
+        )
+        _phoneLines.value = p.phoneLines?.takeIf { it.isNotEmpty() }
+            ?: p.phoneNumber?.takeIf { it.isNotBlank() }
+                ?.let { listOf(DynamicLine(value = it, label = FieldTypes.PHONE_MOBILE)) }
+            ?: listOf(DynamicLine(label = FieldTypes.PHONE_MOBILE))
+        _emailLines.value = p.emailLines?.takeIf { it.isNotEmpty() }
+            ?: p.email?.takeIf { it.isNotBlank() }
+                ?.let { listOf(DynamicLine(value = it, label = FieldTypes.EMAIL_HOME)) }
+            ?: listOf(DynamicLine(label = FieldTypes.EMAIL_HOME))
+        _dateLines.value = p.dateLines?.takeIf { it.isNotEmpty() }
+            ?: p.birthdate?.let {
+                listOf(DynamicLine(
+                    value = millisToRawDigits(it, spec.order),
+                    label = FieldTypes.DATE_BIRTHDAY,
+                    notify = p.birthdateNotify // reporte l'ancienne cloche globale sur la ligne
+                ))
+            }
+            ?: listOf(DynamicLine(label = FieldTypes.DATE_BIRTHDAY))
+        _relationLines.value = p.relationLines?.takeIf { it.isNotEmpty() }
+            ?: listOf(DynamicLine(label = FieldTypes.RELATION_FRIEND))
+
         personLoaded = true
+    }
+
+    /** Replie les listes dynamiques sur les scalaires Room (1ère ligne valide). */
+    private fun collapseDynamicLines() {
+        val spec = resolveDateFormatSpec(Locale.getDefault())
+        _phoneNumber.value = _phoneLines.value.firstOrNull { it.value.isNotBlank() }?.value?.trim() ?: ""
+        // Projection scalaire : 1er email syntaxiquement valide (contenant « @ »).
+        _email.value = _emailLines.value
+            .firstOrNull { it.value.isNotBlank() && it.value.contains('@') }?.value?.trim() ?: ""
+        _birthdate.value = _dateLines.value
+            .filter { it.label == FieldTypes.DATE_BIRTHDAY }
+            .firstNotNullOfOrNull { rawDigitsToMillis(it.value, spec) }
     }
 
     fun onFirstNameChanged(v: String)    { _firstName.value = v; _firstNameError.value = false }
     fun onLastNameChanged(v: String)     { _lastName.value = v }
     fun onGenderChanged(v: String?)      { _gender.value = v }
     fun onBirthdateChanged(v: Long?)     { _birthdate.value = v }
-    fun onBirthdateNotifyChanged(v: Boolean) { _birthdateNotify.value = v }
     fun onCityChanged(v: String)         { _city.value = v; _cityLat.value = null; _cityLng.value = null }
     fun onCityNotifyChanged(v: Boolean)  { _cityNotify.value = v }
     fun onOriginChanged(v: String)        { _origin.value = v }
+    fun onJobTitleChanged(v: String)     { _jobTitle.value = v }
+    fun onDepartmentChanged(v: String)   { _department.value = v }
+    fun onCompanyChanged(v: String)      { _company.value = v }
     fun onLikesChanged(v: String)        { _likes.value = v }
     fun onNotesChanged(v: String)        { _notes.value = v }
     fun onPhoneNumberChanged(v: String)  { _phoneNumber.value = v }
@@ -207,6 +313,7 @@ class EditPersonViewModel(
     fun commitAllEdits() {
         val p = _person.value ?: return
         if (_firstName.value.isBlank()) { _firstNameError.value = true; return }
+        collapseDynamicLines()
         viewModelScope.launch {
             val updated = buildUpdatedPerson(p)
             if (_city.value.trim() != (p.city ?: "") && _cityLat.value == null) {
@@ -243,11 +350,13 @@ class EditPersonViewModel(
     }
 
     private fun buildUpdatedPerson(p: Person) = p.copy(
+        updatedAt      = System.currentTimeMillis(),
         firstName      = _firstName.value.trim(),
         lastName       = _lastName.value.trim().ifBlank { null },
         gender         = _gender.value,
         birthdate      = _birthdate.value,
-        birthdateNotify = _birthdateNotify.value,
+        // Dénormalisation : la cloche globale vient désormais de la ligne anniversaire.
+        birthdateNotify = _dateLines.value.any { it.label == FieldTypes.DATE_BIRTHDAY && it.notify },
         city           = _city.value.trim().ifBlank { null },
         cityLat        = _cityLat.value,
         cityLng        = _cityLng.value,
@@ -256,8 +365,20 @@ class EditPersonViewModel(
         notes          = _notes.value.trim().ifBlank { null },
         likes          = _likes.value.trim().ifBlank { null },
         origin         = _origin.value.trim().ifBlank { null },
+        jobTitle       = _jobTitle.value.trim().ifBlank { null },
+        department     = _department.value.trim().ifBlank { null },
+        company        = _company.value.trim().ifBlank { null },
         phoneNumber    = _phoneNumber.value.trim().ifBlank { null },
-        email          = _email.value.trim().ifBlank { null }
+        email          = _email.value.trim().ifBlank { null },
+        prefix         = _nameDetails.value.prefix.trim().ifBlank { null },
+        middleName     = _nameDetails.value.middleName.trim().ifBlank { null },
+        suffix         = _nameDetails.value.suffix.trim().ifBlank { null },
+        phonetic       = _nameDetails.value.phonetic.trim().ifBlank { null },
+        nickname       = _nameDetails.value.nickname.trim().ifBlank { null },
+        phoneLines     = sanitizeLines(_phoneLines.value),
+        emailLines     = sanitizeEmailLines(_emailLines.value),
+        dateLines      = sanitizeLines(_dateLines.value),
+        relationLines  = sanitizeLines(_relationLines.value)
     )
 
     /**

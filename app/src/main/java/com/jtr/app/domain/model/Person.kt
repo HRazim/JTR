@@ -1,5 +1,6 @@
 package com.jtr.app.domain.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.util.UUID
@@ -28,7 +29,27 @@ data class Person(
     val origin: String? = null,
     val phoneNumber: String? = null,
     val email: String? = null,
+    // v4.5 (DB v12) — sous-champs de nom avancés (1:1)
+    val prefix: String? = null,
+    val middleName: String? = null,
+    val suffix: String? = null,
+    val phonetic: String? = null,
+    val nickname: String? = null,
+    // v4.5 (DB v13) — informations professionnelles (style « Contacts Google »)
+    val jobTitle: String? = null,
+    val department: String? = null,
+    val company: String? = null,
+    // v4.5 (DB v12) — listes répétables (1:N) sérialisées en JSON via TypeConverters.
+    // `phoneNumber` / `email` / `birthdate` restent la projection « 1ère ligne » lue
+    // par les workers, les cartes et les actions rapides (dénormalisation).
+    val phoneLines: List<DynamicLine>? = null,
+    val emailLines: List<DynamicLine>? = null,
+    val dateLines: List<DynamicLine>? = null,
+    val relationLines: List<DynamicLine>? = null,
     val createdAt: Long = System.currentTimeMillis(),
+    // v4.5 (DB v14) — horodatage de dernière modification, mis à jour à chaque save.
+    @ColumnInfo(defaultValue = "0")
+    val updatedAt: Long = System.currentTimeMillis(),
     val deletedAt: Long? = null
 ) {
     val fullName: String

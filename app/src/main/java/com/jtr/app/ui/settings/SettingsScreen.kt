@@ -162,7 +162,7 @@ fun SettingsScreen(
             )
 
             SettingsSwitch(
-                icon = Icons.Default.Cake,
+                icon = Icons.Default.Event,
                 title = stringResource(R.string.settings_birthday_title),
                 subtitle = stringResource(R.string.settings_birthday_subtitle),
                 checked = birthdayEnabled && notificationsEnabled,

@@ -5,6 +5,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -35,6 +36,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.view.MotionEvent
+import android.widget.Toast
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -61,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
+import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.utils.SocialPlatform
@@ -80,6 +83,7 @@ fun PersonDetailScreen(
     person: Person?,
     categoryNames: List<String> = emptyList(),
     onNavigateBack: () -> Unit,
+    onNavigateToPerson: (String) -> Unit = {},
     onDeleteClick: () -> Unit,
     onNavigateToMap: () -> Unit = {},
     cityFromMap: String? = null,
@@ -89,29 +93,34 @@ fun PersonDetailScreen(
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showAddLinkDialog by remember { mutableStateOf(false) }
-    var showDatePicker by remember { mutableStateOf(false) }
     var showPhotoZoom by remember { mutableStateOf(false) }
     var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
+    var menuExpanded by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
 
     val editVm: EditPersonViewModel = viewModel()
     val isEditing by editVm.isEditing.collectAsStateWithLifecycle()
     val isLoading by editVm.isLoading.collectAsStateWithLifecycle()
     val vmFirstName by editVm.firstName.collectAsStateWithLifecycle()
     val vmLastName by editVm.lastName.collectAsStateWithLifecycle()
-    val vmGender by editVm.gender.collectAsStateWithLifecycle()
-    val vmBirthdate by editVm.birthdate.collectAsStateWithLifecycle()
-    val vmBirthdateNotify by editVm.birthdateNotify.collectAsStateWithLifecycle()
     val vmCity by editVm.city.collectAsStateWithLifecycle()
     val vmCityLat by editVm.cityLat.collectAsStateWithLifecycle()
     val vmCityNotify by editVm.cityNotify.collectAsStateWithLifecycle()
     val vmOrigin by editVm.origin.collectAsStateWithLifecycle()
+    val vmJobTitle by editVm.jobTitle.collectAsStateWithLifecycle()
+    val vmDepartment by editVm.department.collectAsStateWithLifecycle()
+    val vmCompany by editVm.company.collectAsStateWithLifecycle()
     val vmLikes by editVm.likes.collectAsStateWithLifecycle()
     val vmNotes by editVm.notes.collectAsStateWithLifecycle()
+    val vmNameDetails by editVm.nameDetails.collectAsStateWithLifecycle()
+    val vmPhoneLines by editVm.phoneLines.collectAsStateWithLifecycle()
+    val vmEmailLines by editVm.emailLines.collectAsStateWithLifecycle()
+    val vmDateLines by editVm.dateLines.collectAsStateWithLifecycle()
+    val vmRelationLines by editVm.relationLines.collectAsStateWithLifecycle()
+    val vmRelationSuggestions by editVm.relationSuggestions.collectAsStateWithLifecycle()
     val vmPhotoUri by editVm.photoUri.collectAsStateWithLifecycle()
     val firstNameError by editVm.firstNameError.collectAsStateWithLifecycle()
     val socialLinks by editVm.socialLinks.collectAsStateWithLifecycle()
-    val vmPhoneNumber by editVm.phoneNumber.collectAsStateWithLifecycle()
-    val vmEmail by editVm.email.collectAsStateWithLifecycle()
     val vmPendingPhotoUri        by editVm.pendingPhotoUri.collectAsStateWithLifecycle()
 
     LaunchedEffect(person?.id) { person?.id?.let { editVm.loadPerson(it) } }
@@ -160,15 +169,46 @@ fun PersonDetailScreen(
                 },
                 actions = {
                     if (!isEditing) {
-                        IconButton(onClick = { editVm.enterEditMode() }) {
-                            Icon(Icons.Default.Edit,
-                                contentDescription = stringResource(R.string.common_edit),
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                        // Étoile favori : jaune vif si actif, toggle instantané en base.
+                        IconButton(onClick = { editVm.toggleFavorite() }) {
+                            val fav = person?.isFavorite == true
+                            Icon(
+                                if (fav) Icons.Default.Star else Icons.Default.StarBorder,
+                                contentDescription = stringResource(R.string.person_favorite_toggle_cd),
+                                tint = if (fav) Color(0xFFFFD600)
+                                       else MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                         }
-                        IconButton(onClick = { showDeleteDialog = true }) {
-                            Icon(Icons.Default.Delete,
-                                contentDescription = stringResource(R.string.common_delete),
-                                tint = MaterialTheme.colorScheme.error)
+                        // Menu « 3 points » : Modifier / Supprimer / Informations du profil.
+                        Box {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(Icons.Default.MoreVert,
+                                    contentDescription = stringResource(R.string.common_more_actions),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                            }
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.common_edit)) },
+                                    leadingIcon = { Icon(Icons.Default.Edit, null,
+                                        tint = MaterialTheme.colorScheme.primary) },
+                                    onClick = { menuExpanded = false; editVm.enterEditMode() }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.common_delete)) },
+                                    leadingIcon = { Icon(Icons.Default.Delete, null,
+                                        tint = MaterialTheme.colorScheme.error) },
+                                    onClick = { menuExpanded = false; showDeleteDialog = true }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.person_info_menu)) },
+                                    leadingIcon = { Icon(Icons.Default.Info, null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    onClick = { menuExpanded = false; showInfoDialog = true }
+                                )
+                            }
                         }
                     }
                 },
@@ -211,7 +251,9 @@ fun PersonDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .imePadding()
+                // Pas de .imePadding() ici : l'activité est en adjustResize (edge-to-edge),
+                // la fenêtre se redimensionne déjà à l'ouverture du clavier. Ajouter
+                // imePadding() en plus doublait l'inset et créait un vide blanc géant.
                 .verticalScroll(rememberScrollState())
                 .pointerInput(isEditing) {
                     if (!isEditing) detectTapGestures(onDoubleTap = { editVm.enterEditMode() })
@@ -286,57 +328,20 @@ fun PersonDetailScreen(
 
             Spacer(Modifier.height(16.dp))
 
+            // En mode édition, le nom est édité dans ProfileFormFields (section Nom
+            // épurée). En lecture, on affiche le nom complet centré.
             AnimatedContent(
                 targetState = isEditing,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "name_section"
             ) { editing ->
                 if (editing) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        var localFirst by remember(vmFirstName) { mutableStateOf(vmFirstName) }
-                        var localLast by remember(vmLastName) { mutableStateOf(vmLastName) }
-                        OutlinedTextField(
-                            value = localFirst,
-                            onValueChange = { localFirst = it; editVm.onFirstNameChanged(it) },
-                            label = { Text(stringResource(R.string.person_first_name_label)) },
-                            isError = firstNameError,
-                            supportingText = if (firstNameError) ({
-                                Text(stringResource(R.string.person_first_name_required))
-                            }) else null,
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        OutlinedTextField(
-                            value = localLast,
-                            onValueChange = { localLast = it; editVm.onLastNameChanged(it) },
-                            label = { Text(stringResource(R.string.person_last_name_label)) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
+                    Spacer(Modifier.height(0.dp))
                 } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = person.fullName,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold)
-                        if (person.isFavorite) {
-                            Spacer(Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Favorite, null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.error)
-                                Spacer(Modifier.width(4.dp))
-                                Text(stringResource(R.string.person_favorite_label),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.error)
-                            }
-                        }
-                    }
+                    // Le statut favori est porté UNIQUEMENT par l'étoile de la TopBar.
+                    Text(text = person.fullName,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -361,44 +366,32 @@ fun PersonDetailScreen(
                 onRemoveClick = { editVm.removeSocialLink(it) }
             )
 
-            if (!isEditing && (person.phoneNumber != null || person.email != null)) {
-                Spacer(Modifier.height(16.dp))
-                val ctx = LocalContext.current
-                QuickActionsSection(
-                    phoneNumber = person.phoneNumber,
-                    email = person.email,
-                    onCall = {
-                        ctx.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${person.phoneNumber}")))
-                        editVm.markAsContacted()
-                    },
-                    onSms = {
-                        ctx.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${person.phoneNumber}")))
-                        editVm.markAsContacted()
-                    },
-                    onEmail = {
-                        ctx.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${person.email}")))
-                        editVm.markAsContacted()
-                    }
-                )
-            }
-
             Spacer(Modifier.height(16.dp))
             HorizontalDivider()
             Spacer(Modifier.height(12.dp))
 
             if (isEditing) {
                 ProfileFormFields(
+                    firstName = vmFirstName,
+                    onFirstNameChange = { editVm.onFirstNameChanged(it) },
+                    lastName = vmLastName,
+                    onLastNameChange = { editVm.onLastNameChanged(it) },
+                    firstNameError = firstNameError,
+                    nameDetails = vmNameDetails,
+                    onNameDetailsChange = { editVm.onNameDetailsChanged(it) },
                     notes = vmNotes,
                     onNotesChange = { editVm.onNotesChanged(it) },
                     likes = vmLikes,
                     onLikesChange = { editVm.onLikesChanged(it) },
-                    gender = vmGender,
-                    onGenderChange = { editVm.onGenderChanged(it) },
-                    birthdate = vmBirthdate,
-                    onPickBirthday = { showDatePicker = true },
-                    onClearBirthday = { editVm.onBirthdateChanged(null) },
-                    birthdateNotify = vmBirthdateNotify,
-                    onBirthdateNotifyChange = { editVm.onBirthdateNotifyChanged(it) },
+                    phoneLines = vmPhoneLines,
+                    onPhoneLinesChange = { editVm.onPhoneLinesChanged(it) },
+                    emailLines = vmEmailLines,
+                    onEmailLinesChange = { editVm.onEmailLinesChanged(it) },
+                    dateLines = vmDateLines,
+                    onDateLinesChange = { editVm.onDateLinesChanged(it) },
+                    relationLines = vmRelationLines,
+                    onRelationLinesChange = { editVm.onRelationLinesChanged(it) },
+                    relationSuggestions = vmRelationSuggestions,
                     city = vmCity,
                     cityHasCoords = vmCityLat != null,
                     onCityChange = { editVm.onCityChanged(it) },
@@ -411,13 +404,129 @@ fun PersonDetailScreen(
                     },
                     origin = vmOrigin,
                     onOriginChange = { editVm.onOriginChanged(it) },
-                    phone = vmPhoneNumber,
-                    onPhoneChange = { editVm.onPhoneNumberChanged(it) },
-                    email = vmEmail,
-                    onEmailChange = { editVm.onEmailChanged(it) }
+                    jobTitle = vmJobTitle,
+                    onJobTitleChange = { editVm.onJobTitleChanged(it) },
+                    department = vmDepartment,
+                    onDepartmentChange = { editVm.onDepartmentChanged(it) },
+                    company = vmCompany,
+                    onCompanyChange = { editVm.onCompanyChanged(it) }
                 )
             } else {
-                // ── Mode lecture : détails secondaires, puis Ce qu'il aime / Notes ──
+                // ── Mode lecture : ordre IDENTIQUE au formulaire ─────────────────
+                // 2. Dates importantes — TOUTES, avec cloche si rappel actif (règle 2 max)
+                val dates = person.dateLines?.takeIf { it.isNotEmpty() }
+                    ?: person.birthdate?.let {
+                        listOf(DynamicLine(
+                            value = millisToRawDigits(it, resolveDateFormatSpec(Locale.getDefault()).order),
+                            label = FieldTypes.DATE_BIRTHDAY,
+                            notify = person.birthdateNotify
+                        ))
+                    }
+                if (dates != null) DatesBlock(lines = dates)
+
+                // 3. Origine
+                if (person.origin != null) {
+                    DetailRow(icon = Icons.Default.Public,
+                        label = stringResource(R.string.person_origin_label),
+                        value = person.origin)
+                }
+
+                // 4. Relations (règle 2 max) — noms cliquables → contact lié
+                val relations = person.relationLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
+                if (relations != null) {
+                    val notFoundMsg = stringResource(R.string.relation_not_found)
+                    ContactLinesBlock(
+                        icon = Icons.Default.Group,
+                        sectionLabel = stringResource(R.string.section_relations),
+                        lines = relations,
+                        types = FieldTypes.RELATION,
+                        onValueClick = { name ->
+                            editVm.findPersonIdByName(name) { id ->
+                                if (id != null && id != person.id) onNavigateToPerson(id)
+                                else Toast.makeText(context, notFoundMsg, Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
+                }
+
+                // 5. Téléphones puis 6. Emails (repli scalaire pour profils legacy, règle 2 max)
+                val phones = person.phoneLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
+                    ?: person.phoneNumber?.takeIf { it.isNotBlank() }
+                        ?.let { listOf(DynamicLine(value = it, label = FieldTypes.PHONE_MOBILE)) }
+                if (phones != null) {
+                    ContactLinesBlock(
+                        icon = Icons.Default.Phone,
+                        sectionLabel = stringResource(R.string.section_phones),
+                        lines = phones,
+                        types = FieldTypes.PHONE,
+                        // Numéro cliquable → composition d'appel native.
+                        onValueClick = { number ->
+                            context.startActivity(
+                                Intent(Intent.ACTION_DIAL, Uri.parse("tel:${number.trim()}")))
+                            editVm.markAsContacted()
+                        }
+                    )
+                }
+                val emails = person.emailLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
+                    ?: person.email?.takeIf { it.isNotBlank() }
+                        ?.let { listOf(DynamicLine(value = it, label = FieldTypes.EMAIL_HOME)) }
+                if (emails != null) {
+                    ContactLinesBlock(
+                        icon = Icons.Default.Email,
+                        sectionLabel = stringResource(R.string.section_emails),
+                        lines = emails,
+                        types = FieldTypes.EMAIL,
+                        // Email cliquable → messagerie native.
+                        onValueClick = { address ->
+                            context.startActivity(
+                                Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${address.trim()}")))
+                            editVm.markAsContacted()
+                        }
+                    )
+                }
+
+                // 7. Informations professionnelles — bloc compact, masqué si vide
+                val at = stringResource(R.string.person_job_at)
+                val jobHead = when {
+                    !person.jobTitle.isNullOrBlank() && !person.company.isNullOrBlank() ->
+                        "${person.jobTitle} $at ${person.company}"
+                    !person.jobTitle.isNullOrBlank() -> person.jobTitle
+                    !person.company.isNullOrBlank() -> person.company
+                    else -> null
+                }
+                val jobSummary = listOfNotNull(
+                    jobHead, person.department?.takeIf { it.isNotBlank() }
+                ).joinToString(" · ")
+                if (jobSummary.isNotBlank()) {
+                    DetailRow(icon = Icons.Default.Work,
+                        label = stringResource(R.string.section_work),
+                        value = jobSummary)
+                }
+
+                // 8. Ville & mini-carte
+                if (person.city != null) {
+                    CityDetailRow(city = person.city,
+                        cityLat = person.cityLat, cityLng = person.cityLng)
+                }
+
+                // 9. Notes & 10. Ce qu'il aime — grands blocs de texte tout en bas
+                if (person.notes != null || person.likes != null) {
+                    Spacer(Modifier.height(4.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(4.dp))
+                }
+                if (person.notes != null) {
+                    DetailTextBlock(icon = Icons.AutoMirrored.Filled.Notes,
+                        label = stringResource(R.string.person_notes_label),
+                        value = person.notes)
+                }
+                if (person.likes != null) {
+                    DetailTextBlock(icon = Icons.Default.Favorite,
+                        label = stringResource(R.string.person_likes_label),
+                        value = person.likes)
+                }
+
+                // Legacy : genre (retiré du formulaire), affiché discrètement en bas.
                 if (person.gender != null) {
                     DetailRow(
                         icon = Icons.Default.Person,
@@ -429,48 +538,6 @@ fun PersonDetailScreen(
                             else         -> person.gender
                         }
                     )
-                }
-                if (person.birthdate != null) {
-                    DetailRow(
-                        icon = Icons.Default.Cake,
-                        label = stringResource(R.string.person_birthday_label),
-                        value = SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
-                            .format(Date(person.birthdate))
-                    )
-                }
-                if (person.city != null) {
-                    CityDetailRow(city = person.city,
-                        cityLat = person.cityLat, cityLng = person.cityLng)
-                }
-                if (person.origin != null) {
-                    DetailRow(icon = Icons.Default.Public,
-                        label = stringResource(R.string.person_origin_label),
-                        value = person.origin)
-                }
-                if (person.phoneNumber != null) {
-                    DetailRow(icon = Icons.Default.Phone,
-                        label = stringResource(R.string.person_phone_label),
-                        value = person.phoneNumber)
-                }
-                if (person.email != null) {
-                    DetailRow(icon = Icons.Default.Email,
-                        label = stringResource(R.string.person_email_label),
-                        value = person.email)
-                }
-
-                Spacer(Modifier.height(12.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(12.dp))
-
-                if (person.likes != null) {
-                    DetailTextBlock(icon = Icons.Default.Favorite,
-                        label = stringResource(R.string.person_likes_label),
-                        value = person.likes)
-                }
-                if (person.notes != null) {
-                    DetailTextBlock(icon = Icons.AutoMirrored.Filled.Notes,
-                        label = stringResource(R.string.person_notes_label),
-                        value = person.notes)
                 }
             }
         }
@@ -495,18 +562,43 @@ fun PersonDetailScreen(
         )
     }
 
-    if (showDatePicker) {
-        BirthdayPickerDialog(
-            initialMillis = vmBirthdate,
-            onConfirm = { editVm.onBirthdateChanged(it) },
-            onDismiss = { showDatePicker = false }
-        )
-    }
 
     if (showAddLinkDialog) {
         AddSocialLinkDialog(
             onConfirm = { url -> editVm.addSocialLink(url) },
             onDismiss = { showAddLinkDialog = false }
+        )
+    }
+
+    if (showInfoDialog && person != null) {
+        val df = remember { SimpleDateFormat("d MMMM yyyy, HH:mm", Locale.getDefault()) }
+        AlertDialog(
+            onDismissRequest = { showInfoDialog = false },
+            icon = { Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text(stringResource(R.string.person_info_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column {
+                        Text(stringResource(R.string.person_info_created),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(df.format(Date(person.createdAt)),
+                            style = MaterialTheme.typography.bodyLarge)
+                    }
+                    Column {
+                        Text(stringResource(R.string.person_info_updated),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(df.format(Date(person.updatedAt.takeIf { it > 0 } ?: person.createdAt)),
+                            style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showInfoDialog = false }) {
+                    Text(stringResource(R.string.common_ok))
+                }
+            }
         )
     }
 
@@ -531,55 +623,6 @@ fun PersonDetailScreen(
     }
 }
 
-// ── Quick Actions ─────────────────────────────────────────────────────────────
-
-@Composable
-private fun QuickActionsSection(
-    phoneNumber: String?,
-    email: String?,
-    onCall: () -> Unit,
-    onSms: () -> Unit,
-    onEmail: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (phoneNumber != null) {
-            QuickActionButton(icon = Icons.Default.Phone,
-                label = stringResource(R.string.person_action_call), onClick = onCall)
-            Spacer(Modifier.width(20.dp))
-            QuickActionButton(icon = Icons.AutoMirrored.Filled.Message,
-                label = stringResource(R.string.person_action_sms), onClick = onSms)
-        }
-        if (email != null) {
-            if (phoneNumber != null) Spacer(Modifier.width(20.dp))
-            QuickActionButton(icon = Icons.Default.Email,
-                label = stringResource(R.string.person_action_email), onClick = onEmail)
-        }
-    }
-}
-
-@Composable
-private fun QuickActionButton(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        FilledTonalIconButton(
-            onClick = onClick,
-            modifier = Modifier.size(52.dp),
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
 
 @Composable
 private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
@@ -907,6 +950,139 @@ private fun MapLibreMiniMap(lat: Double, lng: Double, cityName: String, modifier
             }
         }
     }, modifier = modifier.clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)))
+}
+
+/** Libellé d'affichage d'une ligne : type connu localisé, sinon texte personnalisé. */
+@Composable
+private fun lineTypeLabel(types: List<TypeOption>, key: String): String {
+    val res = typeLabelResOrNull(types, key)
+    return if (res != null) stringResource(res) else key
+}
+
+/** Bascule discrète « Voir les X autres… / Voir moins » pour le mode lecture. */
+@Composable
+private fun SeeMoreToggle(hiddenCount: Int, showAll: Boolean, onToggle: () -> Unit) {
+    Text(
+        text = if (showAll) stringResource(R.string.person_see_less)
+        else stringResource(R.string.person_see_more, hiddenCount),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .clickable { onToggle() }
+            .padding(top = 2.dp)
+    )
+}
+
+/**
+ * Bloc lecture d'un groupe répétable : icône + libellé de section + lignes
+ * « type : valeur ». Règle des 2 max : au-delà de 2 éléments, seuls les 2 premiers
+ * sont visibles, le reste se déroule sur place via [SeeMoreToggle].
+ */
+@Composable
+private fun ContactLinesBlock(
+    icon: ImageVector,
+    sectionLabel: String,
+    lines: List<DynamicLine>,
+    types: List<TypeOption>,
+    onValueClick: ((String) -> Unit)? = null
+) {
+    var showAll by remember { mutableStateOf(false) }
+    val visible = if (lines.size > 2 && !showAll) lines.take(2) else lines
+
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.Top) {
+        Icon(icon, null, Modifier.size(24.dp).padding(top = 2.dp),
+            tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(16.dp))
+        Column(
+            modifier = Modifier.weight(1f).animateContentSize(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(sectionLabel, style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            visible.forEach { line ->
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(lineTypeLabel(types, line.label),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.widthIn(min = 56.dp))
+                    if (onValueClick != null) {
+                        // Valeur cliquable (relation/téléphone/email) — couleur primaire,
+                        // sans soulignement : l'interaction se découvre au clic.
+                        Text(line.value, style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.weight(1f).clickable { onValueClick(line.value) })
+                    } else {
+                        Text(line.value, style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+            if (lines.size > 2) {
+                SeeMoreToggle(lines.size - 2, showAll) { showAll = !showAll }
+            }
+        }
+    }
+}
+
+/**
+ * Bloc lecture des dates importantes : chaque date formatée + cloche si rappel actif.
+ * Règle des 2 max comme [ContactLinesBlock]. Cas particulier : si l'unique date est
+ * l'anniversaire de base, on n'affiche pas le titre de section (ligne « Anniversaire : … »).
+ */
+@Composable
+private fun DatesBlock(lines: List<DynamicLine>) {
+    val spec = remember { resolveDateFormatSpec(Locale.getDefault()) }
+    val formatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.getDefault()) }
+    val rendered = remember(lines) {
+        lines.mapNotNull { line ->
+            val millis = rawDigitsToMillis(line.value, spec) ?: return@mapNotNull null
+            Triple(line.label, formatter.format(Date(millis)), line.notify)
+        }
+    }
+    if (rendered.isEmpty()) return
+
+    val singleBirthday = rendered.size == 1 && rendered.first().first == FieldTypes.DATE_BIRTHDAY
+    var showAll by remember { mutableStateOf(false) }
+    val visible = if (rendered.size > 2 && !showAll) rendered.take(2) else rendered
+
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.Top) {
+        Icon(Icons.Default.Cake, null, Modifier.size(24.dp).padding(top = 2.dp),
+            tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(16.dp))
+        Column(
+            modifier = Modifier.weight(1f).animateContentSize(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            if (!singleBirthday) {
+                Text(stringResource(R.string.section_dates),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            visible.forEach { (label, dateStr, notify) ->
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(lineTypeLabel(FieldTypes.DATE, label),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.widthIn(min = 56.dp))
+                    Text(dateStr, style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f))
+                    if (notify) {
+                        Icon(Icons.Default.Notifications,
+                            contentDescription = stringResource(R.string.person_date_notify_cd),
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+            if (rendered.size > 2) {
+                SeeMoreToggle(rendered.size - 2, showAll) { showAll = !showAll }
+            }
+        }
+    }
 }
 
 @Composable

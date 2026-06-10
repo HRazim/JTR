@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> **Carnet de contacts enrichi nouvelle génération** · Version `4.4`  
+> **Carnet de contacts enrichi nouvelle génération** · Version `5.0.0`  
 > Projet personnel Android — Kotlin · Jetpack Compose · MVVM
 
 ---
@@ -9,27 +9,32 @@
 
 JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'application maintient une **mémoire sociale active** : elle enregistre le contexte humain de chaque relation (goûts, anniversaires, ville, notes, réseaux sociaux), géocode automatiquement les villes via OpenStreetMap, et notifie proactivement l'utilisateur lorsqu'il se retrouve physiquement proche d'un contact qu'il n'a pas vu depuis longtemps. Le tout, sans service cloud, sans clé API propriétaire, et avec un stockage 100 % local.
 
+> **État actuel — Juin 2026.** Le cycle de développement de la **Version 4 (v4.x)** est officiellement **clos** : stable, mature, et couronné par un moteur d'ergonomie tactile abouti (Drag & Drop fluide, dossiers récursifs, mode sélection « Galerie »). L'application ouvre aujourd'hui le jalon de la **Version 5.0**, nouvelle ère de développement. Voir [Le Grand Bilan de la Version 4](#-le-grand-bilan-de-la-version-4) et [Version 5.0 — En cours](#-version-50--en-cours-de-développement).
+
 ---
 
 ## 📋 Table des matières
 
 1. [Aperçu visuel](#-aperçu-visuel)
-2. [Version 4.4](#version-44)
-3. [Version 4.3](#version-43)
-4. [Version 4.2](#version-42)
-5. [Version 4.1](#version-41)
-6. [Version 4.0](#version-40)
-7. [Arborescence du projet](#-arborescence-du-projet)
-8. [Architecture MVVM](#-architecture-mvvm)
-9. [Stack technologique](#-stack-technologique)
-10. [Répertoire des classes](#-répertoire-des-classes-et-composants)
-11. [Fonctionnalités clés](#-fonctionnalités-clés)
-12. [Base de données Room](#-base-de-données-room)
-13. [Guide d'installation](#-guide-dinstallation-et-configuration)
-14. [Permissions requises](#-permissions-requises)
-15. [Tests et qualité](#-tests-et-qualité)
-16. [Optimisations de performance](#-optimisations-de-performance)
-17. [Évolution par version](#-évolution-par-version)
+2. [Version 5.0 — En cours de développement](#-version-50--en-cours-de-développement)
+3. [Le Grand Bilan de la Version 4](#-le-grand-bilan-de-la-version-4)
+4. [Historique des versions antérieures (v1 → v3)](#-historique-des-versions-antérieures-v1--v3)
+5. [Version 4.4](#version-44)
+6. [Version 4.3](#version-43)
+7. [Version 4.2](#version-42)
+8. [Version 4.1](#version-41)
+9. [Version 4.0](#version-40)
+10. [Arborescence du projet](#-arborescence-du-projet)
+11. [Architecture MVVM](#-architecture-mvvm)
+12. [Stack technologique](#-stack-technologique)
+13. [Répertoire des classes](#-répertoire-des-classes-et-composants)
+14. [Fonctionnalités clés](#-fonctionnalités-clés)
+15. [Base de données Room](#-base-de-données-room)
+16. [Guide d'installation](#-guide-dinstallation-et-configuration)
+17. [Permissions requises](#-permissions-requises)
+18. [Tests et qualité](#-tests-et-qualité)
+19. [Optimisations de performance](#-optimisations-de-performance)
+20. [Évolution par version](#-évolution-par-version)
 
 ---
 
@@ -38,6 +43,68 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 | Accueil | Détail contact | Carte MapLibre | Paramètres |
 |---------|---------------|----------------|------------|
 | Liste filtrée, icônes réseaux sociaux, favoris, recherche | Photo, mini-carte, liens sociaux brandés, édition Note-First | Sélecteur GPS natif, zoom/pan libre | Thèmes, corbeille, notifications |
+
+---
+
+## 🚧 Version 5.0 — En cours de développement
+
+> **Prochain Jalon Majeur · Work In Progress**
+
+La Version 5.0 ouvre une nouvelle ère pour JTR, après la clôture définitive et stable du cycle v4.x. Cette section sera enrichie au fil du développement.
+
+| Statut | Détail |
+|--------|--------|
+| 🏗️ **Jalon** | `versionName = "5.0.0"` · `versionCode = 9` — socle posé |
+| 🧱 **Fondations héritées** | Moteur tactile « Galerie » + dossiers récursifs (Room v16) consolidés en v4, prêts à être étendus |
+| 🎯 **Cap** | Capitaliser sur l'ergonomie tactile mature pour la prochaine génération de fonctionnalités |
+
+*Les fonctionnalités de la 5.0 seront documentées ici au fur et à mesure de leur livraison.*
+
+---
+
+## 🏆 Le Grand Bilan de la Version 4
+
+> **L'Âge d'Or de l'Ergonomie Tactile**
+
+La Version 4 restera celle qui a transformé JTR d'un carnet fonctionnel en une expérience tactile de référence. Au-delà des fonctionnalités sociales (icônes brandées, i18n, RGPD) détaillées dans les sous-versions ci-dessous, c'est le **moteur d'interaction directe** qui définit cet âge d'or. Six piliers techniques en forment l'héritage :
+
+### 🎞️ Moteur Graphique *Flawless*
+
+Le Drag & Drop des catégories et dossiers s'appuie exclusivement sur `Modifier.graphicsLayer` (translation X/Y de la tuile suivie, sans déclencher de mesure/layout) et `Modifier.animateItem()` (réagencement fluide des voisins). Résultat : un glissement **à 120 Hz**, sans recomposition parasite ni saccade, même sur des grilles densément peuplées.
+
+### 🛡️ Système Anti-Crash & Découplage Synchrone
+
+Le traitement du *Drop* ne s'exécute **jamais** à l'intérieur du callback tactile. L'action est figée dans un état scellé `DropAction` (`Merge` / `Insert` / `Reorder`), déposée dans un `pendingDrop`, puis traitée **hors du canal tactile** par un `LaunchedEffect` asynchrone. Tout le corps du `onDragEnd` est protégé par `try/catch/finally` et une garde de validité de layout (`isAttached`). L'`InputDispatcher` Android n'est ainsi jamais bloqué : **0 crash au drop** (élimination du fatal « Channel broken »).
+
+### 📐 Géométrie de Précision Globale
+
+Abandon des coordonnées locales à la tuile (faussées par les réagencements intermédiaires) au profit des **coordonnées Window absolues** via `positionInWindow()` et `localToWindow()`. La grille capture ses coordonnées avec `onGloballyPositioned`, et la collision doigt ↔ tuile utilise une **hitbox tolérante à 100 %** de la bounding box globale — la fusion s'allume dès l'entrée du doigt, à coup sûr.
+
+### 🗂️ Structure de Dossiers Récursive (Migration Room v16)
+
+Introduction de la colonne `parentGroupId: Long?` sur `category_groups` (`MIGRATION_15_16`), ouvrant une **hiérarchie infinie** : on crée des sous-groupes à l'intérieur des dossiers, par simple superposition de deux catégories au drop. Les compteurs (« N catégories, M sous-groupes ») sont **réactifs automatiquement** via `combine()` sur les Flows Room — aucune requête manuelle, aucun rafraîchissement explicite.
+
+### ☑️ Mode Sélection Persistant (Style *Samsung Galerie*)
+
+Une `TopAppBar` de sélection unifiée à la racine comme dans les dossiers : bouton **« Tout sélectionner »** (gauche), compteur central gérant explicitement l'état **« 0 sélectionné »**, et **« Annuler »** (droite). Le mode ne se referme plus tout seul quand la sélection se vide — seul « Annuler » en sort. La **réorganisation positionnelle** (Drag & Drop) est totalement **découplée** de la coche : on glisse n'importe quelle tuile, cochée ou non.
+
+### 🌍 Internationalisation
+
+Support **intégral et localisé en 5 langues** : Anglais (défaut), Français, Espagnol, Mandarin simplifié et Japonais (~195 clés chacune). Format strings positionnels (`%1$s`, `%5$d`…) pour réordonner librement les mots selon la grammaire de chaque langue, `@StringRes` pour les labels hors `@Composable`, et politique de confidentialité RGPD localisée.
+
+---
+
+## 📜 Historique des versions antérieures (v1 → v3)
+
+Avant l'âge d'or tactile, JTR s'est construit par strates successives. Résumé succinct :
+
+| Version | Essence | Apports clés |
+|---------|---------|--------------|
+| **v1.0** | *Le carnet* | CRUD de contacts basique, **stockage JSON**, liste simple |
+| **v2.0** | *La persistance* | Migration vers **Room DB**, **photos** (Coil), favoris, recherche, corbeille (soft-delete), Navigation Compose, thèmes DataStore |
+| **v3.0** | *Le contexte social* | Géocodage **Nominatim** + GPS, sélecteur **carte MapLibre** natif, **catégories Many-to-Many** (DB v6), **WorkManager** (rappels de proximité + anniversaires), notifications dual-canal, recherche accent-insensitive |
+
+> Le détail exhaustif des sous-versions de la branche v4 (4.0 → 4.4) suit ci-dessous.
 
 ---
 
@@ -1026,8 +1093,8 @@ android {
         applicationId = "com.jtr.app"
         minSdk        = 26
         targetSdk     = 35
-        versionCode   = 8
-        versionName   = "4.4"
+        versionCode   = 9
+        versionName   = "5.0.0"
     }
     kotlinOptions { jvmTarget = "17" }
     packaging {
@@ -1175,6 +1242,8 @@ MapLibre 11.5.0 + `useLegacyPackaging = false` garantit que les `.so` sont stock
 | **v4.2** | **Unification UX édition** (suppression route `EDIT_PERSON`, édition inline unique), **Toggles notif en création** (`birthdateNotify`/`cityNotify` dans `AddPersonScreen`), **Refonte thèmes** (`JTR_SIGNATURE` par défaut, suppression `SLATE`, preset `CUSTOM` + color picker libre, `buildCustomColorScheme`), **Recherche catégories** (barre + tri A-Z dans `CategoryViewModel`), **Audit workers** (guards globaux `BirthdayCheckWorker`, safe nulls `ProximityCheckWorker`), **Japonais** (5ᵉ langue, `values-ja/`), `versionCode = 6` |
 | **v4.3** | **Simplification thèmes** — suppression du preset `CUSTOM`, de `buildCustomColorScheme`, du `ColorPickerDialog` et des 3 StateFlows de couleur dans `ThemeViewModel` ; 6 presets fixes uniquement (JTR Signature · Azure · Emerald · Coral · Violet · Rose) ; `Theme.kt` réduit à une expression unique ; nettoyage des chaînes `color_role_*` / `theme_name_custom` dans les 5 locales, `versionCode = 7` |
 | **v4.4** | **Formulaires « Note-First » unifiés** (`ProfileFormFields` partagé Add/Edit, section repliable, `Switch` Material 3, `BirthdayPickerDialog`, `imePadding`), **Catégories Liste ⇄ Grille** (`CategoryGridTile`, menu `MoreVert`, persistance `rememberSaveable`), **Proximité « zéro friction »** (rayon fixe `PROXIMITY_RADIUS_KM = 20f`, suppression du slider et de `proximityRadiusKm`), **Permissions robustes** (verrou de cohérence, flux localisation 2 étapes, resync `ON_RESUME`, Photo Picker + `ImageCropDialog`), **Dette technique purgée** (rappels périodiques + journal d'interactions retirés, Room v9→v11, icônes `AutoMirrored`, build sans warning), `versionCode = 8` |
+| **v4.5 / Bilan v4** | **Moteur d'ergonomie tactile** (l'âge d'or) : Drag & Drop `graphicsLayer` + `animateItem()` à 120 Hz, **anti-crash** par état scellé `DropAction` + `LaunchedEffect` (0 crash au drop), **géométrie globale** `localToWindow()` / hitbox 100 %, **dossiers récursifs** `parentGroupId` (**Room v16**) avec compteurs réactifs `combine`, **mode sélection persistant** style Galerie (Tout sélectionner / 0 sélectionné / Annuler, DnD découplé de la coche), **formulaire dynamique** style Contacts Google. `versionCode = 8` |
+| **🚧 v5.0.0** | **Nouveau jalon majeur** — *En cours de développement.* Socle posé sur les fondations tactiles consolidées de la v4. `versionCode = 9` |
 
 ---
 
@@ -1196,4 +1265,4 @@ Les tuiles sont servies par [OpenFreeMap](https://openfreemap.org) (licence libr
 
 ---
 
-*JTR v4.4 — Kotlin · Jetpack Compose · MVVM*
+*JTR v5.0.0 — Kotlin · Jetpack Compose · MVVM · La v4 est close, la v5 commence.*

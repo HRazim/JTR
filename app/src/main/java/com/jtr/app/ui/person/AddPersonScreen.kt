@@ -47,27 +47,28 @@ fun AddPersonScreen(
     onMapResultConsumed: () -> Unit = {},
     viewModel: AddPersonViewModel = viewModel()
 ) {
-    // Prénom / Nom restent discrets en haut.
-    var firstName by remember { mutableStateOf(viewModel.firstName.value) }
-    var lastName  by remember { mutableStateOf(viewModel.lastName.value) }
-
-    val gender          by viewModel.gender.collectAsStateWithLifecycle()
-    val birthdate       by viewModel.birthdate.collectAsStateWithLifecycle()
-    val birthdateNotify by viewModel.birthdateNotify.collectAsStateWithLifecycle()
+    val firstName       by viewModel.firstName.collectAsStateWithLifecycle()
+    val lastName        by viewModel.lastName.collectAsStateWithLifecycle()
     val city            by viewModel.city.collectAsStateWithLifecycle()
     val cityLat         by viewModel.cityLat.collectAsStateWithLifecycle()
     val cityNotify      by viewModel.cityNotify.collectAsStateWithLifecycle()
     val origin          by viewModel.origin.collectAsStateWithLifecycle()
+    val jobTitle        by viewModel.jobTitle.collectAsStateWithLifecycle()
+    val department      by viewModel.department.collectAsStateWithLifecycle()
+    val company         by viewModel.company.collectAsStateWithLifecycle()
     val likes           by viewModel.likes.collectAsStateWithLifecycle()
     val notes           by viewModel.notes.collectAsStateWithLifecycle()
-    val phone           by viewModel.phoneNumber.collectAsStateWithLifecycle()
-    val email           by viewModel.email.collectAsStateWithLifecycle()
+    val nameDetails     by viewModel.nameDetails.collectAsStateWithLifecycle()
+    val phoneLines      by viewModel.phoneLines.collectAsStateWithLifecycle()
+    val emailLines      by viewModel.emailLines.collectAsStateWithLifecycle()
+    val dateLines       by viewModel.dateLines.collectAsStateWithLifecycle()
+    val relationLines   by viewModel.relationLines.collectAsStateWithLifecycle()
+    val relationSuggestions by viewModel.relationSuggestions.collectAsStateWithLifecycle()
     val photoUri        by viewModel.photoUri.collectAsStateWithLifecycle()
     val firstNameError  by viewModel.firstNameError.collectAsStateWithLifecycle()
     val pendingLinks    by viewModel.pendingLinks.collectAsStateWithLifecycle()
 
     var showAddLinkDialog by remember { mutableStateOf(false) }
-    var showDatePicker by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -111,7 +112,9 @@ fun AddPersonScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .imePadding()
+                // Pas de .imePadding() ici : l'activité est en adjustResize (edge-to-edge),
+                // la fenêtre se redimensionne déjà à l'ouverture du clavier. Ajouter
+                // imePadding() en plus doublait l'inset et créait un vide blanc géant.
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -163,32 +166,7 @@ fun AddPersonScreen(
 
             HorizontalDivider()
 
-            // ── Prénom ───────────────────────────────────────────────────────
-            OutlinedTextField(
-                value = firstName,
-                onValueChange = { firstName = it; viewModel.onFirstNameChanged(it) },
-                label = { Text(stringResource(R.string.person_first_name_label)) },
-                isError = firstNameError,
-                supportingText = {
-                    if (firstNameError) Text(stringResource(R.string.person_first_name_error))
-                },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // ── Nom ──────────────────────────────────────────────────────────
-            OutlinedTextField(
-                value = lastName,
-                onValueChange = { lastName = it; viewModel.onLastNameChanged(it) },
-                label = { Text(stringResource(R.string.person_last_name_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-
             // ── Réseaux sociaux ──────────────────────────────────────────────
-            HorizontalDivider()
             Text(
                 stringResource(R.string.person_social_links_title),
                 style = MaterialTheme.typography.labelLarge,
@@ -252,17 +230,26 @@ fun AddPersonScreen(
 
             // ── Notes / Likes prioritaires + section repliable (PARTAGÉ avec l'édition) ──
             ProfileFormFields(
+                firstName = firstName,
+                onFirstNameChange = viewModel::onFirstNameChanged,
+                lastName = lastName,
+                onLastNameChange = viewModel::onLastNameChanged,
+                firstNameError = firstNameError,
+                nameDetails = nameDetails,
+                onNameDetailsChange = viewModel::onNameDetailsChanged,
                 notes = notes,
                 onNotesChange = viewModel::onNotesChanged,
                 likes = likes,
                 onLikesChange = viewModel::onLikesChanged,
-                gender = gender,
-                onGenderChange = viewModel::onGenderChanged,
-                birthdate = birthdate,
-                onPickBirthday = { showDatePicker = true },
-                onClearBirthday = { viewModel.onBirthdateChanged(null) },
-                birthdateNotify = birthdateNotify,
-                onBirthdateNotifyChange = viewModel::onBirthdateNotifyChanged,
+                phoneLines = phoneLines,
+                onPhoneLinesChange = viewModel::onPhoneLinesChanged,
+                emailLines = emailLines,
+                onEmailLinesChange = viewModel::onEmailLinesChanged,
+                dateLines = dateLines,
+                onDateLinesChange = viewModel::onDateLinesChanged,
+                relationLines = relationLines,
+                onRelationLinesChange = viewModel::onRelationLinesChanged,
+                relationSuggestions = relationSuggestions,
                 city = city,
                 cityHasCoords = cityLat != null,
                 onCityChange = viewModel::onCityChanged,
@@ -275,10 +262,12 @@ fun AddPersonScreen(
                 },
                 origin = origin,
                 onOriginChange = viewModel::onOriginChanged,
-                phone = phone,
-                onPhoneChange = viewModel::onPhoneNumberChanged,
-                email = email,
-                onEmailChange = viewModel::onEmailChanged
+                jobTitle = jobTitle,
+                onJobTitleChange = viewModel::onJobTitleChanged,
+                department = department,
+                onDepartmentChange = viewModel::onDepartmentChanged,
+                company = company,
+                onCompanyChange = viewModel::onCompanyChanged
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -300,12 +289,5 @@ fun AddPersonScreen(
             )
         }
 
-        if (showDatePicker) {
-            BirthdayPickerDialog(
-                initialMillis = birthdate,
-                onConfirm = { viewModel.onBirthdateChanged(it) },
-                onDismiss = { showDatePicker = false }
-            )
-        }
     }
 }
