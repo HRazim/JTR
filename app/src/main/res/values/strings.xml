@@ -187,7 +187,7 @@
     <string name="settings_trash_subtitle">Deleted contacts · auto-purge after 30 days</string>
     <string name="settings_section_about">About</string>
     <string name="settings_version_title">Version</string>
-    <string name="settings_version_value" translatable="false">JTR 5.3.0</string>
+    <string name="settings_version_value" translatable="false">JTR 5.3.1</string>
     <string name="settings_theme_cd">Theme %1$s</string>
     <string name="settings_section_legal">Legal</string>
     <string name="settings_privacy_title">Privacy policy</string>

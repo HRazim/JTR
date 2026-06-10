@@ -45,9 +45,8 @@ import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.ui.backup.BackupDialog
 import com.jtr.app.ui.category.FooterActionColumn
 import com.jtr.app.ui.category.contactSortOptions
+import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
-import com.jtr.app.ui.components.JtrSortMenuButton
-import com.jtr.app.ui.components.JtrViewMenuButton
 import com.jtr.app.ui.share.PersonsSharePreview
 import com.jtr.app.ui.share.ShareFormatSheet
 import com.jtr.app.ui.share.ShareUtils
@@ -144,37 +143,25 @@ fun HomeScreen(
                     onSearchActiveChange = { searchActive = it },
                     searchPlaceholder = stringResource(R.string.home_search_placeholder),
                     actions = {
+                        // Header minimaliste (v5.3.1) : Loupe → « + » → 3 points.
+                        // Tri et Affichage vivent EXCLUSIVEMENT dans le menu 3 points.
                         IconButton(onClick = onNavigateToAddPerson) {
                             Icon(Icons.Default.Add,
                                 contentDescription = stringResource(R.string.home_fab_add_person))
                         }
-                        // v5.3 : Tri et Affichage sortis du menu caché — accès direct.
-                        JtrSortMenuButton(
-                            sortOptions = contactSortOptions(sortOrder) { viewModel.setSortOrder(it) }
-                        )
-                        JtrViewMenuButton(
+                        JtrOverflowMenu(
+                            sortOptions = contactSortOptions(sortOrder) { viewModel.setSortOrder(it) },
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
-                        )
-                        // Menu 3 points résiduel : sauvegarde & restauration.
-                        Box {
-                            var overflowOpen by remember { mutableStateOf(false) }
-                            IconButton(onClick = { overflowOpen = true }) {
-                                Icon(Icons.Default.MoreVert,
-                                    contentDescription = stringResource(R.string.common_more_actions))
-                            }
-                            DropdownMenu(
-                                expanded = overflowOpen,
-                                onDismissRequest = { overflowOpen = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.backup_menu)) },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.SettingsBackupRestore, null)
-                                    },
-                                    onClick = { overflowOpen = false; showBackupDialog = true }
-                                )
-                            }
+                        ) { dismiss ->
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.backup_menu)) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.SettingsBackupRestore, null)
+                                },
+                                onClick = { dismiss(); showBackupDialog = true }
+                            )
                         }
                     }
                 )

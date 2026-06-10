@@ -8,7 +8,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
@@ -177,62 +176,13 @@ private fun viewModeEntries() = listOf(
 )
 
 /**
- * Bouton « Trier » DIRECTEMENT visible dans la TopAppBar (sorti du menu 3 points
- * en v5.3 pour un accès rapide) : icône tri + menu des critères.
- */
-@Composable
-fun JtrSortMenuButton(sortOptions: List<JtrSortOption>) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(Icons.AutoMirrored.Filled.Sort,
-                contentDescription = stringResource(R.string.sort_title))
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            sortOptions.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(stringResource(option.labelRes)) },
-                    leadingIcon = { SelectedCheckIcon(option.selected) },
-                    onClick = { option.onSelect(); expanded = false }
-                )
-            }
-        }
-    }
-}
-
-/**
- * Bouton « Affichage » DIRECTEMENT visible dans la TopAppBar : l'icône reflète
- * le mode courant (liste / grille / détail), le menu commute les trois modes.
- */
-@Composable
-fun JtrViewMenuButton(
-    viewMode: JtrViewMode,
-    onViewModeChange: (JtrViewMode) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val currentIcon = viewModeEntries().first { it.first == viewMode }.third
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(currentIcon, contentDescription = stringResource(R.string.view_mode_title))
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            viewModeEntries().forEach { (mode, labelRes, icon) ->
-                DropdownMenuItem(
-                    text = { Text(stringResource(labelRes)) },
-                    leadingIcon = { SelectedCheckIcon(viewMode == mode) },
-                    trailingIcon = { Icon(icon, contentDescription = null) },
-                    onClick = { onViewModeChange(mode); expanded = false }
-                )
-            }
-        }
-    }
-}
-
-/**
- * Menu « 3 points » harmonisé (Dossiers, détail de catégorie) :
- * deux sous-sections — Tri ([sortOptions], fournies par l'écran) puis Affichage
- * (LIST / GRID / DETAIL). [extraContent] permet d'ajouter des actions propres à
- * l'écran (ex. « Défaire le groupe ») sous un séparateur.
+ * Menu « 3 points » harmonisé — SEUL point d'accès au Tri et à l'Affichage
+ * (v5.3.1 : header minimaliste Loupe → « + » → 3 points sur TOUS les écrans :
+ * Accueil, Catégories, Dossiers, détail de catégorie).
+ * Deux sous-sections — Tri ([sortOptions], fournies par l'écran, coche sur
+ * l'option active) puis Affichage (LIST / GRID / DETAIL). [extraContent] permet
+ * d'ajouter des actions propres à l'écran (sauvegarde, corbeille…) sous un
+ * séparateur.
  */
 @Composable
 fun JtrOverflowMenu(

@@ -62,9 +62,8 @@ import com.jtr.app.R
 import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
-import com.jtr.app.ui.components.JtrSortMenuButton
-import com.jtr.app.ui.components.JtrViewMenuButton
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.share.CategoriesSharePreview
 import com.jtr.app.ui.share.ShareCategoryItem
@@ -425,17 +424,16 @@ fun CategoriesScreen(
                     onSearchActiveChange = { searchActive = it },
                     searchPlaceholder = stringResource(R.string.home_search_placeholder),
                     actions = {
+                        // Header minimaliste (v5.3.1) : Loupe → « + » → 3 points.
+                        // Tri et Affichage vivent EXCLUSIVEMENT dans le menu 3 points.
                         IconButton(onClick = { showAddDialog = true }) {
                             Icon(
                                 Icons.Default.Add,
                                 contentDescription = stringResource(R.string.categories_fab_add_cd)
                             )
                         }
-                        // v5.3 : Tri et Affichage sortis du menu caché — accès direct.
-                        JtrSortMenuButton(
-                            sortOptions = categorySortOptions(sortOrder) { viewModel.setSortOrder(it) }
-                        )
-                        JtrViewMenuButton(
+                        JtrOverflowMenu(
+                            sortOptions = categorySortOptions(sortOrder) { viewModel.setSortOrder(it) },
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
                         )

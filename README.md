@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> **Carnet de contacts enrichi nouvelle génération** · Version `5.3.0`  
+> **Carnet de contacts enrichi nouvelle génération** · Version `5.3.1`  
 > Projet personnel Android — Kotlin · Jetpack Compose · MVVM
 
 ---
@@ -48,16 +48,22 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 
 ## 🚧 Version 5.0 — En cours de développement
 
-> **Cycle actif — dernière livraison : v5.3.0**
+> **Cycle actif — dernière livraison : v5.3.1**
 
 La Version 5 ouvre une nouvelle ère pour JTR, après la clôture définitive et stable du cycle v4.x. Cette section est enrichie au fil du développement.
 
 | Statut | Détail |
 |--------|--------|
-| 🏗️ **Jalon** | `versionName = "5.3.0"` · `versionCode = 11` |
+| 🏗️ **Jalon** | `versionName = "5.3.1"` · `versionCode = 12` |
 | 🧱 **Fondations héritées** | Moteur tactile « Galerie » + dossiers récursifs (Room v16) consolidés en v4, étendus en v5 |
 | ✅ **Livré (v5.0 → v5.1)** | TopAppBar harmonisée avec recherche intégrée (`JtrSearchableTopAppBar`), menu Tri/Affichage unifié, 3 modes de vue persistés (Liste/Grille/Détail), footer de sélection transformable à l'Accueil, déplacement de contacts sans dialogue, recadrage d'image refondu (EXIF, cadre déplaçable/redimensionnable), Drag & Drop grille/liste harmonisé (zone centrale = fusion) |
 | 🎯 **Cap** | Capitaliser sur l'ergonomie tactile mature pour la prochaine génération de fonctionnalités |
+
+### 🩹 Hotfix 5.3.1 — Épuration UI & Minimalisme
+
+* **Header (TopAppBar) minimaliste :** Retrait des boutons d'accès rapide "Trier" et "Affichage" du header global pour désencombrer l'interface visuelle.
+* **Centralisation des actions :** Réintégration stricte de toutes les options de Tri (`Sort`) et d'Affichage (`View mode` : Liste/Grille/Détail) au sein du menu principal "3 points" (`JtrOverflowMenu`) sur l'Accueil, les Catégories et les Dossiers.
+* **Nettoyage du code :** Suppression définitive des composants UI obsolètes pour garantir l'absence de code mort, tout en maintenant intacte la persistance UDF (`StateFlow`).
 
 ### 🚀 Version 5.3.0 — Onboarding, Importation Native & Alignement UX (QoL)
 
