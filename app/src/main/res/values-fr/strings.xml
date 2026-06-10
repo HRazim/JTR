@@ -368,4 +368,8 @@
     <string name="contacts_permission_denied">Permission contacts refusée — importation impossible.</string>
     <!-- v5.3.2 — création de catégorie à la volée pendant le déplacement -->
     <string name="move_create_category">Nouvelle catégorie</string>
+    <!-- v5.4 — Moteur de Proximité actif -->
+    <string name="notif_proximity_v2_title">Proximité détectée ! 📍</string>
+    <string name="notif_proximity_v2_text">Vous passez pas très loin de %1$s. %2$s est dans le coin, pourquoi ne pas lui passer un petit coucou ? 👋</string>
+    <string name="permission_allow">Autoriser</string>
 </resources>

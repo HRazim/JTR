@@ -1,32 +1,37 @@
 package com.jtr.app.worker
 
 import android.Manifest
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationCompat
+import android.location.Location
+import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.google.android.gms.location.LocationServices
 import com.jtr.app.JTRApplication
-import com.jtr.app.MainActivity
-import com.jtr.app.R
 import com.jtr.app.data.repository.PersonRepository
-import com.jtr.app.domain.model.Person
-import kotlinx.coroutines.flow.first
+import com.jtr.app.utils.JtrNotificationManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
-import kotlin.math.*
+import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 
 /**
- * ProximityCheckWorker — Vérifie la proximité sociale toutes les 6h.
+ * ProximityCheckWorker — Moteur de Proximité Actif (v5.4).
  *
- * [PP3 — Fonctionnalité créative] : "Rappel de proximité sociale".
- * Notifie quand l'utilisateur est à moins de [JTRApplication.PROXIMITY_RADIUS_KM]
- * d'un contact — rayon fixe et automatique (approche « zéro friction »).
+ * Worker périodique (3 h) qui réveille brièvement l'appareil, lit la DERNIÈRE
+ * position connue (cache système — zéro tracking GPS continu, zéro drainage de
+ * batterie) et alerte si un contact « rappel de proximité » se trouve à moins
+ * de [JTRApplication.PROXIMITY_RADIUS_KM] (10 km).
+ *
+ * Cinématique (Dispatchers.IO) :
+ *  1. permissions (fine + arrière-plan sur Android 10+) et toggles globaux ;
+ *  2. `fusedLocationClient.lastLocation` (requête unique, jamais de polling) ;
+ *  3. requête Room CIBLÉE : contacts actifs avec toggle + coordonnées valides ;
+ *  4. [Location.distanceBetween] pour chaque candidat ;
+ *  5. seuil ≤ 10 000 m + ANTI-SPAM : au plus une alerte par contact par 48 h
+ *     (horodatage `proximityNotifiedAt` persisté en base).
  */
 class ProximityCheckWorker(
     private val context: Context,
@@ -36,42 +41,53 @@ class ProximityCheckWorker(
     private val repository = PersonRepository(context)
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
 
-    override suspend fun doWork(): Result {
-        if (ContextCompat.checkSelfPermission(
-                context, Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED) {
-            return Result.success()
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        // 1) Permissions : fine TOUJOURS, arrière-plan requis dès Android 10
+        //    (le Worker s'exécute app fermée).
+        val fineGranted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val backgroundGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        if (!fineGranted || !backgroundGranted) return@withContext Result.success()
+
+        // Toggles globaux (Paramètres).
+        val prefs = context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("notifications_enabled", true) ||
+            !prefs.getBoolean("proximity_enabled", true)
+        ) {
+            return@withContext Result.success()
         }
 
-        // Vérifie si les notifications de proximité sont activées dans les paramètres
-        val prefs = context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
-        val notificationsEnabled = prefs.getBoolean("notifications_enabled", true)
-        val proximityEnabled = prefs.getBoolean("proximity_enabled", true)
-        if (!notificationsEnabled || !proximityEnabled) return Result.success()
+        try {
+            // 2) Dernière position connue (cache système, requête unique).
+            val location = fusedLocationClient.lastLocation.await()
+                ?: return@withContext Result.success()
 
-        // Rayon automatique fixe (zéro friction) — plus de sélection manuelle.
-        val radiusKm = JTRApplication.PROXIMITY_RADIUS_KM.toDouble()
+            // 3) Requête Room ciblée : toggle actif + coordonnées valides.
+            val candidates = repository.getProximityCandidates()
+            val radiusMeters = JTRApplication.PROXIMITY_RADIUS_KM * 1000f
+            val now = System.currentTimeMillis()
 
-        return try {
-            val location = fusedLocationClient.lastLocation.await() ?: return Result.success()
-
-            val contacts = repository.getAllActive().first()
-                .filter { it.cityNotify && it.hasGeoCoordinates }
-
-            contacts.forEach { person ->
+            candidates.forEach { person ->
                 val lat = person.cityLat ?: return@forEach
                 val lng = person.cityLng ?: return@forEach
-                val distance = calculateDistance(
-                    location.latitude, location.longitude,
-                    lat, lng
+
+                // 4) Distance géodésique native (WGS84).
+                val results = FloatArray(1)
+                Location.distanceBetween(
+                    location.latitude, location.longitude, lat, lng, results
                 )
+                val distanceMeters = results[0]
 
-                // Distance < rayon configuré ET pas contacté depuis 90+ jours
-                val shouldNotify = distance < radiusKm &&
-                        (person.daysSinceLastContact() ?: Long.MAX_VALUE) > 90
-
-                if (shouldNotify) {
-                    sendProximityNotification(person, distance.toInt(), radiusKm.toInt())
+                // 5) Seuil ≤ 10 km + idempotence 48 h.
+                val lastNotified = person.proximityNotifiedAt ?: 0L
+                val cooldownOver = now - lastNotified >= NOTIFY_COOLDOWN_MS
+                if (distanceMeters <= radiusMeters && cooldownOver) {
+                    JtrNotificationManager.showProximityNotification(context, person)
+                    repository.markProximityNotified(person.id)
                 }
             }
 
@@ -81,51 +97,8 @@ class ProximityCheckWorker(
         }
     }
 
-    /** Formule de Haversine : distance entre deux points GPS en km. */
-    private fun calculateDistance(
-        lat1: Double, lon1: Double,
-        lat2: Double, lon2: Double
-    ): Double {
-        val earthRadius = 6371.0
-        val dLat = Math.toRadians(lat2 - lat1)
-        val dLon = Math.toRadians(lon2 - lon1)
-        val a = sin(dLat / 2).pow(2) +
-                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-                sin(dLon / 2).pow(2)
-        return earthRadius * 2 * atan2(sqrt(a), sqrt(1 - a))
+    companion object {
+        /** Anti-spam : au plus une alerte par contact par fenêtre de 48 heures. */
+        val NOTIFY_COOLDOWN_MS: Long = TimeUnit.HOURS.toMillis(48)
     }
-
-    private fun sendProximityNotification(person: Person, distanceKm: Int, radiusKm: Int) {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context, person.id.hashCode(), intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        val days = person.daysSinceLastContact() ?: 0
-        val message = context.getString(
-            R.string.notif_proximity_text,
-            distanceKm,
-            person.city ?: "",
-            radiusKm,
-            person.firstName,
-            days
-        )
-
-        val notification = NotificationCompat.Builder(context, JTRApplication.CHANNEL_PROXIMITY)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(context.getString(R.string.notif_proximity_title, person.firstName))
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
-
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(person.id.hashCode(), notification)
-    }
-
 }

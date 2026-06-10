@@ -98,6 +98,8 @@ fun JTRMainScaffold(
     onDarkModeChange: (Boolean) -> Unit,
     selectedPreset: ThemePreset,
     onPresetSelected: (ThemePreset) -> Unit,
+    /** Id transporté par une notification de proximité → ouverture de la fiche. */
+    notificationPersonId: String? = null,
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -118,6 +120,14 @@ fun JTRMainScaffold(
     // Catégories — aucun dialogue intermédiaire.
     var pendingMovePersonIds by remember { mutableStateOf<List<String>?>(null) }
     val scope = rememberCoroutineScope()
+
+    // Deep link de notification (Moteur de Proximité v5.4) : navigation unique
+    // vers la fiche du contact dès que le graphe est prêt.
+    LaunchedEffect(notificationPersonId) {
+        notificationPersonId?.let { id ->
+            navController.navigate(Routes.personDetail(id)) { launchSingleTop = true }
+        }
+    }
 
     LaunchedEffect(currentRoute) {
         if (currentRoute != Routes.CATEGORIES) categoriesSelectionMode = false

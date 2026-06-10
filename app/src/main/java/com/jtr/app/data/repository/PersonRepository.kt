@@ -166,6 +166,14 @@ class PersonRepository(context: Context) {
 
     suspend fun markAsContacted(personId: String) = dao.markAsContacted(personId)
 
+    // ── Moteur de Proximité (v5.4) ────────────────────────────────────────────
+
+    /** Contacts actifs éligibles aux alertes de proximité (toggle + coordonnées). */
+    suspend fun getProximityCandidates(): List<Person> = dao.getProximityCandidates()
+
+    /** Anti-spam : enregistre l'envoi d'une alerte de proximité pour ce contact. */
+    suspend fun markProximityNotified(personId: String) = dao.markProximityNotified(personId)
+
     suspend fun purgeOldDeleted() {
         val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
         dao.purgeOldDeleted(thirtyDaysAgo)

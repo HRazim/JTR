@@ -9,6 +9,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.jtr.app.utils.GeofenceManager
+import com.jtr.app.utils.JtrNotificationManager
 import com.jtr.app.worker.ImportantDateCheckWorker
 import com.jtr.app.worker.ProximityCheckWorker
 import org.maplibre.android.MapLibre
@@ -32,20 +33,14 @@ class JTRApplication : Application() {
     }
 
     /**
-     * Crée les canaux de notification (requis Android 8+).
+     * Crée les canaux de notification (requis Android 8+). Le canal des alertes
+     * de proximité (importance HAUTE, v5.4) est géré par [JtrNotificationManager],
+     * qui retire aussi l'ancien canal v4.
      */
     private fun createNotificationChannels() {
+        JtrNotificationManager.ensureProximityChannel(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-            val proximityChannel = NotificationChannel(
-                CHANNEL_PROXIMITY,
-                getString(R.string.notif_channel_proximity_name),
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = getString(R.string.notif_channel_proximity_desc)
-            }
-
             val birthdayChannel = NotificationChannel(
                 CHANNEL_BIRTHDAY,
                 getString(R.string.notif_channel_birthday_name),
@@ -53,23 +48,25 @@ class JTRApplication : Application() {
             ).apply {
                 description = getString(R.string.notif_channel_birthday_desc)
             }
-
-            nm.createNotificationChannel(proximityChannel)
             nm.createNotificationChannel(birthdayChannel)
         }
     }
 
     /**
-     * Planifie un Worker périodique qui vérifie la proximité toutes les 6 heures.
+     * Planifie le Moteur de Proximité : vérification toutes les 3 heures (fenêtre
+     * 2-4 h du cahier des charges v5.4 — le cache de localisation système est lu
+     * en une requête unique, zéro drainage de batterie). Politique UPDATE : le
+     * nouvel intervalle remplace l'ancienne planification 6 h des installations
+     * existantes sans dupliquer le travail.
      */
     private fun scheduleProximityChecks() {
         val request = PeriodicWorkRequestBuilder<ProximityCheckWorker>(
-            6, TimeUnit.HOURS
+            3, TimeUnit.HOURS
         ).build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "proximity_check",
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             request
         )
     }
@@ -91,15 +88,15 @@ class JTRApplication : Application() {
     }
 
     companion object {
-        const val CHANNEL_PROXIMITY = "proximity_channel"
-        const val CHANNEL_BIRTHDAY  = "birthday_channel"
+        const val CHANNEL_BIRTHDAY = "birthday_channel"
 
         /**
-         * Rayon de détection de proximité, fixé automatiquement (approche « zéro
-         * friction » : plus aucune sélection manuelle). 20 km couvre une métropole
-         * et sa périphérie (ex. Toulouse).
+         * Rayon de détection du Moteur de Proximité (v5.4) : seuil de 10 km
+         * (10 000 m), borne haute de la fenêtre 5-10 km du cahier des charges —
+         * assez large pour un passage en voiture, assez serré pour rester
+         * pertinent. Partagé par le Worker périodique ET le geofencing.
          */
-        const val PROXIMITY_RADIUS_KM = 20f
+        const val PROXIMITY_RADIUS_KM = 10f
 
         /** Singleton initialisé dans onCreate() — null uniquement en tests unitaires JVM. */
         var geofenceManager: GeofenceManager? = null

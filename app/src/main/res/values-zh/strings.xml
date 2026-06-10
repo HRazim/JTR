@@ -368,4 +368,8 @@
     <string name="contacts_permission_denied">通讯录权限被拒绝 — 无法导入。</string>
     <!-- v5.3.2 — 移动过程中即时新建分类 -->
     <string name="move_create_category">新建分类</string>
+    <!-- v5.4 — 主动近距离提醒引擎 -->
+    <string name="notif_proximity_v2_title">检测到附近联系人！📍</string>
+    <string name="notif_proximity_v2_text">您正路过 %1$s 附近。%2$s 就在附近，何不打个招呼？👋</string>
+    <string name="permission_allow">允许</string>
 </resources>

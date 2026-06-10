@@ -158,11 +158,33 @@ fun PersonDetailScreen(
 
     // Permission GPS demandée IMMÉDIATEMENT à l'activation du rappel de proximité ;
     // refus → message explicite orientant vers les paramètres du téléphone.
+    // ÉTAPE 2 (Android 10+, Moteur de Proximité v5.4) : la détection en tâche de
+    // fond exige ACCESS_BACKGROUND_LOCATION — dialogue explicatif AVANT la demande
+    // (exigence Google Play), déclenché une fois la permission fine accordée.
+    var showBackgroundRationale by remember { mutableStateOf(false) }
+    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) scope.launch { snackbarHostState.showSnackbar(locationDeniedMsg) }
+    }
+    fun ensureBackgroundLocation() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            showBackgroundRationale = true
+        }
+    }
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) editVm.onCityNotifyChanged(true)
-        else scope.launch { snackbarHostState.showSnackbar(locationDeniedMsg) }
+        if (granted) {
+            editVm.onCityNotifyChanged(true)
+            ensureBackgroundLocation()
+        } else {
+            scope.launch { snackbarHostState.showSnackbar(locationDeniedMsg) }
+        }
     }
     val onProximityToggle: (Boolean) -> Unit = { wanted ->
         if (wanted && ContextCompat.checkSelfPermission(
@@ -172,7 +194,30 @@ fun PersonDetailScreen(
             locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         } else {
             editVm.onCityNotifyChanged(wanted)
+            if (wanted) ensureBackgroundLocation()
         }
+    }
+
+    if (showBackgroundRationale) {
+        AlertDialog(
+            onDismissRequest = { showBackgroundRationale = false },
+            icon = { Icon(Icons.Default.LocationOn, null,
+                tint = MaterialTheme.colorScheme.primary) },
+            title = { Text(stringResource(R.string.settings_location_bg_title)) },
+            text = { Text(stringResource(R.string.settings_location_bg_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showBackgroundRationale = false
+                    backgroundPermissionLauncher.launch(
+                        Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                }) { Text(stringResource(R.string.permission_allow)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBackgroundRationale = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            }
+        )
     }
 
     Scaffold(

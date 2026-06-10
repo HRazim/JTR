@@ -368,4 +368,8 @@
     <string name="contacts_permission_denied">Permiso de contactos denegado: no se puede importar.</string>
     <!-- v5.3.2 — creación de categoría sobre la marcha durante el traslado -->
     <string name="move_create_category">Nueva categoría</string>
+    <!-- v5.4 — Motor de Proximidad activo -->
+    <string name="notif_proximity_v2_title">¡Proximidad detectada! 📍</string>
+    <string name="notif_proximity_v2_text">Estás pasando cerca de %1$s. %2$s anda por la zona, ¿por qué no saludarle? 👋</string>
+    <string name="permission_allow">Permitir</string>
 </resources>

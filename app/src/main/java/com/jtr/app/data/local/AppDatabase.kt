@@ -14,8 +14,10 @@ import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
 
 /**
- * AppDatabase — Version 16.
+ * AppDatabase — Version 17.
  *
+ * v17 : Person.proximityNotifiedAt — anti-spam du Moteur de Proximité v5.4
+ *       (une alerte max par contact par 48 h) ([MIGRATION_16_17]).
  * v16 : CategoryGroup.parentGroupId (sous-groupes imbriqués) ([MIGRATION_15_16]).
  * v15 : CategoryGroup.imagePath (illustration de couverture) ([MIGRATION_14_15]).
  * v14 : Favoris + tri & regroupement (v4.5). Person.updatedAt ; Category.isFavorite
@@ -32,7 +34,7 @@ import com.jtr.app.domain.model.SocialLinkEntity
 @Database(
     entities = [Person::class, Category::class, CategoryGroup::class,
         PersonCategoryJoin::class, SocialLinkEntity::class],
-    version = 16,
+    version = 17,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -143,6 +145,13 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Migration v16 → v17 : anti-spam proximité (horodatage nullable). */
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE persons ADD COLUMN proximityNotifiedAt INTEGER")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -151,7 +160,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "jtr_database"
                 )
                     .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
-                        MIGRATION_14_15, MIGRATION_15_16)
+                        MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

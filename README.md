@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> **Carnet de contacts enrichi nouvelle génération** · Version `5.3.4`  
+> **Carnet de contacts enrichi nouvelle génération** · Version `5.4.0`  
 > Projet personnel Android — Kotlin · Jetpack Compose · MVVM
 
 ---
@@ -9,7 +9,7 @@
 
 JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'application maintient une **mémoire sociale active** : elle enregistre le contexte humain de chaque relation (goûts, anniversaires, ville, notes, réseaux sociaux), géocode automatiquement les villes via OpenStreetMap, et notifie proactivement l'utilisateur lorsqu'il se retrouve physiquement proche d'un contact qu'il n'a pas vu depuis longtemps. Le tout, sans service cloud, sans clé API propriétaire, et avec un stockage 100 % local.
 
-> **État actuel — Juin 2026.** Le cycle de développement de la **Version 4 (v4.x)** est officiellement **clos** : stable, mature, et couronné par un moteur d'ergonomie tactile abouti (Drag & Drop fluide, dossiers récursifs, mode sélection « Galerie »). Le cycle **Version 5** est en plein essor : la **v5.3.4** parachève la branche 5.3 — onboarding avec importation native des contacts (`ContactsContract`), catégorie virtuelle « Favoris », recherche persistante en mode sélection, navigation profil ↔ catégorie, rognage stabilisé et galerie par albums. Voir [Le Grand Bilan de la Version 4](#-le-grand-bilan-de-la-version-4) et [Version 5 — Cycle en cours](#-version-50--en-cours-de-développement).
+> **État actuel — Juin 2026.** Le cycle de développement de la **Version 4 (v4.x)** est officiellement **clos** : stable, mature, et couronné par un moteur d'ergonomie tactile abouti (Drag & Drop fluide, dossiers récursifs, mode sélection « Galerie »). Le cycle **Version 5** est en plein essor : la **v5.4.0** active la fonctionnalité reine — le **Moteur de Proximité** en tâche de fond (Worker 3 h + geofencing unifiés, rayon 10 km, anti-spam 48 h, notifications heads-up avec deep link vers la fiche du contact) — après une branche 5.3 dédiée à l'onboarding, l'importation native et le polish UX. Voir [Le Grand Bilan de la Version 4](#-le-grand-bilan-de-la-version-4) et [Version 5 — Cycle en cours](#-version-50--en-cours-de-développement).
 
 ---
 
@@ -48,16 +48,33 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 
 ## 🚧 Version 5.0 — En cours de développement
 
-> **Cycle actif — dernière livraison : v5.3.4**
+> **Cycle actif — dernière livraison : v5.4.0**
 
 La Version 5 ouvre une nouvelle ère pour JTR, après la clôture définitive et stable du cycle v4.x. Cette section est enrichie au fil du développement.
 
 | Statut | Détail |
 |--------|--------|
-| 🏗️ **Jalon** | `versionName = "5.3.4"` · `versionCode = 15` |
+| 🏗️ **Jalon** | `versionName = "5.4.0"` · `versionCode = 16` · Room v17 |
 | 🧱 **Fondations héritées** | Moteur tactile « Galerie » + dossiers récursifs (Room v16) consolidés en v4, étendus en v5 |
 | ✅ **Livré (v5.0 → v5.1)** | TopAppBar harmonisée avec recherche intégrée (`JtrSearchableTopAppBar`), menu Tri/Affichage unifié, 3 modes de vue persistés (Liste/Grille/Détail), footer de sélection transformable à l'Accueil, déplacement de contacts sans dialogue, recadrage d'image refondu (EXIF, cadre déplaçable/redimensionnable), Drag & Drop grille/liste harmonisé (zone centrale = fusion) |
 | 🎯 **Cap** | Capitaliser sur l'ergonomie tactile mature pour la prochaine génération de fonctionnalités |
+
+### 🚀 Version 5.4.0 — Moteur de Proximité Actif & Unification Géographique
+
+* **⚙️ Background Worker Optimisé (`ProximityCheckWorker`) :**
+    * Refonte globale du cycle d'arrière-plan via un `CoroutineWorker` planifié toutes les 3 heures (politique `UPDATE` pour écraser à la volée les anciennes configurations 6h).
+    * Collecte GPS ultra-légère par simple lecture du cache système via `FusedLocationProviderClient`, garantissant un impact batterie proche de zéro.
+    * Optimisation des requêtes Room via `PersonDao.getProximityCandidates()` pour cibler exclusivement les profils actifs avec géolocalisation et notifications activées.
+* **🚨 Algorithme de Seuil & Cooldown de 48h (Anti-Spam) :**
+    * Recalibrage du rayon d'action à `≤ 10 km` (géodésie native WGS84 via `Location.distanceBetween`).
+    * Migration de la base de données vers la **version 17** (`ALTER TABLE` sécurisé) pour intégrer la colonne `proximityNotifiedAt`.
+    * Implémentation d'une sécurité d'idempotence stricte (`NOTIFY_COOLDOWN_MS = 48h`) pour empêcher le harcèlement de notifications pour un même contact présent dans la zone.
+* **🔔 Système de Notification Interactif & Deep Linking (`JtrNotificationManager`) :**
+    * Création du canal Material 3 à haute importance `jtr_proximity_alerts` (heads-up) et nettoyage automatique des anciens canaux obsolètes au démarrage.
+    * Intégration d'un Deep Link avec transmission de l'identifiant via `EXTRA_PERSON_ID` permettant, au clic sur la notification, une ouverture instantanée sur la fiche `PersonDetailScreen`.
+    * Unification logicielle : le `GeofenceBroadcastReceiver` (temps réel) et le Worker partagent désormais le même pipeline d'alerte et les mêmes règles de cooldown.
+* **🔑 Tunnel de Permissions Explicite (Play Store Compliant) :**
+    * Mise en conformité Android 10 à 14+ avec cinématique de demande asynchrone par étapes : `ACCESS_FINE_LOCATION` -> Dialogue explicatif matériel de la valeur de l'arrière-plan -> `ACCESS_BACKGROUND_LOCATION`. Maintien en veille silencieuse du Worker si la permission de fond est révoquée.
 
 ### 🚀 Version 5.3.4 — Navigation Bidirectionnelle, Grilles Responsives & Galerie Avancée
 

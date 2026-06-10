@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.ui.navigation.JTRMainScaffold
+import com.jtr.app.utils.JtrNotificationManager
 import com.jtr.app.ui.theme.JTRTheme
 import com.jtr.app.ui.theme.ThemeViewModel
 
@@ -25,6 +26,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val repository = PersonRepository(applicationContext)
+
+        // Deep link du Moteur de Proximité (v5.4) : le tap sur la notification
+        // transporte l'id du contact → ouverture directe de sa fiche.
+        val notificationPersonId = intent.getStringExtra(JtrNotificationManager.EXTRA_PERSON_ID)
 
         setContent {
             val isDarkMode by themeViewModel.isDarkMode.collectAsState()
@@ -42,7 +47,8 @@ class MainActivity : ComponentActivity() {
                         isDarkMode = isDarkMode,
                         onDarkModeChange = { themeViewModel.setDarkMode(it) },
                         selectedPreset = selectedPreset,
-                        onPresetSelected = { themeViewModel.setPreset(it) }
+                        onPresetSelected = { themeViewModel.setPreset(it) },
+                        notificationPersonId = notificationPersonId
                     )
                 }
             }

@@ -101,6 +101,26 @@ interface PersonDao {
     @Query("UPDATE persons SET lastContactedAt = :timestamp WHERE id = :id")
     suspend fun markAsContacted(id: String, timestamp: Long = System.currentTimeMillis())
 
+    // ── Moteur de Proximité (v5.4) ────────────────────────────────────────────
+
+    /**
+     * Requête CIBLÉE du Worker de proximité : uniquement les contacts actifs dont
+     * le rappel est activé ET qui disposent de coordonnées valides — la base n'est
+     * jamais balayée intégralement en tâche de fond.
+     */
+    @Query("""
+        SELECT * FROM persons
+        WHERE deletedAt IS NULL
+        AND cityNotify = 1
+        AND cityLat IS NOT NULL
+        AND cityLng IS NOT NULL
+    """)
+    suspend fun getProximityCandidates(): List<Person>
+
+    /** Anti-spam : horodate la dernière alerte de proximité envoyée (fenêtre 48 h). */
+    @Query("UPDATE persons SET proximityNotifiedAt = :timestamp WHERE id = :id")
+    suspend fun markProximityNotified(id: String, timestamp: Long = System.currentTimeMillis())
+
     @Query("UPDATE persons SET deletedAt = :timestamp WHERE id IN (:ids)")
     suspend fun softDeleteMultiple(ids: List<String>, timestamp: Long = System.currentTimeMillis())
 }

@@ -1,22 +1,24 @@
 package com.jtr.app.worker
 
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
-import com.jtr.app.JTRApplication
-import com.jtr.app.MainActivity
-import com.jtr.app.R
 import com.jtr.app.data.local.AppDatabase
+import com.jtr.app.utils.JtrNotificationManager
+import com.jtr.app.worker.ProximityCheckWorker.Companion.NOTIFY_COOLDOWN_MS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
+/**
+ * Déclencheur TEMPS RÉEL du Moteur de Proximité : réagit aux transitions ENTER
+ * des géofences (rayon [com.jtr.app.JTRApplication.PROXIMITY_RADIUS_KM]).
+ * Partage avec le Worker périodique la même notification conviviale
+ * ([JtrNotificationManager]) et le même ANTI-SPAM 48 h (`proximityNotifiedAt`).
+ */
 class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -35,54 +37,20 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
+                val now = System.currentTimeMillis()
                 triggeringFences.forEach { fence ->
                     val person = personDao.getById(fence.requestId) ?: return@forEach
                     if (!person.cityNotify) return@forEach
-                    val daysSince = person.daysSinceLastContact() ?: Long.MAX_VALUE
-                    if (daysSince <= 90) return@forEach
+                    // Anti-spam partagé : une alerte max par contact par 48 h.
+                    val lastNotified = person.proximityNotifiedAt ?: 0L
+                    if (now - lastNotified < NOTIFY_COOLDOWN_MS) return@forEach
 
-                    sendNotification(
-                        context = context,
-                        notifId = person.id.hashCode(),
-                        firstName = person.firstName,
-                        city = person.city ?: context.getString(R.string.notif_geofence_city_fallback),
-                        daysSince = daysSince
-                    )
+                    JtrNotificationManager.showProximityNotification(context, person)
+                    personDao.markProximityNotified(person.id)
                 }
             } finally {
                 pendingResult.finish()
             }
         }
-    }
-
-    private fun sendNotification(
-        context: Context,
-        notifId: Int,
-        firstName: String,
-        city: String,
-        daysSince: Long
-    ) {
-        val tapIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context, notifId, tapIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        val message = context.getString(R.string.notif_geofence_text, city, daysSince)
-
-        val notification = NotificationCompat.Builder(context, JTRApplication.CHANNEL_PROXIMITY)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(context.getString(R.string.notif_geofence_title, firstName))
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
-
-        (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-            .notify(notifId, notification)
     }
 }

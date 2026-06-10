@@ -50,6 +50,9 @@ data class Person(
     // v4.5 (DB v14) — horodatage de dernière modification, mis à jour à chaque save.
     @ColumnInfo(defaultValue = "0")
     val updatedAt: Long = System.currentTimeMillis(),
+    // v5.4 (DB v17) — anti-spam du Moteur de Proximité : horodatage de la dernière
+    // alerte envoyée pour CE contact (pas plus d'une notification par 48 h).
+    val proximityNotifiedAt: Long? = null,
     val deletedAt: Long? = null
 ) {
     val fullName: String
