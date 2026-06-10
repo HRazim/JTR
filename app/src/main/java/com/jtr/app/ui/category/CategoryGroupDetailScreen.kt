@@ -34,8 +34,15 @@ import coil.compose.AsyncImage
 import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.ui.components.JtrOverflowMenu
+import com.jtr.app.ui.components.JtrSearchableTopAppBar
+import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.person.CropShape
 import com.jtr.app.ui.person.ImageCropDialog
+import com.jtr.app.ui.share.CategoriesSharePreview
+import com.jtr.app.ui.share.ShareCategoryItem
+import com.jtr.app.ui.share.ShareFormatSheet
+import com.jtr.app.ui.share.ShareUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -61,9 +68,13 @@ fun CategoryGroupDetailScreen(
     val counts by viewModel.personCountByCategory.collectAsStateWithLifecycle()
     val candidates by viewModel.candidateCategories.collectAsStateWithLifecycle()
     val otherGroups by viewModel.otherGroups.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
+    val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
 
     var addMenu by remember { mutableStateOf(false) }
-    var overflowMenu by remember { mutableStateOf(false) }
+    // Mode recherche de la TopAppBar (état d'UI local ; la query vient du ViewModel).
+    var searchActive by remember { mutableStateOf(false) }
     var showAddExisting by remember { mutableStateOf(false) }
     var showCreate by remember { mutableStateOf(false) }
     var showDissolveConfirm by remember { mutableStateOf(false) }
@@ -89,6 +100,19 @@ fun CategoryGroupDetailScreen(
     LaunchedEffect(members, subGroups) {
         selectedIds.retainAll(members.map { it.id }.toSet())
         selectedGroupIds.retainAll(subGroups.map { it.id }.toSet())
+    }
+    // Sortie d'écran → réinitialisation du filtre (aucune query fantôme au retour).
+    DisposableEffect(Unit) { onDispose { viewModel.clearSearch() } }
+
+    // Partage contextuel : instantané de la sélection (sous-catégories + sous-groupes).
+    var shareItems by remember { mutableStateOf<List<ShareCategoryItem>?>(null) }
+    shareItems?.let { items ->
+        ShareFormatSheet(
+            onDismiss = { shareItems = null },
+            buildText = { ShareUtils.buildCategoriesShareText(ctx, items) },
+            writePdf = { ShareUtils.writeCategoriesPdf(ctx, items) },
+            preview = { CategoriesSharePreview(items) }
+        )
     }
     fun exitSelection() {
         isSelectionActive = false; selectedIds.clear(); selectedGroupIds.clear()
@@ -271,8 +295,15 @@ fun CategoryGroupDetailScreen(
                     )
                 )
             } else {
-                TopAppBar(
-                    title = { Text(group?.name ?: stringResource(R.string.categories_title)) },
+                // Barre harmonisée : retour + loupe + « + » + menu 3 points (Tri /
+                // Affichage, puis actions propres au dossier : « Défaire le groupe »).
+                JtrSearchableTopAppBar(
+                    title = group?.name ?: stringResource(R.string.categories_title),
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                    searchActive = searchActive,
+                    onSearchActiveChange = { searchActive = it },
+                    searchPlaceholder = stringResource(R.string.home_search_placeholder),
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack,
@@ -296,26 +327,19 @@ fun CategoryGroupDetailScreen(
                                     onClick = { addMenu = false; showCreate = true })
                             }
                         }
-                        Box {
-                            IconButton(onClick = { overflowMenu = true }) {
-                                Icon(Icons.Default.MoreVert,
-                                    contentDescription = stringResource(R.string.common_more_actions))
-                            }
-                            DropdownMenu(expanded = overflowMenu, onDismissRequest = { overflowMenu = false }) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.categories_dissolve_group)) },
-                                    leadingIcon = { Icon(Icons.Default.FolderOff, null,
-                                        tint = MaterialTheme.colorScheme.error) },
-                                    onClick = { overflowMenu = false; showDissolveConfirm = true })
-                            }
+                        JtrOverflowMenu(
+                            sortOptions = categorySortOptions(sortOrder) { viewModel.setSortOrder(it) },
+                            viewMode = viewMode,
+                            onViewModeChange = { viewModel.setViewMode(it) }
+                        ) { dismiss ->
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.categories_dissolve_group)) },
+                                leadingIcon = { Icon(Icons.Default.FolderOff, null,
+                                    tint = MaterialTheme.colorScheme.error) },
+                                onClick = { dismiss(); showDissolveConfirm = true })
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    }
                 )
             }
         },
@@ -343,6 +367,28 @@ fun CategoryGroupDetailScreen(
                     },
                     canDelete = totalSelected >= 1,
                     onDelete = { showBulkDelete = true },
+                    canShare = totalSelected >= 1,
+                    onShare = {
+                        val folderEntries = topEntries.filterIsInstance<TopEntry.Folder>()
+                        shareItems = buildList {
+                            selectedGroups.forEach { g ->
+                                val entry = folderEntries.firstOrNull { it.group.id == g.id }
+                                add(ShareCategoryItem(
+                                    name = g.name,
+                                    isFolder = true,
+                                    memberNames = entry?.members?.map { it.name } ?: emptyList(),
+                                    subGroupCount = entry?.subGroupCount ?: 0
+                                ))
+                            }
+                            selectedCategories.forEach { c ->
+                                add(ShareCategoryItem(
+                                    name = c.name,
+                                    isFolder = false,
+                                    personCount = counts[c.id] ?: 0
+                                ))
+                            }
+                        }
+                    },
                     canRename = totalSelected == 1,
                     onRename = {
                         val cat = selectedCategories.singleOrNull()
@@ -384,50 +430,52 @@ fun CategoryGroupDetailScreen(
                 }
             }
         } else if (isSelectionActive) {
-            // Mode sélection : GRILLE réordonnable + fusion (création de sous-groupes).
+            // Mode sélection : le mode d'affichage courant est CONSERVÉ. Grille →
+            // drag & drop 2D + fusion (sous-groupes) ; Liste / Détail → vertical.
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                ReorderableTopGrid(
-                    entries = topEntries,
-                    isCategorySelected = { it in selectedIds },
-                    isGroupSelected = { it in selectedGroupIds },
-                    countOf = { counts[it] ?: 0 },
-                    onToggleCategory = { toggleCategory(it) },
-                    onToggleGroup = { toggleGroup(it) },
-                    onPersistOrder = { viewModel.persistTopOrder(it) },
-                    onMergeRequest = { ids -> pendingMergeIds = ids },
-                    onMoveToFolder = { catId, gid -> viewModel.moveCategoryToSubGroup(catId, gid); exitSelection() },
-                    enableMerge = true
-                )
+                when (viewMode) {
+                    JtrViewMode.GRID -> ReorderableTopGrid(
+                        entries = topEntries,
+                        isCategorySelected = { it in selectedIds },
+                        isGroupSelected = { it in selectedGroupIds },
+                        countOf = { counts[it] ?: 0 },
+                        onToggleCategory = { toggleCategory(it) },
+                        onToggleGroup = { toggleGroup(it) },
+                        onPersistOrder = { viewModel.persistTopOrder(it) },
+                        onMergeRequest = { ids -> pendingMergeIds = ids },
+                        onMoveToFolder = { catId, gid ->
+                            viewModel.moveCategoryToSubGroup(catId, gid); exitSelection()
+                        },
+                        enableMerge = true
+                    )
+                    else -> ReorderableTopList(
+                        entries = topEntries,
+                        isCategorySelected = { it in selectedIds },
+                        isGroupSelected = { it in selectedGroupIds },
+                        countOf = { counts[it] ?: 0 },
+                        onToggleCategory = { toggleCategory(it) },
+                        onToggleGroup = { toggleGroup(it) },
+                        onPersistOrder = { viewModel.persistTopOrder(it) },
+                        onMergeRequest = { ids -> pendingMergeIds = ids },
+                        onMoveToFolder = { catId, gid ->
+                            viewModel.moveCategoryToSubGroup(catId, gid); exitSelection()
+                        },
+                        enableMerge = true
+                    )
+                }
             }
         } else {
-            // Mode navigation : grille mixte (sous-groupes + catégories).
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(topEntries, key = {
-                    when (it) {
-                        is TopEntry.Folder -> "g_${it.group.id}"
-                        is TopEntry.Single -> "c_${it.category.id}"
-                    }
-                }) { entry ->
-                    when (entry) {
-                        is TopEntry.Folder -> FolderGridTile(
-                            group = entry.group,
-                            memberCount = entry.members.size,
-                            subGroupCount = entry.subGroupCount,
-                            onClick = { onGroupClick(entry.group.id) },
-                            onLongClick = { startSelectionGroup(entry.group.id) })
-                        is TopEntry.Single -> CategoryGridTile(
-                            category = entry.category,
-                            personCount = counts[entry.category.id] ?: 0,
-                            onClick = { onCategoryClick(entry.category.id) },
-                            onLongClick = { startSelectionCategory(entry.category.id) })
-                    }
-                }
+            // Mode navigation : contenu mixte commutable LIST / GRID / DETAIL.
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                TopEntriesBrowser(
+                    entries = topEntries,
+                    viewMode = viewMode,
+                    countOf = { counts[it] ?: 0 },
+                    onCategoryClick = onCategoryClick,
+                    onGroupClick = onGroupClick,
+                    onCategoryLongClick = { startSelectionCategory(it) },
+                    onGroupLongClick = { startSelectionGroup(it) }
+                )
             }
         }
     }

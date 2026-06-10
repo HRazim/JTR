@@ -39,6 +39,7 @@ import android.view.MotionEvent
 import android.widget.Toast
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
@@ -46,6 +47,8 @@ import coil.request.ImageRequest
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -62,6 +65,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
 import kotlinx.coroutines.launch
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
@@ -424,14 +428,7 @@ fun PersonDetailScreen(
                     }
                 if (dates != null) DatesBlock(lines = dates)
 
-                // 3. Origine
-                if (person.origin != null) {
-                    DetailRow(icon = Icons.Default.Public,
-                        label = stringResource(R.string.person_origin_label),
-                        value = person.origin)
-                }
-
-                // 4. Relations (règle 2 max) — noms cliquables → contact lié
+                // 3. Relations (règle 2 max) — noms cliquables → contact lié
                 val relations = person.relationLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
                 if (relations != null) {
                     val notFoundMsg = stringResource(R.string.relation_not_found)
@@ -449,7 +446,7 @@ fun PersonDetailScreen(
                     )
                 }
 
-                // 5. Téléphones puis 6. Emails (repli scalaire pour profils legacy, règle 2 max)
+                // 4. Téléphones puis 5. Emails (repli scalaire pour profils legacy, règle 2 max)
                 val phones = person.phoneLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
                     ?: person.phoneNumber?.takeIf { it.isNotBlank() }
                         ?.let { listOf(DynamicLine(value = it, label = FieldTypes.PHONE_MOBILE)) }
@@ -485,7 +482,7 @@ fun PersonDetailScreen(
                     )
                 }
 
-                // 7. Informations professionnelles — bloc compact, masqué si vide
+                // 6. Informations professionnelles — bloc compact, masqué si vide
                 val at = stringResource(R.string.person_job_at)
                 val jobHead = when {
                     !person.jobTitle.isNullOrBlank() && !person.company.isNullOrBlank() ->
@@ -501,6 +498,13 @@ fun PersonDetailScreen(
                     DetailRow(icon = Icons.Default.Work,
                         label = stringResource(R.string.section_work),
                         value = jobSummary)
+                }
+
+                // 7. Origine — juste AU-DESSUS de la ville
+                if (person.origin != null) {
+                    DetailRow(icon = Icons.Default.Public,
+                        label = stringResource(R.string.person_origin_label),
+                        value = person.origin)
                 }
 
                 // 8. Ville & mini-carte
@@ -629,10 +633,41 @@ private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    // Taille intrinsèque de l'image chargée → dimensions réellement affichées (Fit).
+    var intrinsicSize by remember { mutableStateOf<androidx.compose.ui.geometry.Size?>(null) }
+
+    // Barrières géométriques du pan, axe par axe : le déplacement s'arrête quand le
+    // bord de l'image atteint le bord du cadre — l'image ne peut JAMAIS être « jetée »
+    // hors de l'écran. Si l'image (zoomée) est plus petite que le cadre sur un axe,
+    // aucun déplacement n'est permis sur cet axe (borne 0).
+    fun maxPan(): Offset {
+        val c = containerSize
+        if (c == IntSize.Zero) return Offset.Zero
+        val i = intrinsicSize
+        val dispW: Float
+        val dispH: Float
+        if (i != null && i.width > 0f && i.height > 0f) {
+            val fit = minOf(c.width / i.width, c.height / i.height)
+            dispW = i.width * fit
+            dispH = i.height * fit
+        } else {
+            dispW = c.width.toFloat()
+            dispH = c.height.toFloat()
+        }
+        return Offset(
+            ((dispW * scale - c.width) / 2f).coerceAtLeast(0f),
+            ((dispH * scale - c.height) / 2f).coerceAtLeast(0f)
+        )
+    }
+
     val transformState = rememberTransformableState { zoomChange, panChange, _ ->
         scale = (scale * zoomChange).coerceIn(1f, 5f)
-        offsetX += panChange.x * scale
-        offsetY += panChange.y * scale
+        // Le pan est appliqué en pixels écran (post-zoom) puis borné : le dézoom
+        // re-serre aussi les offsets puisque les bornes dépendent de l'échelle.
+        val max = maxPan()
+        offsetX = (offsetX + panChange.x).coerceIn(-max.x, max.x)
+        offsetY = (offsetY + panChange.y).coerceIn(-max.y, max.y)
     }
 
     Dialog(
@@ -643,6 +678,7 @@ private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.92f))
+                .onSizeChanged { containerSize = it }
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
@@ -654,8 +690,13 @@ private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
                     .data(photoUri).crossfade(200).build(),
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
+                onState = { state ->
+                    if (state is AsyncImagePainter.State.Success) {
+                        intrinsicSize = state.painter.intrinsicSize
+                    }
+                },
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .graphicsLayer {
                         scaleX = scale
                         scaleY = scale

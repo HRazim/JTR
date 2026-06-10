@@ -1,9 +1,6 @@
 package com.jtr.app.ui.category
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.*
@@ -17,8 +14,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jtr.app.R
+import com.jtr.app.ui.components.JtrOverflowMenu
+import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.home.AssignCategoryDialog
-import com.jtr.app.ui.home.PersonCard
+import com.jtr.app.ui.home.PersonListContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,17 +25,24 @@ fun CategoryDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToPersonDetail: (String) -> Unit,
     onNavigateToAddPerson: () -> Unit,
+    onAddExistingContacts: () -> Unit = {},
     viewModel: CategoryDetailViewModel = viewModel()
 ) {
     val persons by viewModel.persons.collectAsStateWithLifecycle()
-    var searchQuery by remember { mutableStateOf("") }
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val categoryName by viewModel.categoryName.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
+    val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
 
     var showCategoryDialog by remember { mutableStateOf(false) }
+    // Mode recherche de la TopAppBar (état d'UI local ; la query vient du ViewModel).
+    var searchActive by remember { mutableStateOf(false) }
+
+    // Sortie d'écran → réinitialisation du filtre : aucune query fantôme au retour.
+    DisposableEffect(Unit) { onDispose { viewModel.clearSearch() } }
 
     if (showCategoryDialog) {
         AssignCategoryDialog(
@@ -70,10 +76,15 @@ fun CategoryDetailScreen(
                     )
                 )
             } else {
-                TopAppBar(
-                    title = {
-                        Text(categoryName.ifBlank { stringResource(R.string.category_detail_default_title) })
-                    },
+                // Barre harmonisée : retour + loupe + « + » (existant / nouveau) + menu
+                // 3 points (Tri / Affichage).
+                JtrSearchableTopAppBar(
+                    title = categoryName.ifBlank { stringResource(R.string.category_detail_default_title) },
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
+                    searchActive = searchActive,
+                    onSearchActiveChange = { searchActive = it },
+                    searchPlaceholder = stringResource(R.string.category_detail_search_placeholder),
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack,
@@ -81,27 +92,16 @@ fun CategoryDetailScreen(
                         }
                     },
                     actions = {
-                        ContactSortMenu(
-                            current = sortOrder,
-                            onSelect = { viewModel.setSortOrder(it) }
+                        AddContactMenu(
+                            onAddExisting = onAddExistingContacts,
+                            onCreateNew = onNavigateToAddPerson
                         )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                )
-            }
-        },
-        floatingActionButton = {
-            if (!isSelectionMode) {
-                ExtendedFloatingActionButton(
-                    onClick = onNavigateToAddPerson,
-                    icon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
-                    text = { Text(stringResource(R.string.category_detail_fab_add)) },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        JtrOverflowMenu(
+                            sortOptions = contactSortOptions(sortOrder) { viewModel.setSortOrder(it) },
+                            viewMode = viewMode,
+                            onViewModeChange = { viewModel.setViewMode(it) }
+                        )
+                    }
                 )
             }
         },
@@ -157,28 +157,6 @@ fun CategoryDetailScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (!isSelectionMode) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it; viewModel.onSearchQueryChanged(it) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text(stringResource(R.string.category_detail_search_placeholder)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = ""; viewModel.onSearchQueryChanged("") }) {
-                                Icon(Icons.Default.Clear,
-                                    contentDescription = stringResource(R.string.common_clear))
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
-            }
-
             if (persons.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -206,63 +184,47 @@ fun CategoryDetailScreen(
                     }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(items = persons, key = { it.id }) { person ->
-                        PersonCard(
-                            person = person,
-                            isSelected = person.id in selectedIds,
-                            isSelectionMode = isSelectionMode,
-                            onClick = {
-                                if (isSelectionMode) viewModel.toggleSelection(person.id)
-                                else onNavigateToPersonDetail(person.id)
-                            },
-                            onLongClick = { viewModel.toggleSelection(person.id) },
-                            onFavoriteClick = { viewModel.toggleFavorite(person) }
-                        )
-                    }
-                }
+                // Rendu commutable LIST / GRID / DETAIL (composant partagé avec l'Accueil).
+                PersonListContent(
+                    viewMode = viewMode,
+                    persons = persons,
+                    selectedIds = selectedIds,
+                    isSelectionMode = isSelectionMode,
+                    onClick = { person ->
+                        if (isSelectionMode) viewModel.toggleSelection(person.id)
+                        else onNavigateToPersonDetail(person.id)
+                    },
+                    onLongClick = { viewModel.toggleSelection(it.id) },
+                    onFavoriteClick = { viewModel.toggleFavorite(it) }
+                )
             }
         }
     }
 }
 
-/** Menu de tri (3 points) des contacts d'une catégorie : 4 critères persistés. */
+/** Bouton « + » de la TopAppBar : associer un contact existant OU créer un contact. */
 @Composable
-private fun ContactSortMenu(
-    current: ContactSortOrder,
-    onSelect: (ContactSortOrder) -> Unit
+private fun AddContactMenu(
+    onAddExisting: () -> Unit,
+    onCreateNew: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val options = listOf(
-        ContactSortOrder.NAME_ASC to R.string.sort_name_asc,
-        ContactSortOrder.NAME_DESC to R.string.sort_name_desc,
-        ContactSortOrder.CREATED_DESC to R.string.sort_created_desc,
-        ContactSortOrder.UPDATED_DESC to R.string.sort_updated_desc,
-    )
     Box {
         IconButton(onClick = { expanded = true }) {
-            Icon(Icons.AutoMirrored.Filled.Sort,
-                contentDescription = stringResource(R.string.sort_title))
+            Icon(Icons.Default.Add,
+                contentDescription = stringResource(R.string.category_detail_fab_add))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { (order, labelRes) ->
-                DropdownMenuItem(
-                    text = { Text(stringResource(labelRes)) },
-                    onClick = { onSelect(order); expanded = false },
-                    leadingIcon = {
-                        if (order == current) {
-                            Icon(Icons.Default.Check, contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary)
-                        } else {
-                            Spacer(Modifier.size(24.dp))
-                        }
-                    }
-                )
-            }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.category_detail_add_existing)) },
+                leadingIcon = { Icon(Icons.Default.PersonSearch, null) },
+                onClick = { expanded = false; onAddExisting() }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.category_detail_create_new)) },
+                leadingIcon = { Icon(Icons.Default.PersonAdd, null) },
+                onClick = { expanded = false; onCreateNew() }
+            )
         }
     }
 }

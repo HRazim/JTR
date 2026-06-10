@@ -294,6 +294,7 @@
     <string name="sort_name_asc">名称 A 到 Z</string>
     <string name="sort_name_desc">名称 Z 到 A</string>
     <string name="sort_created_desc">最新优先</string>
+    <string name="sort_created_asc">最早优先</string>
     <string name="sort_updated_desc">最近修改</string>
     <string name="categories_fav_action">收藏</string>
     <string name="categories_group_action">分组</string>
@@ -310,4 +311,42 @@
     <string name="categories_delete_group_text">确定要删除分组「%1$s」及其包含的 %2$d 个分类吗？</string>
     <string name="select_all">全选</string>
     <string name="categories_selection_none">已选择 0 个</string>
+    <!-- v5.0 — 主页多选、直接移动、从分类内添加 -->
+    <string name="select_all_count">全选 (%1$d)</string>
+    <string name="action_move">移动</string>
+    <string name="move_pick_target_title">选择分类</string>
+    <string name="category_detail_add_existing">添加现有联系人</string>
+    <string name="category_detail_create_new">新建联系人</string>
+    <string name="category_detail_no_candidates">所有联系人都已在此分类中</string>
+    <!-- v5.1 — 顶栏搜索、视图模式、联系人选择 -->
+    <string name="action_search">搜索</string>
+    <string name="view_mode_title">视图</string>
+    <string name="view_mode_list">列表</string>
+    <string name="view_mode_grid">网格</string>
+    <string name="view_mode_detail">详细</string>
+    <string name="sort_custom">自定义排序</string>
+    <string name="add_count">添加 (%1$d)</string>
+    <!-- v5.2 — 情境分享、即将到来的事件、备份与恢复 -->
+    <string name="share_action">分享</string>
+    <string name="share_sheet_title">分享所选内容</string>
+    <string name="share_as_text">文本</string>
+    <string name="share_as_image">图片 (PNG)</string>
+    <string name="share_as_pdf">文档 (PDF)</string>
+    <string name="share_exporting">导出中…</string>
+    <string name="share_failed">导出失败</string>
+    <string name="share_more_count">+%1$d</string>
+    <string name="events_title">即将到来的事件</string>
+    <string name="event_today">今天</string>
+    <string name="event_countdown">%1$d天后</string>
+    <string name="backup_menu">备份与恢复</string>
+    <string name="backup_dialog_text">将所有数据导出为单个 .jtr 文件（联系人、分类、照片），或恢复之前的备份。</string>
+    <string name="backup_export">导出备份</string>
+    <string name="backup_import">恢复备份</string>
+    <string name="backup_working">操作进行中…</string>
+    <string name="backup_export_success">备份已导出（%1$d 位联系人）</string>
+    <string name="backup_import_success">备份已恢复（%1$d 位联系人）</string>
+    <string name="backup_failed">操作失败 — 文件无效或无法访问</string>
+    <string name="backup_confirm_title">恢复此备份？</string>
+    <string name="backup_confirm_text">数据将与当前数据合并；相同标识的条目将被覆盖。此操作不可撤销。</string>
+    <string name="backup_confirm_action">恢复</string>
 </resources>

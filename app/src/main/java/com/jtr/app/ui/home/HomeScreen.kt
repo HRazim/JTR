@@ -1,5 +1,10 @@
 package com.jtr.app.ui.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -37,6 +42,14 @@ import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.ui.backup.BackupDialog
+import com.jtr.app.ui.category.FooterActionColumn
+import com.jtr.app.ui.category.contactSortOptions
+import com.jtr.app.ui.components.JtrOverflowMenu
+import com.jtr.app.ui.components.JtrSearchableTopAppBar
+import com.jtr.app.ui.share.PersonsSharePreview
+import com.jtr.app.ui.share.ShareFormatSheet
+import com.jtr.app.ui.share.ShareUtils
 import com.jtr.app.utils.getSocialIcon
 import java.text.SimpleDateFormat
 import java.util.*
@@ -46,126 +59,170 @@ import java.util.*
 fun HomeScreen(
     onNavigateToAddPerson: () -> Unit,
     onNavigateToPersonDetail: (String) -> Unit,
+    onSelectionModeChange: (Boolean) -> Unit = {},
+    onMoveSelectionToCategory: (List<String>) -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     val persons by viewModel.persons.collectAsStateWithLifecycle()
-    var searchQuery by remember { mutableStateOf("") }
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
-    val categories by viewModel.categories.collectAsStateWithLifecycle()
     val socialLinksMap by viewModel.socialLinksMap.collectAsStateWithLifecycle()
+    val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
+    val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
+    val upcomingEvents by viewModel.upcomingEvents.collectAsStateWithLifecycle()
 
-    var showCategoryDialog by remember { mutableStateOf(false) }
+    // Mode recherche de la TopAppBar (état d'UI local ; la query vient du ViewModel).
+    var searchActive by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
-    if (showCategoryDialog) {
-        AssignCategoryDialog(
-            categories = categories,
-            onDismiss = { showCategoryDialog = false },
-            onCategorySelected = { categoryId ->
-                viewModel.assignCategoryToSelected(categoryId)
-                showCategoryDialog = false
-            },
-            onCreateAndAssign = { name, color ->
-                viewModel.createCategoryAndAssignToSelected(name, color)
-                showCategoryDialog = false
-            }
+    // Module Sauvegarde & restauration (accessible depuis le menu 3 points).
+    var showBackupDialog by remember { mutableStateOf(false) }
+    if (showBackupDialog) {
+        BackupDialog(onDismiss = { showBackupDialog = false })
+    }
+
+    // Cible du partage contextuel : instantané des profils cochés au moment du clic.
+    var shareTargets by remember { mutableStateOf<List<Person>?>(null) }
+    shareTargets?.let { targets ->
+        ShareFormatSheet(
+            onDismiss = { shareTargets = null },
+            buildText = { ShareUtils.buildPersonsShareText(context, targets) },
+            writePdf = { ShareUtils.writePersonsPdf(context, targets) },
+            preview = { PersonsSharePreview(targets) }
         )
     }
 
+    // Reporte l'état de sélection au conteneur : la barre de navigation globale
+    // s'efface et c'est le footer contextuel ci-dessous qui prend sa place.
+    LaunchedEffect(isSelectionMode) { onSelectionModeChange(isSelectionMode) }
+    DisposableEffect(Unit) {
+        onDispose {
+            onSelectionModeChange(false)
+            // Sortie d'écran (détail / autre onglet) → le filtre de recherche est
+            // réinitialisé : au retour, TOUS les profils réapparaissent.
+            viewModel.clearSearch()
+        }
+    }
+
     Scaffold(
+        // Les insets bas sont déjà couverts par le Scaffold racine (footer global) :
+        // on les neutralise ici pour supprimer la bande blanche au-dessus du footer.
+        contentWindowInsets = WindowInsets(0),
         topBar = {
             if (isSelectionMode) {
+                // Gauche : « Tout sélectionner (n) » · Droite : « Annuler ».
                 TopAppBar(
-                    title = { Text(stringResource(R.string.home_selection_count, selectedIds.size)) },
+                    title = { Text(stringResource(R.string.select_all_count, selectedIds.size)) },
                     navigationIcon = {
-                        IconButton(onClick = { viewModel.clearSelection() }) {
-                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_cancel))
+                        IconButton(onClick = { viewModel.selectAll() }) {
+                            Icon(Icons.Default.SelectAll,
+                                contentDescription = stringResource(R.string.select_all))
+                        }
+                    },
+                    actions = {
+                        TextButton(onClick = { viewModel.clearSelection() }) {
+                            Text(stringResource(R.string.common_cancel),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 )
             } else {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.home_title)) },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                // Barre harmonisée : loupe (à gauche du « + ») + ajout + menu 3 points
+                // (sous-sections Tri / Affichage).
+                JtrSearchableTopAppBar(
+                    title = stringResource(R.string.home_title),
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
+                    searchActive = searchActive,
+                    onSearchActiveChange = { searchActive = it },
+                    searchPlaceholder = stringResource(R.string.home_search_placeholder),
+                    actions = {
+                        IconButton(onClick = onNavigateToAddPerson) {
+                            Icon(Icons.Default.Add,
+                                contentDescription = stringResource(R.string.home_fab_add_person))
+                        }
+                        JtrOverflowMenu(
+                            sortOptions = contactSortOptions(sortOrder) { viewModel.setSortOrder(it) },
+                            viewMode = viewMode,
+                            onViewModeChange = { viewModel.setViewMode(it) }
+                        ) { dismiss ->
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.backup_menu)) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.SettingsBackupRestore, null)
+                                },
+                                onClick = { dismiss(); showBackupDialog = true }
+                            )
+                        }
+                    }
                 )
             }
         },
         bottomBar = {
-            if (isSelectionMode) {
+            // Footer contextuel du mode sélection : il « remplace » la barre de
+            // navigation globale (masquée par le conteneur pendant la sélection).
+            AnimatedVisibility(
+                visible = isSelectionMode,
+                enter = slideInVertically { it } + fadeIn(),
+                exit = slideOutVertically { it } + fadeOut()
+            ) {
                 BottomAppBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 4.dp
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { showCategoryDialog = true },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.Label, contentDescription = null,
-                                modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.home_btn_category))
-                        }
-                        Button(
-                            onClick = { viewModel.deleteSelected() },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = null,
-                                modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.home_btn_delete))
-                        }
+                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                        FooterActionColumn(
+                            Icons.Default.Share,
+                            stringResource(R.string.share_action),
+                            enabled = selectedIds.isNotEmpty(),
+                            onClick = {
+                                shareTargets = persons.filter { it.id in selectedIds }
+                            }
+                        )
                     }
-                }
-            }
-        },
-        floatingActionButton = {
-            if (!isSelectionMode) {
-                FloatingActionButton(
-                    onClick = onNavigateToAddPerson,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.home_fab_add_person))
+                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                        FooterActionColumn(
+                            Icons.Default.Delete,
+                            stringResource(R.string.common_delete),
+                            enabled = selectedIds.isNotEmpty(),
+                            onClick = { viewModel.deleteSelected() },
+                            tintOverride = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                        FooterActionColumn(
+                            Icons.AutoMirrored.Filled.DriveFileMove,
+                            stringResource(R.string.action_move),
+                            enabled = selectedIds.isNotEmpty(),
+                            onClick = {
+                                // Aucun dialogue : on bascule vers l'onglet Catégories où
+                                // l'utilisateur touche directement la cible.
+                                val ids = selectedIds.toList()
+                                viewModel.clearSelection()
+                                onMoveSelectionToCategory(ids)
+                            }
+                        )
+                    }
                 }
             }
         }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            // Bandeau « Événements à venir » (7 jours), tout en haut du contenu.
+            // Se masque seul si aucun événement, et s'efface en mode sélection.
             if (!isSelectionMode) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it; viewModel.onSearchQueryChanged(it) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text(stringResource(R.string.home_search_placeholder)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = ""; viewModel.onSearchQueryChanged("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.common_clear))
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(28.dp)
+                UpcomingEventsBanner(
+                    events = upcomingEvents,
+                    onEventClick = { onNavigateToPersonDetail(it.person.id) }
                 )
             }
-
             if (persons.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -182,26 +239,20 @@ fun HomeScreen(
                     }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(items = persons, key = { it.id }) { person ->
-                        PersonCard(
-                            person = person,
-                            socialLinks = socialLinksMap[person.id] ?: emptyList(),
-                            isSelected = person.id in selectedIds,
-                            isSelectionMode = isSelectionMode,
-                            onClick = {
-                                if (isSelectionMode) viewModel.toggleSelection(person.id)
-                                else onNavigateToPersonDetail(person.id)
-                            },
-                            onLongClick = { viewModel.toggleSelection(person.id) },
-                            onFavoriteClick = { viewModel.toggleFavorite(person) }
-                        )
-                    }
-                }
+                // Rendu commutable LIST / GRID / DETAIL (composant partagé).
+                PersonListContent(
+                    viewMode = viewMode,
+                    persons = persons,
+                    socialLinksMap = socialLinksMap,
+                    selectedIds = selectedIds,
+                    isSelectionMode = isSelectionMode,
+                    onClick = { person ->
+                        if (isSelectionMode) viewModel.toggleSelection(person.id)
+                        else onNavigateToPersonDetail(person.id)
+                    },
+                    onLongClick = { viewModel.toggleSelection(it.id) },
+                    onFavoriteClick = { viewModel.toggleFavorite(it) }
+                )
             }
         }
     }
@@ -489,6 +540,22 @@ fun PersonCard(
                         Text(
                             text = SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
                                 .format(Date(person.birthdate)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                if (person.origin != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Public,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = person.origin,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

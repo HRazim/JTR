@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chemins exposés par le FileProvider : uniquement le sous-dossier cache/share
+     (fichiers ÉPHÉMÈRES de partage PNG/PDF — jamais les données de l'app). -->
+<paths>
+    <cache-path name="share" path="share/" />
+</paths>

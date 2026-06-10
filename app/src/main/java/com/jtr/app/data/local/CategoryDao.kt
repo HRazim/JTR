@@ -15,6 +15,10 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC")
     fun getDeleted(): Flow<List<Category>>
 
+    /** Export intégral (sauvegarde .jtr) : TOUTES les lignes, corbeille incluse. */
+    @Query("SELECT * FROM categories")
+    suspend fun getAllSync(): List<Category>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(category: Category)
 

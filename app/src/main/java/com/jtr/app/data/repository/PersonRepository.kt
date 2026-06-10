@@ -10,6 +10,7 @@ import com.jtr.app.data.local.PersonCategoryDao
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.utils.matchesSearch
 import com.jtr.app.utils.normalizeForSearch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -37,19 +38,14 @@ class PersonRepository(context: Context) {
     fun getAllActive(): Flow<List<Person>> = dao.getAllActive()
 
     /**
-     * Recherche accent-insensitive via filtrage en mémoire.
+     * Recherche multi-critères accent-insensitive via le matcher partagé
+     * [matchesSearch] (nom, entreprise, poste, ville/origine, relations…).
      * Ex : "therese" trouve "Thérèse", "francois" trouve "François".
      */
     fun search(query: String): Flow<List<Person>> {
         val normalizedQuery = query.normalizeForSearch()
         return dao.getAllActive().map { persons ->
-            persons.filter { person ->
-                listOfNotNull(
-                    person.firstName, person.lastName, person.city,
-                    person.notes, person.likes, person.origin,
-                    person.phoneNumber, person.email
-                ).any { field -> field.normalizeForSearch().contains(normalizedQuery) }
-            }
+            persons.filter { it.matchesSearch(normalizedQuery) }
         }
     }
 

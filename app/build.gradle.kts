@@ -14,8 +14,8 @@ android {
         applicationId = "com.jtr.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "5.0.0"
+        versionCode = 10
+        versionName = "5.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -98,6 +98,9 @@ dependencies {
     // Gson + Coil
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // EXIF (orientation réelle des photos importées — repli pré-API 28 du crop)
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")

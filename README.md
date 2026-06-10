@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> **Carnet de contacts enrichi nouvelle génération** · Version `5.0.0`  
+> **Carnet de contacts enrichi nouvelle génération** · Version `5.2.0`  
 > Projet personnel Android — Kotlin · Jetpack Compose · MVVM
 
 ---
@@ -9,7 +9,7 @@
 
 JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'application maintient une **mémoire sociale active** : elle enregistre le contexte humain de chaque relation (goûts, anniversaires, ville, notes, réseaux sociaux), géocode automatiquement les villes via OpenStreetMap, et notifie proactivement l'utilisateur lorsqu'il se retrouve physiquement proche d'un contact qu'il n'a pas vu depuis longtemps. Le tout, sans service cloud, sans clé API propriétaire, et avec un stockage 100 % local.
 
-> **État actuel — Juin 2026.** Le cycle de développement de la **Version 4 (v4.x)** est officiellement **clos** : stable, mature, et couronné par un moteur d'ergonomie tactile abouti (Drag & Drop fluide, dossiers récursifs, mode sélection « Galerie »). L'application ouvre aujourd'hui le jalon de la **Version 5.0**, nouvelle ère de développement. Voir [Le Grand Bilan de la Version 4](#-le-grand-bilan-de-la-version-4) et [Version 5.0 — En cours](#-version-50--en-cours-de-développement).
+> **État actuel — Juin 2026.** Le cycle de développement de la **Version 4 (v4.x)** est officiellement **clos** : stable, mature, et couronné par un moteur d'ergonomie tactile abouti (Drag & Drop fluide, dossiers récursifs, mode sélection « Galerie »). Le cycle **Version 5** est en plein essor : la **v5.2.0** livre le partage graphique (TEXTE/PNG/PDF), le moteur de recherche multi-critères, le bandeau d'événements et le module de sauvegarde `.jtr`. Voir [Le Grand Bilan de la Version 4](#-le-grand-bilan-de-la-version-4) et [Version 5 — Cycle en cours](#-version-50--en-cours-de-développement).
 
 ---
 
@@ -48,17 +48,39 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 
 ## 🚧 Version 5.0 — En cours de développement
 
-> **Prochain Jalon Majeur · Work In Progress**
+> **Cycle actif — dernière livraison : v5.2.0**
 
-La Version 5.0 ouvre une nouvelle ère pour JTR, après la clôture définitive et stable du cycle v4.x. Cette section sera enrichie au fil du développement.
+La Version 5 ouvre une nouvelle ère pour JTR, après la clôture définitive et stable du cycle v4.x. Cette section est enrichie au fil du développement.
 
 | Statut | Détail |
 |--------|--------|
-| 🏗️ **Jalon** | `versionName = "5.0.0"` · `versionCode = 9` — socle posé |
-| 🧱 **Fondations héritées** | Moteur tactile « Galerie » + dossiers récursifs (Room v16) consolidés en v4, prêts à être étendus |
+| 🏗️ **Jalon** | `versionName = "5.2.0"` · `versionCode = 10` |
+| 🧱 **Fondations héritées** | Moteur tactile « Galerie » + dossiers récursifs (Room v16) consolidés en v4, étendus en v5 |
+| ✅ **Livré (v5.0 → v5.1)** | TopAppBar harmonisée avec recherche intégrée (`JtrSearchableTopAppBar`), menu Tri/Affichage unifié, 3 modes de vue persistés (Liste/Grille/Détail), footer de sélection transformable à l'Accueil, déplacement de contacts sans dialogue, recadrage d'image refondu (EXIF, cadre déplaçable/redimensionnable), Drag & Drop grille/liste harmonisé (zone centrale = fusion) |
 | 🎯 **Cap** | Capitaliser sur l'ergonomie tactile mature pour la prochaine génération de fonctionnalités |
 
-*Les fonctionnalités de la 5.0 seront documentées ici au fur et à mesure de leur livraison.*
+### 🚀 Version 5.2.0 — Partage Graphique, Moteur de Recherche Étendu & Module de Sauvegarde (.jtr)
+
+* **📤 Système de Partage Hybride Contextuel (TEXTE / PNG / PDF) :**
+    * Intégration d'un `ModalBottomSheet` de partage (`ShareFormatSheet`) accessible depuis le mode sélection de l'Accueil et des Catégories/Dossiers.
+    * **Format Texte :** Fiches structurées et localisées (icônes Unicode, formats de dates et types de relations respectant la locale système).
+    * **Format PNG :** Capture à la volée pixel-exacte de l'interface Compose via l'API réactive `rememberGraphicsLayer()`.
+    * **Format PDF :** Génération vectorielle native via `PdfDocument` (grille A4 à 72 dpi, marges de 48 pt, calcul automatique des retours à la ligne et sauts de page dynamiques).
+    * **Sécurité :** Déclaration d'un `FileProvider` isolé sur le répertoire `cache/share/` avec purge systématique des fichiers temporaires (`clearStaleExports`).
+* **🔍 Moteur de Recherche Multi-Critères :**
+    * Extension complète de la fonction de correspondance `Person.matchesSearch()` : le filtre de la TopAppBar scanne désormais le Nom, Prénom, Surnom, Entreprise, Poste, Département, Villes (Ville/Région/Origine), Notes et les relations (noms liés et types localisés).
+    * Optimisation des performances via `.flowOn(Dispatchers.Default)` pour décharger entièrement le thread UI.
+* **📅 Bandeau Dynamique des Événements à venir :**
+    * Implémentation du composant réactif `UpcomingEventsBanner` (LazyRow) en haut de l'Accueil (masqué si vide ou en mode sélection).
+    * Scan chronologique et algorithmique de la base (gestion du 29 février et du changement d'année) sur une fenêtre glissante de 0 à 7 jours.
+    * Code couleur d'imminence (Primaire : aujourd'hui, Secondaire : ≤ 2 jours, Tertiaire : ≤ 7 jours).
+* **💾 Module de Sauvegarde Intégral Autonome (`.jtr`) :**
+    * Conception d'un gestionnaire de sauvegarde `BackupManager` compressant un fichier `backup.json` (Gson, incluant les profils archivés, liaisons N-N, catégories, dossiers) et un dossier `media/`.
+    * Abstraction des chemins d'accès aux images locales via un système de jetons virtuels `jtr-media://` résolus dynamiquement à l'importation.
+    * Sécurité renforcée : Validation anti-corruption de la structure du JSON avant écriture, insertion transactionnelle ordonnée (`OnConflictStrategy.REPLACE`) et protection stricte contre les failles d'arborescence de type *Zip Slip*.
+    * Intégration système propre via les contrats d'activité `CreateDocument` et `GetContent`.
+* **🌍 Internationalisation (i18n) :**
+    * Ajout de 23 nouvelles clés de chaînes de caractères déclinées dans les 5 langues cibles (`en`/`fr`/`es`/`zh`/`ja`). Zéro dépendance tierce additionnelle.
 
 ---
 

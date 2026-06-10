@@ -16,18 +16,30 @@ interface PersonDao {
     @Query("SELECT * FROM persons WHERE deletedAt IS NULL ORDER BY isFavorite DESC, firstName ASC")
     fun getAllActive(): Flow<List<Person>>
 
+    /** Export intégral (sauvegarde .jtr) : TOUTES les lignes, corbeille incluse. */
+    @Query("SELECT * FROM persons")
+    suspend fun getAllSync(): List<Person>
+
+    // v5.2 : moteur multi-critères — couvre aussi l'entreprise, le poste, le
+    // département et les relations (colonne JSON relationLines : noms liés +
+    // libellés). Le filtrage accent-insensible reste assuré côté repository.
     @Query("""
         SELECT * FROM persons
         WHERE deletedAt IS NULL
         AND (
             firstName   LIKE '%' || :query || '%'
             OR lastName  LIKE '%' || :query || '%'
+            OR nickname  LIKE '%' || :query || '%'
+            OR company   LIKE '%' || :query || '%'
+            OR jobTitle  LIKE '%' || :query || '%'
+            OR department LIKE '%' || :query || '%'
             OR city      LIKE '%' || :query || '%'
             OR notes     LIKE '%' || :query || '%'
             OR likes     LIKE '%' || :query || '%'
             OR origin    LIKE '%' || :query || '%'
             OR phoneNumber LIKE '%' || :query || '%'
             OR email     LIKE '%' || :query || '%'
+            OR relationLines LIKE '%' || :query || '%'
         )
         ORDER BY isFavorite DESC, firstName ASC
     """)

@@ -24,4 +24,8 @@ interface SocialLinkDao {
 
     @Query("SELECT * FROM social_links")
     fun getAll(): Flow<List<SocialLinkEntity>>
+
+    /** Export intégral (sauvegarde .jtr). */
+    @Query("SELECT * FROM social_links")
+    suspend fun getAllSync(): List<SocialLinkEntity>
 }

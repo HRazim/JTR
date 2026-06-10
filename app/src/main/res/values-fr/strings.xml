@@ -294,6 +294,7 @@
     <string name="sort_name_asc">Nom de A à Z</string>
     <string name="sort_name_desc">Nom de Z à A</string>
     <string name="sort_created_desc">Plus récents d\'abord</string>
+    <string name="sort_created_asc">Plus anciens d\'abord</string>
     <string name="sort_updated_desc">Modifiés récemment</string>
     <string name="categories_fav_action">Favori</string>
     <string name="categories_group_action">Grouper</string>
@@ -310,4 +311,42 @@
     <string name="categories_delete_group_text">Êtes-vous sûr de vouloir supprimer le groupe « %1$s » et les %2$d catégories qu\'il contient ?</string>
     <string name="select_all">Tout sélectionner</string>
     <string name="categories_selection_none">0 sélectionné</string>
+    <!-- v5.0 — sélection Accueil, déplacement direct, ajout depuis une catégorie -->
+    <string name="select_all_count">Tout sélectionner (%1$d)</string>
+    <string name="action_move">Déplacer</string>
+    <string name="move_pick_target_title">Choisir une catégorie</string>
+    <string name="category_detail_add_existing">Ajouter un contact existant</string>
+    <string name="category_detail_create_new">Créer un nouveau contact</string>
+    <string name="category_detail_no_candidates">Tous les contacts sont déjà dans cette catégorie</string>
+    <!-- v5.1 — recherche dans la TopAppBar, modes d'affichage, sélection de contacts -->
+    <string name="action_search">Rechercher</string>
+    <string name="view_mode_title">Affichage</string>
+    <string name="view_mode_list">Liste</string>
+    <string name="view_mode_grid">Grille</string>
+    <string name="view_mode_detail">Détail</string>
+    <string name="sort_custom">Ordre personnalisé</string>
+    <string name="add_count">Ajouter (%1$d)</string>
+    <!-- v5.2 — partage contextuel, événements à venir, sauvegarde/restauration -->
+    <string name="share_action">Partager</string>
+    <string name="share_sheet_title">Partager la sélection</string>
+    <string name="share_as_text">Texte</string>
+    <string name="share_as_image">Image (PNG)</string>
+    <string name="share_as_pdf">Document (PDF)</string>
+    <string name="share_exporting">Exportation en cours…</string>
+    <string name="share_failed">Échec de l\'exportation</string>
+    <string name="share_more_count">+%1$d</string>
+    <string name="events_title">Événements à venir</string>
+    <string name="event_today">Aujourd\'hui</string>
+    <string name="event_countdown">J-%1$d</string>
+    <string name="backup_menu">Sauvegarde &amp; restauration</string>
+    <string name="backup_dialog_text">Exportez toutes vos données dans un fichier .jtr unique (profils, catégories, photos), ou restaurez une sauvegarde précédente.</string>
+    <string name="backup_export">Exporter une sauvegarde</string>
+    <string name="backup_import">Restaurer une sauvegarde</string>
+    <string name="backup_working">Opération en cours…</string>
+    <string name="backup_export_success">Sauvegarde exportée (%1$d contacts)</string>
+    <string name="backup_import_success">Sauvegarde restaurée (%1$d contacts)</string>
+    <string name="backup_failed">Échec — fichier invalide ou inaccessible</string>
+    <string name="backup_confirm_title">Restaurer cette sauvegarde ?</string>
+    <string name="backup_confirm_text">Les données seront fusionnées avec vos données actuelles ; les fiches au même identifiant seront écrasées. Action irréversible.</string>
+    <string name="backup_confirm_action">Restaurer</string>
 </resources>

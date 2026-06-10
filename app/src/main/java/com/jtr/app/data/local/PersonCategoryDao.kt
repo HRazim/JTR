@@ -63,6 +63,10 @@ interface PersonCategoryDao {
     @Query("SELECT * FROM person_category_join")
     fun getAllJoins(): Flow<List<PersonCategoryJoin>>
 
+    /** Export intégral (sauvegarde .jtr). */
+    @Query("SELECT * FROM person_category_join")
+    suspend fun getAllJoinsSync(): List<PersonCategoryJoin>
+
     /** IDs des personnes ACTIVES dans une catégorie (pour cascade soft-delete). */
     @Query("""
         SELECT p.id FROM persons p

@@ -21,6 +21,8 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -35,7 +37,6 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,14 +61,18 @@ import com.jtr.app.R
 import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.ui.components.JtrOverflowMenu
+import com.jtr.app.ui.components.JtrSearchableTopAppBar
+import com.jtr.app.ui.components.JtrViewMode
+import com.jtr.app.ui.share.CategoriesSharePreview
+import com.jtr.app.ui.share.ShareCategoryItem
+import com.jtr.app.ui.share.ShareFormatSheet
+import com.jtr.app.ui.share.ShareUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
-
-/** Modes d'affichage de la liste des catégories. */
-enum class CategoryViewMode { LIST, GRID }
 
 /**
  * Entrée de premier niveau de l'écran : un dossier (avec ses membres) OU une
@@ -102,15 +107,20 @@ fun CategoriesScreen(
     onCategoryClick: (String) -> Unit = {},
     onGroupClick: (Long) -> Unit = {},
     onSelectionModeChange: (Boolean) -> Unit = {},
+    isPickingMoveTarget: Boolean = false,
+    onCancelMoveTarget: () -> Unit = {},
     viewModel: CategoryViewModel = viewModel()
 ) {
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val personCountByCategory by viewModel.personCountByCategory.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
+    // Mode d'affichage persistant (LIST / GRID / DETAIL), restauré depuis jtr_prefs.
+    val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var pendingEditCategory by remember { mutableStateOf<Category?>(null) }
-    // Mode d'affichage persistant (survit aux rotations et à la mort du processus).
-    var viewMode by rememberSaveable { mutableStateOf(CategoryViewMode.GRID) }
+    // Mode recherche de la TopAppBar (état d'UI local ; la query vient du ViewModel).
+    var searchActive by remember { mutableStateOf(false) }
 
     val groups by viewModel.groups.collectAsStateWithLifecycle()
 
@@ -135,7 +145,13 @@ fun CategoriesScreen(
 
     // Reporte l'état de sélection au conteneur (masque la nav globale).
     LaunchedEffect(isSelectionActive) { onSelectionModeChange(isSelectionActive) }
-    DisposableEffect(Unit) { onDispose { onSelectionModeChange(false) } }
+    DisposableEffect(Unit) {
+        onDispose {
+            onSelectionModeChange(false)
+            // Sortie d'écran → réinitialisation du filtre (aucune query fantôme au retour).
+            viewModel.clearSearch()
+        }
+    }
 
     val totalSelected = selectedIds.size + selectedGroupIds.size
     fun exitSelection() {
@@ -170,7 +186,7 @@ fun CategoriesScreen(
 
     // ── Entrées de premier niveau : dossiers + catégories indépendantes ───────
     val isSearching = searchQuery.isNotBlank()
-    val topEntries = remember(categories, groups) {
+    val topEntries = remember(categories, groups, sortOrder) {
         val membersByGroup = categories.filter { it.parentGroupId != null }
             .groupBy { it.parentGroupId!! }
         val subByParent = groups.filter { it.parentGroupId != null }
@@ -184,10 +200,7 @@ fun CategoriesScreen(
             )
         }
         val singles = categories.filter { it.parentGroupId == null }.map { TopEntry.Single(it) }
-        (folders + singles).sortedWith(
-            compareByDescending<TopEntry> { it.isFavorite }
-                .thenBy { it.position }.thenBy { it.sortName }
-        )
+        sortTopEntries(folders + singles, sortOrder)
     }
     fun selectAll() {
         topEntries.forEach { entry ->
@@ -342,6 +355,17 @@ fun CategoriesScreen(
         )
     }
 
+    // Partage contextuel : instantané de la sélection (catégories + dossiers).
+    var shareItems by remember { mutableStateOf<List<ShareCategoryItem>?>(null) }
+    shareItems?.let { items ->
+        ShareFormatSheet(
+            onDismiss = { shareItems = null },
+            buildText = { ShareUtils.buildCategoriesShareText(screenContext, items) },
+            writePdf = { ShareUtils.writeCategoriesPdf(screenContext, items) },
+            preview = { CategoriesSharePreview(items) }
+        )
+    }
+
     Scaffold(
         topBar = {
             if (isSelectionActive) {
@@ -371,48 +395,51 @@ fun CategoriesScreen(
                         navigationIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 )
-            } else {
+            } else if (isPickingMoveTarget) {
+                // Mode « choisir une cible » (déplacement de contacts depuis l'Accueil) :
+                // toucher une catégorie l'assigne, toucher un dossier y descend.
                 TopAppBar(
-                    title = { Text(stringResource(R.string.categories_title)) },
+                    title = { Text(stringResource(R.string.move_pick_target_title)) },
                     actions = {
-                        IconButton(onClick = {
-                            viewMode = if (viewMode == CategoryViewMode.GRID)
-                                CategoryViewMode.LIST else CategoryViewMode.GRID
-                        }) {
-                            if (viewMode == CategoryViewMode.GRID) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.List,
-                                    contentDescription = stringResource(R.string.categories_view_list_cd),
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Default.GridView,
-                                    contentDescription = stringResource(R.string.categories_view_grid_cd),
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
+                        TextButton(onClick = onCancelMoveTarget) {
+                            Text(stringResource(R.string.common_cancel),
+                                color = MaterialTheme.colorScheme.onTertiaryContainer)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onTertiaryContainer
                     )
+                )
+            } else {
+                // Barre harmonisée : loupe (à gauche du « + ») + ajout + menu 3 points
+                // (sous-sections Tri / Affichage — l'ancien bouton de bascule disparaît).
+                JtrSearchableTopAppBar(
+                    title = stringResource(R.string.categories_title),
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                    searchActive = searchActive,
+                    onSearchActiveChange = { searchActive = it },
+                    searchPlaceholder = stringResource(R.string.home_search_placeholder),
+                    actions = {
+                        IconButton(onClick = { showAddDialog = true }) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = stringResource(R.string.categories_fab_add_cd)
+                            )
+                        }
+                        JtrOverflowMenu(
+                            sortOptions = categorySortOptions(sortOrder) { viewModel.setSortOrder(it) },
+                            viewMode = viewMode,
+                            onViewModeChange = { viewModel.setViewMode(it) }
+                        )
+                    }
                 )
             }
         },
-        floatingActionButton = {
-            if (!isSelectionActive) {
-                FloatingActionButton(
-                    onClick = { showAddDialog = true },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.categories_fab_add_cd))
-                }
-            }
-        },
+        // Les insets bas sont couverts par le Scaffold racine (footer global) ou par
+        // la BottomAppBar contextuelle : on les neutralise pour éviter la bande blanche.
+        contentWindowInsets = WindowInsets(0),
         bottomBar = {
             AnimatedVisibility(
                 visible = isSelectionActive,
@@ -443,6 +470,30 @@ fun CategoriesScreen(
                     },
                     canDelete = totalSelected >= 1,
                     onDelete = { showBulkDeleteDialog = true },
+                    canShare = totalSelected >= 1,
+                    onShare = {
+                        // Dossiers : noms des catégories membres (via topEntries) ;
+                        // catégories : compteur de contacts.
+                        val folderEntries = topEntries.filterIsInstance<TopEntry.Folder>()
+                        shareItems = buildList {
+                            selectedGroups.forEach { g ->
+                                val entry = folderEntries.firstOrNull { it.group.id == g.id }
+                                add(ShareCategoryItem(
+                                    name = g.name,
+                                    isFolder = true,
+                                    memberNames = entry?.members?.map { it.name } ?: emptyList(),
+                                    subGroupCount = entry?.subGroupCount ?: 0
+                                ))
+                            }
+                            selectedCategories.forEach { c ->
+                                add(ShareCategoryItem(
+                                    name = c.name,
+                                    isFolder = false,
+                                    personCount = personCountByCategory[c.id] ?: 0
+                                ))
+                            }
+                        }
+                    },
                     canRename = totalSelected == 1,
                     onRename = {
                         val cat = selectedCategories.singleOrNull()
@@ -465,46 +516,43 @@ fun CategoriesScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Barre de recherche masquée en mode sélection (focalisation sur l'édition).
-            if (!isSelectionActive) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.setSearchQuery(it) },
-                    placeholder = { Text(stringResource(R.string.home_search_placeholder)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.common_clear))
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
-
             val countOf: (String) -> Int = { personCountByCategory[it] ?: 0 }
             if (isSelectionActive) {
-                // Mode sélection : GRILLE de carrés réordonnable (drag & drop 2D).
-                ReorderableTopGrid(
-                    entries = topEntries,
-                    isCategorySelected = { it in selectedIds },
-                    isGroupSelected = { it in selectedGroupIds },
-                    countOf = countOf,
-                    onToggleCategory = { toggleSelectCategory(it) },
-                    onToggleGroup = { toggleSelectGroup(it) },
-                    onPersistOrder = { viewModel.persistTopOrder(it) },
-                    onMergeRequest = { ids -> pendingMergeIds = ids },
-                    onMoveToFolder = { categoryId, groupId ->
-                        viewModel.moveCategoryToGroup(categoryId, groupId)
-                        exitSelection()
-                    },
-                    enableMerge = true
-                )
+                // Mode sélection : le mode d'affichage courant est CONSERVÉ (le clic
+                // long ne force plus la grille). Grille → drag & drop 2D ; Liste /
+                // Détail → réordonnancement vertical, même logique persistée.
+                when (viewMode) {
+                    JtrViewMode.GRID -> ReorderableTopGrid(
+                        entries = topEntries,
+                        isCategorySelected = { it in selectedIds },
+                        isGroupSelected = { it in selectedGroupIds },
+                        countOf = countOf,
+                        onToggleCategory = { toggleSelectCategory(it) },
+                        onToggleGroup = { toggleSelectGroup(it) },
+                        onPersistOrder = { viewModel.persistTopOrder(it) },
+                        onMergeRequest = { ids -> pendingMergeIds = ids },
+                        onMoveToFolder = { categoryId, groupId ->
+                            viewModel.moveCategoryToGroup(categoryId, groupId)
+                            exitSelection()
+                        },
+                        enableMerge = true
+                    )
+                    else -> ReorderableTopList(
+                        entries = topEntries,
+                        isCategorySelected = { it in selectedIds },
+                        isGroupSelected = { it in selectedGroupIds },
+                        countOf = countOf,
+                        onToggleCategory = { toggleSelectCategory(it) },
+                        onToggleGroup = { toggleSelectGroup(it) },
+                        onPersistOrder = { viewModel.persistTopOrder(it) },
+                        onMergeRequest = { ids -> pendingMergeIds = ids },
+                        onMoveToFolder = { categoryId, groupId ->
+                            viewModel.moveCategoryToGroup(categoryId, groupId)
+                            exitSelection()
+                        },
+                        enableMerge = true
+                    )
+                }
             } else if (categories.isEmpty() && groups.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -523,90 +571,20 @@ fun CategoriesScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-            } else if (isSearching) {
-                // Recherche : liste/grille plate des catégories filtrées (sans dossiers).
-                when (viewMode) {
-                    CategoryViewMode.GRID -> LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(categories, key = { it.id }) { category ->
-                            CategoryGridTile(category, countOf(category.id),
-                                onClick = { onCategoryClick(category.id) },
-                                onLongClick = { startSelectionCategory(category.id) })
-                        }
-                    }
-                    CategoryViewMode.LIST -> LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(categories, key = { it.id }) { category ->
-                            CategoryListRow(category, countOf(category.id),
-                                onClick = { onCategoryClick(category.id) },
-                                onLongClick = { startSelectionCategory(category.id) })
-                        }
-                    }
-                }
             } else {
-                // Dossiers + catégories : carrés uniformes. Le dossier NAVIGUE (drill-down).
-                when (viewMode) {
-                    CategoryViewMode.GRID -> LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(topEntries, key = {
-                            when (it) {
-                                is TopEntry.Folder -> "g_${it.group.id}"
-                                is TopEntry.Single -> "c_${it.category.id}"
-                            }
-                        }) { entry ->
-                            when (entry) {
-                                is TopEntry.Folder -> FolderGridTile(
-                                    group = entry.group,
-                                    memberCount = entry.members.size,
-                                    subGroupCount = entry.subGroupCount,
-                                    onClick = { onGroupClick(entry.group.id) },
-                                    onLongClick = { startSelectionGroup(entry.group.id) })
-                                is TopEntry.Single -> CategoryGridTile(
-                                    entry.category, countOf(entry.category.id),
-                                    onClick = { onCategoryClick(entry.category.id) },
-                                    onLongClick = { startSelectionCategory(entry.category.id) })
-                            }
-                        }
-                    }
-                    CategoryViewMode.LIST -> LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(topEntries, key = {
-                            when (it) {
-                                is TopEntry.Folder -> "g_${it.group.id}"
-                                is TopEntry.Single -> "c_${it.category.id}"
-                            }
-                        }) { entry ->
-                            when (entry) {
-                                is TopEntry.Folder -> FolderListRow(
-                                    group = entry.group,
-                                    memberCount = entry.members.size,
-                                    subGroupCount = entry.subGroupCount,
-                                    onClick = { onGroupClick(entry.group.id) },
-                                    onLongClick = { startSelectionGroup(entry.group.id) })
-                                is TopEntry.Single -> CategoryListRow(
-                                    entry.category, countOf(entry.category.id),
-                                    onClick = { onCategoryClick(entry.category.id) },
-                                    onLongClick = { startSelectionCategory(entry.category.id) })
-                            }
-                        }
-                    }
-                }
+                // Recherche : entrées filtrées à plat (catégories seules, sans dossiers) ;
+                // sinon arborescence complète. Rendu commutable LIST / GRID / DETAIL.
+                val entries =
+                    if (isSearching) categories.map { TopEntry.Single(it) } else topEntries
+                TopEntriesBrowser(
+                    entries = entries,
+                    viewMode = viewMode,
+                    countOf = countOf,
+                    onCategoryClick = onCategoryClick,
+                    onGroupClick = onGroupClick,
+                    onCategoryLongClick = { startSelectionCategory(it) },
+                    onGroupLongClick = { startSelectionGroup(it) }
+                )
             }
         }
     }
@@ -780,6 +758,166 @@ fun CategoryListRow(
     }
 }
 
+/** Clé stable d'une entrée mixte (dossier / catégorie) pour les listes lazy. */
+internal fun topEntryKey(entry: TopEntry): String = when (entry) {
+    is TopEntry.Folder -> "g_${entry.group.id}"
+    is TopEntry.Single -> "c_${entry.category.id}"
+}
+
+/**
+ * Rendu commutable (LIST / GRID / DETAIL) des entrées de premier niveau — PARTAGÉ
+ * entre la racine des catégories et l'intérieur des dossiers :
+ * - GRID   : carrés « Galerie » (tuiles photo) ;
+ * - LIST   : lignes compactes (avatar + nom uniquement) ;
+ * - DETAIL : lignes larges avec compteurs (contacts / sous-éléments).
+ */
+@Composable
+internal fun TopEntriesBrowser(
+    entries: List<TopEntry>,
+    viewMode: JtrViewMode,
+    countOf: (String) -> Int,
+    onCategoryClick: (String) -> Unit,
+    onGroupClick: (Long) -> Unit,
+    onCategoryLongClick: (String) -> Unit,
+    onGroupLongClick: (Long) -> Unit
+) {
+    when (viewMode) {
+        JtrViewMode.GRID -> LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(entries, key = { topEntryKey(it) }) { entry ->
+                when (entry) {
+                    is TopEntry.Folder -> FolderGridTile(
+                        group = entry.group,
+                        memberCount = entry.members.size,
+                        subGroupCount = entry.subGroupCount,
+                        onClick = { onGroupClick(entry.group.id) },
+                        onLongClick = { onGroupLongClick(entry.group.id) })
+                    is TopEntry.Single -> CategoryGridTile(
+                        entry.category, countOf(entry.category.id),
+                        onClick = { onCategoryClick(entry.category.id) },
+                        onLongClick = { onCategoryLongClick(entry.category.id) })
+                }
+            }
+        }
+
+        JtrViewMode.DETAIL -> LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(entries, key = { topEntryKey(it) }) { entry ->
+                when (entry) {
+                    is TopEntry.Folder -> FolderListRow(
+                        group = entry.group,
+                        memberCount = entry.members.size,
+                        subGroupCount = entry.subGroupCount,
+                        onClick = { onGroupClick(entry.group.id) },
+                        onLongClick = { onGroupLongClick(entry.group.id) })
+                    is TopEntry.Single -> CategoryListRow(
+                        entry.category, countOf(entry.category.id),
+                        onClick = { onCategoryClick(entry.category.id) },
+                        onLongClick = { onCategoryLongClick(entry.category.id) })
+                }
+            }
+        }
+
+        JtrViewMode.LIST -> LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            items(entries, key = { topEntryKey(it) }) { entry ->
+                when (entry) {
+                    is TopEntry.Folder -> EntryCompactRow(
+                        isFolder = true,
+                        name = entry.group.name,
+                        isFavorite = entry.group.isFavorite,
+                        imagePath = entry.group.imagePath,
+                        accent = MaterialTheme.colorScheme.primaryContainer,
+                        onClick = { onGroupClick(entry.group.id) },
+                        onLongClick = { onGroupLongClick(entry.group.id) })
+                    is TopEntry.Single -> {
+                        val accent = remember(entry.category.color) {
+                            try { Color(android.graphics.Color.parseColor(entry.category.color)) }
+                            catch (e: Exception) { Color(0xFF2E86C1) }
+                        }
+                        EntryCompactRow(
+                            isFolder = false,
+                            name = entry.category.name,
+                            isFavorite = entry.category.isFavorite,
+                            imagePath = entry.category.imagePath,
+                            accent = accent,
+                            onClick = { onCategoryClick(entry.category.id) },
+                            onLongClick = { onCategoryLongClick(entry.category.id) })
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Mode LIST : ligne compacte d'une entrée (avatar + nom uniquement). */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun EntryCompactRow(
+    isFolder: Boolean,
+    name: String,
+    isFavorite: Boolean,
+    imagePath: String?,
+    accent: Color,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(if (isFolder) RoundedCornerShape(10.dp) else CircleShape)
+                    .background(accent),
+                contentAlignment = Alignment.Center
+            ) {
+                if (imagePath != null) {
+                    AsyncImage(model = imagePath, contentDescription = null,
+                        modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                } else {
+                    Icon(Icons.Default.Folder, contentDescription = null,
+                        tint = if (isFolder) MaterialTheme.colorScheme.onPrimaryContainer
+                        else Color.White,
+                        modifier = Modifier.size(20.dp))
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            if (isFavorite) {
+                Icon(Icons.Default.Star, contentDescription = null,
+                    tint = Color(0xFFFFD600), modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Mode sélection « Samsung Galerie » : footer contextuel, liste réordonnable, dialogue
 // ─────────────────────────────────────────────────────────────────────────────
@@ -805,7 +943,9 @@ internal fun SelectionFooter(
     canChangeImage: Boolean,
     onChangeImage: () -> Unit,
     canMoveOut: Boolean = false,
-    onMoveOut: (() -> Unit)? = null
+    onMoveOut: (() -> Unit)? = null,
+    canShare: Boolean = false,
+    onShare: () -> Unit = {}
 ) {
     var folderMenu by remember { mutableStateOf(false) }
     var overflowMenu by remember { mutableStateOf(false) }
@@ -848,6 +988,11 @@ internal fun SelectionFooter(
                 }
             }
         }
+        // Partager (texte / image / PDF) la sélection.
+        Box(Modifier.weight(1f).fillMaxHeight()) {
+            FooterActionColumn(Icons.Default.Share, stringResource(R.string.share_action),
+                canShare, onShare)
+        }
         // Supprimer — rouge vif d'alerte (action destructive sur la sélection).
         Box(Modifier.weight(1f).fillMaxHeight()) {
             FooterActionColumn(Icons.Default.Delete, stringResource(R.string.common_delete),
@@ -874,9 +1019,9 @@ internal fun SelectionFooter(
     }
 }
 
-/** Colonne d'action du footer (icône + libellé), remplissant son emplacement. */
+/** Colonne d'action de footer contextuel (icône + libellé) — partagée avec l'Accueil. */
 @Composable
-private fun FooterActionColumn(
+internal fun FooterActionColumn(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     enabled: Boolean,
@@ -1095,7 +1240,7 @@ internal fun ReorderableTopGrid(
         val c = gridCoords ?: return Offset(localOffset.x.toFloat(), localOffset.y.toFloat())
         return c.localToWindow(Offset(localOffset.x.toFloat(), localOffset.y.toFloat()))
     }
-    // Trouve la tuile (≠ index `from`) dont la BBOX GLOBALE à 100% contient le doigt.
+    // Trouve la tuile (≠ index `from`) dont la BBOX GLOBALE contient le doigt.
     fun targetUnderFinger(from: Int) =
         gridState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
             if (info.index == from || info.index !in data.indices) return@firstOrNull false
@@ -1103,6 +1248,16 @@ internal fun ReorderableTopGrid(
             pointerWin.x >= tl.x && pointerWin.x <= tl.x + info.size.width &&
                 pointerWin.y >= tl.y && pointerWin.y <= tl.y + info.size.height
         }
+    // Le doigt est-il dans la zone CENTRALE (50 % des deux axes) de la tuile ?
+    // → intention de fusion/insertion ; sur les bords → réordonnancement (les
+    // tuiles adjacentes se décalent en temps réel via animateItem()).
+    fun inMergeZone(info: androidx.compose.foundation.lazy.grid.LazyGridItemInfo): Boolean {
+        val tl = itemWindowTopLeft(info.offset)
+        val w = info.size.width.toFloat()
+        val h = info.size.height.toFloat()
+        return pointerWin.x >= tl.x + w * 0.25f && pointerWin.x <= tl.x + w * 0.75f &&
+            pointerWin.y >= tl.y + h * 0.25f && pointerWin.y <= tl.y + h * 0.75f
+    }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -1143,9 +1298,10 @@ internal fun ReorderableTopGrid(
                         pointerWin = coords.localToWindow(change.position)
                         val target = targetUnderFinger(from)
                         val draggedIsSingle = data[from] is TopEntry.Single
-                        // HITBOX 100% : dès que le doigt entre dans la bbox GLOBALE d'une
-                        // autre tuile → la cible s'allume immédiatement (aucune zone interne).
-                        if (enableMerge && draggedIsSingle && target != null) {
+                        // ZONE CENTRALE (50 %) : intention de fusion/insertion. Sur les
+                        // BORDS : réordonnancement physique — les tuiles adjacentes se
+                        // décalent visuellement en temps réel (animateItem).
+                        if (enableMerge && draggedIsSingle && target != null && inMergeZone(target)) {
                             mergeTargetKey = keyOf(data[target.index])
                             Log.d("JTR_DRAG", "onDrag finger(win)=(${pointerWin.x},${pointerWin.y}) hover=${keyOf(data[target.index])} idx=${target.index} mergeTarget=$mergeTargetKey")
                         } else {
@@ -1172,10 +1328,11 @@ internal fun ReorderableTopGrid(
                                 val dragged = from?.let { data.getOrNull(it) } as? TopEntry.Single
                                 var action: DropAction? = null
                                 if (enableMerge && from != null && dragged != null) {
-                                    // Cible figée durant le glissement, sinon recalcul GLOBAL.
-                                    var te: TopEntry? = mergeTargetKey?.let { key ->
+                                    // SEULE la cible figée pendant le survol (zone centrale)
+                                    // déclenche une fusion : un drop sur les bords reste un
+                                    // réordonnancement — pas de fusion accidentelle.
+                                    val te: TopEntry? = mergeTargetKey?.let { key ->
                                         data.firstOrNull { keyOf(it) == key } }
-                                    if (te == null) te = targetUnderFinger(from)?.let { data[it.index] }
                                     when (val entry = te) {
                                         is TopEntry.Single -> if (entry.category.id != dragged.category.id) {
                                             Log.d("JTR_DRAG", "onDragEnd ACTION=MERGE ${dragged.category.id} + ${entry.category.id}")
@@ -1251,6 +1408,301 @@ internal fun ReorderableTopGrid(
                         modifier = mod
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * LISTE réordonnable (drag & drop vertical) du mode sélection : quand le mode Liste
+ * est actif, le clic long NE bascule PLUS en grille — l'affichage reste une liste.
+ *
+ * Mêmes règles que [ReorderableTopGrid] (copie de travail `data`, action de Drop
+ * différée anti-crash, persistance via [TopOrderRef]), adaptées à l'axe vertical :
+ * une catégorie glissée sur le CŒUR d'une autre ligne (bande centrale 50 %) propose
+ * la fusion / l'insertion dans le dossier ; sur les bords, elle se réordonne.
+ */
+@Composable
+internal fun ReorderableTopList(
+    entries: List<TopEntry>,
+    isCategorySelected: (String) -> Boolean,
+    isGroupSelected: (Long) -> Boolean,
+    countOf: (String) -> Int,
+    onToggleCategory: (String) -> Unit,
+    onToggleGroup: (Long) -> Unit,
+    onPersistOrder: (List<TopOrderRef>) -> Unit,
+    onMergeRequest: (List<String>) -> Unit,
+    onMoveToFolder: (String, Long) -> Unit,
+    enableMerge: Boolean = true
+) {
+    val listState = rememberLazyListState()
+    val data = remember { mutableStateListOf<TopEntry>() }
+    var draggingIndex by remember { mutableStateOf<Int?>(null) }
+    var initialOffsetY by remember { mutableIntStateOf(0) }
+    var deltaY by remember { mutableFloatStateOf(0f) }
+    // Ordonnée du doigt en coordonnées GLOBALES (Window) — base de la détection.
+    var pointerWinY by remember { mutableFloatStateOf(0f) }
+    var listCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var mergeTargetKey by remember { mutableStateOf<String?>(null) }
+    // Action de Drop différée : assignée DANS le geste, traitée HORS du callback
+    // tactile (anti-crash InputDispatcher — voir ReorderableTopGrid).
+    var pendingDrop by remember { mutableStateOf<DropAction?>(null) }
+
+    LaunchedEffect(entries) {
+        if (draggingIndex == null) { data.clear(); data.addAll(entries) }
+    }
+    LaunchedEffect(pendingDrop) {
+        when (val action = pendingDrop) {
+            is DropAction.Merge -> onMergeRequest(action.ids)
+            is DropAction.Insert -> onMoveToFolder(action.categoryId, action.groupId)
+            is DropAction.Reorder -> onPersistOrder(action.refs)
+            null -> {}
+        }
+        if (pendingDrop != null) pendingDrop = null
+    }
+
+    fun keyOf(e: TopEntry) = when (e) {
+        is TopEntry.Folder -> "g_${e.group.id}"
+        is TopEntry.Single -> "c_${e.category.id}"
+    }
+    fun refs(): List<TopOrderRef> = data.map {
+        when (it) {
+            is TopEntry.Folder -> TopOrderRef.Group(it.group.id)
+            is TopEntry.Single -> TopOrderRef.Cat(it.category.id)
+        }
+    }
+    fun itemWindowTop(localTop: Int): Float {
+        val c = listCoords ?: return localTop.toFloat()
+        return c.localToWindow(Offset(0f, localTop.toFloat())).y
+    }
+    fun draggedTranslationY(): Float {
+        val idx = draggingIndex ?: return 0f
+        val current = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == idx }
+        val off = current?.offset ?: 0
+        return (initialOffsetY + deltaY) - off
+    }
+    // Ligne (≠ index `from`) dont la bande verticale GLOBALE contient le doigt.
+    fun targetUnderFinger(from: Int) =
+        listState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
+            if (info.index == from || info.index !in data.indices) return@firstOrNull false
+            val top = itemWindowTop(info.offset)
+            pointerWinY >= top && pointerWinY <= top + info.size
+        }
+    // Bande CENTRALE (50 %) de la ligne survolée → intention de fusion/insertion ;
+    // bords haut/bas → intention de réordonnancement.
+    fun inMergeBand(info: androidx.compose.foundation.lazy.LazyListItemInfo): Boolean {
+        val top = itemWindowTop(info.offset)
+        return pointerWinY >= top + info.size * 0.25f && pointerWinY <= top + info.size * 0.75f
+    }
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { listCoords = it }
+            .pointerInput(Unit) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { offset ->
+                        val coords = listCoords
+                        if (coords == null || !coords.isAttached)
+                            return@detectDragGesturesAfterLongPress
+                        pointerWinY = coords.localToWindow(offset).y
+                        val hit = listState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
+                            val top = itemWindowTop(info.offset)
+                            pointerWinY >= top && pointerWinY <= top + info.size
+                        }
+                        if (hit != null) {
+                            draggingIndex = hit.index
+                            initialOffsetY = hit.offset
+                            deltaY = 0f
+                            mergeTargetKey = null
+                        }
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        val from = draggingIndex ?: return@detectDragGesturesAfterLongPress
+                        val coords = listCoords
+                        if (coords == null || !coords.isAttached)
+                            return@detectDragGesturesAfterLongPress
+                        deltaY += dragAmount.y
+                        pointerWinY = coords.localToWindow(change.position).y
+                        val target = targetUnderFinger(from)
+                        val draggedIsSingle = data[from] is TopEntry.Single
+                        if (enableMerge && draggedIsSingle && target != null && inMergeBand(target)) {
+                            mergeTargetKey = keyOf(data[target.index])
+                        } else {
+                            mergeTargetKey = null
+                            if (target != null) {
+                                data.add(target.index, data.removeAt(from))
+                                draggingIndex = target.index
+                            }
+                        }
+                    },
+                    onDragEnd = {
+                        // ANTI-CRASH : aucun dialogue/Room ici — voir ReorderableTopGrid.
+                        // Seule la cible FIGÉE pendant le survol (bande centrale) déclenche
+                        // une fusion ; un drop sur les bords reste un réordonnancement.
+                        try {
+                            val coords = listCoords
+                            if (coords != null && coords.isAttached) {
+                                val from = draggingIndex
+                                val dragged = from?.let { data.getOrNull(it) } as? TopEntry.Single
+                                var action: DropAction? = null
+                                if (enableMerge && dragged != null) {
+                                    val te = mergeTargetKey?.let { key ->
+                                        data.firstOrNull { keyOf(it) == key }
+                                    }
+                                    when (te) {
+                                        is TopEntry.Single -> if (te.category.id != dragged.category.id) {
+                                            action = DropAction.Merge(
+                                                listOf(dragged.category.id, te.category.id))
+                                        }
+                                        is TopEntry.Folder ->
+                                            action = DropAction.Insert(dragged.category.id, te.group.id)
+                                        else -> {}
+                                    }
+                                }
+                                if (action == null) action = DropAction.Reorder(refs())
+                                pendingDrop = action
+                            }
+                        } catch (e: Exception) {
+                            Log.e("JTR_ERROR", "Crash évité dans onDragEnd (liste)", e)
+                        } finally {
+                            draggingIndex = null
+                            mergeTargetKey = null
+                        }
+                    },
+                    onDragCancel = { draggingIndex = null; mergeTargetKey = null }
+                )
+            },
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        itemsIndexed(data, key = { _, e -> keyOf(e) }) { index, entry ->
+            val isDragged = index == draggingIndex
+            val mod = if (isDragged) {
+                Modifier.zIndex(1f).graphicsLayer { translationY = draggedTranslationY() }
+            } else {
+                Modifier.animateItem()
+            }
+            val mergeHighlight = mergeTargetKey == keyOf(entry)
+            when (entry) {
+                is TopEntry.Folder -> TopSelectionRow(
+                    isFolder = true,
+                    name = entry.group.name,
+                    isFavorite = entry.group.isFavorite,
+                    subtitle = stringResource(R.string.categories_group_counter,
+                        entry.members.size, entry.subGroupCount),
+                    imagePath = entry.group.imagePath,
+                    accent = MaterialTheme.colorScheme.primaryContainer,
+                    selected = isGroupSelected(entry.group.id),
+                    mergeHighlight = mergeHighlight,
+                    onClick = { onToggleGroup(entry.group.id) },
+                    modifier = mod
+                )
+                is TopEntry.Single -> {
+                    val accent = remember(entry.category.color) {
+                        try { Color(android.graphics.Color.parseColor(entry.category.color)) }
+                        catch (e: Exception) { Color(0xFF2E86C1) }
+                    }
+                    TopSelectionRow(
+                        isFolder = false,
+                        name = entry.category.name,
+                        isFavorite = entry.category.isFavorite,
+                        subtitle = stringResource(R.string.categories_person_count,
+                            countOf(entry.category.id)),
+                        imagePath = entry.category.imagePath,
+                        accent = accent,
+                        selected = isCategorySelected(entry.category.id),
+                        mergeHighlight = mergeHighlight,
+                        onClick = { onToggleCategory(entry.category.id) },
+                        modifier = mod
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Ligne du mode sélection (dossier ou catégorie) : case à cocher + avatar + nom. */
+@Composable
+private fun TopSelectionRow(
+    isFolder: Boolean,
+    name: String,
+    isFavorite: Boolean,
+    subtitle: String?,
+    imagePath: String?,
+    accent: Color,
+    selected: Boolean,
+    mergeHighlight: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .then(
+                if (mergeHighlight) Modifier.border(
+                    width = 2.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(12.dp))
+                else Modifier
+            )
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer
+            else MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp, end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                if (selected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(if (isFolder) RoundedCornerShape(12.dp) else CircleShape)
+                    .background(accent),
+                contentAlignment = Alignment.Center
+            ) {
+                if (imagePath != null) {
+                    AsyncImage(model = imagePath, contentDescription = null,
+                        modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                } else {
+                    Icon(Icons.Default.Folder, contentDescription = null,
+                        tint = if (isFolder) MaterialTheme.colorScheme.onPrimaryContainer
+                        else Color.White,
+                        modifier = Modifier.size(24.dp))
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(name, style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                if (subtitle != null) {
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                }
+            }
+            if (mergeHighlight) {
+                Icon(Icons.Default.CreateNewFolder, contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(end = 8.dp).size(22.dp))
+            }
+            if (isFavorite) {
+                Icon(Icons.Default.Star, contentDescription = null,
+                    tint = Color(0xFFFFD600), modifier = Modifier.size(20.dp))
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.jtr.app.ui.category
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -8,8 +9,11 @@ import com.jtr.app.data.repository.CategoryRepository
 import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.ui.components.JtrViewMode
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -26,6 +30,37 @@ class CategoryGroupDetailViewModel(
 
     private val repo = CategoryRepository(application.applicationContext)
     private val groupId: Long = savedStateHandle.get<Long>("groupId") ?: -1L
+    private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
+
+    // ── Recherche / tri / affichage (TopAppBar harmonisée) ─────────────────────
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    fun setSearchQuery(query: String) { _searchQuery.value = query }
+
+    /** Réinitialise la recherche (appelé quand l'écran quitte la composition). */
+    fun clearSearch() { _searchQuery.value = "" }
+
+    private val _sortOrder = MutableStateFlow(
+        runCatching { CategorySortOrder.valueOf(prefs.getString(SORT_PREF_KEY, null) ?: "") }
+            .getOrDefault(CategorySortOrder.CUSTOM)
+    )
+    val sortOrder: StateFlow<CategorySortOrder> = _sortOrder.asStateFlow()
+
+    fun setSortOrder(order: CategorySortOrder) {
+        _sortOrder.value = order
+        prefs.edit().putString(SORT_PREF_KEY, order.name).apply()
+    }
+
+    private val _viewMode = MutableStateFlow(
+        JtrViewMode.fromPref(prefs.getString(VIEW_PREF_KEY, null), JtrViewMode.GRID)
+    )
+    val viewMode: StateFlow<JtrViewMode> = _viewMode.asStateFlow()
+
+    fun setViewMode(mode: JtrViewMode) {
+        _viewMode.value = mode
+        prefs.edit().putString(VIEW_PREF_KEY, mode.name).apply()
+    }
 
     val group: StateFlow<CategoryGroup?> = repo.getGroups()
         .map { list -> list.firstOrNull { it.id == groupId } }
@@ -40,19 +75,24 @@ class CategoryGroupDetailViewModel(
         .map { list -> list.filter { it.parentGroupId == groupId } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** Contenu mixte du dossier : sous-groupes (folders) + sous-catégories (singles). */
+    /**
+     * Contenu mixte du dossier : sous-groupes (folders) + sous-catégories (singles),
+     * filtré par la recherche et trié selon le critère choisi (UDF complet).
+     */
     internal val topEntries: StateFlow<List<TopEntry>> = combine(
-        repo.getAllActive(), repo.getGroups()
-    ) { cats, grps ->
+        repo.getAllActive(), repo.getGroups(), _searchQuery, _sortOrder
+    ) { cats, grps, query, order ->
         val membersByGroup = cats.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
         val subByParent = grps.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
         val folders = grps.filter { it.parentGroupId == groupId }.map { sg ->
             TopEntry.Folder(sg, membersByGroup[sg.id] ?: emptyList(), subByParent[sg.id]?.size ?: 0)
         }
         val singles = cats.filter { it.parentGroupId == groupId }.map { TopEntry.Single(it) }
-        (folders + singles).sortedWith(
-            compareByDescending<TopEntry> { it.isFavorite }.thenBy { it.position }.thenBy { it.sortName }
-        )
+        val all = folders + singles
+        val filtered =
+            if (query.isBlank()) all
+            else all.filter { it.sortName.contains(query.trim().lowercase()) }
+        sortTopEntries(filtered, order)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val personCountByCategory: StateFlow<Map<String, Int>> = repo.getPersonCountsPerCategory()
@@ -185,5 +225,10 @@ class CategoryGroupDetailViewModel(
     /** Persiste l'ordre global mélangé (sous-groupes + catégories). */
     fun persistTopOrder(refs: List<TopOrderRef>) {
         viewModelScope.launch { repo.persistTopOrder(refs) }
+    }
+
+    companion object {
+        private const val SORT_PREF_KEY = "groups_sort_order"
+        private const val VIEW_PREF_KEY = "groups_view_mode"
     }
 }

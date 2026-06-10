@@ -37,8 +37,8 @@ import java.util.Locale
  * Ordre vertical (point 2 de la refonte) :
  *  1. Nom (champ unique épuré + sous-champs avancés repliables) ;
  *  2. Notes puis « Ce qu'il aime » (approche Note-First) ;
- *  3. section repliable « Ajouter d'autres informations » : Origine → Dates
- *     importantes → Ville & mini-carte → Téléphones → Emails → Relations.
+ *  3. section repliable « Ajouter d'autres informations » : Dates importantes →
+ *     Relations → Téléphones → Emails → Pro → Origine → Ville & mini-carte.
  *
  * Les groupes répétables sont pilotés par des listes [DynamicLine] hoistées dans le
  * ViewModel ; le repli vers Room a lieu au submit. Le champ « Nom » fusionne
@@ -159,22 +159,7 @@ fun ProfileFormFields(
                 // 5.1 Dates importantes (accordéon)
                 DateLinesSection(lines = dateLines, onLinesChange = onDateLinesChange)
 
-                // 5.2 Origine
-                var localOrigin by remember(origin) { mutableStateOf(origin) }
-                OutlinedTextField(
-                    value = localOrigin,
-                    onValueChange = { localOrigin = it; onOriginChange(it) },
-                    label = { Text(stringResource(R.string.person_origin_label)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    leadingIcon = { Icon(Icons.Default.Public, null) },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) })
-                )
-
-                // 5.3 Relations (accordéon + autocomplétion des contacts JTR)
+                // 5.2 Relations (accordéon + autocomplétion des contacts JTR)
                 TextLinesSection(
                     title = stringResource(R.string.section_relations),
                     leadingIcon = Icons.Default.Group,
@@ -187,7 +172,7 @@ fun ProfileFormFields(
                     suggestions = relationSuggestions
                 )
 
-                // 5.4 Téléphones (accordéon)
+                // 5.3 Téléphones (accordéon)
                 TextLinesSection(
                     title = stringResource(R.string.section_phones),
                     leadingIcon = Icons.Default.Phone,
@@ -199,7 +184,7 @@ fun ProfileFormFields(
                     onLinesChange = onPhoneLinesChange
                 )
 
-                // 5.5 Emails (accordéon + validation « @ »)
+                // 5.4 Emails (accordéon + validation « @ »)
                 val emailInvalidMsg = stringResource(R.string.person_email_invalid)
                 TextLinesSection(
                     title = stringResource(R.string.section_emails),
@@ -213,7 +198,7 @@ fun ProfileFormFields(
                     validator = { value -> if (isValidEmailValue(value)) null else emailInvalidMsg }
                 )
 
-                // 5.6 Informations professionnelles (accordéon, 0 dp si fermé)
+                // 5.5 Informations professionnelles (accordéon, 0 dp si fermé)
                 JobSection(
                     jobTitle = jobTitle,
                     onJobTitleChange = onJobTitleChange,
@@ -221,6 +206,21 @@ fun ProfileFormFields(
                     onDepartmentChange = onDepartmentChange,
                     company = company,
                     onCompanyChange = onCompanyChange
+                )
+
+                // 5.6 Origine — juste AU-DESSUS de la ville (miroir du mode lecture)
+                var localOrigin by remember(origin) { mutableStateOf(origin) }
+                OutlinedTextField(
+                    value = localOrigin,
+                    onValueChange = { localOrigin = it; onOriginChange(it) },
+                    label = { Text(stringResource(R.string.person_origin_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    leadingIcon = { Icon(Icons.Default.Public, null) },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) })
                 )
 
                 // 5.7 Ville & mini-carte (toute fin des blocs structurés)

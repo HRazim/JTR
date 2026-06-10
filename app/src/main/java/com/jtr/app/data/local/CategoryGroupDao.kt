@@ -14,6 +14,10 @@ interface CategoryGroupDao {
     @Query("SELECT COALESCE(MAX(position), -1) FROM category_groups")
     suspend fun maxPosition(): Int
 
+    /** Export intégral (sauvegarde .jtr). */
+    @Query("SELECT * FROM category_groups")
+    suspend fun getAllSync(): List<CategoryGroup>
+
     @Query("SELECT * FROM category_groups WHERE id = :id")
     suspend fun getById(id: Long): CategoryGroup?
 

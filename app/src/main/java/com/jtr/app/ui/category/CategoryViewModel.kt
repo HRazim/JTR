@@ -1,12 +1,16 @@
 package com.jtr.app.ui.category
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jtr.app.R
 import com.jtr.app.data.repository.CategoryRepository
 import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.ui.components.JtrSortOption
+import com.jtr.app.ui.components.JtrViewMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,12 +19,67 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/**
+ * Tri des entrées de premier niveau (catégories + dossiers). Les modèles ne portent
+ * pas de date de création : les critères sont le nom et l'ordre personnalisé
+ * (position issue du drag & drop) — favoris toujours épinglés en tête.
+ */
+enum class CategorySortOrder { CUSTOM, NAME_ASC, NAME_DESC }
+
+/** Options du menu harmonisé (section Tri) pour les CATÉGORIES / DOSSIERS. */
+internal fun categorySortOptions(
+    current: CategorySortOrder,
+    onSelect: (CategorySortOrder) -> Unit
+): List<JtrSortOption> = listOf(
+    CategorySortOrder.CUSTOM to R.string.sort_custom,
+    CategorySortOrder.NAME_ASC to R.string.sort_name_asc,
+    CategorySortOrder.NAME_DESC to R.string.sort_name_desc,
+).map { (order, labelRes) -> JtrSortOption(labelRes, order == current) { onSelect(order) } }
+
+/** Applique [order] à des entrées mixtes (dossiers + catégories indépendantes). */
+internal fun sortTopEntries(entries: List<TopEntry>, order: CategorySortOrder): List<TopEntry> {
+    val comparator = when (order) {
+        CategorySortOrder.CUSTOM ->
+            compareByDescending<TopEntry> { it.isFavorite }
+                .thenBy { it.position }.thenBy { it.sortName }
+        CategorySortOrder.NAME_ASC ->
+            compareByDescending<TopEntry> { it.isFavorite }.thenBy { it.sortName }
+        CategorySortOrder.NAME_DESC ->
+            compareByDescending<TopEntry> { it.isFavorite }.thenByDescending { it.sortName }
+    }
+    return entries.sortedWith(comparator)
+}
+
 class CategoryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repo = CategoryRepository(application.applicationContext)
+    private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    // Tri des entrées de premier niveau, persisté.
+    private val _sortOrder = MutableStateFlow(
+        runCatching { CategorySortOrder.valueOf(prefs.getString(SORT_PREF_KEY, null) ?: "") }
+            .getOrDefault(CategorySortOrder.CUSTOM)
+    )
+    val sortOrder: StateFlow<CategorySortOrder> = _sortOrder.asStateFlow()
+
+    fun setSortOrder(order: CategorySortOrder) {
+        _sortOrder.value = order
+        prefs.edit().putString(SORT_PREF_KEY, order.name).apply()
+    }
+
+    // Mode d'affichage (LIST / GRID / DETAIL), persisté.
+    private val _viewMode = MutableStateFlow(
+        JtrViewMode.fromPref(prefs.getString(VIEW_PREF_KEY, null), JtrViewMode.GRID)
+    )
+    val viewMode: StateFlow<JtrViewMode> = _viewMode.asStateFlow()
+
+    fun setViewMode(mode: JtrViewMode) {
+        _viewMode.value = mode
+        prefs.edit().putString(VIEW_PREF_KEY, mode.name).apply()
+    }
 
     // L'ordre vient du DAO : favoris d'abord (isFavorite DESC), puis position ASC,
     // puis nom. On NE re-trie PAS ici pour préserver le tri personnalisé / favoris.
@@ -41,6 +100,9 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun setSearchQuery(query: String) { _searchQuery.value = query }
+
+    /** Réinitialise la recherche (appelé quand l'écran quitte la composition). */
+    fun clearSearch() { _searchQuery.value = "" }
 
     fun addCategory(name: String, color: String) {
         viewModelScope.launch { repo.add(Category(name = name, color = color)) }
@@ -151,5 +213,10 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
                 repo.deleteGroupRow(gid)
             }
         }
+    }
+
+    companion object {
+        private const val SORT_PREF_KEY = "categories_sort_order"
+        private const val VIEW_PREF_KEY = "categories_view_mode"
     }
 }

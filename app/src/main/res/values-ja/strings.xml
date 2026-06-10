@@ -297,6 +297,7 @@
     <string name="sort_name_asc">名前 A→Z</string>
     <string name="sort_name_desc">名前 Z→A</string>
     <string name="sort_created_desc">新しい順</string>
+    <string name="sort_created_asc">古い順</string>
     <string name="sort_updated_desc">最近更新した順</string>
     <string name="categories_fav_action">お気に入り</string>
     <string name="categories_group_action">グループ化</string>
@@ -313,4 +314,42 @@
     <string name="categories_delete_group_text">グループ「%1$s」と、その中の %2$d 個のカテゴリを削除してもよろしいですか？</string>
     <string name="select_all">すべて選択</string>
     <string name="categories_selection_none">0 件選択中</string>
+    <!-- v5.0 — ホームの複数選択、直接移動、カテゴリ内からの追加 -->
+    <string name="select_all_count">すべて選択 (%1$d)</string>
+    <string name="action_move">移動</string>
+    <string name="move_pick_target_title">カテゴリを選択</string>
+    <string name="category_detail_add_existing">既存の連絡先を追加</string>
+    <string name="category_detail_create_new">新しい連絡先を作成</string>
+    <string name="category_detail_no_candidates">すべての連絡先は既にこのカテゴリに含まれています</string>
+    <!-- v5.1 — トップバー検索、表示モード、連絡先の選択 -->
+    <string name="action_search">検索</string>
+    <string name="view_mode_title">表示</string>
+    <string name="view_mode_list">リスト</string>
+    <string name="view_mode_grid">グリッド</string>
+    <string name="view_mode_detail">詳細</string>
+    <string name="sort_custom">カスタム順</string>
+    <string name="add_count">追加 (%1$d)</string>
+    <!-- v5.2 — コンテキスト共有、今後のイベント、バックアップと復元 -->
+    <string name="share_action">共有</string>
+    <string name="share_sheet_title">選択項目を共有</string>
+    <string name="share_as_text">テキスト</string>
+    <string name="share_as_image">画像 (PNG)</string>
+    <string name="share_as_pdf">ドキュメント (PDF)</string>
+    <string name="share_exporting">エクスポート中…</string>
+    <string name="share_failed">エクスポートに失敗しました</string>
+    <string name="share_more_count">+%1$d</string>
+    <string name="events_title">今後のイベント</string>
+    <string name="event_today">今日</string>
+    <string name="event_countdown">あと%1$d日</string>
+    <string name="backup_menu">バックアップと復元</string>
+    <string name="backup_dialog_text">すべてのデータを 1 つの .jtr ファイル（連絡先・カテゴリ・写真）にエクスポート、または以前のバックアップから復元します。</string>
+    <string name="backup_export">バックアップをエクスポート</string>
+    <string name="backup_import">バックアップを復元</string>
+    <string name="backup_working">処理中…</string>
+    <string name="backup_export_success">バックアップをエクスポートしました（%1$d 件）</string>
+    <string name="backup_import_success">バックアップを復元しました（%1$d 件）</string>
+    <string name="backup_failed">失敗しました — ファイルが無効またはアクセスできません</string>
+    <string name="backup_confirm_title">このバックアップを復元しますか？</string>
+    <string name="backup_confirm_text">データは現在のデータと統合され、同じ ID の項目は上書きされます。この操作は元に戻せません。</string>
+    <string name="backup_confirm_action">復元</string>
 </resources>

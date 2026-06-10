@@ -34,6 +34,7 @@ import com.jtr.app.domain.model.Person
 import com.jtr.app.ui.category.CategoriesScreen
 import com.jtr.app.ui.category.CategoryDetailScreen
 import com.jtr.app.ui.category.CategoryGroupDetailScreen
+import com.jtr.app.ui.category.SelectContactsScreen
 import com.jtr.app.ui.home.HomeScreen
 import com.jtr.app.ui.map.MapScreen
 import com.jtr.app.ui.person.*
@@ -51,6 +52,7 @@ object Routes {
     const val CATEGORIES = "categories"
     const val CATEGORY_DETAIL = "category_detail/{categoryId}"
     const val CATEGORY_GROUP_DETAIL = "category_group_detail/{groupId}"
+    const val SELECT_CONTACTS = "select_contacts/{categoryId}"
     const val SETTINGS = "settings"
     const val MAP_PICKER = "map_picker"
     const val TRASH = "trash"
@@ -58,6 +60,9 @@ object Routes {
     fun personDetail(personId: String) = "person_detail/$personId"
     fun categoryDetail(categoryId: String) = "category_detail/$categoryId"
     fun categoryGroupDetail(groupId: Long) = "category_group_detail/$groupId"
+
+    /** Sélecteur de contacts existants à associer à une catégorie (cinématique Accueil). */
+    fun selectContacts(categoryId: String) = "select_contacts/$categoryId"
 
     /** Navigation vers AddPersonScreen depuis une catégorie (contact pré-assigné). */
     fun addPersonInCategory(categoryId: String) = "add_person?categoryId=$categoryId"
@@ -90,15 +95,40 @@ fun JTRMainScaffold(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Mode sélection des catégories (« Samsung Galerie ») hoissé ici : il masque la
-    // BottomNavigationBar globale et laisse place au footer contextuel de l'écran.
+    // Modes sélection (« Samsung Galerie ») hoissés ici : ils masquent la
+    // BottomNavigationBar globale et laissent place au footer contextuel de l'écran.
     var categoriesSelectionMode by remember { mutableStateOf(false) }
+    var homeSelectionMode by remember { mutableStateOf(false) }
+    // Contacts en attente de déplacement (action « Déplacer » de l'Accueil) : la
+    // cible est choisie en touchant directement une catégorie dans l'onglet
+    // Catégories — aucun dialogue intermédiaire.
+    var pendingMovePersonIds by remember { mutableStateOf<List<String>?>(null) }
+    val scope = rememberCoroutineScope()
+
     LaunchedEffect(currentRoute) {
         if (currentRoute != Routes.CATEGORIES) categoriesSelectionMode = false
+        if (currentRoute != Routes.HOME) homeSelectionMode = false
+        // Le mode « choisir une cible » ne survit pas à une sortie de la section Catégories.
+        if (currentRoute !in listOf(Routes.CATEGORIES, Routes.CATEGORY_GROUP_DETAIL)) {
+            pendingMovePersonIds = null
+        }
+    }
+
+    // Assigne les contacts en attente à la catégorie touchée, puis OUVRE cette
+    // catégorie : l'utilisateur reste dans la cible et en sort par le bouton Retour.
+    fun assignPendingMoveTo(categoryId: String) {
+        val ids = pendingMovePersonIds ?: return
+        pendingMovePersonIds = null
+        scope.launch {
+            repository.assignCategory(ids, categoryId)
+            navController.navigate(Routes.categoryDetail(categoryId)) {
+                launchSingleTop = true
+            }
+        }
     }
 
     val showBottomBar = currentRoute in listOf(Routes.HOME, Routes.CATEGORIES, Routes.SETTINGS) &&
-        !categoriesSelectionMode
+        !categoriesSelectionMode && !homeSelectionMode
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -137,7 +167,17 @@ fun JTRMainScaffold(
             composable(Routes.HOME) {
                 HomeScreen(
                     onNavigateToAddPerson = { navController.navigate(Routes.addPerson()) },
-                    onNavigateToPersonDetail = { id -> navController.navigate(Routes.personDetail(id)) }
+                    onNavigateToPersonDetail = { id -> navController.navigate(Routes.personDetail(id)) },
+                    onSelectionModeChange = { homeSelectionMode = it },
+                    // « Déplacer » : bascule fluide vers l'onglet Catégories en mode cible.
+                    onMoveSelectionToCategory = { ids ->
+                        pendingMovePersonIds = ids
+                        navController.navigate(Routes.CATEGORIES) {
+                            popUpTo(Routes.HOME) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
                 )
             }
 
@@ -248,12 +288,17 @@ fun JTRMainScaffold(
             composable(Routes.CATEGORIES) {
                 CategoriesScreen(
                     onCategoryClick = { categoryId ->
-                        navController.navigate(Routes.categoryDetail(categoryId))
+                        // En mode cible, toucher une catégorie assigne les contacts en
+                        // attente ; sinon, navigation normale vers le détail.
+                        if (pendingMovePersonIds != null) assignPendingMoveTo(categoryId)
+                        else navController.navigate(Routes.categoryDetail(categoryId))
                     },
                     onGroupClick = { groupId ->
                         navController.navigate(Routes.categoryGroupDetail(groupId))
                     },
-                    onSelectionModeChange = { categoriesSelectionMode = it }
+                    onSelectionModeChange = { categoriesSelectionMode = it },
+                    isPickingMoveTarget = pendingMovePersonIds != null,
+                    onCancelMoveTarget = { pendingMovePersonIds = null }
                 )
             }
 
@@ -269,7 +314,10 @@ fun JTRMainScaffold(
                 CategoryGroupDetailScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onCategoryClick = { categoryId ->
-                        navController.navigate(Routes.categoryDetail(categoryId))
+                        // Le mode cible traverse les dossiers : toucher une catégorie
+                        // membre assigne les contacts en attente.
+                        if (pendingMovePersonIds != null) assignPendingMoveTo(categoryId)
+                        else navController.navigate(Routes.categoryDetail(categoryId))
                     },
                     onGroupClick = { subGroupId ->
                         navController.navigate(Routes.categoryGroupDetail(subGroupId))
@@ -287,10 +335,28 @@ fun JTRMainScaffold(
                     onNavigateToPersonDetail = { id ->
                         navController.navigate(Routes.personDetail(id))
                     },
-                    // FAB : navigue vers AddPersonScreen avec la catégorie pré-assignée
+                    // « + » : navigue vers AddPersonScreen avec la catégorie pré-assignée
                     onNavigateToAddPerson = {
                         navController.navigate(Routes.addPersonInCategory(categoryId))
+                    },
+                    // « Ajouter un contact existant » : cinématique type Accueil en mode
+                    // sélection (aucun dialogue), retour automatique après validation.
+                    onAddExistingContacts = {
+                        navController.navigate(Routes.selectContacts(categoryId))
                     }
+                )
+            }
+
+            composable(
+                route = Routes.SELECT_CONTACTS,
+                arguments = listOf(navArgument("categoryId") { type = NavType.StringType }),
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+            ) {
+                SelectContactsScreen(
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 
