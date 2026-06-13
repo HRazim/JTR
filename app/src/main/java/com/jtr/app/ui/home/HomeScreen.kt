@@ -27,6 +27,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.core.graphics.toColorInt
 import androidx.compose.ui.platform.LocalContext
@@ -42,7 +44,6 @@ import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
-import com.jtr.app.ui.backup.BackupDialog
 import com.jtr.app.ui.category.FooterActionColumn
 import com.jtr.app.ui.category.contactSortOptions
 import com.jtr.app.ui.components.JtrOverflowMenu
@@ -76,21 +77,25 @@ fun HomeScreen(
     // Mode recherche de la TopAppBar (état d'UI local ; la query vient du ViewModel).
     var searchActive by remember { mutableStateOf(false) }
     val context = LocalContext.current
-
-    // Module Sauvegarde & restauration (accessible depuis le menu 3 points).
-    var showBackupDialog by remember { mutableStateOf(false) }
-    if (showBackupDialog) {
-        BackupDialog(onDismiss = { showBackupDialog = false })
-    }
+    // Fermeture INSTANTANÉE du clavier avant de naviguer depuis un résultat de
+    // recherche : la transition vers la fiche ne reste plus saccadée par l'IME.
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     // Cible du partage contextuel : instantané des profils cochés au moment du clic.
     var shareTargets by remember { mutableStateOf<List<Person>?>(null) }
     shareTargets?.let { targets ->
+        // Capture PNG autorisée seulement quand les avatars Coil de l'aperçu
+        // sont tous résolus (v5.5) — jamais de placeholders dans l'export.
+        var previewImagesReady by remember(targets) { mutableStateOf(false) }
         ShareFormatSheet(
             onDismiss = { shareTargets = null },
             buildText = { ShareUtils.buildPersonsShareText(context, targets) },
             writePdf = { ShareUtils.writePersonsPdf(context, targets) },
-            preview = { PersonsSharePreview(targets) }
+            previewReady = previewImagesReady,
+            preview = {
+                PersonsSharePreview(targets) { ready -> previewImagesReady = ready }
+            }
         )
     }
 
@@ -169,20 +174,13 @@ fun HomeScreen(
                             Icon(Icons.Default.Add,
                                 contentDescription = stringResource(R.string.home_fab_add_person))
                         }
+                        // Sauvegarde & restauration : relocalisée dans Paramètres
+                        // → section Données (v5.5).
                         JtrOverflowMenu(
                             sortOptions = contactSortOptions(sortOrder) { viewModel.setSortOrder(it) },
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
-                        ) { dismiss ->
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.backup_menu)) },
-                                leadingIcon = {
-                                    Icon(Icons.Default.SettingsBackupRestore, null)
-                                },
-                                onClick = { dismiss(); showBackupDialog = true }
-                            )
-                        }
+                        )
                     }
                 )
             }
@@ -266,8 +264,14 @@ fun HomeScreen(
                     selectedIds = selectedIds,
                     isSelectionMode = isSelectionMode,
                     onClick = { person ->
-                        if (isSelectionMode) viewModel.toggleSelection(person.id)
-                        else onNavigateToPersonDetail(person.id)
+                        if (isSelectionMode) {
+                            viewModel.toggleSelection(person.id)
+                        } else {
+                            // Hide AVANT la navigation : pas de clavier résiduel.
+                            keyboardController?.hide()
+                            focusManager.clearFocus()
+                            onNavigateToPersonDetail(person.id)
+                        }
                     },
                     onLongClick = { viewModel.toggleSelection(it.id) },
                     onFavoriteClick = { viewModel.toggleFavorite(it) },

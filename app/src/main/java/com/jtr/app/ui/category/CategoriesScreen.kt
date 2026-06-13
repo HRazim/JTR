@@ -61,6 +61,7 @@ import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
+import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.components.rememberGalleryImagePicker
 import com.jtr.app.ui.share.CategoriesSharePreview
@@ -140,7 +141,7 @@ fun CategoriesScreen(
     var pendingGroupCropUri by remember { mutableStateOf<Uri?>(null) }
     val screenContext = LocalContext.current
     val screenScope = rememberCoroutineScope()
-    // Galerie native par ALBUMS (v5.3.4).
+    // Galerie IN-APP par ALBUMS (v5.5).
     val groupPhotoPicker = rememberGalleryImagePicker { uri -> pendingGroupCropUri = uri }
 
     // Reporte l'état de sélection au conteneur (masque la nav globale).
@@ -1240,38 +1241,38 @@ internal fun FolderGridTile(
     ) {
         // Compteur enrichi : sous-catégories + CUMUL des contacts du dossier.
         val counter = stringResource(R.string.categories_folder_counter, memberCount, personTotal)
+
+        // Disposition STRICTEMENT identique à CategoryGridTile (unification v5.5) :
+        // fond (photo de couverture sinon icône centrée) + calque de protection +
+        // identité incrustée en bas + étoile favori en haut à droite. Seule l'icône
+        // « dossier » distingue un groupe d'une catégorie.
         if (group.imagePath != null) {
             AsyncImage(model = group.imagePath, contentDescription = group.name,
                 modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            // Calque de protection proportionnel (mi-tuile → bas), mis en cache.
-            Box(modifier = Modifier.fillMaxSize().bottomScrim())
-            Column(modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(12.dp)) {
-                Text(group.name, style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                Text(counter,
-                    style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f),
-                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-            }
         } else {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(Icons.Default.Folder, contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(52.dp))
-                Spacer(Modifier.height(6.dp))
-                Text(group.name, style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer, maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                Text(counter,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-            }
+            Icon(Icons.Default.Folder, contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+                modifier = Modifier.size(56.dp).align(Alignment.Center))
+        }
+
+        // Calque de protection proportionnel (mi-tuile → bas), mis en cache.
+        Box(modifier = Modifier.fillMaxSize().bottomScrim())
+
+        // Étoile « favori » en haut à DROITE (parité avec CategoryGridTile).
+        if (group.isFavorite) {
+            Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFD600),
+                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(22.dp))
+        }
+
+        // Identité incrustée en bas : nom + compteur, blanc sur le calque (lisible
+        // sur toute couverture comme sur le fond primaryContainer assombri).
+        Column(modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(12.dp)) {
+            Text(group.name, style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text(counter,
+                style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f),
+                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
 
         // Sous-groupes éventuels : pastille discrète en haut à gauche (icône + nombre,
@@ -1344,6 +1345,12 @@ private fun FolderListRow(
                 Text(stringResource(R.string.categories_group_counter, memberCount, subGroupCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
+            // Étoile « favori » à DROITE (parité avec CategoryListRow).
+            if (group.isFavorite) {
+                Icon(Icons.Default.Star, contentDescription = null,
+                    tint = Color(0xFFFFD600),
+                    modifier = Modifier.padding(end = 12.dp).size(20.dp))
             }
         }
     }
@@ -1449,6 +1456,25 @@ internal fun ReorderableTopGrid(
         return pointerWin.x >= tl.x + w * 0.25f && pointerWin.x <= tl.x + w * 0.75f &&
             pointerWin.y >= tl.y + h * 0.25f && pointerWin.y <= tl.y + h * 0.75f
     }
+    // CORRECTIF v5.5 (superposition) : le réordonnancement n'est déclenché qu'une
+    // fois le doigt passé AU-DELÀ du centre de la tuile survolée, du côté opposé
+    // à l'emplacement de la tuile déplacée (projection vectorielle en coordonnées
+    // Window). Avant, l'échange partait dès le bord proche (25 %) : la cible
+    // « fuyait » par swap avant que le doigt n'atteigne la zone centrale, rendant
+    // la fusion inaccessible (poursuite infinie). Bord proche neutre → fusion
+    // atteignable ; traversée complète → réordonnancement, comme un springboard.
+    fun fingerPastTargetCenter(from: Int, info: androidx.compose.foundation.lazy.grid.LazyGridItemInfo): Boolean {
+        val fromInfo = gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == from }
+            ?: return true
+        val fromTl = itemWindowTopLeft(fromInfo.offset)
+        val fromCenter = Offset(
+            fromTl.x + fromInfo.size.width / 2f, fromTl.y + fromInfo.size.height / 2f)
+        val tl = itemWindowTopLeft(info.offset)
+        val center = Offset(tl.x + info.size.width / 2f, tl.y + info.size.height / 2f)
+        val dirX = center.x - fromCenter.x
+        val dirY = center.y - fromCenter.y
+        return (pointerWin.x - center.x) * dirX + (pointerWin.y - center.y) * dirY >= 0f
+    }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -1488,16 +1514,17 @@ internal fun ReorderableTopGrid(
                         // tuile en cours de déplacement.
                         pointerWin = coords.localToWindow(change.position)
                         val target = targetUnderFinger(from)
-                        val draggedIsSingle = data[from] is TopEntry.Single
-                        // ZONE CENTRALE (50 %) : intention de fusion/insertion. Sur les
-                        // BORDS : réordonnancement physique — les tuiles adjacentes se
-                        // décalent visuellement en temps réel (animateItem).
+                        val draggedIsSingle = data.getOrNull(from) is TopEntry.Single
+                        // ZONE CENTRALE (50 %) : intention de fusion/insertion. Le
+                        // réordonnancement n'a lieu qu'APRÈS traversée du centre de la
+                        // cible (fingerPastTargetCenter) — le bord proche est neutre,
+                        // la cible ne « fuit » plus avant la fusion (v5.5).
                         if (enableMerge && draggedIsSingle && target != null && inMergeZone(target)) {
                             mergeTargetKey = keyOf(data[target.index])
                             Log.d("JTR_DRAG", "onDrag finger(win)=(${pointerWin.x},${pointerWin.y}) hover=${keyOf(data[target.index])} idx=${target.index} mergeTarget=$mergeTargetKey")
                         } else {
                             mergeTargetKey = null
-                            if (target != null) {
+                            if (target != null && fingerPastTargetCenter(from, target)) {
                                 data.add(target.index, data.removeAt(from))
                                 draggingIndex = target.index
                             }
@@ -1687,6 +1714,18 @@ internal fun ReorderableTopList(
         val top = itemWindowTop(info.offset)
         return pointerWinY >= top + info.size * 0.25f && pointerWinY <= top + info.size * 0.75f
     }
+    // CORRECTIF v5.5 (superposition) — pendant vertical de la règle de la grille :
+    // réordonnancement uniquement quand le doigt a TRAVERSÉ le centre de la ligne
+    // survolée (côté opposé à la ligne déplacée). Le bord proche reste neutre, la
+    // bande centrale de fusion est donc toujours atteignable.
+    fun fingerPastTargetCenter(from: Int, info: androidx.compose.foundation.lazy.LazyListItemInfo): Boolean {
+        val fromInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == from }
+            ?: return true
+        val fromCenter = itemWindowTop(fromInfo.offset) + fromInfo.size / 2f
+        val center = itemWindowTop(info.offset) + info.size / 2f
+        val dir = center - fromCenter
+        return (pointerWinY - center) * dir >= 0f
+    }
 
     LazyColumn(
         state = listState,
@@ -1720,12 +1759,13 @@ internal fun ReorderableTopList(
                         deltaY += dragAmount.y
                         pointerWinY = coords.localToWindow(change.position).y
                         val target = targetUnderFinger(from)
-                        val draggedIsSingle = data[from] is TopEntry.Single
+                        val draggedIsSingle = data.getOrNull(from) is TopEntry.Single
                         if (enableMerge && draggedIsSingle && target != null && inMergeBand(target)) {
                             mergeTargetKey = keyOf(data[target.index])
                         } else {
                             mergeTargetKey = null
-                            if (target != null) {
+                            // Réordonnancement seulement après traversée du centre (v5.5).
+                            if (target != null && fingerPastTargetCenter(from, target)) {
                                 data.add(target.index, data.removeAt(from))
                                 draggingIndex = target.index
                             }
@@ -1853,13 +1893,7 @@ private fun TopSelectionRow(
             modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                if (selected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                contentDescription = null,
-                tint = if (selected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp)
-            )
+            JtrSelectionCheck(selected = selected)
             Spacer(Modifier.width(8.dp))
             Box(
                 modifier = Modifier
@@ -1961,15 +1995,12 @@ internal fun TopSelectionTile(
             }
         }
 
-        // Case à cocher en surimpression (haut-gauche).
-        Box(modifier = Modifier.align(Alignment.TopStart).padding(6.dp)) {
-            Icon(
-                if (selected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                contentDescription = null,
-                tint = if (selected) MaterialTheme.colorScheme.primary else Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
+        // Case à cocher en surimpression (haut-gauche) — disque protecteur
+        // contrastant : lisible sur image claire comme sur accent gris (v5.5).
+        JtrSelectionCheck(
+            selected = selected,
+            modifier = Modifier.align(Alignment.TopStart).padding(6.dp)
+        )
 
         if (isFavorite) {
             Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFD600),
@@ -2083,7 +2114,7 @@ private fun CategoryFormDialog(
     var imagePath by remember { mutableStateOf(initialImagePath) }
     var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Galerie native par ALBUMS (v5.3.4).
+    // Galerie IN-APP par ALBUMS (v5.5).
     val photoPicker = rememberGalleryImagePicker { uri -> pendingCropUri = uri }
 
     pendingCropUri?.let { uri ->

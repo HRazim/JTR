@@ -376,4 +376,16 @@
     <string name="welcome_select_button">Elegir los contactos a importar</string>
     <string name="contact_selection_title">Elegir contactos</string>
     <string name="import_selected_count">Importar los %1$d contactos seleccionados</string>
+    <!-- v5.5 — galería integrada (estilo Instagram) -->
+    <string name="gallery_picker_title">Seleccionar una foto</string>
+    <string name="gallery_album_recents">Recientes</string>
+    <string name="gallery_album_dropdown_cd">Elegir un álbum</string>
+    <string name="gallery_photo_count">%1$d fotos</string>
+    <string name="gallery_empty">No hay fotos en este álbum</string>
+    <string name="gallery_permission_rationale">JTR necesita acceder a tus fotos para que puedas elegir una imagen sin salir de la aplicación.</string>
+    <string name="gallery_permission_grant">Permitir acceso</string>
+    <string name="gallery_permission_settings">Abrir ajustes</string>
+    <!-- v5.5 — copia de seguridad reubicada en Ajustes > Datos -->
+    <string name="settings_backup_subtitle">Exporta o restaura tus datos (archivo .jtr)</string>
+    <string name="share_preview_loading">Cargando imágenes…</string>
 </resources>

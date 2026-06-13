@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jtr.app.R
 import kotlinx.coroutines.launch
+import com.jtr.app.ui.backup.BackupDialog
 import com.jtr.app.ui.theme.ThemePreset
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +54,9 @@ fun SettingsScreen(
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
     var showPrivacySheet by remember { mutableStateOf(false) }
+    // Sauvegarde & restauration .jtr — relocalisée ici depuis le menu de
+    // l'Accueil (v5.5) ; le BackupViewModel est résolu par BackupDialog.
+    var showBackupDialog by remember { mutableStateOf(false) }
     val notificationsEnabled by settingsViewModel.notificationsEnabled.collectAsStateWithLifecycle()
     val proximityEnabled by settingsViewModel.proximityEnabled.collectAsStateWithLifecycle()
     val birthdayEnabled by settingsViewModel.birthdayEnabled.collectAsStateWithLifecycle()
@@ -210,6 +214,31 @@ fun SettingsScreen(
             ListItem(
                 leadingContent = {
                     Icon(
+                        Icons.Default.SettingsBackupRestore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                headlineContent = { Text(stringResource(R.string.backup_menu)) },
+                supportingContent = {
+                    Text(
+                        stringResource(R.string.settings_backup_subtitle),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                modifier = Modifier.clickable { showBackupDialog = true }
+            )
+
+            ListItem(
+                leadingContent = {
+                    Icon(
                         Icons.Default.Delete,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error
@@ -273,6 +302,10 @@ fun SettingsScreen(
 
     if (showPrivacySheet) {
         PrivacyPolicySheet(isDarkMode = isDarkMode, onDismiss = { showPrivacySheet = false })
+    }
+
+    if (showBackupDialog) {
+        BackupDialog(onDismiss = { showBackupDialog = false })
     }
 
     // Dialogue de rationale pour la localisation en arrière-plan : sur Android

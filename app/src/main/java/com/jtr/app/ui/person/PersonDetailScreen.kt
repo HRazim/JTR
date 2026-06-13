@@ -140,7 +140,7 @@ fun PersonDetailScreen(
         onMapResultConsumed()
     }
 
-    // Galerie native par ALBUMS (v5.3.4) — état du formulaire préservé au retour.
+    // Galerie IN-APP par ALBUMS (v5.5) — l'utilisateur ne quitte pas l'application.
     val photoPicker = rememberGalleryImagePicker { uri -> pendingCropUri = uri }
 
     val context = LocalContext.current
@@ -353,10 +353,12 @@ fun PersonDetailScreen(
             }
 
             Box(modifier = Modifier.size(96.dp)) {
-                // Affiche la photo en attente (sélectionnée, non encore sauvegardée)
-                // sinon la photo persistée dans Room
-                val photoSrc = vmPendingPhotoUri?.path
-                    ?: if (isEditing) vmPhotoUri else person.photoUri
+                // Source résolue dans un ordre STABLE, indépendant de isEditing :
+                // 1) photo en attente (sélectionnée, pas encore persistée),
+                // 2) photo chargée dans le ViewModel (snapshot fixe du profil),
+                // 3) photo Room « live ». L'étape 2 garantit que la sauvegarde ne
+                // laisse jamais l'avatar vide le temps que le Flow Room ré-émette.
+                val photoSrc = vmPendingPhotoUri?.path ?: vmPhotoUri ?: person.photoUri
 
                 Box(
                     modifier = Modifier
@@ -382,6 +384,15 @@ fun PersonDetailScreen(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
+                    // Avatar par défaut TOUJOURS rendu en couche de fond (initiales) :
+                    // aucune recomposition / sauvegarde ne peut laisser un disque vide
+                    // le temps qu'une photo (re)charge — la photo, si présente, recouvre.
+                    Text(
+                        text = person.initials,
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
                     if (photoSrc != null) {
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
@@ -389,13 +400,6 @@ fun PersonDetailScreen(
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Text(
-                            text = person.initials,
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
                         )
                     }
                 }

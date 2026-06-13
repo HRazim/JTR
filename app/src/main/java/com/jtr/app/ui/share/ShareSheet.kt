@@ -25,7 +25,9 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -43,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImagePainter
 import com.jtr.app.R
 import com.jtr.app.domain.model.Person
 import com.jtr.app.ui.home.PersonAvatar
@@ -67,6 +70,10 @@ fun ShareFormatSheet(
     onDismiss: () -> Unit,
     buildText: () -> String,
     writePdf: () -> File,
+    // Capture PNG verrouillée tant que les miniatures Coil de l'aperçu ne sont
+    // pas TOUTES résolues (v5.5) : l'export reflète toujours les vraies images,
+    // jamais les placeholders. Le PDF n'en dépend pas (décodage synchrone).
+    previewReady: Boolean = true,
     preview: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -103,15 +110,20 @@ fun ShareFormatSheet(
 
             Spacer(Modifier.height(12.dp))
 
-            if (isExporting) {
+            if (isExporting || !previewReady) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(vertical = 4.dp)
                 ) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(10.dp))
-                    Text(stringResource(R.string.share_exporting),
-                        style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        stringResource(
+                            if (isExporting) R.string.share_exporting
+                            else R.string.share_preview_loading
+                        ),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
             if (exportFailed) {
@@ -135,7 +147,7 @@ fun ShareFormatSheet(
             ShareOptionRow(
                 icon = Icons.Default.Image,
                 label = stringResource(R.string.share_as_image),
-                enabled = !isExporting
+                enabled = !isExporting && previewReady
             ) {
                 scope.launch {
                     isExporting = true
@@ -200,9 +212,23 @@ private fun ShareOptionRow(
     }
 }
 
-/** Aperçu capturable des profils sélectionnés (6 max + indicateur de surplus). */
+/**
+ * Aperçu capturable des profils sélectionnés (6 max + indicateur de surplus).
+ * [onImagesReadyChange] notifie quand TOUTES les miniatures Coil affichées
+ * sont résolues (Success OU Error — une URI morte ne bloque pas l'export) :
+ * la feuille n'autorise la capture PNG qu'à ce moment-là.
+ */
 @Composable
-fun PersonsSharePreview(persons: List<Person>) {
+fun PersonsSharePreview(
+    persons: List<Person>,
+    onImagesReadyChange: (Boolean) -> Unit = {}
+) {
+    val shown = persons.take(6)
+    val resolvedIds = remember(shown) { mutableStateMapOf<String, Boolean>() }
+    val expected = remember(shown) { shown.count { it.photoUri != null } }
+    LaunchedEffect(resolvedIds.size, expected) {
+        onImagesReadyChange(resolvedIds.size >= expected)
+    }
     Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(
             modifier = Modifier
@@ -210,9 +236,19 @@ fun PersonsSharePreview(persons: List<Person>) {
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            persons.take(6).forEach { person ->
+            shown.forEach { person ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    PersonAvatar(person = person, size = 36.dp)
+                    PersonAvatar(
+                        person = person,
+                        size = 36.dp,
+                        onImageState = { state ->
+                            when (state) {
+                                is AsyncImagePainter.State.Success,
+                                is AsyncImagePainter.State.Error -> resolvedIds[person.id] = true
+                                else -> {}
+                            }
+                        }
+                    )
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text(person.fullName,

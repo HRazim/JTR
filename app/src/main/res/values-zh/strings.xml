@@ -376,4 +376,16 @@
     <string name="welcome_select_button">选择要导入的联系人</string>
     <string name="contact_selection_title">选择联系人</string>
     <string name="import_selected_count">导入所选的 %1$d 位联系人</string>
+    <!-- v5.5 — 应用内相册选择器（Instagram 风格） -->
+    <string name="gallery_picker_title">选择照片</string>
+    <string name="gallery_album_recents">最近</string>
+    <string name="gallery_album_dropdown_cd">选择相册</string>
+    <string name="gallery_photo_count">%1$d 张照片</string>
+    <string name="gallery_empty">此相册中没有照片</string>
+    <string name="gallery_permission_rationale">JTR 需要访问您的照片，以便您无需离开应用即可选择图片。</string>
+    <string name="gallery_permission_grant">允许访问</string>
+    <string name="gallery_permission_settings">打开设置</string>
+    <!-- v5.5 — 备份已移至设置 > 数据 -->
+    <string name="settings_backup_subtitle">导出或恢复您的数据（.jtr 文件）</string>
+    <string name="share_preview_loading">正在加载图片…</string>
 </resources>

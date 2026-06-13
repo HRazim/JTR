@@ -1,5 +1,10 @@
 package com.jtr.app.ui.category
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -171,7 +176,11 @@ fun CategoryDetailScreen(
             }
         },
         bottomBar = {
-            if (isSelectionMode) {
+            AnimatedVisibility(
+                visible = isSelectionMode,
+                enter = slideInVertically { it } + fadeIn(),
+                exit = slideOutVertically { it } + fadeOut()
+            ) {
                 BottomAppBar(
                     containerColor = MaterialTheme.colorScheme.surface,
                     tonalElevation = 4.dp

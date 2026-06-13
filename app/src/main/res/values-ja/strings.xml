@@ -379,4 +379,16 @@
     <string name="welcome_select_button">インポートする連絡先を選ぶ</string>
     <string name="contact_selection_title">連絡先を選択</string>
     <string name="import_selected_count">選択した %1$d 件をインポート</string>
+    <!-- v5.5 — アプリ内ギャラリー（Instagram 風） -->
+    <string name="gallery_picker_title">写真を選択</string>
+    <string name="gallery_album_recents">最近</string>
+    <string name="gallery_album_dropdown_cd">アルバムを選択</string>
+    <string name="gallery_photo_count">%1$d 枚の写真</string>
+    <string name="gallery_empty">このアルバムには写真がありません</string>
+    <string name="gallery_permission_rationale">アプリを離れずに画像を選べるよう、JTR は写真へのアクセスを必要とします。</string>
+    <string name="gallery_permission_grant">アクセスを許可</string>
+    <string name="gallery_permission_settings">設定を開く</string>
+    <!-- v5.5 — バックアップを設定 > データへ移動 -->
+    <string name="settings_backup_subtitle">データのエクスポート / 復元（.jtr ファイル）</string>
+    <string name="share_preview_loading">画像を読み込み中…</string>
 </resources>

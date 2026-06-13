@@ -237,7 +237,7 @@ fun ProfileFormFields(
                     onValueChange = { localOrigin = it; onOriginChange(it) },
                     label = { Text(stringResource(R.string.person_origin_label)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus(),
                     shape = RoundedCornerShape(12.dp),
                     leadingIcon = { Icon(Icons.Default.Public, null) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -257,7 +257,7 @@ fun ProfileFormFields(
                         value = localCity,
                         onValueChange = { localCity = it; onCityChange(it) },
                         label = { Text(stringResource(R.string.person_city_label)) },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).bringIntoViewOnFocus(),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -516,7 +516,7 @@ private fun JobSection(
                     shape = RoundedCornerShape(12.dp),
                     keyboardOptions = opts,
                     keyboardActions = actions,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
                 )
                 OutlinedTextField(
                     value = department,
@@ -526,7 +526,7 @@ private fun JobSection(
                     shape = RoundedCornerShape(12.dp),
                     keyboardOptions = opts,
                     keyboardActions = actions,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
                 )
                 OutlinedTextField(
                     value = company,
@@ -537,7 +537,7 @@ private fun JobSection(
                     shape = RoundedCornerShape(12.dp),
                     keyboardOptions = opts,
                     keyboardActions = actions,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
                 )
             }
         }
@@ -753,7 +753,7 @@ private fun DynamicLineRow(
 }
 
 /** Champ de valeur, en autocomplétion si [suggestions] est fourni. */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun ValueField(
     value: String,
@@ -768,6 +768,19 @@ private fun ValueField(
     suggestions: List<String>?,
     modifier: Modifier = Modifier
 ) {
+    // Auto-scroll : à la prise de focus, le champ (téléphone, date numérique, email…)
+    // est ramené dans la zone visible au-dessus du clavier. Sans cela, les champs du
+    // bas du formulaire restaient masqués « une fois sur deux » à l'ouverture de l'IME.
+    val bringIntoView = remember { BringIntoViewRequester() }
+    val fieldScope = rememberCoroutineScope()
+    val focusScrollModifier = Modifier
+        .bringIntoViewRequester(bringIntoView)
+        .onFocusEvent { focusState ->
+            if (focusState.isFocused) {
+                fieldScope.launch { bringIntoView.bringIntoView() }
+            }
+        }
+
     val field: @Composable (Modifier) -> Unit = { fieldModifier ->
         OutlinedTextField(
             value = value,
@@ -788,7 +801,7 @@ private fun ValueField(
     }
 
     if (suggestions == null) {
-        field(modifier)
+        field(modifier.then(focusScrollModifier))
         return
     }
 
@@ -816,6 +829,7 @@ private fun ValueField(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(MenuAnchorType.PrimaryEditable)
+                .then(focusScrollModifier)
         )
         ExposedDropdownMenu(
             expanded = expanded && matches.isNotEmpty(),
@@ -918,6 +932,23 @@ private fun SectionLabel(text: String) {
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.primary
     )
+}
+
+/**
+ * Ramène le champ porteur dans la zone visible (au-dessus du clavier) à la prise
+ * de focus. Appliqué aux champs du bas du formulaire (Origine, Ville, Pro) qui,
+ * sinon, restaient masqués par l'IME selon l'ordre d'ouverture.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun Modifier.bringIntoViewOnFocus(): Modifier {
+    val requester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+    return this
+        .bringIntoViewRequester(requester)
+        .onFocusEvent { focusState ->
+            if (focusState.isFocused) scope.launch { requester.bringIntoView() }
+        }
 }
 
 @Composable

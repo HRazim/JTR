@@ -24,8 +24,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +46,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.JtrViewMode
 
 /**
@@ -240,11 +239,10 @@ private fun PersonGridTile(
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.30f)))
         }
         if (isSelectionMode) {
-            Icon(
-                if (isSelected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                contentDescription = null,
-                tint = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
-                modifier = Modifier.align(Alignment.TopStart).padding(6.dp).size(24.dp)
+            // Disque protecteur contrastant : lisible sur toute photo (v5.5).
+            JtrSelectionCheck(
+                selected = isSelected,
+                modifier = Modifier.align(Alignment.TopStart).padding(6.dp)
             )
         }
         if (person.isFavorite) {
@@ -279,9 +277,17 @@ private fun PersonGridTile(
     }
 }
 
-/** Avatar circulaire réutilisable : photo, sinon initiales sur dégradé. */
+/**
+ * Avatar circulaire réutilisable : photo, sinon initiales sur dégradé.
+ * [onImageState] (optionnel) relaie l'état Coil — utilisé par l'aperçu de
+ * partage pour attendre le chargement complet avant la capture PNG (v5.5).
+ */
 @Composable
-internal fun PersonAvatar(person: Person, size: androidx.compose.ui.unit.Dp) {
+internal fun PersonAvatar(
+    person: Person,
+    size: androidx.compose.ui.unit.Dp,
+    onImageState: ((coil.compose.AsyncImagePainter.State) -> Unit)? = null
+) {
     val context = LocalContext.current
     Box(
         modifier = Modifier
@@ -301,6 +307,7 @@ internal fun PersonAvatar(person: Person, size: androidx.compose.ui.unit.Dp) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(person.photoUri).crossfade(300).build(),
+                onState = onImageState,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop

@@ -187,7 +187,7 @@
     <string name="settings_trash_subtitle">Deleted contacts · auto-purge after 30 days</string>
     <string name="settings_section_about">About</string>
     <string name="settings_version_title">Version</string>
-    <string name="settings_version_value" translatable="false">JTR 5.4.1</string>
+    <string name="settings_version_value" translatable="false">JTR 5.5.1</string>
     <string name="settings_theme_cd">Theme %1$s</string>
     <string name="settings_section_legal">Legal</string>
     <string name="settings_privacy_title">Privacy policy</string>
@@ -384,4 +384,16 @@
     <string name="welcome_select_button">Choose contacts to import</string>
     <string name="contact_selection_title">Choose contacts</string>
     <string name="import_selected_count">Import the %1$d selected contacts</string>
+    <!-- v5.5 — in-app gallery picker (Instagram style) -->
+    <string name="gallery_picker_title">Select a photo</string>
+    <string name="gallery_album_recents">Recents</string>
+    <string name="gallery_album_dropdown_cd">Choose an album</string>
+    <string name="gallery_photo_count">%1$d photos</string>
+    <string name="gallery_empty">No photos in this album</string>
+    <string name="gallery_permission_rationale">JTR needs access to your photos so you can pick an image without leaving the app.</string>
+    <string name="gallery_permission_grant">Allow access</string>
+    <string name="gallery_permission_settings">Open settings</string>
+    <!-- v5.5 — backup relocated to Settings > Data -->
+    <string name="settings_backup_subtitle">Export or restore your data (.jtr file)</string>
+    <string name="share_preview_loading">Loading images…</string>
 </resources>

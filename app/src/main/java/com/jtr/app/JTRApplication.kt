@@ -74,21 +74,45 @@ class JTRApplication : Application() {
     /**
      * Planifie le balayage quotidien des dates importantes (anniversaires et dates
      * personnalisées marquées « notifier »). Voir [ImportantDateCheckWorker].
+     *
+     * Délai initial calé sur le prochain créneau du matin ([CHECK_HOUR_OF_DAY]) :
+     * la notification arrive ainsi le jour même à une heure pertinente, et non à
+     * un instant arbitraire dépendant de l'heure d'installation. Politique UPDATE :
+     * les installations existantes (ancien planning sans délai) sont recalées sans
+     * dupliquer le travail.
      */
     private fun scheduleImportantDateChecks() {
         val request = PeriodicWorkRequestBuilder<ImportantDateCheckWorker>(
             1, TimeUnit.DAYS
-        ).build()
+        )
+            .setInitialDelay(millisUntilNextMorning(), TimeUnit.MILLISECONDS)
+            .build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "important_date_check",
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             request
         )
     }
 
+    /** Millisecondes jusqu'au prochain [CHECK_HOUR_OF_DAY]:00 local. */
+    private fun millisUntilNextMorning(): Long {
+        val now = java.util.Calendar.getInstance()
+        val next = (now.clone() as java.util.Calendar).apply {
+            set(java.util.Calendar.HOUR_OF_DAY, CHECK_HOUR_OF_DAY)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+            if (!after(now)) add(java.util.Calendar.DAY_OF_MONTH, 1)
+        }
+        return next.timeInMillis - now.timeInMillis
+    }
+
     companion object {
         const val CHANNEL_BIRTHDAY = "birthday_channel"
+
+        /** Heure locale du balayage quotidien des dates importantes (9 h du matin). */
+        private const val CHECK_HOUR_OF_DAY = 9
 
         /**
          * Rayon de détection du Moteur de Proximité (v5.4) : seuil de 10 km

@@ -17,6 +17,15 @@
     <!-- Lecture des contacts natifs (importation à l'onboarding, v5.3) -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
 
+    <!-- Galerie in-app (lecture du MediaStore) : READ_MEDIA_IMAGES sur API 33+,
+         READ_EXTERNAL_STORAGE en repli sur API < 33. VISUAL_USER_SELECTED permet
+         l'accès partiel « Sélectionner des photos » d'Android 14+. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
     <!-- Broadcast pour réveiller l'app après redémarrage -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 

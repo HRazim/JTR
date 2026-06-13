@@ -3,8 +3,11 @@ package com.jtr.app.ui.share
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
@@ -206,14 +209,41 @@ object ShareUtils {
     }
 
     /**
+     * Décodage SYNCHRONE et BORNÉ d'une image de profil (file:// ou content://)
+     * pour l'embarquer dans le PDF : double passe BitmapFactory (bornes puis
+     * inSampleSize ≥ cible) — jamais la pleine résolution en mémoire. Retourne
+     * null si la source est illisible : le PDF reste généré, sans photo.
+     */
+    private fun decodeScaledBitmap(context: Context, value: String?, targetPx: Int): Bitmap? {
+        if (value.isNullOrBlank()) return null
+        return runCatching {
+            val uri = Uri.parse(value)
+            fun open() = context.contentResolver.openInputStream(uri)
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            open()?.use { BitmapFactory.decodeStream(it, null, bounds) } ?: return null
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+            var sample = 1
+            while (bounds.outWidth / (sample * 2) >= targetPx &&
+                bounds.outHeight / (sample * 2) >= targetPx) sample *= 2
+            val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+            open()?.use { BitmapFactory.decodeStream(it, null, opts) }
+        }.getOrNull()
+    }
+
+    /**
      * Écrit les fiches PDF des profils : UNE page A4 par contact (suite sur la
-     * page suivante si débordement), titre en gras puis lignes d'information.
+     * page suivante si débordement), photo de profil incrustée (décodage
+     * synchrone — l'export N'attend PAS Coil, les images sont toujours
+     * visibles), titre en gras puis lignes d'information.
      */
     fun writePersonsPdf(context: Context, persons: List<Person>): File {
         val doc = PdfDocument()
         val writer = PdfWriter(doc)
         persons.forEachIndexed { index, person ->
             if (index > 0) writer.newPage()
+            decodeScaledBitmap(context, person.photoUri, 256)?.let { photo ->
+                writer.image(photo, 64f)
+            }
             writer.line(person.fullName, titlePaint())
             writer.spacer(6f)
             personFieldLines(context, person).forEach { writer.line(it, bodyPaint()) }
@@ -268,6 +298,19 @@ object ShareUtils {
 
         fun spacer(height: Float) {
             y += height
+        }
+
+        /** Avatar carré (recadrage centré) incrusté à la marge, en points PDF. */
+        fun image(bitmap: Bitmap, size: Float) {
+            if (y + size > PAGE_H - MARGIN) newPage()
+            val side = minOf(bitmap.width, bitmap.height)
+            val src = Rect(
+                (bitmap.width - side) / 2, (bitmap.height - side) / 2,
+                (bitmap.width + side) / 2, (bitmap.height + side) / 2
+            )
+            val dst = RectF(MARGIN, y, MARGIN + size, y + size)
+            page.canvas.drawBitmap(bitmap, src, dst, Paint(Paint.FILTER_BITMAP_FLAG))
+            y += size + 10f
         }
 
         fun line(text: String, paint: Paint) {

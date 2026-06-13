@@ -102,7 +102,10 @@ fun TrashScreen(
             if (isEmpty) {
                 TrashEmptyState(modifier = Modifier.weight(1f))
             } else {
-                LazyColumn(modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(top = 6.dp)
+                ) {
 
                     if (categoryGroups.isNotEmpty()) {
                         item {
@@ -134,14 +137,22 @@ fun TrashScreen(
                             )
                         }
                         items(orphanPersons, key = { it.id }) { person ->
-                            TrashPersonRow(
-                                person = person,
-                                daysUntilPurge = vm.daysUntilPurge(person),
-                                onRestore = { vm.restoreOrphan(person.id) },
-                                onDelete = { vm.hardDeleteOrphan(person.id) },
-                                indented = false
-                            )
-                            HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+                            // Carte par contact : cohérence visuelle stricte avec les
+                            // cartes de dossiers (mêmes coins, mêmes marges).
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                TrashPersonRow(
+                                    person = person,
+                                    daysUntilPurge = vm.daysUntilPurge(person),
+                                    onRestore = { vm.restoreOrphan(person.id) },
+                                    onDelete = { vm.hardDeleteOrphan(person.id) },
+                                    indented = false
+                                )
+                            }
                         }
                     }
 
@@ -352,6 +363,9 @@ private fun TrashPersonRow(
 
     ListItem(
         modifier = Modifier.padding(start = if (indented) 16.dp else 0.dp),
+        // Conteneur transparent : la carte parente (dossier ou contact orphelin)
+        // fournit le fond, on évite ainsi la double surface.
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         leadingContent = {
             Box(
                 modifier = Modifier

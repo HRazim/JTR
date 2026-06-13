@@ -1,6 +1,11 @@
 package com.jtr.app.ui.category
 
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -92,7 +97,7 @@ fun CategoryGroupDetailScreen(
 
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    // Galerie native par ALBUMS (v5.3.4).
+    // Galerie IN-APP par ALBUMS (v5.5).
     val groupPhotoPicker = rememberGalleryImagePicker { uri -> pendingGroupCropUri = uri }
 
     LaunchedEffect(members, subGroups) {
@@ -397,7 +402,11 @@ fun CategoryGroupDetailScreen(
             }
         },
         bottomBar = {
-            if (isSelectionActive) {
+            AnimatedVisibility(
+                visible = isSelectionActive,
+                enter = slideInVertically { it } + fadeIn(),
+                exit = slideOutVertically { it } + fadeOut()
+            ) {
                 val movableGroups = otherGroups.filter { it.id !in selectedGroupIds }
                 SelectionFooter(
                     canFavorite = totalSelected >= 1,

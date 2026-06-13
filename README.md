@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> **Carnet de contacts enrichi nouvelle génération** · Version `5.4.1`  
+> **Carnet de contacts enrichi nouvelle génération** · Version `5.5.1`  
 > Projet personnel Android — Kotlin · Jetpack Compose · MVVM
 
 ---
@@ -9,7 +9,7 @@
 
 JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'application maintient une **mémoire sociale active** : elle enregistre le contexte humain de chaque relation (goûts, anniversaires, ville, notes, réseaux sociaux), géocode automatiquement les villes via OpenStreetMap, et notifie proactivement l'utilisateur lorsqu'il se retrouve physiquement proche d'un contact qu'il n'a pas vu depuis longtemps. Le tout, sans service cloud, sans clé API propriétaire, et avec un stockage 100 % local.
 
-> **État actuel — Juin 2026.** Le cycle de développement de la **Version 4 (v4.x)** est officiellement **clos** : stable, mature, et couronné par un moteur d'ergonomie tactile abouti (Drag & Drop fluide, dossiers récursifs, mode sélection « Galerie »). Le cycle **Version 5** est en plein essor : la **v5.4.0** active la fonctionnalité reine — le **Moteur de Proximité** en tâche de fond (Worker 3 h + geofencing unifiés, rayon 10 km, anti-spam 48 h, notifications heads-up avec deep link vers la fiche du contact) — après une branche 5.3 dédiée à l'onboarding, l'importation native et le polish UX. Voir [Le Grand Bilan de la Version 4](#-le-grand-bilan-de-la-version-4) et [Version 5 — Cycle en cours](#-version-50--en-cours-de-développement).
+> **État actuel — Juin 2026.** Le cycle de développement de la **Version 4 (v4.x)** est officiellement **clos** : stable, mature, et couronné par un moteur d'ergonomie tactile abouti (Drag & Drop fluide, dossiers récursifs, mode sélection « Galerie »). Le cycle **Version 5** est en plein essor : la **v5.4.0** active la fonctionnalité reine — le **Moteur de Proximité** en tâche de fond (Worker 3 h + geofencing unifiés, rayon 10 km, anti-spam 48 h, notifications heads-up avec deep link vers la fiche du contact) — après une branche 5.3 dédiée à l'onboarding, l'importation native et le polish UX. La **v5.5.0** parachève l'expérience média avec une **galerie in-app « style Instagram »** (lecture directe du MediaStore, albums + grille de miniatures, sans jamais quitter l'application), et la **v5.5.1** acte une passe de *polish* de stabilité (rappels d'anniversaire enfin fonctionnels sur Android 13+, focus clavier des formulaires, unification visuelle Albums/Groupes et Corbeille). Voir [Le Grand Bilan de la Version 4](#-le-grand-bilan-de-la-version-4) et [Version 5 — Cycle en cours](#-version-50--en-cours-de-développement).
 
 ---
 
@@ -48,16 +48,50 @@ JTR (*Just To Remember*) va au-delà du simple répertoire téléphonique. L'app
 
 ## 🚧 Version 5.0 — En cours de développement
 
-> **Cycle actif — dernière livraison : v5.4.1**
+> **Cycle actif — dernière livraison : v5.5.1**
 
 La Version 5 ouvre une nouvelle ère pour JTR, après la clôture définitive et stable du cycle v4.x. Cette section est enrichie au fil du développement.
 
 | Statut | Détail |
 |--------|--------|
-| 🏗️ **Jalon** | `versionName = "5.4.1"` · `versionCode = 17` · Room v17 |
+| 🏗️ **Jalon** | `versionName = "5.5.1"` · `versionCode = 19` · Room v17 |
 | 🧱 **Fondations héritées** | Moteur tactile « Galerie » + dossiers récursifs (Room v16) consolidés en v4, étendus en v5 |
 | ✅ **Livré (v5.0 → v5.1)** | TopAppBar harmonisée avec recherche intégrée (`JtrSearchableTopAppBar`), menu Tri/Affichage unifié, 3 modes de vue persistés (Liste/Grille/Détail), footer de sélection transformable à l'Accueil, déplacement de contacts sans dialogue, recadrage d'image refondu (EXIF, cadre déplaçable/redimensionnable), Drag & Drop grille/liste harmonisé (zone centrale = fusion) |
 | 🎯 **Cap** | Capitaliser sur l'ergonomie tactile mature pour la prochaine génération de fonctionnalités |
+
+### 🩹 Version 5.5.1 — Passe de Polish : Notifications, Clavier & Cohérence Visuelle
+
+* **🔔 Correction Majeure du Cycle des Rappels d'Anniversaire :**
+    * Cause racine identifiée : la permission `POST_NOTIFICATIONS` était déclarée mais **jamais demandée à l'exécution** — sur Android 13+ (API 33+), `nm.notify()` est ignoré silencieusement sans elle, d'où l'absence totale de notification le jour J malgré un canal correctement créé.
+    * Demande de permission d'exécution intégrée au premier lancement (`MainActivity.RequestNotificationPermissionOnce`, no-op sous API 33 ou si déjà accordée).
+    * `ImportantDateCheckWorker` durci : garde de permission avant balayage, **deep-link vers la fiche contact** au tap (parité avec les alertes de proximité via `EXTRA_PERSON_ID`), et repli sur le scalaire `birthdate` legacy (parité stricte avec le bandeau d'accueil).
+    * Worker quotidien **recalé à 9h du matin** (délai initial calculé, politique `UPDATE` pour recaler les installations existantes) plutôt qu'à une heure arbitraire.
+* **⌨️ Ergonomie & Gestion du Clavier (Jetpack Compose) :**
+    * Champs de formulaire masqués « une fois sur deux » par l'IME corrigés via `BringIntoViewRequester` : défilement automatique du champ actif au-dessus du clavier sur les lignes dynamiques (`ValueField` : téléphones, dates numériques, emails, relations) et les champs Origine, Ville et Pro (helper `Modifier.bringIntoViewOnFocus()`). Aucun `imePadding()` ajouté — l'edge-to-edge + adjustResize est préservé.
+    * Fermeture **instantanée** du clavier (`SoftwareKeyboardController.hide()` + `FocusManager.clearFocus()`) lors de la sélection d'un profil depuis la recherche globale, *avant* la navigation — fin des transitions saccadées.
+* **🎨 UI & Robustesse Visuelle :**
+    * Unification visuelle **stricte** des Albums (catégories) et des Groupes (dossiers) : `FolderGridTile` adopte la disposition de `CategoryGridTile` (couverture/icône + calque de protection + nom·compteur incrustés en bas + étoile favori en haut à droite) ; `FolderListRow` reçoit l'étoile favori manquante.
+    * Lissage *premium* de l'apparition du footer en mode sélection sur les écrans de détail (`CategoryDetailScreen`, `CategoryGroupDetailScreen`) via `AnimatedVisibility` (`slideInVertically + fadeIn`), à parité avec l'Accueil et les Catégories.
+    * Modernisation graphique de la **Corbeille** : contacts orphelins présentés en cartes uniformes (mêmes coins/marges que les cartes de dossiers), conteneurs de lignes transparents pour éviter la double surface, espacements harmonisés.
+    * Correction du clignotement/disparition de la **photo de profil par défaut** lors de la sauvegarde : les initiales sont désormais toujours rendues en couche de fond et la source photo est résolue dans un ordre stable indépendant du mode édition.
+* **🚀 Performance Média :**
+    * Stabilisation de l'état du scroll de la galerie in-app via un `rememberLazyGridState()` explicite : la position survit aux recompositions de la feuille (sélection, focus) et se réinitialise proprement au changement d'album, avec clés stables (URI).
+
+### 🚀 Version 5.5.0 — Galerie In-App « Style Instagram » & Lecture Native du MediaStore
+
+* **🖼️ Sélecteur de Photos 100 % In-App (`CustomImagePickerBottomSheet`) :**
+    * Remplacement définitif de l'Intent `ACTION_PICK` (galerie native, v5.3.4) par une feuille modale Compose dédiée : menu déroulant des albums (miniature de couverture + compteur de photos) et `LazyVerticalGrid` 3 colonnes de tuiles carrées — l'utilisateur ne quitte plus jamais l'application pour choisir une photo.
+    * API publique inchangée (`rememberGalleryImagePicker`) : les 5 points d'appel (contacts, catégories, dossiers) et le workflow de recadrage `ImageCropDialog` fonctionnent sans aucune modification.
+* **⚙️ Couche Data Dédiée (`MediaStoreRepository`) :**
+    * Lecture directe du MediaStore exécutée strictement sur `Dispatchers.IO`, images triées `DATE_ADDED DESC`.
+    * Agrégation des albums (buckets) en un seul passage de curseur — compatible API 30+ où `GROUP BY` n'est plus accepté par le ContentProvider — avec album virtuel « Récents » agrégeant l'intégralité des images de l'appareil.
+    * État réactif UDF via `GalleryPickerViewModel` (`StateFlow<GalleryPickerUiState>` : albums, album sélectionné, images), rafraîchi à chaque ouverture de la feuille.
+* **🔑 Permissions Granulaires (Android 13 → 14+) :**
+    * `READ_MEDIA_IMAGES` (API 33+) avec repli `READ_EXTERNAL_STORAGE` (maxSdk 32), et gestion fine de l'accès partiel « Sélectionner des photos » d'Android 14+ via `READ_MEDIA_VISUAL_USER_SELECTED` — la grille reste pleinement fonctionnelle sur la sélection restreinte de l'utilisateur.
+    * Demande asynchrone intégrée au flux UI de la feuille : état explicatif, re-demande, puis accès direct aux paramètres système après refus définitif.
+* **🚀 Optimisation Mémoire (Coil) :**
+    * Miniatures sous-échantillonnées à 300 px (`ImageRequest.size(300)`) : aucune image pleine résolution ne réside en mémoire — zéro `OutOfMemoryError`, même sur les galeries volumineuses.
+* **🌍 Internationalisation :** 9 nouvelles chaînes de traduction ajoutées dans les 5 langues supportées (EN, FR, ES, JA, ZH).
 
 ### 🚀 Version 5.4.1 — Symétrie Relationnelle Transac & Onboarding Sélectif
 

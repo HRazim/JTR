@@ -156,7 +156,7 @@ fun AddPersonScreen(
         onMapResultConsumed()
     }
 
-    // Galerie native par ALBUMS (v5.3.4) — état du formulaire préservé au retour.
+    // Galerie IN-APP par ALBUMS (v5.5) — l'utilisateur ne quitte pas l'application.
     val photoPicker = rememberGalleryImagePicker { uri -> viewModel.onPhotoSelected(uri) }
 
     Scaffold(
