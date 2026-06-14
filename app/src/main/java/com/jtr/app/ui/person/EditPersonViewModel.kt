@@ -333,6 +333,10 @@ class EditPersonViewModel(
             } else {
                 repository.update(updated)
             }
+            // Propagation du renommage AVANT la synchro miroir : les fiches qui citent
+            // ce contact en relation affichent immédiatement le nouveau nom (source de
+            // vérité unique malgré la dénormalisation des noms dans relationLines).
+            repository.propagateRelationNameChange(updated.id, p.fullName, updated.fullName)
             // Relations miroirs (v5.4.1) : reflète les ajouts/retraits de
             // relations sur les fiches liées (diff avec la snapshot d'avant édition).
             repository.syncMirrorRelations(updated, p.relationLines)
@@ -360,6 +364,7 @@ class EditPersonViewModel(
             } else {
                 repository.update(updated)
             }
+            repository.propagateRelationNameChange(updated.id, p.fullName, updated.fullName)
             repository.syncMirrorRelations(updated, p.relationLines)
             onSuccess()
         }

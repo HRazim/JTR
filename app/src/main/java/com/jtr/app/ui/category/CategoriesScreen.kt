@@ -4,11 +4,8 @@ import android.net.Uri
 import android.util.Log
 import com.jtr.app.ui.person.CropShape
 import com.jtr.app.ui.person.ImageCropDialog
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -59,6 +56,7 @@ import com.jtr.app.R
 import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.components.JtrSelectionCheck
@@ -158,6 +156,10 @@ fun CategoriesScreen(
     fun exitSelection() {
         isSelectionActive = false; selectedIds.clear(); selectedGroupIds.clear()
     }
+
+    // Bouton Retour en mode sélection : vide la sélection et reste sur l'écran.
+    // Inactif hors sélection → la navigation standard (retour d'écran) reprend.
+    BackHandler(enabled = isSelectionActive) { exitSelection() }
     // Cocher/décocher NE ferme PAS le mode sélection : on y reste (affichage « 0
     // sélectionné »). Seul « Annuler » de la TopBar quitte le mode.
     fun toggleSelectCategory(id: String) {
@@ -459,8 +461,8 @@ fun CategoriesScreen(
         bottomBar = {
             AnimatedVisibility(
                 visible = isSelectionActive,
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut()
+                enter = JtrBottomBarTransitions.enter,
+                exit = JtrBottomBarTransitions.exit
             ) {
                 val allFavorite = totalSelected > 0 &&
                     selectedCategories.all { it.isFavorite } && selectedGroups.all { it.isFavorite }

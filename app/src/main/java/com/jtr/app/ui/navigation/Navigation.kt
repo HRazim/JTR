@@ -1,12 +1,8 @@
 package com.jtr.app.ui.navigation
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -37,6 +33,7 @@ import com.jtr.app.ui.category.CategoriesScreen
 import com.jtr.app.ui.category.CategoryDetailScreen
 import com.jtr.app.ui.category.CategoryGroupDetailScreen
 import com.jtr.app.ui.category.SelectContactsScreen
+import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.home.HomeScreen
 import com.jtr.app.ui.map.MapScreen
 import com.jtr.app.ui.person.*
@@ -179,8 +176,11 @@ fun JTRMainScaffold(
         bottomBar = {
             AnimatedVisibility(
                 visible = showBottomBar,
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut()
+                // Même transition que les footers de sélection (fade + expand/shrink) :
+                // la NavigationBar rétrécit pendant que le footer grandit → aucune
+                // variation nette de hauteur, donc aucun saut de la liste.
+                enter = JtrBottomBarTransitions.enter,
+                exit = JtrBottomBarTransitions.exit
             ) {
                 NavigationBar {
                     bottomNavItems.forEach { item ->

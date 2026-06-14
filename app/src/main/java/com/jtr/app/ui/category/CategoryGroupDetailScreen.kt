@@ -1,11 +1,8 @@
 package com.jtr.app.ui.category
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -36,6 +33,7 @@ import coil.compose.AsyncImage
 import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.components.JtrViewMode
@@ -120,6 +118,10 @@ fun CategoryGroupDetailScreen(
     fun exitSelection() {
         isSelectionActive = false; selectedIds.clear(); selectedGroupIds.clear()
     }
+
+    // Bouton Retour en mode sélection : vide la sélection et reste sur l'écran ;
+    // inactif sinon → le retour navigue normalement vers le dossier parent.
+    BackHandler(enabled = isSelectionActive) { exitSelection() }
     fun toggleCategory(id: String) {
         if (selectedIds.contains(id)) selectedIds.remove(id) else selectedIds.add(id)
     }
@@ -404,8 +406,8 @@ fun CategoryGroupDetailScreen(
         bottomBar = {
             AnimatedVisibility(
                 visible = isSelectionActive,
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut()
+                enter = JtrBottomBarTransitions.enter,
+                exit = JtrBottomBarTransitions.exit
             ) {
                 val movableGroups = otherGroups.filter { it.id !in selectedGroupIds }
                 SelectionFooter(

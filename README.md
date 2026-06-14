@@ -59,8 +59,11 @@ La Version 5 ouvre une nouvelle ère pour JTR, après la clôture définitive et
 | ✅ **Livré (v5.0 → v5.1)** | TopAppBar harmonisée avec recherche intégrée (`JtrSearchableTopAppBar`), menu Tri/Affichage unifié, 3 modes de vue persistés (Liste/Grille/Détail), footer de sélection transformable à l'Accueil, déplacement de contacts sans dialogue, recadrage d'image refondu (EXIF, cadre déplaçable/redimensionnable), Drag & Drop grille/liste harmonisé (zone centrale = fusion) |
 | 🎯 **Cap** | Capitaliser sur l'ergonomie tactile mature pour la prochaine génération de fonctionnalités |
 
-### 🩹 Version 5.5.1 — Passe de Polish : Notifications, Clavier & Cohérence Visuelle
+### 🩹 Version 5.5.1 — Passe de Polish : Synchronisation, Navigation, Clavier & Cohérence Visuelle
 
+* **🔄 Synchronisation Room (Relations) — Propagation Dynamique des Noms :**
+    * Résolution **définitive** de la duplication des noms dans les relations liées : un seul jeu de noms fait foi, plus aucun doublon à l'affichage des relations.
+    * Les modifications de profil (ex : prénom) se **répercutent instantanément et dynamiquement** dans toutes les relations qui pointent vers ce contact, via les `Flow` réactifs de Room (`PersonRepository`, `EditPersonViewModel`) — aucun rafraîchissement manuel requis.
 * **🔔 Correction Majeure du Cycle des Rappels d'Anniversaire :**
     * Cause racine identifiée : la permission `POST_NOTIFICATIONS` était déclarée mais **jamais demandée à l'exécution** — sur Android 13+ (API 33+), `nm.notify()` est ignoré silencieusement sans elle, d'où l'absence totale de notification le jour J malgré un canal correctement créé.
     * Demande de permission d'exécution intégrée au premier lancement (`MainActivity.RequestNotificationPermissionOnce`, no-op sous API 33 ou si déjà accordée).
@@ -71,9 +74,11 @@ La Version 5 ouvre une nouvelle ère pour JTR, après la clôture définitive et
     * Fermeture **instantanée** du clavier (`SoftwareKeyboardController.hide()` + `FocusManager.clearFocus()`) lors de la sélection d'un profil depuis la recherche globale, *avant* la navigation — fin des transitions saccadées.
 * **🎨 UI & Robustesse Visuelle :**
     * Unification visuelle **stricte** des Albums (catégories) et des Groupes (dossiers) : `FolderGridTile` adopte la disposition de `CategoryGridTile` (couverture/icône + calque de protection + nom·compteur incrustés en bas + étoile favori en haut à droite) ; `FolderListRow` reçoit l'étoile favori manquante.
-    * Lissage *premium* de l'apparition du footer en mode sélection sur les écrans de détail (`CategoryDetailScreen`, `CategoryGroupDetailScreen`) via `AnimatedVisibility` (`slideInVertically + fadeIn`), à parité avec l'Accueil et les Catégories.
+    * **Harmonisation de la hauteur** du footer de sélection sur le standard Material 3 `NavigationBar`, et extraction des transitions partagées `JtrBottomBarTransitions` (fade + expand/shrink vertical, même `tween(300)`) appliquées à la fois à la `NavigationBar` globale et à tous les footers contextuels (Accueil, Catégories, `CategoryDetailScreen`, `CategoryGroupDetailScreen`). La barre normale et le footer s'animent de façon **synchrone et opposée** → hauteur cumulée constante, **zéro « saut de layout »**, ressenti d'un remplacement sur place doux et continu.
     * Modernisation graphique de la **Corbeille** : contacts orphelins présentés en cartes uniformes (mêmes coins/marges que les cartes de dossiers), conteneurs de lignes transparents pour éviter la double surface, espacements harmonisés.
     * Correction du clignotement/disparition de la **photo de profil par défaut** lors de la sauvegarde : les initiales sont désormais toujours rendues en couche de fond et la source photo est résolue dans un ordre stable indépendant du mode édition.
+* **🧭 Navigation & Bouton Retour Système (`BackHandler`) :**
+    * Intégration de `BackHandler` sur les écrans principaux (`HomeScreen`, `CategoryDetailScreen`, `CategoryGroupDetailScreen`, `CategoriesScreen`) : lorsque le **mode sélection est actif**, le bouton Retour système **vide la sélection** (`clearSelection()`) au lieu de quitter l'écran. Hors sélection, le comportement de navigation natif est strictement préservé.
 * **🚀 Performance Média :**
     * Stabilisation de l'état du scroll de la galerie in-app via un `rememberLazyGridState()` explicite : la position survit aux recompositions de la feuille (sélection, focus) et se réinitialise proprement au changement d'album, avec clés stables (URI).
 

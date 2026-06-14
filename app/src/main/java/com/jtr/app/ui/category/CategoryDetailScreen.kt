@@ -1,10 +1,7 @@
 package com.jtr.app.ui.category
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -19,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jtr.app.R
+import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.home.AssignCategoryDialog
@@ -37,6 +35,10 @@ fun CategoryDetailScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
+
+    // Bouton Retour en mode sélection : vide la sélection (événement remonté au
+    // ViewModel) et reste sur l'écran ; inactif sinon (navigation standard).
+    BackHandler(enabled = isSelectionMode) { viewModel.clearSelection() }
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val categoryName by viewModel.categoryName.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
@@ -178,8 +180,8 @@ fun CategoryDetailScreen(
         bottomBar = {
             AnimatedVisibility(
                 visible = isSelectionMode,
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut()
+                enter = JtrBottomBarTransitions.enter,
+                exit = JtrBottomBarTransitions.exit
             ) {
                 BottomAppBar(
                     containerColor = MaterialTheme.colorScheme.surface,

@@ -276,6 +276,45 @@ class PersonRepository(context: Context) {
         }
     }
 
+    /**
+     * Propage un changement de nom : remplace, dans les `relationLines` de TOUS les
+     * AUTRES contacts, l'ancien nom complet de [personId] par le nouveau. Les noms
+     * liés étant dénormalisés dans le JSON `relationLines` (pas de table de relations
+     * normalisée → un JOIN n'est pas possible), c'est cette propagation qui maintient
+     * une source de vérité cohérente : renommer « Manon » en « Manon du Hameau » met
+     * à jour instantanément la fiche de tous ceux qui la citent en relation.
+     *
+     * Transaction Room. À appeler APRÈS la mise à jour du contact lui-même et AVANT
+     * [syncMirrorRelations], afin que les lignes miroirs portent déjà le nouveau nom
+     * (sinon une suppression de relation simultanée ne retrouverait pas son miroir).
+     * Idempotent : ne réécrit que les lignes réellement concernées.
+     */
+    suspend fun propagateRelationNameChange(personId: String, oldName: String, newName: String) {
+        val old = oldName.trim()
+        val new = newName.trim()
+        if (old.isBlank() || new.isBlank() || old.equals(new, ignoreCase = true)) return
+
+        db.withTransaction {
+            dao.getAllSync().forEach { other ->
+                if (other.id == personId) return@forEach
+                val lines = other.relationLines ?: return@forEach
+                var changed = false
+                val rewritten = lines.map { line ->
+                    if (line.value.trim().equals(old, ignoreCase = true)) {
+                        changed = true
+                        line.copy(value = new)
+                    } else line
+                }
+                if (changed) {
+                    dao.update(other.copy(
+                        relationLines = rewritten,
+                        updatedAt = System.currentTimeMillis()
+                    ))
+                }
+            }
+        }
+    }
+
     // =========================================================
     // GESTION MANY-TO-MANY DES CATÉGORIES
     // =========================================================

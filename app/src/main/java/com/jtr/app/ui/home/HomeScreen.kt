@@ -1,10 +1,7 @@
 package com.jtr.app.ui.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -46,6 +43,7 @@ import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.ui.category.FooterActionColumn
 import com.jtr.app.ui.category.contactSortOptions
+import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.share.PersonsSharePreview
@@ -81,6 +79,11 @@ fun HomeScreen(
     // recherche : la transition vers la fiche ne reste plus saccadée par l'IME.
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+
+    // Bouton Retour en mode sélection : annule la sélection (événement remonté au
+    // ViewModel) au lieu de quitter l'écran. Inactif si rien n'est sélectionné →
+    // la navigation standard reprend normalement.
+    BackHandler(enabled = isSelectionMode) { viewModel.clearSelection() }
 
     // Cible du partage contextuel : instantané des profils cochés au moment du clic.
     var shareTargets by remember { mutableStateOf<List<Person>?>(null) }
@@ -190,8 +193,8 @@ fun HomeScreen(
             // navigation globale (masquée par le conteneur pendant la sélection).
             AnimatedVisibility(
                 visible = isSelectionMode,
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut()
+                enter = JtrBottomBarTransitions.enter,
+                exit = JtrBottomBarTransitions.exit
             ) {
                 BottomAppBar(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
