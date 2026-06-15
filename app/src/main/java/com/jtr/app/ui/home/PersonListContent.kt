@@ -24,7 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
+import com.jtr.app.ui.components.FavoriteStar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -246,8 +246,7 @@ private fun PersonGridTile(
             )
         }
         if (person.isFavorite) {
-            Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFD600),
-                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(22.dp))
+            FavoriteStar(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp), size = 22.dp)
         }
 
         Column(

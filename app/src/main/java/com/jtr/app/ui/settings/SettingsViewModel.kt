@@ -17,8 +17,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
 
+    // Défauts HARMONISÉS avec les Workers (v6.2.7) : notifications + dates importantes
+    // activées par défaut (l'effet réel reste borné par la permission POST_NOTIFICATIONS),
+    // proximité opt-in (nécessite la localisation). Le toggle affiché reflète donc
+    // exactement le comportement des Workers — plus d'incohérence true/false.
     private val _notificationsEnabled = MutableStateFlow(
-        prefs.getBoolean("notifications_enabled", false)
+        prefs.getBoolean("notifications_enabled", true)
     )
     val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled.asStateFlow()
 
@@ -28,7 +32,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val proximityEnabled: StateFlow<Boolean> = _proximityEnabled.asStateFlow()
 
     private val _birthdayEnabled = MutableStateFlow(
-        prefs.getBoolean("birthday_enabled", false)
+        prefs.getBoolean("birthday_enabled", true)
     )
     val birthdayEnabled: StateFlow<Boolean> = _birthdayEnabled.asStateFlow()
 
@@ -45,5 +49,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setBirthdayEnabled(enabled: Boolean) {
         _birthdayEnabled.value = enabled
         prefs.edit().putBoolean("birthday_enabled", enabled).apply()
+    }
+
+    /**
+     * Drapeau « cette permission a déjà été demandée au moins une fois ». Indispensable
+     * pour distinguer « jamais demandée » de « refusée définitivement » : les deux
+     * donnent `shouldShowRequestPermissionRationale = false`. Persisté dans les mêmes
+     * SharedPreferences (clé `asked_<permission>`).
+     */
+    fun wasPermissionAsked(permission: String): Boolean =
+        prefs.getBoolean("asked_$permission", false)
+
+    fun markPermissionAsked(permission: String) {
+        prefs.edit().putBoolean("asked_$permission", true).apply()
     }
 }

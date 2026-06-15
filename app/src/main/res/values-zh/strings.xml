@@ -4,8 +4,9 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">取消</string>
+    <string name="common_close">关闭</string>
     <string name="crop_action">裁剪</string>
-    <string name="crop_hint">捏合缩放 · 拖动重新构图</string>
+    <string name="crop_hint">拖动移动 · 双指缩放 · 边角调整大小</string>
     <string name="common_ok">确定</string>
     <string name="common_delete">删除</string>
     <string name="common_save">保存</string>
@@ -166,25 +167,12 @@
     <string name="settings_notifications_subtitle">开启或关闭所有通知</string>
     <string name="settings_proximity_title">附近提醒</string>
     <string name="settings_proximity_subtitle">当联系人在附近时通知</string>
-    <string name="settings_location_denied">位置权限被拒绝 — 附近提醒保持关闭</string>
     <string name="settings_location_bg_title">后台位置信息</string>
     <string name="settings_location_bg_message">JTR 需要持续的位置信息访问权限，以便在您经过联系人附近时提醒您，即使应用已关闭。</string>
-    <string name="settings_location_bg_open">打开设置</string>
     <string name="settings_birthday_title">重要日期</string>
-    <string name="settings_birthday_subtitle">在生日和重要日期发送通知</string>
-    <string name="settings_section_appearance">外观</string>
-    <string name="settings_dark_mode_title">深色模式</string>
-    <string name="settings_dark_mode_subtitle">使用深色主题</string>
-    <string name="settings_section_customization">个性化</string>
-    <string name="settings_color_palette">色彩方案</string>
-    <string name="settings_section_data">数据</string>
-    <string name="settings_trash_title">回收站</string>
-    <string name="settings_trash_subtitle">已删除的联系人 · 30 天后自动清除</string>
-    <string name="settings_section_about">关于</string>
-    <string name="settings_version_title">版本</string>
-    <string name="settings_theme_cd">主题 %1$s</string>
-    <string name="settings_section_legal">法律</string>
-    <string name="settings_privacy_title">隐私政策</string>
+    <string name="settings_birthday_subtitle">在生日和重要日期发送通知</string>    <string name="settings_dark_mode_title">深色模式</string>
+    <string name="settings_dark_mode_subtitle">使用深色主题</string>    <string name="settings_color_palette">色彩方案</string>    <string name="settings_trash_title">回收站</string>
+    <string name="settings_trash_subtitle">已删除的联系人 · 30 天后自动清除</string>    <string name="settings_theme_cd">主题 %1$s</string>    <string name="settings_privacy_title">隐私政策</string>
     <string name="settings_privacy_subtitle">您的数据使用方式</string>
 
     <!-- ── Bottom navigation ──────────────────────────────────────────────── -->
@@ -198,14 +186,12 @@
     <string name="notif_channel_birthday_name">生日</string>
     <string name="notif_channel_birthday_desc">联系人生日提醒</string>
 
-    <!-- ── Notification content (Workers) ────────────────────────────────── -->
-    <string name="notif_birthday_title">🎂 今天是生日！</string>
-    <string name="notif_birthday_text">今天是 %1$s 的生日，别忘了送上祝福！</string>
-    <string name="notif_proximity_title">%1$s 在附近！</string>
-    <string name="notif_proximity_text">您距离 %2$s 只有 %1$d km（设定半径：%3$d km）。您已 %5$d 天没有联系 %4$s 了！</string>
-    <string name="notif_geofence_title">%1$s 在附近！</string>
-    <string name="notif_geofence_text">您目前在 %1$s — 您们已经 %2$d 天没见面了！</string>
-    <string name="notif_geofence_city_fallback">这座城市</string>
+    <!-- ── Notification content (Workers) — 温暖的「记忆应用」语气 (v6.0.1) ── -->
+    <!-- %1$s = 联系人姓名 -->
+    <string name="notif_birthday_title">🎂 今天是 %1$s 的生日！</string>
+    <string name="notif_birthday_body">别忘了送上生日祝福。</string>
+    <string name="notif_proximity_title">📍 %1$s 就在附近</string>
+    <string name="notif_proximity_body">你们在同一片区域——要不要打个招呼？</string>
 
     <!-- ── 个人资料编辑：次要字段 ─────────────────────────────────────────── -->
     <string name="person_more_info_show">添加更多信息</string>
@@ -291,11 +277,10 @@
     <string name="relation_not_found">未找到资料</string>
     <!-- v4.5 — 联系人排序、增强底栏、文件夹管理 -->
     <string name="sort_title">排序</string>
-    <string name="sort_name_asc">名称 A 到 Z</string>
-    <string name="sort_name_desc">名称 Z 到 A</string>
-    <string name="sort_created_desc">最新优先</string>
-    <string name="sort_created_asc">最早优先</string>
-    <string name="sort_updated_desc">最近修改</string>
+    <string name="sort_criterion_modified">修改日期</string>
+    <string name="sort_criterion_created">创建日期</string>
+    <string name="sort_direction_ascending">升序</string>
+    <string name="sort_direction_descending">降序</string>
     <string name="categories_fav_action">收藏</string>
     <string name="categories_group_action">分组</string>
     <string name="categories_move_to">移动到「%1$s」</string>
@@ -324,9 +309,7 @@
     <string name="view_mode_title">视图</string>
     <string name="view_mode_list">列表</string>
     <string name="view_mode_grid">网格</string>
-    <string name="view_mode_detail">详细</string>
-    <string name="sort_custom">自定义排序</string>
-    <string name="add_count">添加 (%1$d)</string>
+    <string name="view_mode_detail">详细</string>    <string name="add_count">添加 (%1$d)</string>
     <!-- v5.2 — 情境分享、即将到来的事件、备份与恢复 -->
     <string name="share_action">分享</string>
     <string name="share_sheet_title">分享所选内容</string>
@@ -368,9 +351,6 @@
     <string name="contacts_permission_denied">通讯录权限被拒绝 — 无法导入。</string>
     <!-- v5.3.2 — 移动过程中即时新建分类 -->
     <string name="move_create_category">新建分类</string>
-    <!-- v5.4 — 主动近距离提醒引擎 -->
-    <string name="notif_proximity_v2_title">检测到附近联系人！📍</string>
-    <string name="notif_proximity_v2_text">您正路过 %1$s 附近。%2$s 就在附近，何不打个招呼？👋</string>
     <string name="permission_allow">允许</string>
     <!-- v5.4.1 — 选择性导入原生联系人 -->
     <string name="welcome_select_button">选择要导入的联系人</string>
@@ -388,4 +368,78 @@
     <!-- v5.5 — 备份已移至设置 > 数据 -->
     <string name="settings_backup_subtitle">导出或恢复您的数据（.jtr 文件）</string>
     <string name="share_preview_loading">正在加载图片…</string>
+    <!-- v6.0.0 — Instagram 风格选择器 + 通知确认 -->
+    <string name="gallery_category_favorites">收藏</string>
+    <string name="gallery_category_photos">照片</string>
+    <string name="gallery_all_albums">所有相册</string>
+    <string name="gallery_select_album_title">选择相册</string>
+    <string name="gallery_albums_section">相册</string>
+    <string name="gallery_see_all">查看全部</string>
+    <string name="gallery_see_less">收起</string>
+    <string name="gallery_partial_access_message">您仅允许访问部分照片。</string>
+    <string name="gallery_partial_access_manage">选择更多</string>
+    <!-- v6.0.2 — 权限流程（由系统驱动） -->
+    <string name="settings_notif_rationale_title">允许通知？</string>
+    <string name="settings_notif_rationale_message">JTR 会在生日和重要日期向您发送温馨提醒，直接显示在手机上。</string>
+    <string name="settings_notif_blocked_title">通知已关闭</string>
+    <string name="settings_notif_blocked_message">JTR 的通知已在系统设置中被阻止。请打开设置重新启用。</string>
+    <string name="settings_location_rationale_title">允许定位？</string>
+    <string name="settings_location_rationale_message">JTR 使用您的位置，在您靠近联系人时提醒您。位置信息绝不会离开您的设备。</string>
+    <string name="settings_location_blocked_title">定位已关闭</string>
+    <string name="settings_location_blocked_message">JTR 的定位已在系统设置中被阻止。请打开设置以允许。</string>
+    <!-- v6.1.0 — 设置 v2（卡片、语言、字体大小） -->
+    <string name="settings_section_general">常规</string>
+    <string name="settings_section_others">其他</string>
+    <string name="settings_language_title">语言</string>
+    <string name="settings_language_system">系统语言</string>
+    <string name="settings_font_size_title">字体大小</string>
+    <string name="settings_font_small">小</string>
+    <string name="settings_font_normal">正常</string>
+    <string name="settings_font_large">大</string>
+    <string name="settings_font_xlarge">特大</string>
+    <string name="settings_font_preview_text">快速的棕色狐狸跳过懒狗</string>
+    <string name="settings_share_title">分享 JTR</string>
+    <string name="settings_share_text">JTR — Just To Remember：一款私密、100% 本地的联系人簿，帮你记住重要的人。</string>
+    <!-- v6.1.8 — 补全缺失的键（与 values/ 保持一致） -->
+    <string name="person_phone_label">电话</string>
+    <string name="person_email_label">邮箱</string>
+    <string name="person_action_call">拨打</string>
+    <string name="person_action_sms">短信</string>
+    <string name="person_action_email">邮件</string>
+
+    <!-- ── 本地安全 (v6.2.0)：图案锁 ───────────────────────────────────────── -->
+    <string name="settings_section_security">安全</string>
+    <string name="security_set_password">设置密码</string>
+    <string name="security_set_password_subtitle">用图案锁定 JTR</string>
+    <string name="security_change_password">修改密码</string>
+    <string name="security_biometric_title">生物识别解锁</string>
+    <string name="security_biometric_subtitle">用生物识别或设备 PIN 解锁</string>
+    <string name="security_setup_draw_title">绘制解锁图案</string>
+    <string name="security_setup_confirm_title">再次绘制图案以确认</string>
+    <string name="security_pattern_too_short">至少连接 %1$d 个点</string>
+    <string name="security_pattern_mismatch">图案不一致，请重试。</string>
+    <string name="security_recovery_title">你的恢复码</string>
+    <string name="security_recovery_message">请记下此码。如果忘记图案，这是重置图案的唯一方法，且不会再次显示。</string>
+    <string name="security_recovery_copy">复制恢复码</string>
+    <string name="security_recovery_copied">已复制</string>
+    <string name="security_recovery_done">我已记下</string>
+    <string name="security_enable_biometric_title">启用生物识别解锁？</string>
+    <string name="security_enable_biometric_message">用指纹、面容或设备 PIN 更快解锁 JTR。</string>
+    <string name="security_enable">启用</string>
+    <string name="security_not_now">暂不</string>
+    <string name="security_lock_title">JTR 已锁定</string>
+    <string name="security_lock_subtitle">绘制图案以解锁</string>
+    <string name="security_use_biometric">使用生物识别</string>
+    <string name="security_forgot_pattern">忘记图案？</string>
+    <string name="security_wrong_pattern">图案错误</string>
+    <string name="security_locked_out">尝试次数过多，请在 %1$d 秒后重试。</string>
+    <string name="security_recovery_enter_title">输入你的恢复码</string>
+    <string name="security_recovery_enter_hint">XXXX-XXXX-XXXX</string>
+    <string name="security_recovery_invalid">恢复码无效</string>
+    <string name="security_recovery_reset">重置图案</string>
+    <string name="security_auth_title">确认身份</string>
+    <string name="security_auth_subtitle">绘制当前图案</string>
+    <string name="security_biometric_prompt_title">解锁 JTR</string>
+    <string name="security_biometric_prompt_subtitle">请确认你的身份</string>
+    <string name="settings_proximity_location_off">定位已关闭 — 点按以为近距离提醒开启定位</string>
 </resources>

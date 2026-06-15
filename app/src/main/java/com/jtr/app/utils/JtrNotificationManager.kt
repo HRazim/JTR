@@ -57,11 +57,12 @@ object JtrNotificationManager {
     }
 
     /**
-     * Affiche l'alerte de proximité pour [person] :
-     *  - Titre  : « Proximité détectée ! 📍 »
-     *  - Corps  : « Vous passez pas très loin de {ville}. {Prénom} est dans le
-     *    coin, pourquoi ne pas lui passer un petit coucou ? 👋 »
-     *  - Tap    : ouverture directe de la fiche du contact.
+     * Affiche l'alerte de proximité pour [person] — ton « application de mémoire »
+     * (v6.0.1) :
+     *  - Titre  : « 📍 {Prénom} est dans les parages »
+     *  - Corps  : « Vous êtes dans le même coin — et si vous passiez prendre des
+     *    nouvelles ? »
+     *  - Tap    : ouverture directe de la fiche du contact (deep link).
      *
      * Silencieusement ignorée si POST_NOTIFICATIONS n'est pas accordée (33+).
      */
@@ -74,7 +75,6 @@ object JtrNotificationManager {
             return
         }
 
-        val place = person.city ?: person.origin ?: ""
         val tapIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra(EXTRA_PERSON_ID, person.id)
@@ -84,14 +84,13 @@ object JtrNotificationManager {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val message = context.getString(
-            R.string.notif_proximity_v2_text, place, person.firstName
-        )
+        val title = context.getString(R.string.notif_proximity_title, person.firstName)
+        val body = context.getString(R.string.notif_proximity_body)
         val notification = NotificationCompat.Builder(context, CHANNEL_PROXIMITY_ALERTS)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(context.getString(R.string.notif_proximity_v2_title))
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

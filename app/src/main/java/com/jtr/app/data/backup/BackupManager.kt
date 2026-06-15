@@ -174,14 +174,20 @@ class BackupManager(context: Context) {
                     return if (asFileUri) Uri.fromFile(File(path)).toString() else path
                 }
 
+                // Horodatages v6.1.7 (createdAt / addedAt) : une archive ANTÉRIEURE à
+                // v18 ne les porte pas → Gson les laisse à 0. On retombe alors sur la
+                // date de restauration (les archives récentes conservent leurs valeurs).
+                val restoreTs = System.currentTimeMillis()
+                fun orRestore(ts: Long) = if (ts > 0L) ts else restoreTs
+
                 // Insertion ATOMIQUE (v5.5) dans l'ordre des dépendances : dossiers →
                 // catégories → profils → liaisons → réseaux sociaux. Un échec au
                 // milieu annule TOUT (withTransaction) — jamais de base semi-restaurée.
                 db.withTransaction {
-                    groups.forEach { db.categoryGroupDao().insert(it.copy(imagePath = rewrite(it.imagePath, false))) }
-                    categories.forEach { db.categoryDao().insert(it.copy(imagePath = rewrite(it.imagePath, false))) }
+                    groups.forEach { db.categoryGroupDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt))) }
+                    categories.forEach { db.categoryDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt))) }
                     persons.forEach { db.personDao().insert(it.copy(photoUri = rewrite(it.photoUri, true))) }
-                    db.personCategoryDao().insertAll(joins)
+                    db.personCategoryDao().insertAll(joins.map { it.copy(addedAt = orRestore(it.addedAt)) })
                     socialLinks.forEach { db.socialLinkDao().insert(it) }
                 }
 

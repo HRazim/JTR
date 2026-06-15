@@ -4,8 +4,9 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">Cancel</string>
+    <string name="common_close">Close</string>
     <string name="crop_action">Crop</string>
-    <string name="crop_hint">Pinch to zoom · drag to reframe</string>
+    <string name="crop_hint">Drag to move · pinch to zoom · corners to resize</string>
     <string name="common_ok">OK</string>
     <string name="common_delete">Delete</string>
     <string name="common_save">Save</string>
@@ -171,26 +172,12 @@
     <string name="settings_notifications_subtitle">Enable or disable all notifications</string>
     <string name="settings_proximity_title">Proximity reminders</string>
     <string name="settings_proximity_subtitle">Notify when a contact is nearby</string>
-    <string name="settings_location_denied">Location permission denied — proximity stays off</string>
     <string name="settings_location_bg_title">Background location</string>
     <string name="settings_location_bg_message">JTR needs permanent location access to alert you when you pass near a contact, even when the app is closed.</string>
-    <string name="settings_location_bg_open">Open settings</string>
     <string name="settings_birthday_title">Important dates</string>
-    <string name="settings_birthday_subtitle">Notify on birthdays and important dates</string>
-    <string name="settings_section_appearance">Appearance</string>
-    <string name="settings_dark_mode_title">Dark mode</string>
-    <string name="settings_dark_mode_subtitle">Use dark theme</string>
-    <string name="settings_section_customization">Customization</string>
-    <string name="settings_color_palette">Color palette</string>
-    <string name="settings_section_data">Data</string>
-    <string name="settings_trash_title">Trash</string>
-    <string name="settings_trash_subtitle">Deleted contacts · auto-purge after 30 days</string>
-    <string name="settings_section_about">About</string>
-    <string name="settings_version_title">Version</string>
-    <string name="settings_version_value" translatable="false">JTR 5.5.1</string>
-    <string name="settings_theme_cd">Theme %1$s</string>
-    <string name="settings_section_legal">Legal</string>
-    <string name="settings_privacy_title">Privacy policy</string>
+    <string name="settings_birthday_subtitle">Notify on birthdays and important dates</string>    <string name="settings_dark_mode_title">Dark mode</string>
+    <string name="settings_dark_mode_subtitle">Use dark theme</string>    <string name="settings_color_palette">Color palette</string>    <string name="settings_trash_title">Trash</string>
+    <string name="settings_trash_subtitle">Deleted contacts · auto-purge after 30 days</string>    <string name="settings_theme_cd">Theme %1$s</string>    <string name="settings_privacy_title">Privacy policy</string>
     <string name="settings_privacy_subtitle">How your data is used</string>
 
     <!-- ── Bottom navigation ──────────────────────────────────────────────── -->
@@ -204,16 +191,12 @@
     <string name="notif_channel_birthday_name">Birthdays</string>
     <string name="notif_channel_birthday_desc">Birthday reminders for contacts</string>
 
-    <!-- ── Notification content (Workers) ────────────────────────────────── -->
-    <string name="notif_birthday_title">🎂 Birthday today!</string>
-    <string name="notif_birthday_text">It\'s %1$s\'s birthday. Don\'t forget to wish them!</string>
-    <!-- args: 1=distanceKm 2=city 3=radiusKm 4=firstName 5=days -->
-    <string name="notif_proximity_title">%1$s is nearby!</string>
-    <string name="notif_proximity_text">You are %1$d km from %2$s (configured radius: %3$d km). You haven\'t contacted %4$s in %5$d days!</string>
-    <string name="notif_geofence_title">%1$s is nearby!</string>
-    <!-- args: 1=city 2=daysSince -->
-    <string name="notif_geofence_text">You are currently in %1$s — it\'s been %2$d days since you last saw each other!</string>
-    <string name="notif_geofence_city_fallback">this city</string>
+    <!-- ── Notification content (Workers) — warm "memory app" tone (v6.0.1) ── -->
+    <!-- %1$s = contact name -->
+    <string name="notif_birthday_title">🎂 It\'s %1$s\'s birthday today!</string>
+    <string name="notif_birthday_body">Don\'t forget to wish them a happy birthday.</string>
+    <string name="notif_proximity_title">📍 %1$s is nearby</string>
+    <string name="notif_proximity_body">You\'re in the same area — a good moment to reach out?</string>
 
     <!-- ── Profile edit: secondary fields ─────────────────────────────────── -->
     <string name="person_more_info_show">Add more information</string>
@@ -299,11 +282,10 @@
     <string name="relation_not_found">Profile not found</string>
     <!-- v4.5 — tri des contacts, footer enrichi, gestion des dossiers -->
     <string name="sort_title">Sort</string>
-    <string name="sort_name_asc">Name A to Z</string>
-    <string name="sort_name_desc">Name Z to A</string>
-    <string name="sort_created_desc">Newest first</string>
-    <string name="sort_created_asc">Oldest first</string>
-    <string name="sort_updated_desc">Recently modified</string>
+    <string name="sort_criterion_modified">Date modified</string>
+    <string name="sort_criterion_created">Date created</string>
+    <string name="sort_direction_ascending">Ascending</string>
+    <string name="sort_direction_descending">Descending</string>
     <string name="categories_fav_action">Favorite</string>
     <string name="categories_group_action">Group</string>
     <string name="categories_move_to">Move to “%1$s”</string>
@@ -332,9 +314,7 @@
     <string name="view_mode_title">View</string>
     <string name="view_mode_list">List</string>
     <string name="view_mode_grid">Grid</string>
-    <string name="view_mode_detail">Detail</string>
-    <string name="sort_custom">Custom order</string>
-    <string name="add_count">Add (%1$d)</string>
+    <string name="view_mode_detail">Detail</string>    <string name="add_count">Add (%1$d)</string>
     <!-- v5.2 — partage contextuel, événements à venir, sauvegarde/restauration -->
     <string name="share_action">Share</string>
     <string name="share_sheet_title">Share selection</string>
@@ -376,9 +356,6 @@
     <string name="contacts_permission_denied">Contacts permission denied — import is impossible.</string>
     <!-- v5.3.2 — création de catégorie à la volée pendant le déplacement -->
     <string name="move_create_category">New category</string>
-    <!-- v5.4 — Moteur de Proximité actif -->
-    <string name="notif_proximity_v2_title">Proximity detected! 📍</string>
-    <string name="notif_proximity_v2_text">You\'re passing not far from %1$s. %2$s is around — why not say a quick hello? 👋</string>
     <string name="permission_allow">Allow</string>
     <!-- v5.4.1 — importation sélective des contacts natifs -->
     <string name="welcome_select_button">Choose contacts to import</string>
@@ -396,4 +373,88 @@
     <!-- v5.5 — backup relocated to Settings > Data -->
     <string name="settings_backup_subtitle">Export or restore your data (.jtr file)</string>
     <string name="share_preview_loading">Loading images…</string>
+    <!-- v6.0.0 — Instagram-style picker + notification confirmations -->
+    <string name="gallery_category_favorites">Favorites</string>
+    <string name="gallery_category_photos">Photos</string>
+    <string name="gallery_all_albums">All albums</string>
+    <string name="gallery_select_album_title">Select an album</string>
+    <string name="gallery_albums_section">Albums</string>
+    <string name="gallery_see_all">See all</string>
+    <string name="gallery_see_less">See less</string>
+    <string name="gallery_partial_access_message">You\'ve allowed access to selected photos only.</string>
+    <string name="gallery_partial_access_manage">Select more</string>
+    <!-- v6.0.2 — permission flow (system-driven) -->
+    <string name="settings_notif_rationale_title">Allow notifications?</string>
+    <string name="settings_notif_rationale_message">JTR sends gentle reminders for birthdays and important dates — right on your phone.</string>
+    <string name="settings_notif_blocked_title">Notifications are turned off</string>
+    <string name="settings_notif_blocked_message">Notifications are blocked for JTR in your system settings. Open settings to turn them back on.</string>
+    <string name="settings_location_rationale_title">Allow location?</string>
+    <string name="settings_location_rationale_message">JTR uses your location to let you know when you\'re near a contact. It never leaves your device.</string>
+    <string name="settings_location_blocked_title">Location is turned off</string>
+    <string name="settings_location_blocked_message">Location is blocked for JTR in your system settings. Open settings to allow it.</string>
+    <!-- v6.1.0 — Settings v2 (cards, language, font size) -->
+    <string name="settings_section_general">General</string>
+    <string name="settings_section_others">Others</string>
+    <string name="settings_language_title">Language</string>
+    <string name="settings_language_system">System language</string>
+    <string name="settings_font_size_title">Font size</string>
+    <string name="settings_font_small">Small</string>
+    <string name="settings_font_normal">Normal</string>
+    <string name="settings_font_large">Large</string>
+    <string name="settings_font_xlarge">Very large</string>
+    <string name="settings_font_preview_text">The quick brown fox jumps over the lazy dog</string>
+    <string name="settings_share_title">Share JTR</string>
+    <string name="settings_share_text">JTR — Just To Remember: a private, 100% local contact book to remember the people who matter.</string>
+    <string name="settings_app_version" translatable="false">JTR %1$s</string>
+    <string name="lang_en" translatable="false">English</string>
+    <string name="lang_fr" translatable="false">Français</string>
+    <string name="lang_es" translatable="false">Español</string>
+    <string name="lang_ja" translatable="false">日本語</string>
+    <string name="lang_zh" translatable="false">中文</string>
+    <string name="lang_de" translatable="false">Deutsch</string>
+    <string name="lang_it" translatable="false">Italiano</string>
+    <string name="lang_pt" translatable="false">Português</string>
+    <string name="lang_tr" translatable="false">Türkçe</string>
+    <string name="lang_ar" translatable="false">العربية</string>
+    <string name="lang_id" translatable="false">Bahasa Indonesia</string>
+    <string name="lang_ru" translatable="false">Русский</string>
+    <string name="lang_ko" translatable="false">한국어</string>
+
+    <!-- ── Local security (v6.2.0): pattern lock, recovery code, biometrics ─── -->
+    <string name="settings_section_security">Security</string>
+    <string name="security_set_password">Set a password</string>
+    <string name="security_set_password_subtitle">Lock JTR with a pattern</string>
+    <string name="security_change_password">Change password</string>
+    <string name="security_biometric_title">Biometric unlock</string>
+    <string name="security_biometric_subtitle">Unlock with biometrics or device PIN</string>
+    <string name="security_setup_draw_title">Draw an unlock pattern</string>
+    <string name="security_setup_confirm_title">Draw the pattern again to confirm</string>
+    <string name="security_pattern_too_short">Connect at least %1$d dots</string>
+    <string name="security_pattern_mismatch">Patterns don\'t match. Try again.</string>
+    <string name="security_recovery_title">Your recovery code</string>
+    <string name="security_recovery_message">Write down this code. It\'s the only way to reset your pattern if you forget it — it won\'t be shown again.</string>
+    <string name="security_recovery_copy">Copy code</string>
+    <string name="security_recovery_copied">Code copied</string>
+    <string name="security_recovery_done">I\'ve saved it</string>
+    <string name="security_enable_biometric_title">Enable biometric unlock?</string>
+    <string name="security_enable_biometric_message">Unlock JTR faster with your fingerprint, face, or device PIN.</string>
+    <string name="security_enable">Enable</string>
+    <string name="security_not_now">Not now</string>
+    <string name="security_lock_title">JTR is locked</string>
+    <string name="security_lock_subtitle">Draw your pattern to unlock</string>
+    <string name="security_use_biometric">Use biometrics</string>
+    <string name="security_forgot_pattern">Forgot pattern?</string>
+    <string name="security_wrong_pattern">Wrong pattern</string>
+    <string name="security_locked_out">Too many attempts. Try again in %1$d s.</string>
+    <string name="security_recovery_enter_title">Enter your recovery code</string>
+    <string name="security_recovery_enter_hint">XXXX-XXXX-XXXX</string>
+    <string name="security_recovery_invalid">Invalid recovery code</string>
+    <string name="security_recovery_reset">Reset pattern</string>
+    <string name="security_auth_title">Confirm it\'s you</string>
+    <string name="security_auth_subtitle">Draw your current pattern</string>
+    <string name="security_biometric_prompt_title">Unlock JTR</string>
+    <string name="security_biometric_prompt_subtitle">Confirm your identity</string>
+
+    <!-- ── Proximity / location coherence (v6.2.4) ─────────────────────────── -->
+    <string name="settings_proximity_location_off">Location is off — tap to enable it for proximity reminders</string>
 </resources>

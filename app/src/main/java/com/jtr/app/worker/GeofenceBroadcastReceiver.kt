@@ -30,7 +30,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
         val prefs = context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
         if (!prefs.getBoolean("notifications_enabled", true) ||
-            !prefs.getBoolean("proximity_enabled", true)) return
+            !prefs.getBoolean("proximity_enabled", false)) return
 
         val pendingResult = goAsync()
         val personDao = AppDatabase.getInstance(context).personDao()

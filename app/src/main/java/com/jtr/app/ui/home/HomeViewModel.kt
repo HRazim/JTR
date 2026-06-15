@@ -17,6 +17,7 @@ import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.person.FieldTypes
 import com.jtr.app.ui.person.rawDigitsToMillis
 import com.jtr.app.ui.person.resolveDateFormatSpec
+import com.jtr.app.utils.LocationUtils
 import com.jtr.app.utils.matchesSearch
 import com.jtr.app.utils.normalizeForSearch
 import kotlinx.coroutines.Dispatchers
@@ -210,12 +211,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 }
 
 private fun locationEnabledFlow(context: Context): Flow<Boolean> = callbackFlow {
-    val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-    trySend(locationManager.isLocationEnabled)
+    trySend(LocationUtils.isLocationEnabled(context))
 
     val receiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
-            trySend(locationManager.isLocationEnabled)
+            trySend(LocationUtils.isLocationEnabled(context))
         }
     }
     context.registerReceiver(receiver, IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION))

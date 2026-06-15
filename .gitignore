@@ -20,3 +20,11 @@ local.properties
 .idea/
 .gradle/
 build/
+
+# Signing & secrets (ne jamais committer)
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+secrets.properties
+google-services.json

@@ -25,5 +25,10 @@ data class Category(
     @ColumnInfo(defaultValue = "0")
     val position: Int = 0,
     val parentGroupId: Long? = null,
+    // v6.1.7 (DB v18) — date de création, pour le tri « Création » des catégories
+    // (parité avec les contacts). Défaut SQL "0" : la migration v17→v18 backfille les
+    // lignes existantes à l'horodatage de migration.
+    @ColumnInfo(defaultValue = "0")
+    val createdAt: Long = System.currentTimeMillis(),
     val deletedAt: Long? = null
 )

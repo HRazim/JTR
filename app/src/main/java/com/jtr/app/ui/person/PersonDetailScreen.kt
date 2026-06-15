@@ -1,5 +1,6 @@
 package com.jtr.app.ui.person
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -12,12 +13,14 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -42,6 +45,7 @@ import android.widget.Toast
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
@@ -52,11 +56,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.jtr.app.R
+import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.rememberGalleryImagePicker
 import com.jtr.app.utils.getSocialIcon
 import androidx.compose.ui.viewinterop.AndroidView
@@ -110,6 +118,12 @@ fun PersonDetailScreen(
     val editVm: EditPersonViewModel = viewModel()
     val isEditing by editVm.isEditing.collectAsStateWithLifecycle()
     val isLoading by editVm.isLoading.collectAsStateWithLifecycle()
+
+    // Retour système PENDANT l'édition : annule l'édition et revient au DÉTAIL du profil
+    // (même comportement que la croix de la barre et que « Enregistrer »), au lieu de
+    // dépiler tout l'écran jusqu'à l'accueil. Hors édition : garde inactive → la
+    // navigation arrière normale (retour au précédent) reprend.
+    BackHandler(enabled = isEditing) { editVm.cancelEdit() }
     val vmFirstName by editVm.firstName.collectAsStateWithLifecycle()
     val vmLastName by editVm.lastName.collectAsStateWithLifecycle()
     val vmCity by editVm.city.collectAsStateWithLifecycle()
@@ -153,7 +167,7 @@ fun PersonDetailScreen(
     // notifications globales ET la proximité sont actives dans les paramètres.
     val proximityAllowed = remember {
         val p = context.getSharedPreferences("jtr_prefs", android.content.Context.MODE_PRIVATE)
-        p.getBoolean("notifications_enabled", false) && p.getBoolean("proximity_enabled", false)
+        p.getBoolean("notifications_enabled", true) && p.getBoolean("proximity_enabled", false)
     }
 
     // Permission GPS demandée IMMÉDIATEMENT à l'activation du rappel de proximité ;
@@ -246,12 +260,16 @@ fun PersonDetailScreen(
                         // Étoile favori : jaune vif si actif, toggle instantané en base.
                         IconButton(onClick = { editVm.toggleFavorite() }) {
                             val fav = person?.isFavorite == true
-                            Icon(
-                                if (fav) Icons.Default.Star else Icons.Default.StarBorder,
-                                contentDescription = stringResource(R.string.person_favorite_toggle_cd),
-                                tint = if (fav) Color(0xFFFFD600)
-                                       else MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                            val cd = stringResource(R.string.person_favorite_toggle_cd)
+                            if (fav) {
+                                FavoriteStar(size = 24.dp, contentDescription = cd)
+                            } else {
+                                Icon(
+                                    Icons.Default.StarBorder,
+                                    contentDescription = cd,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
                         }
                         // Menu « 3 points » : Modifier / Supprimer / Informations du profil.
                         Box {
@@ -664,14 +682,14 @@ fun PersonDetailScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column {
                         Text(stringResource(R.string.person_info_created),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(df.format(Date(person.createdAt)),
                             style = MaterialTheme.typography.bodyLarge)
                     }
                     Column {
                         Text(stringResource(R.string.person_info_updated),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(df.format(Date(person.updatedAt.takeIf { it > 0 } ?: person.createdAt)),
                             style = MaterialTheme.typography.bodyLarge)
@@ -710,94 +728,163 @@ fun PersonDetailScreen(
 
 @Composable
 private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    var offsetY by remember { mutableFloatStateOf(0f) }
+    val scope = rememberCoroutineScope()
+    // Échelle/translation ANIMABLES → double-tap zoom doux + recentrage fluide.
+    val scale = remember { Animatable(1f) }
+    val offsetX = remember { Animatable(0f) }
+    val offsetY = remember { Animatable(0f) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     // Taille intrinsèque de l'image chargée → dimensions réellement affichées (Fit).
-    var intrinsicSize by remember { mutableStateOf<androidx.compose.ui.geometry.Size?>(null) }
+    var intrinsicSize by remember { mutableStateOf<Size?>(null) }
+    val density = LocalDensity.current
 
-    // Barrières géométriques du pan, axe par axe : le déplacement s'arrête quand le
-    // bord de l'image atteint le bord du cadre — l'image ne peut JAMAIS être « jetée »
-    // hors de l'écran. Si l'image (zoomée) est plus petite que le cadre sur un axe,
-    // aucun déplacement n'est permis sur cet axe (borne 0).
-    fun maxPan(): Offset {
+    // Rectangle réellement occupé par la photo (mode Fit, à l'échelle 1) — base du
+    // dimensionnement de la zone tactile « photo » (le reste = noir/letterbox).
+    fun dispSize(): Size {
+        val c = containerSize
+        if (c == IntSize.Zero) return Size.Zero
+        val i = intrinsicSize
+        return if (i != null && i.width > 0f && i.height > 0f) {
+            val fit = minOf(c.width / i.width, c.height / i.height)
+            Size(i.width * fit, i.height * fit)
+        } else {
+            Size(c.width.toFloat(), c.height.toFloat())
+        }
+    }
+
+    // Barrières géométriques du pan à une échelle donnée : l'image ne peut JAMAIS
+    // être traînée hors écran (révéler du fond noir).
+    fun maxPanAt(s: Float): Offset {
         val c = containerSize
         if (c == IntSize.Zero) return Offset.Zero
-        val i = intrinsicSize
-        val dispW: Float
-        val dispH: Float
-        if (i != null && i.width > 0f && i.height > 0f) {
-            val fit = minOf(c.width / i.width, c.height / i.height)
-            dispW = i.width * fit
-            dispH = i.height * fit
-        } else {
-            dispW = c.width.toFloat()
-            dispH = c.height.toFloat()
-        }
+        val d = dispSize()
         return Offset(
-            ((dispW * scale - c.width) / 2f).coerceAtLeast(0f),
-            ((dispH * scale - c.height) / 2f).coerceAtLeast(0f)
+            ((d.width * s - c.width) / 2f).coerceAtLeast(0f),
+            ((d.height * s - c.height) / 2f).coerceAtLeast(0f)
         )
     }
 
     val transformState = rememberTransformableState { zoomChange, panChange, _ ->
-        scale = (scale * zoomChange).coerceIn(1f, 5f)
-        // Le pan est appliqué en pixels écran (post-zoom) puis borné : le dézoom
-        // re-serre aussi les offsets puisque les bornes dépendent de l'échelle.
-        val max = maxPan()
-        offsetX = (offsetX + panChange.x).coerceIn(-max.x, max.x)
-        offsetY = (offsetY + panChange.y).coerceIn(-max.y, max.y)
+        scope.launch {
+            scale.snapTo((scale.value * zoomChange).coerceIn(1f, 5f))
+            val max = maxPanAt(scale.value)
+            offsetX.snapTo((offsetX.value + panChange.x).coerceIn(-max.x, max.x))
+            offsetY.snapTo((offsetY.value + panChange.y).coerceIn(-max.y, max.y))
+        }
+    }
+
+    // Double-tap ANIMÉ (~280 ms, easing doux) : zoom 1× → 2.5× ANCRÉ sur le point
+    // touché (le point sous le doigt y reste), ou dézoom centré si déjà zoomée.
+    // Ancrage identique au pinch : offset' = d·(1−k) + offset·k, d = point − centre.
+    fun animateZoomToPoint(point: Offset) {
+        scope.launch {
+            val spec = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
+            if (scale.value > 1f) {
+                launch { scale.animateTo(1f, spec) }
+                launch { offsetX.animateTo(0f, spec) }
+                launch { offsetY.animateTo(0f, spec) }
+            } else {
+                val target = 2.5f
+                val k = target / scale.value
+                val d = dispSize()
+                val dx = point.x - d.width / 2f
+                val dy = point.y - d.height / 2f
+                val max = maxPanAt(target)
+                val newOffX = (dx * (1f - k) + offsetX.value * k).coerceIn(-max.x, max.x)
+                val newOffY = (dy * (1f - k) + offsetY.value * k).coerceIn(-max.y, max.y)
+                launch { scale.animateTo(target, spec) }
+                launch { offsetX.animateTo(newOffX, spec) }
+                launch { offsetY.animateTo(newOffY, spec) }
+            }
+        }
     }
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+      // RTL : la visionneuse opère en pixels (zoom/pan via graphicsLayer, ancrage
+      // double-tap en coordonnées locales) → on force LTR pour rester direction-
+      // agnostique (gestes identiques en arabe).
+      CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.92f))
-                .onSizeChanged { containerSize = it }
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { onDismiss() },
+                .onSizeChanged { containerSize = it },
             contentAlignment = Alignment.Center
         ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(photoUri).crossfade(200).build(),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                onState = { state ->
-                    if (state is AsyncImagePainter.State.Success) {
-                        intrinsicSize = state.painter.intrinsicSize
-                    }
-                },
+            // ZONE NOIRE / letterbox : tap simple = fermeture IMMÉDIATE. Aucun
+            // onDoubleTap ici → zéro délai de détection (fermeture snappy).
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .matchParentSize()
+                    .pointerInput(Unit) { detectTapGestures { onDismiss() } }
+            )
+
+            // ZONE PHOTO : dimensionnée au rectangle Fit ; le graphicsLayer applique
+            // zoom/pan ET fait suivre la zone tactile à l'image agrandie.
+            val disp = dispSize()
+            val photoModifier = if (disp != Size.Zero) {
+                Modifier.size(
+                    with(density) { disp.width.toDp() },
+                    with(density) { disp.height.toDp() }
+                )
+            } else {
+                Modifier.fillMaxSize()
+            }
+            Box(
+                modifier = photoModifier
+                    .align(Alignment.Center)
                     .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                        translationX = offsetX
-                        translationY = offsetY
+                        scaleX = scale.value
+                        scaleY = scale.value
+                        translationX = offsetX.value
+                        translationY = offsetY.value
                     }
                     .transformable(state = transformState)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) {}
-            )
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            // Tap sur la photo : dézoom (animé) si zoomée, sinon ferme.
+                            onTap = { if (scale.value > 1f) animateZoomToPoint(it) else onDismiss() },
+                            // Double-tap : zoom DOUX animé, ancré sur le point touché.
+                            onDoubleTap = { animateZoomToPoint(it) }
+                        )
+                    }
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(photoUri).crossfade(200).build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    onState = { state ->
+                        if (state is AsyncImagePainter.State.Success) {
+                            intrinsicSize = state.painter.intrinsicSize
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            // Croix sur un scrim sombre circulaire → TOUJOURS visible, même sur une
+            // photo claire/blanche.
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.45f))
             ) {
-                Icon(Icons.Default.Close, contentDescription = null, tint = Color.White)
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = stringResource(R.string.common_close),
+                    tint = Color.White
+                )
             }
         }
+      }
     }
 }
 
@@ -983,7 +1070,7 @@ private fun CityDetailRow(city: String, cityLat: Double?, cityLng: Double?) {
         Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(stringResource(R.string.person_city_label),
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(city, style = MaterialTheme.typography.bodyLarge)
         }
@@ -1119,14 +1206,14 @@ private fun ContactLinesBlock(
             modifier = Modifier.weight(1f).animateContentSize(),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(sectionLabel, style = MaterialTheme.typography.labelSmall,
+            Text(sectionLabel, style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             visible.forEach { line ->
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(lineTypeLabel(types, line.label),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.widthIn(min = 56.dp))
                     if (onValueClick != null) {
                         // Valeur cliquable (relation/téléphone/email) — couleur primaire,
@@ -1179,7 +1266,7 @@ private fun DatesBlock(lines: List<DynamicLine>) {
         ) {
             if (!singleBirthday) {
                 Text(stringResource(R.string.section_dates),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             visible.forEach { (label, dateStr, notify) ->
@@ -1187,7 +1274,7 @@ private fun DatesBlock(lines: List<DynamicLine>) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(lineTypeLabel(FieldTypes.DATE, label),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.widthIn(min = 56.dp))
                     Text(dateStr, style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.weight(1f))
@@ -1213,7 +1300,7 @@ fun DetailRow(icon: ImageVector, label: String, value: String) {
         Icon(icon, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(16.dp))
         Column {
-            Text(label, style = MaterialTheme.typography.labelSmall,
+            Text(label, style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(value, style = MaterialTheme.typography.bodyLarge)
         }
@@ -1228,10 +1315,10 @@ fun DetailTextBlock(icon: ImageVector, label: String, value: String) {
             tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(16.dp))
         Column {
-            Text(label, style = MaterialTheme.typography.labelSmall,
+            Text(label, style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
-            Text(value, style = MaterialTheme.typography.bodyMedium)
+            Text(value, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }

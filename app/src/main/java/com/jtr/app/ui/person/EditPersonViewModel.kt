@@ -11,6 +11,7 @@ import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.utils.extractSocialLinks
+import com.jtr.app.worker.ImportantDateCheckWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,7 +33,7 @@ class EditPersonViewModel(
 
     /** La notif de proximité ne peut être vraie que si tout est activé globalement. */
     private fun proximityAllowed(): Boolean =
-        prefs.getBoolean("notifications_enabled", false) &&
+        prefs.getBoolean("notifications_enabled", true) &&
             prefs.getBoolean("proximity_enabled", false)
 
     private val _person = MutableStateFlow<Person?>(null)
@@ -366,6 +367,10 @@ class EditPersonViewModel(
             }
             repository.propagateRelationNameChange(updated.id, p.fullName, updated.fullName)
             repository.syncMirrorRelations(updated, p.relationLines)
+            // Une date fixée POUR AUJOURD'HUI doit notifier TOUT DE SUITE : appel DIRECT
+            // (pas via WorkManager) APRÈS l'écriture en base → post immédiat, non différé
+            // par Doze et sans course (la nouvelle entrée est déjà visible).
+            ImportantDateCheckWorker.checkAndNotify(getApplication())
             onSuccess()
         }
     }

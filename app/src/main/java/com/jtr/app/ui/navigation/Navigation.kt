@@ -1,17 +1,26 @@
 package com.jtr.app.ui.navigation
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -95,11 +104,38 @@ fun JTRMainScaffold(
     onDarkModeChange: (Boolean) -> Unit,
     selectedPreset: ThemePreset,
     onPresetSelected: (ThemePreset) -> Unit,
+    fontScale: Float,
+    onFontScaleChange: (Float) -> Unit,
     /** Id transporté par une notification de proximité → ouverture de la fiche. */
     notificationPersonId: String? = null,
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // RTL : le glissement des transitions doit entrer du côté opposé en arabe.
+    // On inverse simplement le signe des offsets selon la direction de mise en page.
+    val rtlSign = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
+
+    // GARDE ANTI « TOUCHE FANTÔME » : on suit l'état de cycle de vie de la destination
+    // courante. Pendant une transition, la nouvelle destination n'est encore que
+    // STARTED (pas RESUMED) → on bloque alors tout pointeur sur la zone de contenu,
+    // de sorte que NI l'écran sortant NI l'écran entrant ne traite de clic durant le
+    // fondu (la fenêtre interactive de chevauchement, cause du bug, disparaît).
+    var contentResumed by remember { mutableStateOf(true) }
+    DisposableEffect(navBackStackEntry) {
+        val lifecycle = navBackStackEntry?.lifecycle
+        if (lifecycle == null) {
+            contentResumed = true
+            onDispose { }
+        } else {
+            contentResumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+            val observer = LifecycleEventObserver { _, _ ->
+                contentResumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+            }
+            lifecycle.addObserver(observer)
+            onDispose { lifecycle.removeObserver(observer) }
+        }
+    }
 
     // Onboarding : première ouverture → écran de Bienvenue (flag persistant).
     val appContext = LocalContext.current.applicationContext
@@ -182,7 +218,9 @@ fun JTRMainScaffold(
                 enter = JtrBottomBarTransitions.enter,
                 exit = JtrBottomBarTransitions.exit
             ) {
-                NavigationBar {
+                // Couleur du fond identique aux écrans (background teinté du thème)
+                // → aucune couture/bande grise entre le contenu et la barre.
+                NavigationBar(containerColor = MaterialTheme.colorScheme.background) {
                     bottomNavItems.forEach { item ->
                         NavigationBarItem(
                             selected = currentRoute == item.route,
@@ -203,10 +241,20 @@ fun JTRMainScaffold(
             }
         }
     ) { paddingValues ->
+      Box(modifier = Modifier.padding(paddingValues)) {
         NavHost(
             navController = navController,
             startDestination = startDestination,
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.fillMaxSize(),
+            // Transition DOUCE & RAPIDE (~220 ms) : fondu + léger glissement horizontal
+            // pour les changements d'onglet et l'entrée sur un écran. La fenêtre de
+            // « touche fantôme » qu'introduit l'animation est neutralisée par la garde
+            // RESUMED (overlay ci-dessous). Les destinations ayant leur propre animation
+            // (ex. détail = slide complet) la conservent.
+            enterTransition = { fadeIn(tween(220)) + slideInHorizontally(tween(220)) { rtlSign * it / 16 } },
+            exitTransition = { fadeOut(tween(180)) },
+            popEnterTransition = { fadeIn(tween(220)) },
+            popExitTransition = { fadeOut(tween(180)) + slideOutHorizontally(tween(220)) { rtlSign * it / 16 } }
         ) {
             composable(Routes.WELCOME) {
                 WelcomeScreen(
@@ -369,10 +417,10 @@ fun JTRMainScaffold(
             composable(
                 route = Routes.CATEGORY_GROUP_DETAIL,
                 arguments = listOf(navArgument("groupId") { type = NavType.LongType }),
-                enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
-                exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) },
-                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) },
-                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+                enterTransition = { slideInHorizontally(initialOffsetX = { rtlSign * it }) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -rtlSign * it / 3 }) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -rtlSign * it / 3 }) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { rtlSign * it }) }
             ) {
                 CategoryGroupDetailScreen(
                     onNavigateBack = { navController.popBackStack() },
@@ -413,10 +461,10 @@ fun JTRMainScaffold(
             composable(
                 route = Routes.SELECT_CONTACTS,
                 arguments = listOf(navArgument("categoryId") { type = NavType.StringType }),
-                enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
-                exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) },
-                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) },
-                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+                enterTransition = { slideInHorizontally(initialOffsetX = { rtlSign * it }) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -rtlSign * it / 3 }) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -rtlSign * it / 3 }) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { rtlSign * it }) }
             ) {
                 SelectContactsScreen(
                     onNavigateBack = { navController.popBackStack() }
@@ -429,6 +477,8 @@ fun JTRMainScaffold(
                     onDarkModeChange = onDarkModeChange,
                     selectedPreset = selectedPreset,
                     onPresetSelected = onPresetSelected,
+                    fontScale = fontScale,
+                    onFontScaleChange = onFontScaleChange,
                     onNavigateToTrash = { navController.navigate(Routes.TRASH) }
                 )
             }
@@ -437,5 +487,25 @@ fun JTRMainScaffold(
                 TrashScreen(onNavigateBack = { navController.popBackStack() })
             }
         }
+
+        // Overlay de la garde RESUMED : tant que la destination courante n'est pas
+        // RESUMED (= une transition est en cours), il recouvre la zone de contenu et
+        // ABSORBE tous les pointeurs → aucun clic n'atteint l'écran sortant ni l'écran
+        // entrant. Il disparaît dès la fin du fondu (ON_RESUME). La barre de navigation,
+        // hors de cette Box, reste utilisable pendant l'animation.
+        if (!contentResumed) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                awaitPointerEvent().changes.forEach { it.consume() }
+                            }
+                        }
+                    }
+            )
+        }
+      }
     }
 }

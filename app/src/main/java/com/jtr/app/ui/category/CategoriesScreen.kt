@@ -56,6 +56,7 @@ import com.jtr.app.R
 import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
@@ -81,21 +82,48 @@ internal sealed interface TopEntry {
     val isFavorite: Boolean
     val position: Int
     val sortName: String
+    // v6.1.7 — horodatages pour le tri « Temps » (parité contacts).
+    val createdAt: Long
+    val lastActivity: Long
 
     data class Folder(
         val group: CategoryGroup,
         val members: List<Category>,
-        val subGroupCount: Int = 0
+        val subGroupCount: Int = 0,
+        // Dernière activité du dossier = max des activités de ses catégories ; à
+        // défaut (dossier vide), retombe sur sa date de création.
+        override val lastActivity: Long = group.createdAt
     ) : TopEntry {
         override val isFavorite get() = group.isFavorite
         override val position get() = group.position
         override val sortName get() = group.name.lowercase()
+        override val createdAt get() = group.createdAt
     }
 
-    data class Single(val category: Category) : TopEntry {
+    data class Single(
+        val category: Category,
+        // Activité de la catégorie ; à défaut (aucun membre actif), sa date de création.
+        override val lastActivity: Long = category.createdAt
+    ) : TopEntry {
         override val isFavorite get() = category.isFavorite
         override val position get() = category.position
         override val sortName get() = category.name.lowercase()
+        override val createdAt get() = category.createdAt
+    }
+}
+
+/**
+ * Couleur d'accent d'une catégorie — SOURCE UNIQUE (v6.2.5) partagée par TOUS les
+ * modes (liste, détail, grille, sélection). Parse `category.color` ; en cas de
+ * valeur absente/invalide, retombe sur un TOKEN DE THÈME (`colorScheme.primary`)
+ * plutôt qu'un bleu codé en dur → la vraie couleur est respectée de façon identique
+ * partout, et aucune couleur n'est codée en dur.
+ */
+@Composable
+internal fun rememberCategoryColor(hex: String): Color {
+    val fallback = MaterialTheme.colorScheme.primary
+    return remember(hex, fallback) {
+        runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(fallback)
     }
 }
 
@@ -112,6 +140,8 @@ fun CategoriesScreen(
 ) {
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val personCountByCategory by viewModel.personCountByCategory.collectAsStateWithLifecycle()
+    // « Dernière modification » par catégorie (v6.1.7) → tri « Temps ».
+    val categoryActivity by viewModel.categoryActivity.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val favoritePersonCount by viewModel.favoritePersonCount.collectAsStateWithLifecycle()
@@ -189,20 +219,22 @@ fun CategoriesScreen(
 
     // ── Entrées de premier niveau : dossiers + catégories indépendantes ───────
     val isSearching = searchQuery.isNotBlank()
-    val topEntries = remember(categories, groups, sortOrder) {
+    val topEntries = remember(categories, groups, sortOrder, categoryActivity) {
         val membersByGroup = categories.filter { it.parentGroupId != null }
             .groupBy { it.parentGroupId!! }
         val subByParent = groups.filter { it.parentGroupId != null }
             .groupBy { it.parentGroupId!! }
+        // Activité d'une catégorie : la valeur calculée, sinon sa date de création.
+        fun activityOf(c: Category) = categoryActivity[c.id] ?: c.createdAt
         // À la racine : seulement les groupes de PREMIER NIVEAU (parentGroupId == null).
         val folders = groups.filter { it.parentGroupId == null }.map { g ->
-            TopEntry.Folder(
-                g,
-                membersByGroup[g.id]?.sortedBy { it.name.lowercase() } ?: emptyList(),
-                subByParent[g.id]?.size ?: 0
-            )
+            val memberCats = membersByGroup[g.id]?.sortedBy { it.name.lowercase() } ?: emptyList()
+            // Dernière activité du dossier = max(création du dossier, activités membres).
+            val folderActivity = memberCats.fold(g.createdAt) { acc, c -> maxOf(acc, activityOf(c)) }
+            TopEntry.Folder(g, memberCats, subByParent[g.id]?.size ?: 0, lastActivity = folderActivity)
         }
-        val singles = categories.filter { it.parentGroupId == null }.map { TopEntry.Single(it) }
+        val singles = categories.filter { it.parentGroupId == null }
+            .map { TopEntry.Single(it, lastActivity = activityOf(it)) }
         sortTopEntries(folders + singles, sortOrder)
     }
     fun selectAll() {
@@ -447,7 +479,7 @@ fun CategoriesScreen(
                             )
                         }
                         JtrOverflowMenu(
-                            sortOptions = categorySortOptions(sortOrder) { viewModel.setSortOrder(it) },
+                            sortCriteria = categorySortCriteria(sortOrder) { viewModel.setSortOrder(it) },
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
                         )
@@ -674,10 +706,7 @@ fun CategoryGridTile(
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {}
 ) {
-    val accent = remember(category.color) {
-        try { Color(android.graphics.Color.parseColor(category.color)) }
-        catch (e: Exception) { Color(0xFF2E86C1) }
-    }
+    val accent = rememberCategoryColor(category.color)
 
     Box(
         modifier = Modifier
@@ -709,11 +738,9 @@ fun CategoryGridTile(
 
         // Étoile « favori » en haut à DROITE (indicateur de statut, non interactif).
         if (category.isFavorite) {
-            Icon(
-                Icons.Default.Star,
-                contentDescription = null,
-                tint = Color(0xFFFFD600),
-                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(22.dp)
+            FavoriteStar(
+                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                size = 22.dp
             )
         }
 
@@ -755,56 +782,72 @@ fun CategoryListRow(
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {}
 ) {
-    val accent = remember(category.color) {
-        try { Color(android.graphics.Color.parseColor(category.color)) }
-        catch (e: Exception) { Color(0xFF2E86C1) }
-    }
+    val accent = rememberCategoryColor(category.color)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+            modifier = Modifier.height(IntrinsicSize.Min),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
+            // Barre d'accent verticale à la couleur de la catégorie — enfant clippé
+            // par la carte arrondie (pas de border-left aux coins disgracieux).
+            Box(modifier = Modifier.width(5.dp).fillMaxHeight().background(accent))
+            Row(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(accent),
-                contentAlignment = Alignment.Center
+                    .weight(1f)
+                    .padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (category.imagePath != null) {
-                    AsyncImage(
-                        model = category.imagePath,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(Icons.Default.Folder, contentDescription = null, tint = Color.White)
+                // Avatar : couverture si dispo, sinon cercle teinté + icône dans la couleur.
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(if (category.imagePath != null) accent else accent.copy(alpha = 0.16f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (category.imagePath != null) {
+                        AsyncImage(
+                            model = category.imagePath,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(Icons.Default.Folder, contentDescription = null, tint = accent,
+                            modifier = Modifier.size(22.dp))
+                    }
                 }
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = category.name, style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                Text(
-                    text = stringResource(R.string.categories_person_count, personCount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = category.name, style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold, maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Text(
+                        text = stringResource(R.string.categories_person_count, personCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+                // Étoile « favori » à DROITE (indicateur de statut, non interactif).
+                if (category.isFavorite) {
+                    FavoriteStar(size = 20.dp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-            // Étoile « favori » à DROITE (indicateur de statut, non interactif).
-            if (category.isFavorite) {
-                Icon(Icons.Default.Star, contentDescription = null,
-                    tint = Color(0xFFFFD600),
-                    modifier = Modifier.padding(end = 12.dp).size(20.dp))
             }
         }
     }
@@ -918,10 +961,7 @@ internal fun TopEntriesBrowser(
                         onClick = { onGroupClick(entry.group.id) },
                         onLongClick = { onGroupLongClick(entry.group.id) })
                     is TopEntry.Single -> {
-                        val accent = remember(entry.category.color) {
-                            try { Color(android.graphics.Color.parseColor(entry.category.color)) }
-                            catch (e: Exception) { Color(0xFF2E86C1) }
-                        }
+                        val accent = rememberCategoryColor(entry.category.color)
                         EntryCompactRow(
                             isFolder = false,
                             name = entry.category.name,
@@ -991,7 +1031,10 @@ private fun FavoritesRow(count: Int, showCount: Boolean, onClick: () -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
+        // Surface ACCORDÉE à la palette (même token que l'accueil/Paramètres/mode Détails),
+        // au lieu du `surfaceContainerHighest` par défaut du Card (neutre/lavande en clair).
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -1050,7 +1093,10 @@ private fun EntryCompactRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
+        // Surface ACCORDÉE à la palette (même token que l'accueil/Paramètres/mode Détails),
+        // au lieu du `surfaceContainerHighest` par défaut du Card (neutre/lavande en clair).
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -1083,8 +1129,7 @@ private fun EntryCompactRow(
                 modifier = Modifier.weight(1f)
             )
             if (isFavorite) {
-                Icon(Icons.Default.Star, contentDescription = null,
-                    tint = Color(0xFFFFD600), modifier = Modifier.size(18.dp))
+                FavoriteStar(size = 18.dp)
             }
         }
     }
@@ -1262,8 +1307,7 @@ internal fun FolderGridTile(
 
         // Étoile « favori » en haut à DROITE (parité avec CategoryGridTile).
         if (group.isFavorite) {
-            Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFD600),
-                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(22.dp))
+            FavoriteStar(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp), size = 22.dp)
         }
 
         // Identité incrustée en bas : nom + compteur, blanc sur le calque (lisible
@@ -1314,45 +1358,61 @@ private fun FolderListRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
+    // Les dossiers ne portent pas de couleur propre → accent = primaire du thème.
+    val accent = MaterialTheme.colorScheme.primary
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+            modifier = Modifier.height(IntrinsicSize.Min),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
+            Box(modifier = Modifier.width(5.dp).fillMaxHeight().background(accent))
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (group.imagePath != null) {
-                    AsyncImage(model = group.imagePath, contentDescription = null,
-                        modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                } else {
-                    Icon(Icons.Default.Folder, contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(26.dp))
+                Box(
+                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (group.imagePath != null) {
+                        AsyncImage(model = group.imagePath, contentDescription = null,
+                            modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    } else {
+                        Icon(Icons.Default.Folder, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(24.dp))
+                    }
                 }
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(group.name, style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold, maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                Text(stringResource(R.string.categories_group_counter, memberCount, subGroupCount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-            }
-            // Étoile « favori » à DROITE (parité avec CategoryListRow).
-            if (group.isFavorite) {
-                Icon(Icons.Default.Star, contentDescription = null,
-                    tint = Color(0xFFFFD600),
-                    modifier = Modifier.padding(end = 12.dp).size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(group.name, style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold, maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Text(stringResource(R.string.categories_group_counter, memberCount, subGroupCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                }
+                // Étoile « favori » à DROITE (parité avec CategoryListRow).
+                if (group.isFavorite) {
+                    FavoriteStar(size = 20.dp)
+                    Spacer(Modifier.width(4.dp))
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -1612,10 +1672,7 @@ internal fun ReorderableTopGrid(
                     modifier = mod
                 )
                 is TopEntry.Single -> {
-                    val accent = remember(entry.category.color) {
-                        try { Color(android.graphics.Color.parseColor(entry.category.color)) }
-                        catch (e: Exception) { Color(0xFF2E86C1) }
-                    }
+                    val accent = rememberCategoryColor(entry.category.color)
                     val c = countOf(entry.category.id)
                     TopSelectionTile(
                         isFolder = false,
@@ -1836,10 +1893,7 @@ internal fun ReorderableTopList(
                     modifier = mod
                 )
                 is TopEntry.Single -> {
-                    val accent = remember(entry.category.color) {
-                        try { Color(android.graphics.Color.parseColor(entry.category.color)) }
-                        catch (e: Exception) { Color(0xFF2E86C1) }
-                    }
+                    val accent = rememberCategoryColor(entry.category.color)
                     TopSelectionRow(
                         isFolder = false,
                         name = entry.category.name,
@@ -1930,8 +1984,7 @@ private fun TopSelectionRow(
                     modifier = Modifier.padding(end = 8.dp).size(22.dp))
             }
             if (isFavorite) {
-                Icon(Icons.Default.Star, contentDescription = null,
-                    tint = Color(0xFFFFD600), modifier = Modifier.size(20.dp))
+                FavoriteStar(size = 20.dp)
             }
         }
     }
@@ -2005,8 +2058,7 @@ internal fun TopSelectionTile(
         )
 
         if (isFavorite) {
-            Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFD600),
-                modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(22.dp))
+            FavoriteStar(modifier = Modifier.align(Alignment.TopEnd).padding(6.dp), size = 22.dp)
         }
 
         // Identité incrustée bas-gauche : la case à cocher vit en HAUT-gauche, donc
@@ -2148,10 +2200,7 @@ private fun CategoryFormDialog(
                     modifier = Modifier
                         .size(96.dp)
                         .clip(CircleShape)
-                        .background(
-                            try { Color(android.graphics.Color.parseColor(selectedColor)) }
-                            catch (e: Exception) { Color(0xFF2E86C1) }
-                        )
+                        .background(rememberCategoryColor(selectedColor))
                         .clickable { photoPicker() },
                     contentAlignment = Alignment.Center
                 ) {

@@ -152,7 +152,7 @@ fun CategoryDetailScreen(
                             )
                         }
                         JtrOverflowMenu(
-                            sortOptions = contactSortOptions(sortOrder) { viewModel.setSortOrder(it) },
+                            sortCriteria = contactSortCriteria(sortOrder) { viewModel.setSortOrder(it) },
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
                         ) { dismiss ->

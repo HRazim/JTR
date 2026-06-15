@@ -42,7 +42,8 @@ import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.ui.category.FooterActionColumn
-import com.jtr.app.ui.category.contactSortOptions
+import com.jtr.app.ui.category.contactSortCriteria
+import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
@@ -180,7 +181,7 @@ fun HomeScreen(
                         // Sauvegarde & restauration : relocalisée dans Paramètres
                         // → section Données (v5.5).
                         JtrOverflowMenu(
-                            sortOptions = contactSortOptions(sortOrder) { viewModel.setSortOrder(it) },
+                            sortCriteria = contactSortCriteria(sortOrder) { viewModel.setSortOrder(it) },
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
                         )
@@ -615,13 +616,16 @@ fun PersonCard(
 
             if (!isSelectionMode) {
                 IconButton(onClick = onFavoriteClick) {
-                    Icon(
-                        imageVector = if (person.isFavorite) Icons.Default.Star
-                        else Icons.Default.StarBorder,
-                        contentDescription = stringResource(R.string.home_favorite_cd),
-                        tint = if (person.isFavorite) Color(0xFFFFD600)
-                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
-                    )
+                    val cd = stringResource(R.string.home_favorite_cd)
+                    if (person.isFavorite) {
+                        FavoriteStar(size = 24.dp, contentDescription = cd)
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.StarBorder,
+                            contentDescription = cd,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                        )
+                    }
                 }
             }
         }

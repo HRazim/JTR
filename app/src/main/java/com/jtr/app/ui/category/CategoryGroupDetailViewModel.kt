@@ -43,7 +43,7 @@ class CategoryGroupDetailViewModel(
 
     private val _sortOrder = MutableStateFlow(
         runCatching { CategorySortOrder.valueOf(prefs.getString(SORT_PREF_KEY, null) ?: "") }
-            .getOrDefault(CategorySortOrder.CUSTOM)
+            .getOrDefault(CategorySortOrder.NAME_ASC)
     )
     val sortOrder: StateFlow<CategorySortOrder> = _sortOrder.asStateFlow()
 
@@ -80,14 +80,19 @@ class CategoryGroupDetailViewModel(
      * filtré par la recherche et trié selon le critère choisi (UDF complet).
      */
     internal val topEntries: StateFlow<List<TopEntry>> = combine(
-        repo.getAllActive(), repo.getGroups(), _searchQuery, _sortOrder
-    ) { cats, grps, query, order ->
+        repo.getAllActive(), repo.getGroups(), repo.getCategoryLastActivity(), _searchQuery, _sortOrder
+    ) { cats, grps, activity, query, order ->
         val membersByGroup = cats.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
         val subByParent = grps.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
+        // Activité d'une catégorie : la valeur calculée, sinon sa date de création.
+        fun activityOf(c: Category) = activity[c.id] ?: c.createdAt
         val folders = grps.filter { it.parentGroupId == groupId }.map { sg ->
-            TopEntry.Folder(sg, membersByGroup[sg.id] ?: emptyList(), subByParent[sg.id]?.size ?: 0)
+            val memberCats = membersByGroup[sg.id] ?: emptyList()
+            val sgActivity = memberCats.fold(sg.createdAt) { acc, c -> maxOf(acc, activityOf(c)) }
+            TopEntry.Folder(sg, memberCats, subByParent[sg.id]?.size ?: 0, lastActivity = sgActivity)
         }
-        val singles = cats.filter { it.parentGroupId == groupId }.map { TopEntry.Single(it) }
+        val singles = cats.filter { it.parentGroupId == groupId }
+            .map { TopEntry.Single(it, lastActivity = activityOf(it)) }
         val all = folders + singles
         val filtered =
             if (query.isBlank()) all

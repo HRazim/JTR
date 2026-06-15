@@ -14,13 +14,18 @@ android {
         applicationId = "com.jtr.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 19
-        versionName = "5.5.1"
+        versionCode = 45
+        versionName = "6.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        // BuildConfig.VERSION_NAME : version affichée dynamiquement dans les Paramètres
+        // (évite les divergences entre locales d'une valeur codée en dur).
+        buildConfig = true
+    }
     kotlinOptions { jvmTarget = "17" }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -67,6 +72,9 @@ dependencies {
     // Lifecycle
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+    // lifecycle-process : ProcessLifecycleOwner pilote le re-verrouillage au niveau
+    // PROCESS (un recreate()/changement de config ne déclenche pas son ON_STOP).
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
 
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.8.5")
@@ -91,6 +99,11 @@ dependencies {
 
     // DataStore (préférences)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // Sécurité locale (v6.2.0) : stockage chiffré des empreintes (hash salés) du
+    // schéma + code de secours, et déverrouillage biométrique. 100 % local.
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation("androidx.biometric:biometric:1.1.0")
 
     // MapLibre (carte native) — 11.5.0 : premier release avec support 16 KB pages (PR #2852)
     implementation("org.maplibre.gl:android-sdk:11.5.0")

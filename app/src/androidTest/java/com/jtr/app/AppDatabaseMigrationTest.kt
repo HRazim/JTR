@@ -89,4 +89,42 @@ class AppDatabaseMigrationTest {
             assertTrue("nickname doit être NULL après migration", c.isNull(8))
         }
     }
+
+    /**
+     * Migration v17 → v18 (tri des catégories en parité contacts) : les nouvelles
+     * colonnes d'horodatage sont AJOUTÉES sans perte, et les lignes préexistantes
+     * sont BACKFILLÉES (> 0). `runMigrationsAndValidate(..., true, ...)` valide en
+     * prime la conformité STRUCTURELLE du schéma résultant à `18.json` (présence et
+     * affinité de categories.createdAt, category_groups.createdAt, join.addedAt).
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate17To18_addsTimestampsAndBackfillsExistingRows() {
+        val categoryId = "cat-legacy"
+
+        helper.createDatabase(testDb, 17).use { db ->
+            db.execSQL(
+                "INSERT INTO categories " +
+                    "(id, name, color, icon, imagePath, `order`, isFavorite, position, parentGroupId, deletedAt) " +
+                    "VALUES ('$categoryId', 'Famille', '#2E86C1', 'folder', NULL, 0, 0, 0, NULL, NULL)"
+            )
+            db.execSQL(
+                "INSERT INTO category_groups (id, name, position, isFavorite, imagePath, parentGroupId) " +
+                    "VALUES (1, 'Proches', 0, 0, NULL, NULL)"
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 18, true, AppDatabase.MIGRATION_17_18
+        )
+
+        db.query("SELECT createdAt FROM categories WHERE id = ?", arrayOf(categoryId)).use { c ->
+            assertTrue("La catégorie doit survivre à la migration", c.moveToFirst())
+            assertTrue("categories.createdAt doit être backfillé (> 0)", c.getLong(0) > 0L)
+        }
+        db.query("SELECT createdAt FROM category_groups WHERE id = 1").use { c ->
+            assertTrue("Le dossier doit survivre à la migration", c.moveToFirst())
+            assertTrue("category_groups.createdAt doit être backfillé (> 0)", c.getLong(0) > 0L)
+        }
+    }
 }

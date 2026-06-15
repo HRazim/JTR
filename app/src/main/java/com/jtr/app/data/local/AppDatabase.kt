@@ -14,8 +14,12 @@ import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
 
 /**
- * AppDatabase — Version 17.
+ * AppDatabase — Version 18.
  *
+ * v18 : Tri des catégories en parité avec les contacts (v6.1.7). Ajout de
+ *       Category.createdAt, CategoryGroup.createdAt et PersonCategoryJoin.addedAt
+ *       (tous INTEGER NOT NULL DEFAULT 0, backfillés à l'horodatage de migration) —
+ *       ZÉRO perte de données ([MIGRATION_17_18]).
  * v17 : Person.proximityNotifiedAt — anti-spam du Moteur de Proximité v5.4
  *       (une alerte max par contact par 48 h) ([MIGRATION_16_17]).
  * v16 : CategoryGroup.parentGroupId (sous-groupes imbriqués) ([MIGRATION_15_16]).
@@ -34,7 +38,7 @@ import com.jtr.app.domain.model.SocialLinkEntity
 @Database(
     entities = [Person::class, Category::class, CategoryGroup::class,
         PersonCategoryJoin::class, SocialLinkEntity::class],
-    version = 17,
+    version = 18,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -152,6 +156,33 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration v17 → v18, ZÉRO perte de données — tri des catégories en parité
+         * avec les contacts (v6.1.7).
+         *
+         * 1. ADD COLUMN (NOT NULL DEFAULT 0, aligné sur @ColumnInfo(defaultValue="0")) :
+         *    - categories.createdAt        (tri « Création »),
+         *    - category_groups.createdAt   (tri « Création » des dossiers),
+         *    - person_category_join.addedAt (événement « membre ajouté »).
+         * 2. Backfill : les lignes PRÉEXISTANTES reçoivent l'horodatage de migration
+         *    (createdAt et addedAt). Les catégories d'avant v18 partagent donc la même
+         *    date de création — comportement accepté et documenté.
+         *
+         * Uniquement des ALTER TABLE ADD COLUMN : aucune table recréée, aucune ligne
+         * supprimée → la migration destructive (filet de sécurité) n'est jamais atteinte.
+         */
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val now = System.currentTimeMillis()
+                db.execSQL("ALTER TABLE categories ADD COLUMN createdAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE category_groups ADD COLUMN createdAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE person_category_join ADD COLUMN addedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE categories SET createdAt = $now")
+                db.execSQL("UPDATE category_groups SET createdAt = $now")
+                db.execSQL("UPDATE person_category_join SET addedAt = $now")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -160,7 +191,10 @@ abstract class AppDatabase : RoomDatabase() {
                     "jtr_database"
                 )
                     .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
-                        MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+                        MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
+                    // Filet de sécurité ultime UNIQUEMENT : tous les chemins de version
+                    // ont une migration explicite ci-dessus, donc la destruction n'est
+                    // jamais déclenchée en pratique (données utilisateur préservées).
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

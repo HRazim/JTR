@@ -364,7 +364,7 @@ fun CategoryGroupDetailScreen(
                             }
                         }
                         JtrOverflowMenu(
-                            sortOptions = categorySortOptions(sortOrder) { viewModel.setSortOrder(it) },
+                            sortCriteria = categorySortCriteria(sortOrder) { viewModel.setSortOrder(it) },
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
                         ) { dismiss ->

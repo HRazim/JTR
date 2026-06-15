@@ -14,6 +14,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.*
@@ -37,8 +38,10 @@ import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -55,8 +58,14 @@ import kotlin.math.roundToInt
 /** Côté maximal du bitmap décodé (sous-échantillonnage des photos très lourdes). */
 private const val MAX_DECODE_DIM = 4096
 
-/** Cible du geste en cours : image (pan/zoom), cadre (déplacement) ou coin (taille). */
-private enum class FrameDragMode { IMAGE, MOVE, RESIZE_TL, RESIZE_TR, RESIZE_BL, RESIZE_BR }
+/** Taille par défaut du cadre = fraction du plus grand cadre tenant dans l'image. */
+private const val DEFAULT_FRAME_FRACTION = 0.8f
+
+/** Zoom maximal de l'IMAGE (par-dessus l'ajustement FIT de base). */
+private const val MAX_IMAGE_ZOOM = 5f
+
+/** Coin du cadre saisi pour le redimensionnement (drag 1 doigt sur une poignée). */
+private enum class CropCorner { TL, TR, BL, BR }
 
 /**
  * Dialog de recadrage full-screen, sans bibliothèque tierce.
@@ -65,20 +74,18 @@ private enum class FrameDragMode { IMAGE, MOVE, RESIZE_TL, RESIZE_TR, RESIZE_BL,
  * - [CropShape.RECTANGLE] : masque rectangulaire (couvertures de catégories)
  *
  * @param cropAspectRatio W/H du cadre rectangulaire (1f = carré, 4/3f = paysage…).
- *                        Ignoré pour [CropShape.CIRCLE].
+ *                        Ignoré pour [CropShape.CIRCLE] (toujours 1:1).
  *
- * Mécanique (v5.1) :
- *  - décodage ORIENTÉ : l'orientation EXIF est appliquée au chargement
- *    (ImageDecoder API 28+, sinon BitmapFactory + ExifInterface) — une photo
- *    Paysage reste affichée horizontalement, sans rotation parasite ;
- *  - le bitmap décodé est AUSSI la source d'affichage : ce que l'utilisateur
- *    voit est exactement ce qui est extrait (aucun double traitement) ;
- *  - cadre de sélection central explicite, DÉPLAÇABLE (glisser à l'intérieur)
- *    et REDIMENSIONNABLE (poignées de coin, ratio verrouillé) ;
- *  - l'image reste manipulable : 1 doigt hors du cadre = pan, pincement
- *    (2 doigts) = zoom, où que soient les doigts ;
- *  - bornes strictes : le cadre ne sort jamais de l'image visible ni de
- *    l'écran ; l'image ne découvre jamais le cadre.
+ * Modèle (v6.0.5) — **image affichée en FIT (entière, letterbox accepté) + CADRE
+ * mobile/redimensionnable** (acquis v6.0.4), AUGMENTÉ du **zoom/pan de l'image**.
+ * Séparation STRICTE des gestes :
+ *  - **1 doigt sur le corps du cadre** → déplace le cadre ;
+ *  - **1 doigt sur une poignée d'angle** → redimensionne le cadre (ratio verrouillé) ;
+ *  - **2 doigts** → pincement = zoome l'image, glissement = déplace l'image.
+ *
+ * INVARIANT : le cadre reste TOUJOURS entièrement dans le rectangle RÉEL de l'image
+ * (rect FIT × imageZoom + imageOffset) ∩ viewport — jamais sur le letterbox/noir,
+ * à tout niveau de zoom/pan. Re-clamp du cadre après chaque transformation d'image.
  */
 @Composable
 fun ImageCropDialog(
@@ -103,11 +110,12 @@ fun ImageCropDialog(
     var isTransforming by remember { mutableStateOf(false) }
     var gestureActive  by remember { mutableStateOf(false) }
 
-    var scale   by remember { mutableFloatStateOf(1f) }
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    var offsetY by remember { mutableFloatStateOf(0f) }
+    // Transformation de l'IMAGE (par-dessus le FIT) : zoom + déplacement.
+    var imageZoom    by remember { mutableFloatStateOf(1f) }
+    var imageOffsetX by remember { mutableFloatStateOf(0f) }
+    var imageOffsetY by remember { mutableFloatStateOf(0f) }
 
-    // Cadre de rognage : null = valeurs par défaut (centré, taille standard).
+    // Cadre de rognage : null = valeurs par défaut.
     var frameCenterState by remember { mutableStateOf<Offset?>(null) }
     var frameSizeState by remember { mutableStateOf<Size?>(null) }
 
@@ -142,6 +150,10 @@ fun ImageCropDialog(
             decorFitsSystemWindows = false
         )
     ) {
+      // RTL : le recadrage opère entièrement en pixels (cadre, zoom/pan via
+      // graphicsLayer, alignement centré) → on force LTR pour un comportement
+      // strictement identique en arabe (aucun miroir parasite du déplacement).
+      CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
@@ -149,174 +161,160 @@ fun ImageCropDialog(
         ) {
             val cW = constraints.maxWidth.toFloat()
             val cH = constraints.maxHeight.toFloat()
-            val minFramePx = with(density) { 96.dp.toPx() }
-            val cornerTouchPx = with(density) { 28.dp.toPx() }
+            val minFramePx = with(density) { 80.dp.toPx() }
+            val cornerGrabPx = with(density) { 24.dp.toPx() } // zone de préhension ~44dp
 
-            // ── Cadre par défaut (centré) ─────────────────────────────────────
-            val cropBase = with(density) { 280.dp.toPx() }
-            val defaultFrame: Size = when {
-                cropShape == CropShape.CIRCLE -> {
-                    val sz = cropBase.coerceAtMost(minOf(cW, cH) * 0.80f)
-                    Size(sz, sz)
-                }
-                cropAspectRatio >= 1f -> {
-                    val w = cropBase.coerceAtMost(cW * 0.85f)
-                    Size(w, (w / cropAspectRatio).coerceAtMost(cH * 0.65f))
-                }
-                else -> {
-                    val h = cropBase.coerceAtMost(cH * 0.65f)
-                    Size(h * cropAspectRatio, h)
-                }
-            }
+            // Ratio W/H imposé au cadre : 1:1 pour le cercle, sinon le ratio cible.
+            val aspect = if (cropShape == CropShape.CIRCLE) 1f else cropAspectRatio
 
-            // Lectures FRAÎCHES de l'état du cadre (utilisées par les gestes, dont le
-            // lambda pointerInput ne re-capture pas les valeurs de composition).
-            fun curFrameSize(): Size = frameSizeState ?: defaultFrame
-            fun curFrameCenter(): Offset = frameCenterState ?: Offset(cW / 2f, cH / 2f)
-
+            // Échelle FIT de base (image entière, centrée, non zoomée).
             fun fitScaleOf(bmp: Bitmap): Float =
                 minOf(cW / bmp.width.toFloat(), cH / bmp.height.toFloat())
 
-            // Échelle minimale : l'image doit toujours COUVRIR le cadre courant.
-            fun currentMinScale(bmp: Bitmap): Float {
-                val fs = curFrameSize()
-                val fit = fitScaleOf(bmp)
-                return maxOf(
-                    fs.width / (bmp.width * fit),
-                    fs.height / (bmp.height * fit),
-                    1f
-                )
+            // Rectangle RÉEL de l'image affichée = rect FIT × imageZoom + imageOffset.
+            // (graphicsLayer met à l'échelle autour du centre du viewport.)
+            fun realW(bmp: Bitmap) = bmp.width * fitScaleOf(bmp) * imageZoom
+            fun realH(bmp: Bitmap) = bmp.height * fitScaleOf(bmp) * imageZoom
+            fun realLeft(bmp: Bitmap) = cW / 2f + imageOffsetX - realW(bmp) / 2f
+            fun realTop(bmp: Bitmap) = cH / 2f + imageOffsetY - realH(bmp) / 2f
+
+            // Zone de travail = rectangle réel de l'image ∩ viewport : le cadre doit y
+            // tenir (dans les pixels de l'image ET visible à l'écran).
+            fun workL(bmp: Bitmap) = maxOf(0f, realLeft(bmp))
+            fun workT(bmp: Bitmap) = maxOf(0f, realTop(bmp))
+            fun workR(bmp: Bitmap) = minOf(cW, realLeft(bmp) + realW(bmp))
+            fun workB(bmp: Bitmap) = minOf(cH, realTop(bmp) + realH(bmp))
+            fun workW(bmp: Bitmap) = workR(bmp) - workL(bmp)
+            fun workH(bmp: Bitmap) = workB(bmp) - workT(bmp)
+
+            fun maxFrameW(bmp: Bitmap) = minOf(workW(bmp), workH(bmp) * aspect)
+            fun minFrameW(bmp: Bitmap) = minOf(minFramePx, maxFrameW(bmp))
+
+            fun defaultFrameSize(bmp: Bitmap): Size {
+                val w = (maxFrameW(bmp) * DEFAULT_FRAME_FRACTION).coerceAtLeast(minFrameW(bmp))
+                return Size(w, w / aspect)
             }
 
-            // Bornes du pan : aucun bord du cadre ne peut découvrir le fond.
-            fun clampImageOffsets(bmp: Bitmap) {
-                val fit = fitScaleOf(bmp)
-                val dispW = bmp.width * fit * scale
-                val dispH = bmp.height * fit * scale
-                val fc = curFrameCenter()
-                val fs = curFrameSize()
-                val dX = fc.x - cW / 2f
-                val dY = fc.y - cH / 2f
-                val loX = dX + fs.width / 2f - dispW / 2f
-                val hiX = dX - fs.width / 2f + dispW / 2f
-                val loY = dY + fs.height / 2f - dispH / 2f
-                val hiY = dY - fs.height / 2f + dispH / 2f
-                offsetX = offsetX.coerceIn(minOf(loX, hiX), maxOf(loX, hiX))
-                offsetY = offsetY.coerceIn(minOf(loY, hiY), maxOf(loY, hiY))
-            }
+            fun curFrameSize(bmp: Bitmap): Size = frameSizeState ?: defaultFrameSize(bmp)
+            fun curFrameCenter(): Offset = frameCenterState ?: Offset(cW / 2f, cH / 2f)
 
-            fun applyImageGesture(zoomChange: Float, panChange: Offset) {
-                val bmp = srcBitmap ?: return
-                val newScale = (scale * zoomChange).coerceIn(currentMinScale(bmp), 8f)
-                // STABILITÉ (v5.3.4) : le zoom est ANCRÉ au centre du cadre de
-                // rognage, pas au centre de l'écran. Le point de l'image visé par
-                // le cadre reste immobile pendant le pincement — fini le fond qui
-                // « fuit » hors de la zone quand l'image est décalée. Dérivation :
-                // offset' = d·(1−k) + offset·k, avec d = centre cadre − centre
-                // conteneur et k = rapport d'échelle.
-                val k = if (scale != 0f) newScale / scale else 1f
-                val fc = curFrameCenter()
-                val dX = fc.x - cW / 2f
-                val dY = fc.y - cH / 2f
-                offsetX = dX * (1f - k) + offsetX * k + panChange.x
-                offsetY = dY * (1f - k) + offsetY * k + panChange.y
-                scale = newScale
-                // Verrou de translation : l'image ne peut JAMAIS découvrir le cadre
-                // (bornes recalculées à chaque évènement du geste).
-                clampImageOffsets(bmp)
-            }
-
-            // Déplace le cadre, borné à l'intersection écran ∩ image affichée.
-            fun moveFrame(pan: Offset) {
-                val bmp = srcBitmap ?: return
-                val fit = fitScaleOf(bmp)
-                val dispW = bmp.width * fit * scale
-                val dispH = bmp.height * fit * scale
-                val imgL = cW / 2f + offsetX - dispW / 2f
-                val imgR = cW / 2f + offsetX + dispW / 2f
-                val imgT = cH / 2f + offsetY - dispH / 2f
-                val imgB = cH / 2f + offsetY + dispH / 2f
-                val fs = curFrameSize()
-                val minX = maxOf(0f, imgL) + fs.width / 2f
-                val maxX = minOf(cW, imgR) - fs.width / 2f
-                val minY = maxOf(0f, imgT) + fs.height / 2f
-                val maxY = minOf(cH, imgB) - fs.height / 2f
-                val c = curFrameCenter() + pan
+            // Replace le cadre pour qu'il reste INTÉGRALEMENT dans la zone de travail.
+            fun clampFrameCenter(bmp: Bitmap) {
+                val fs = curFrameSize(bmp)
+                val minX = workL(bmp) + fs.width / 2f
+                val maxX = workR(bmp) - fs.width / 2f
+                val minY = workT(bmp) + fs.height / 2f
+                val maxY = workB(bmp) - fs.height / 2f
+                val c = curFrameCenter()
                 frameCenterState = Offset(
                     c.x.coerceIn(minOf(minX, maxX), maxOf(minX, maxX)),
                     c.y.coerceIn(minOf(minY, maxY), maxOf(minY, maxY))
                 )
             }
 
-            // Redimensionne le cadre depuis un coin (ratio verrouillé, ancré au coin
-            // opposé), borné par l'écran et l'image affichée.
-            fun resizeFrame(mode: FrameDragMode, pan: Offset) {
+            // Re-cale le cadre dans la zone de travail courante (après zoom/pan image) :
+            // borne d'abord la TAILLE, puis la POSITION.
+            fun clampFrameToImage(bmp: Bitmap) {
+                val w = curFrameSize(bmp).width.coerceIn(minFrameW(bmp), maxFrameW(bmp))
+                frameSizeState = Size(w, w / aspect)
+                clampFrameCenter(bmp)
+            }
+
+            // 1 doigt sur le corps → déplacement du cadre.
+            fun moveFrame(pan: Offset) {
                 val bmp = srcBitmap ?: return
-                val sx = if (mode == FrameDragMode.RESIZE_TR || mode == FrameDragMode.RESIZE_BR) 1f else -1f
-                val sy = if (mode == FrameDragMode.RESIZE_BL || mode == FrameDragMode.RESIZE_BR) 1f else -1f
-                val fs = curFrameSize()
+                frameCenterState = curFrameCenter() + pan
+                clampFrameCenter(bmp)
+            }
+
+            // 1 doigt sur une poignée d'angle → redimensionnement (ratio verrouillé,
+            // ancré au coin opposé), borné par la zone de travail.
+            fun resizeFrame(corner: CropCorner, pan: Offset) {
+                val bmp = srcBitmap ?: return
+                val sx = if (corner == CropCorner.TR || corner == CropCorner.BR) 1f else -1f
+                val sy = if (corner == CropCorner.BL || corner == CropCorner.BR) 1f else -1f
+                val fs = curFrameSize(bmp)
                 val fc = curFrameCenter()
-                val aspect = fs.width / fs.height
                 val anchor = Offset(fc.x - sx * fs.width / 2f, fc.y - sy * fs.height / 2f)
-                val fit = fitScaleOf(bmp)
-                val dispW = bmp.width * fit * scale
-                val dispH = bmp.height * fit * scale
-                val imgL = cW / 2f + offsetX - dispW / 2f
-                val imgR = cW / 2f + offsetX + dispW / 2f
-                val imgT = cH / 2f + offsetY - dispH / 2f
-                val imgB = cH / 2f + offsetY + dispH / 2f
-                val limX = if (sx > 0) minOf(cW, imgR) - anchor.x else anchor.x - maxOf(0f, imgL)
-                val limY = if (sy > 0) minOf(cH, imgB) - anchor.y else anchor.y - maxOf(0f, imgT)
+                val limX = if (sx > 0) workR(bmp) - anchor.x else anchor.x - workL(bmp)
+                val limY = if (sy > 0) workB(bmp) - anchor.y else anchor.y - workT(bmp)
                 val maxW = minOf(limX, limY * aspect)
                 val d = (sx * pan.x + sy * pan.y) / 2f
-                val newW = (fs.width + d).coerceIn(minFramePx, maxOf(minFramePx, maxW))
+                val newW = (fs.width + d).coerceIn(minFrameW(bmp), maxOf(minFrameW(bmp), maxW))
                 val newH = newW / aspect
                 frameSizeState = Size(newW, newH)
                 frameCenterState = Offset(anchor.x + sx * newW / 2f, anchor.y + sy * newH / 2f)
-                clampImageOffsets(bmp)
+                clampFrameCenter(bmp)
             }
 
-            // Routage du geste d'après le point de départ : coin → taille ;
-            // intérieur du cadre → déplacement du cadre ; ailleurs → image.
-            fun frameHitTest(pos: Offset): FrameDragMode {
+            // 2 doigts → zoom (ancré sur le centroïde) + déplacement de l'IMAGE.
+            fun applyImageGesture(zoomChange: Float, pan: Offset, centroid: Offset) {
+                val bmp = srcBitmap ?: return
+                val newZoom = (imageZoom * zoomChange).coerceIn(1f, MAX_IMAGE_ZOOM)
+                val k = if (imageZoom != 0f) newZoom / imageZoom else 1f
+                val dX = centroid.x - cW / 2f
+                val dY = centroid.y - cH / 2f
+                imageOffsetX = dX * (1f - k) + imageOffsetX * k + pan.x
+                imageOffsetY = dY * (1f - k) + imageOffsetY * k + pan.y
+                imageZoom = newZoom
+                // Clamp pan image : ne jamais traîner l'image hors de vue.
+                val maxX = maxOf(0f, (realW(bmp) - cW) / 2f)
+                val maxY = maxOf(0f, (realH(bmp) - cH) / 2f)
+                imageOffsetX = imageOffsetX.coerceIn(-maxX, maxX)
+                imageOffsetY = imageOffsetY.coerceIn(-maxY, maxY)
+                // INVARIANT : le cadre suit le nouveau rectangle d'image.
+                clampFrameToImage(bmp)
+            }
+
+            // Hit-test des 4 poignées d'angle (drag 1 doigt = redimension).
+            fun cornerAt(pos: Offset): CropCorner? {
+                val bmp = srcBitmap ?: return null
                 val fc = curFrameCenter()
-                val fs = curFrameSize()
-                val halfW = fs.width / 2f
-                val halfH = fs.height / 2f
+                val fs = curFrameSize(bmp)
+                val hw = fs.width / 2f
+                val hh = fs.height / 2f
                 val corners = listOf(
-                    FrameDragMode.RESIZE_TL to Offset(fc.x - halfW, fc.y - halfH),
-                    FrameDragMode.RESIZE_TR to Offset(fc.x + halfW, fc.y - halfH),
-                    FrameDragMode.RESIZE_BL to Offset(fc.x - halfW, fc.y + halfH),
-                    FrameDragMode.RESIZE_BR to Offset(fc.x + halfW, fc.y + halfH)
+                    CropCorner.TL to Offset(fc.x - hw, fc.y - hh),
+                    CropCorner.TR to Offset(fc.x + hw, fc.y - hh),
+                    CropCorner.BL to Offset(fc.x - hw, fc.y + hh),
+                    CropCorner.BR to Offset(fc.x + hw, fc.y + hh)
                 )
-                corners.forEach { (mode, corner) ->
-                    if ((pos - corner).getDistance() <= cornerTouchPx) return mode
-                }
-                val inside = pos.x >= fc.x - halfW && pos.x <= fc.x + halfW &&
-                    pos.y >= fc.y - halfH && pos.y <= fc.y + halfH
-                return if (inside) FrameDragMode.MOVE else FrameDragMode.IMAGE
+                return corners.firstOrNull { (_, c) -> (pos - c).getDistance() <= cornerGrabPx }?.first
             }
 
-            // Initialisation au chargement du bitmap : cadre par défaut + zoom minimal.
+            // (Ré)initialisation à chaque nouveau bitmap / changement de taille :
+            // image au repos (FIT, zoom 1) et cadre par défaut.
             LaunchedEffect(srcBitmap, cW, cH) {
-                val bmp = srcBitmap ?: return@LaunchedEffect
+                imageZoom = 1f
+                imageOffsetX = 0f
+                imageOffsetY = 0f
                 frameCenterState = null
                 frameSizeState = null
-                offsetX = 0f
-                offsetY = 0f
-                scale = maxOf(
-                    defaultFrame.width / (bmp.width * fitScaleOf(bmp)),
-                    defaultFrame.height / (bmp.height * fitScaleOf(bmp)),
-                    1f
+            }
+
+            // Valeurs d'affichage (cadre) — recalculées à chaque frame d'état.
+            val bmp = srcBitmap
+            val frameSize = if (bmp != null) curFrameSize(bmp) else Size.Zero
+            val frameCenter = curFrameCenter()
+
+            // ── Image (FIT) + transformation zoom/pan via graphicsLayer ───────
+            srcBitmap?.let { image ->
+                Image(
+                    bitmap = image.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX       = imageZoom
+                            scaleY       = imageZoom
+                            translationX = imageOffsetX
+                            translationY = imageOffsetY
+                        }
                 )
             }
 
-            // Valeurs de composition (affichage Canvas) — recalculées à chaque frame d'état.
-            val frameSize = frameSizeState ?: defaultFrame
-            val frameCenter = frameCenterState ?: Offset(cW / 2f, cH / 2f)
-
-            // ── Image + routeur de gestes unifié (pas de transformable : un seul
-            //    canal tactile décide entre image / cadre / coin, fluide à 120 Hz) ──
+            // ── Couche de gestes : routage strict (cadre vs image) ────────────
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -324,23 +322,25 @@ fun ImageCropDialog(
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             if (srcBitmap == null) return@awaitEachGesture
-                            val mode = frameHitTest(down.position)
+                            // Mode du geste 1 doigt figé au départ : poignée → resize,
+                            // sinon → déplacement. (2 doigts = image, décidé par évènement.)
+                            val startCorner = cornerAt(down.position)
                             gestureActive = true
                             try {
                                 while (true) {
                                     val event = awaitPointerEvent()
                                     val pressed = event.changes.count { it.pressed }
                                     if (pressed == 0) break
-                                    val zoomChange = event.calculateZoom()
-                                    val panChange = event.calculatePan()
-                                    if (pressed >= 2 || mode == FrameDragMode.IMAGE) {
-                                        // Pincement (où que soient les doigts) ou pan hors
-                                        // cadre → manipulation de l'IMAGE.
-                                        applyImageGesture(zoomChange, panChange)
-                                    } else if (mode == FrameDragMode.MOVE) {
-                                        moveFrame(panChange)
+                                    if (pressed >= 2) {
+                                        applyImageGesture(
+                                            event.calculateZoom(),
+                                            event.calculatePan(),
+                                            event.calculateCentroid()
+                                        )
+                                    } else if (startCorner != null) {
+                                        resizeFrame(startCorner, event.calculatePan())
                                     } else {
-                                        resizeFrame(mode, panChange)
+                                        moveFrame(event.calculatePan())
                                     }
                                     event.changes.forEach {
                                         if (it.positionChanged()) it.consume()
@@ -351,90 +351,72 @@ fun ImageCropDialog(
                             }
                         }
                     }
-            ) {
-                srcBitmap?.let { bmp ->
-                    Image(
-                        bitmap = bmp.asImageBitmap(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                scaleX       = scale
-                                scaleY       = scale
-                                translationX = offsetX
-                                translationY = offsetY
+            )
+
+            // ── Overlay : fond sombre + découpe du cadre + grille + bordure + poignées ─
+            if (bmp != null) {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                ) {
+                    val cx    = frameCenter.x
+                    val cy    = frameCenter.y
+                    val halfW = frameSize.width  / 2f
+                    val halfH = frameSize.height / 2f
+
+                    drawRect(Color.Black.copy(alpha = 0.58f))
+
+                    if (cropShape == CropShape.CIRCLE) {
+                        drawCircle(
+                            color     = Color.Transparent,
+                            radius    = halfW,
+                            center    = Offset(cx, cy),
+                            blendMode = BlendMode.Clear
+                        )
+                        drawCircle(
+                            color  = Color.White,
+                            radius = halfW,
+                            center = Offset(cx, cy),
+                            style  = Stroke(width = 1.5f.dp.toPx())
+                        )
+                    } else {
+                        val tl = Offset(cx - halfW, cy - halfH)
+                        val fr = Size(frameSize.width, frameSize.height)
+
+                        drawRect(Color.Transparent, tl, fr, blendMode = BlendMode.Clear)
+
+                        if (gridAlpha > 0f) {
+                            repeat(2) { i ->
+                                val gx = cx - halfW + frameSize.width * (i + 1) / 3f
+                                val gy = cy - halfH + frameSize.height * (i + 1) / 3f
+                                val sw = 0.6f.dp.toPx()
+                                val gc = Color.White.copy(alpha = gridAlpha)
+                                drawLine(gc, Offset(gx, cy - halfH), Offset(gx, cy + halfH), sw)
+                                drawLine(gc, Offset(cx - halfW, gy), Offset(cx + halfW, gy), sw)
                             }
-                    )
-                }
-            }
-
-            // ── Overlay : fond sombre + découpe + grille + bordure + poignées ─
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-            ) {
-                val cx    = frameCenter.x
-                val cy    = frameCenter.y
-                val halfW = frameSize.width  / 2f
-                val halfH = frameSize.height / 2f
-
-                drawRect(Color.Black.copy(alpha = 0.58f))
-
-                if (cropShape == CropShape.CIRCLE) {
-                    drawCircle(
-                        color     = Color.Transparent,
-                        radius    = halfW,
-                        center    = Offset(cx, cy),
-                        blendMode = BlendMode.Clear
-                    )
-                    drawCircle(
-                        color  = Color.White,
-                        radius = halfW,
-                        center = Offset(cx, cy),
-                        style  = Stroke(width = 1.5f.dp.toPx())
-                    )
-                } else {
-                    val tl = Offset(cx - halfW, cy - halfH)
-                    val fr = Size(frameSize.width, frameSize.height)
-
-                    drawRect(Color.Transparent, tl, fr, blendMode = BlendMode.Clear)
-
-                    // Grille rule-of-thirds (animée)
-                    if (gridAlpha > 0f) {
-                        repeat(2) { i ->
-                            val gx = cx - halfW + frameSize.width * (i + 1) / 3f
-                            val gy = cy - halfH + frameSize.height * (i + 1) / 3f
-                            val sw = 0.6f.dp.toPx()
-                            val gc = Color.White.copy(alpha = gridAlpha)
-                            drawLine(gc, Offset(gx, cy - halfH), Offset(gx, cy + halfH), sw)
-                            drawLine(gc, Offset(cx - halfW, gy), Offset(cx + halfW, gy), sw)
                         }
+
+                        drawRect(
+                            color   = Color.White.copy(alpha = 0.70f),
+                            topLeft = tl, size = fr,
+                            style   = Stroke(width = 1.5f.dp.toPx())
+                        )
                     }
 
-                    // Bordure fine
-                    drawRect(
-                        color   = Color.White.copy(alpha = 0.70f),
-                        topLeft = tl, size = fr,
-                        style   = Stroke(width = 1.5f.dp.toPx())
-                    )
-                }
-
-                // Poignées de coin (déplacement/redimensionnement) — pour les DEUX
-                // formes : elles matérialisent la zone de prise du cadre.
-                val hLen = 18.dp.toPx()
-                val hSW  = 2.5f.dp.toPx()
-                val tlc  = Offset(cx - halfW, cy - halfH)
-                val trc  = Offset(cx + halfW, cy - halfH)
-                val blc  = Offset(cx - halfW, cy + halfH)
-                val brc  = Offset(cx + halfW, cy + halfH)
-                listOf(tlc to Pair(+1f, +1f), trc to Pair(-1f, +1f),
-                       blc to Pair(+1f, -1f), brc to Pair(-1f, -1f))
-                    .forEach { (o, d) ->
+                    // Poignées d'angle (zone tactile = redimensionnement du cadre).
+                    val hLen = 18.dp.toPx()
+                    val hSW  = 2.5f.dp.toPx()
+                    listOf(
+                        Offset(cx - halfW, cy - halfH) to Pair(+1f, +1f),
+                        Offset(cx + halfW, cy - halfH) to Pair(-1f, +1f),
+                        Offset(cx - halfW, cy + halfH) to Pair(+1f, -1f),
+                        Offset(cx + halfW, cy + halfH) to Pair(-1f, -1f)
+                    ).forEach { (o, d) ->
                         drawLine(Color.White, o, o + Offset(d.first * hLen, 0f), hSW, StrokeCap.Round)
                         drawLine(Color.White, o, o + Offset(0f, d.second * hLen), hSW, StrokeCap.Round)
                     }
+                }
             }
 
             // ── Indicateur de chargement ──────────────────────────────────────
@@ -470,8 +452,6 @@ fun ImageCropDialog(
             }
 
             // ── Barre du bas : Annuler / Recadrer ─────────────────────────────
-            // Remontée au-dessus de la barre de gestes / des touches système via les
-            // insets de l'ACTIVITÉ (le Dialog est plein écran, edge-to-edge).
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -486,20 +466,22 @@ fun ImageCropDialog(
                 }
                 Button(
                     onClick = {
-                        val bmp = srcBitmap ?: return@Button
+                        val image = srcBitmap ?: return@Button
                         isCropping = true
-                        val fs = curFrameSize()
+                        // Compose les DEUX transformations : FIT × imageZoom, + origine
+                        // du rect réel (qui intègre imageOffset).
+                        val totalScale = fitScaleOf(image) * imageZoom
+                        val rL = realLeft(image)
+                        val rT = realTop(image)
+                        val fs = curFrameSize(image)
                         val fc = curFrameCenter()
+                        val cropXf = (fc.x - fs.width / 2f - rL) / totalScale
+                        val cropYf = (fc.y - fs.height / 2f - rT) / totalScale
+                        val cropWf = fs.width / totalScale
+                        val cropHf = fs.height / totalScale
                         scope.launch {
                             val result = withContext(Dispatchers.IO) {
-                                executeCrop(
-                                    context, bmp,
-                                    cropFrameW = fs.width, cropFrameH = fs.height,
-                                    frameDeltaX = fc.x - cW / 2f,
-                                    frameDeltaY = fc.y - cH / 2f,
-                                    fitScale = fitScaleOf(bmp), scale = scale,
-                                    offsetX = offsetX, offsetY = offsetY
-                                )
+                                executeCrop(context, image, cropXf, cropYf, cropWf, cropHf)
                             }
                             isCropping = false
                             if (result != null) onCropComplete(result)
@@ -521,6 +503,7 @@ fun ImageCropDialog(
                 }
             }
         }
+      }
     }
 }
 
@@ -576,40 +559,24 @@ private fun decodeWithExifFallback(context: Context, uri: Uri): Bitmap? {
 }
 
 /**
- * Extrait la région bitmap correspondant au cadre de recadrage (possiblement
- * DÉCENTRÉ : [frameDeltaX]/[frameDeltaY] = centre du cadre − centre du conteneur).
- *
- * Mathématiques (espace centré sur le conteneur) :
- *   totalScale = fitScale × scale
- *   cropX_bmp  = bmpW/2 + (frameDeltaX − cadreW/2 − offsetX) / totalScale
- *   cropW_bmp  = cadreW / totalScale
- *
- * Résultat sauvegardé dans filesDir/crops/ pour persistance.
+ * Extrait la région bitmap (déjà exprimée en pixels source) sous le cadre. Le
+ * cadre étant toujours contraint dans l'image réelle, la région reste dans le
+ * bitmap (coerce de sûreté). Résultat sauvegardé dans filesDir/crops/.
  */
 private fun executeCrop(
     context: Context,
     sourceBitmap: Bitmap,
-    cropFrameW: Float,
-    cropFrameH: Float,
-    frameDeltaX: Float,
-    frameDeltaY: Float,
-    fitScale: Float,
-    scale: Float,
-    offsetX: Float,
-    offsetY: Float
+    cropX: Float,
+    cropY: Float,
+    cropW: Float,
+    cropH: Float
 ): Uri? = try {
-    val totalScale = fitScale * scale
+    val x = cropX.roundToInt().coerceIn(0, sourceBitmap.width - 1)
+    val y = cropY.roundToInt().coerceIn(0, sourceBitmap.height - 1)
+    val w = cropW.roundToInt().coerceIn(1, sourceBitmap.width - x)
+    val h = cropH.roundToInt().coerceIn(1, sourceBitmap.height - y)
 
-    val cropX = (sourceBitmap.width / 2f + (frameDeltaX - cropFrameW / 2f - offsetX) / totalScale)
-        .roundToInt().coerceIn(0, sourceBitmap.width  - 1)
-    val cropY = (sourceBitmap.height / 2f + (frameDeltaY - cropFrameH / 2f - offsetY) / totalScale)
-        .roundToInt().coerceIn(0, sourceBitmap.height - 1)
-    val cropW = (cropFrameW / totalScale).roundToInt()
-        .coerceIn(1, sourceBitmap.width  - cropX)
-    val cropH = (cropFrameH / totalScale).roundToInt()
-        .coerceIn(1, sourceBitmap.height - cropY)
-
-    val cropped = Bitmap.createBitmap(sourceBitmap, cropX, cropY, cropW, cropH)
+    val cropped = Bitmap.createBitmap(sourceBitmap, x, y, w, h)
 
     // filesDir/crops/ = stockage persistant (pas cacheDir)
     val dir  = File(context.filesDir, "crops").also { it.mkdirs() }

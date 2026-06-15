@@ -30,6 +30,10 @@ class JTRApplication : Application() {
         createNotificationChannels()
         scheduleProximityChecks()
         scheduleImportantDateChecks()
+        // Balayage IMMÉDIAT à chaque démarrage : une date fixée POUR AUJOURD'HUI
+        // notifie sans attendre le balayage quotidien (anti-doublon par jour dans le
+        // Worker → pas de spam même si l'app est rouverte plusieurs fois).
+        ImportantDateCheckWorker.runNow(this)
     }
 
     /**
@@ -41,12 +45,18 @@ class JTRApplication : Application() {
         JtrNotificationManager.ensureProximityChannel(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            // L'ancien canal a pu être créé à une importance < HIGH ; cette importance
+            // ne peut PAS être relevée après coup → on le supprime et on recrée un canal
+            // NEUF en IMPORTANCE_HIGH (seule façon de garantir le pop-up heads-up).
+            nm.deleteNotificationChannel(OLD_CHANNEL_BIRTHDAY)
             val birthdayChannel = NotificationChannel(
                 CHANNEL_BIRTHDAY,
                 getString(R.string.notif_channel_birthday_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = getString(R.string.notif_channel_birthday_desc)
+                enableLights(true)
+                enableVibration(true)
             }
             nm.createNotificationChannel(birthdayChannel)
         }
@@ -109,7 +119,11 @@ class JTRApplication : Application() {
     }
 
     companion object {
-        const val CHANNEL_BIRTHDAY = "birthday_channel"
+        // v6.2.7 : NOUVEL identifiant de canal, en IMPORTANCE_HIGH. L'ancien
+        // [OLD_CHANNEL_BIRTHDAY] (potentiellement figé à une importance trop basse sur
+        // d'anciennes installs) est supprimé au démarrage → heads-up garanti partout.
+        const val CHANNEL_BIRTHDAY = "jtr_important_dates_high"
+        private const val OLD_CHANNEL_BIRTHDAY = "birthday_channel"
 
         /** Heure locale du balayage quotidien des dates importantes (9 h du matin). */
         private const val CHECK_HOUR_OF_DAY = 9

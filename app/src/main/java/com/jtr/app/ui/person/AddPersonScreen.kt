@@ -3,6 +3,7 @@ package com.jtr.app.ui.person
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -83,7 +84,7 @@ fun AddPersonScreen(
     // Verrou proximité : activable uniquement si notifications + proximité globales actives.
     val proximityAllowed = remember {
         val p = context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
-        p.getBoolean("notifications_enabled", false) && p.getBoolean("proximity_enabled", false)
+        p.getBoolean("notifications_enabled", true) && p.getBoolean("proximity_enabled", false)
     }
 
     // Permission GPS demandée IMMÉDIATEMENT à l'activation du rappel de proximité ;
@@ -157,7 +158,11 @@ fun AddPersonScreen(
     }
 
     // Galerie IN-APP par ALBUMS (v5.5) — l'utilisateur ne quitte pas l'application.
-    val photoPicker = rememberGalleryImagePicker { uri -> viewModel.onPhotoSelected(uri) }
+    // L'URI choisie passe TOUJOURS par le recadrage (cercle = photo de profil)
+    // AVANT d'être appliquée. pendingCropUri (présence) arme le dialogue à chaque
+    // sélection, même URI identique ; la feuille s'est déjà fermée → pas de course.
+    var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
+    val photoPicker = rememberGalleryImagePicker { uri -> pendingCropUri = uri }
 
     Scaffold(
         topBar = {
@@ -361,5 +366,16 @@ fun AddPersonScreen(
             )
         }
 
+        pendingCropUri?.let { uri ->
+            ImageCropDialog(
+                sourceUri = uri,
+                cropShape = CropShape.CIRCLE,
+                onCropComplete = { croppedUri ->
+                    viewModel.onPhotoSelected(croppedUri)
+                    pendingCropUri = null
+                },
+                onDismiss = { pendingCropUri = null }
+            )
+        }
     }
 }

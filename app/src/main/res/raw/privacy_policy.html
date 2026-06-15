@@ -86,7 +86,7 @@
 
   <div class="header">
     <h1>Privacy Policy</h1>
-    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; Last updated: May 2025</p>
+    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; Last updated: June 2026</p>
   </div>
 
   <div class="summary">
@@ -106,7 +106,7 @@
 
   <h2><span class="num">2</span>Data storage</h2>
   <div class="card">
-    <p><span class="ok">✓ 100% local</span> — All your data is stored exclusively on your device via an SQLite database (Room). <strong>No remote server</strong> is used.</p>
+    <p><span class="ok">✓ 100% local</span> — All your data is stored exclusively on your device via an SQLite database (Room). <strong>No remote server, no account and no advertising.</strong></p>
     <p style="margin-top:8px;"><span class="ok">✓ Permanent deletion</span> — Uninstalling the app permanently deletes all associated data.</p>
   </div>
 
@@ -121,7 +121,17 @@
   </div>
   <p>You can disable this feature at any time: <strong>Settings → Proximity Reminders</strong>.</p>
 
-  <h2><span class="num">4</span>Third-party services</h2>
+  <h2><span class="num">4</span>Photo access</h2>
+  <p>Photo access (<em>READ_MEDIA_IMAGES</em> on Android 13+, or partial "selected photos" access on Android 14+) is requested <strong>only</strong> when you choose a profile or cover image:</p>
+  <ul>
+    <li>The in-app picker reads your gallery locally to display your albums and photos</li>
+    <li>The image you select is cropped and stored <strong>on your device only</strong></li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> <strong>No photo or gallery data</strong> is uploaded or shared. You can grant access to all photos, only selected ones, or none.</p>
+  </div>
+
+  <h2><span class="num">5</span>Third-party services</h2>
   <div class="card">
     <span class="badge">Nominatim (OpenStreetMap)</span>
     <p>When searching or selecting a city, the city name is sent to the Nominatim API for geocoding. <strong>No personal data</strong> is transmitted.</p>
@@ -129,14 +139,24 @@
   </div>
   <p><span class="ok">✓</span> <strong>No other third-party services</strong> (analytics, advertising, crash reporting) are integrated.</p>
 
-  <h2><span class="num">5</span>Notifications</h2>
+  <h2><span class="num">6</span>Notifications</h2>
   <p>JTR notifications are <strong>entirely local</strong> and do not transit through any server:</p>
   <ul>
-    <li><strong>Birthday reminders</strong> — triggered locally on the day</li>
+    <li><strong>Birthday &amp; important-date reminders</strong> — scheduled and triggered locally on the day</li>
     <li><strong>Proximity reminders</strong> — triggered locally via WorkManager or Geofencing</li>
   </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> On Android 13+, the <em>POST_NOTIFICATIONS</em> permission is requested <strong>only</strong> to display these local reminders. You can revoke it at any time in Android settings.</p>
+  </div>
 
-  <h2><span class="num">6</span>Your rights</h2>
+  <h2><span class="num">7</span>App lock (optional)</h2>
+  <p>JTR offers an <strong>optional local lock</strong> — an unlock pattern with a recovery code, plus optional biometric unlock:</p>
+  <div class="card">
+    <p><span class="ok">✓</span> Only <strong>salted fingerprints (hashes)</strong> of your pattern and recovery code are kept, <strong>encrypted on your device</strong> (EncryptedSharedPreferences via the Android Keystore). The pattern and the code themselves are <strong>never stored in clear text and never transmitted</strong>.</p>
+    <p style="margin-top:8px;"><span class="ok">✓</span> <strong>No biometric data</strong> is read or stored by the app — biometric authentication is handled entirely by the Android system.</p>
+  </div>
+
+  <h2><span class="num">8</span>Your rights</h2>
   <ul>
     <li><strong>Access and modification</strong> — all your data is visible and editable in the app</li>
     <li><strong>Deletion</strong> — any contact or category can be deleted (30-day trash)</li>
@@ -144,17 +164,17 @@
     <li><strong>Permission control</strong> — location and notifications can be revoked at any time in Android settings</li>
   </ul>
 
-  <h2><span class="num">7</span>Minors</h2>
+  <h2><span class="num">9</span>Minors</h2>
   <p>JTR does not knowingly collect data from persons under 13 years of age and does not target this audience.</p>
 
-  <h2><span class="num">8</span>Contact</h2>
+  <h2><span class="num">10</span>Contact</h2>
   <p>For any questions regarding this policy:</p>
   <p><a href="mailto:justtorememberjtr@gmail.com">justtorememberjtr@gmail.com</a></p>
 
   <hr>
 
   <footer>
-    <p>JTR — Just To Remember &nbsp;·&nbsp; Version 4.1</p>
+    <p>JTR — Just To Remember &nbsp;·&nbsp; Version 6.2.9</p>
     <p>This policy may be updated. The applicable version is the one available in the app.</p>
   </footer>
 

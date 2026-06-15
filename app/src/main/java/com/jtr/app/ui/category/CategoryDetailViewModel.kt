@@ -11,7 +11,8 @@ import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
-import com.jtr.app.ui.components.JtrSortOption
+import com.jtr.app.ui.components.JtrSortCriterion
+import com.jtr.app.ui.components.jtrSortCriterion
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.person.FieldTypes
 import com.jtr.app.utils.matchesSearch
@@ -21,19 +22,29 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 /** Critères de tri des contacts (Accueil et catégories — persistés par écran). */
-enum class ContactSortOrder { NAME_ASC, NAME_DESC, CREATED_DESC, CREATED_ASC, UPDATED_DESC }
+enum class ContactSortOrder { NAME_ASC, NAME_DESC, UPDATED_DESC, UPDATED_ASC, CREATED_DESC, CREATED_ASC }
 
-/** Options du menu harmonisé (section Tri) pour une liste de CONTACTS. */
-internal fun contactSortOptions(
+/**
+ * Critères de tri UNIFIÉS (Accueil + détail de catégorie/dossier), modèle à deux axes
+ * (v6.2.6) : Nom · Date de modification · Date de création, chacun avec un sens
+ * croissant/décroissant. Sens par défaut : Nom → croissant, dates → décroissant.
+ * Favoris toujours épinglés en tête ; tout repose sur des champs existants
+ * (`updatedAt`, `createdAt`) — aucun ajout de colonne Room.
+ */
+internal fun contactSortCriteria(
     current: ContactSortOrder,
     onSelect: (ContactSortOrder) -> Unit
-): List<JtrSortOption> = listOf(
-    ContactSortOrder.NAME_ASC to R.string.sort_name_asc,
-    ContactSortOrder.NAME_DESC to R.string.sort_name_desc,
-    ContactSortOrder.CREATED_DESC to R.string.sort_created_desc,
-    ContactSortOrder.CREATED_ASC to R.string.sort_created_asc,
-    ContactSortOrder.UPDATED_DESC to R.string.sort_updated_desc,
-).map { (order, labelRes) -> JtrSortOption(labelRes, order == current) { onSelect(order) } }
+): List<JtrSortCriterion> = listOf(
+    jtrSortCriterion(R.string.common_name_label, current,
+        ContactSortOrder.NAME_ASC, ContactSortOrder.NAME_DESC,
+        defaultDescending = false, onSelect = onSelect),
+    jtrSortCriterion(R.string.sort_criterion_modified, current,
+        ContactSortOrder.UPDATED_ASC, ContactSortOrder.UPDATED_DESC,
+        defaultDescending = true, onSelect = onSelect),
+    jtrSortCriterion(R.string.sort_criterion_created, current,
+        ContactSortOrder.CREATED_ASC, ContactSortOrder.CREATED_DESC,
+        defaultDescending = true, onSelect = onSelect),
+)
 
 /**
  * Applique un critère de tri à une liste de contacts. Partagé entre l'Accueil et
@@ -44,10 +55,12 @@ internal fun sortPersonsBy(list: List<Person>, order: ContactSortOrder): List<Pe
     val comparator = when (order) {
         ContactSortOrder.NAME_ASC -> compareBy<Person> { it.fullName.lowercase() }
         ContactSortOrder.NAME_DESC -> compareByDescending { it.fullName.lowercase() }
-        ContactSortOrder.CREATED_DESC -> compareByDescending { it.createdAt }
-        ContactSortOrder.CREATED_ASC -> compareBy { it.createdAt }
         ContactSortOrder.UPDATED_DESC ->
             compareByDescending { it.updatedAt.takeIf { u -> u > 0L } ?: it.createdAt }
+        ContactSortOrder.UPDATED_ASC ->
+            compareBy { it.updatedAt.takeIf { u -> u > 0L } ?: it.createdAt }
+        ContactSortOrder.CREATED_DESC -> compareByDescending { it.createdAt }
+        ContactSortOrder.CREATED_ASC -> compareBy { it.createdAt }
     }
     return list.sortedWith(compareByDescending<Person> { it.isFavorite }.then(comparator))
 }

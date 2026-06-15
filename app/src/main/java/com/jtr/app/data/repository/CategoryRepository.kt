@@ -6,6 +6,7 @@ import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 
 /** Référence d'entrée de premier niveau pour le tri global (dossier OU catégorie). */
 sealed interface TopOrderRef {
@@ -149,4 +150,13 @@ class CategoryRepository(context: Context) {
 
     suspend fun countActivePersons(categoryId: String): Int =
         personCategoryDao.countActivePersonsInCategory(categoryId)
+
+    /**
+     * Flow réactif : « dernière modification » par categoryId (v6.1.7) — max de
+     * l'ajout d'un membre (`addedAt`) et de l'édition d'un membre (`updatedAt`).
+     * Absent de la map si la catégorie n'a aucun membre actif (repli sur `createdAt`).
+     */
+    fun getCategoryLastActivity(): Flow<Map<String, Long>> =
+        personCategoryDao.getCategoryActivity()
+            .map { rows -> rows.associate { it.categoryId to it.lastActivity } }
 }

@@ -4,8 +4,9 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">キャンセル</string>
+    <string name="common_close">閉じる</string>
     <string name="crop_action">切り抜く</string>
-    <string name="crop_hint">ピンチでズーム · ドラッグで構図調整</string>
+    <string name="crop_hint">ドラッグで移動 · ピンチでズーム · 角でサイズ変更</string>
     <string name="common_ok">OK</string>
     <string name="common_delete">削除</string>
     <string name="common_save">保存</string>
@@ -166,26 +167,12 @@
     <string name="settings_notifications_subtitle">すべての通知を有効または無効にする</string>
     <string name="settings_proximity_title">近接リマインダー</string>
     <string name="settings_proximity_subtitle">連絡先が近くにいるときに通知</string>
-    <string name="settings_location_denied">位置情報の許可が拒否されました — 付近通知はオフのままです</string>
     <string name="settings_location_bg_title">バックグラウンドの位置情報</string>
     <string name="settings_location_bg_message">アプリが閉じていても連絡先の近くを通ったときに通知するため、JTR は位置情報への常時アクセスを必要とします。</string>
-    <string name="settings_location_bg_open">設定を開く</string>
     <string name="settings_birthday_title">大切な日</string>
-    <string name="settings_birthday_subtitle">誕生日や大切な日に通知</string>
-    <string name="settings_section_appearance">外観</string>
-    <string name="settings_dark_mode_title">ダークモード</string>
-    <string name="settings_dark_mode_subtitle">ダークテーマを使用</string>
-    <string name="settings_section_customization">カスタマイズ</string>
-    <string name="settings_color_palette">カラーパレット</string>
-    <string name="settings_section_data">データ</string>
-    <string name="settings_trash_title">ゴミ箱</string>
-    <string name="settings_trash_subtitle">削除された連絡先 · 30日後に自動削除</string>
-    <string name="settings_section_about">アプリについて</string>
-    <string name="settings_version_title">バージョン</string>
-    <string name="settings_version_value" translatable="false">JTR 5.4.1</string>
-    <string name="settings_theme_cd">テーマ %1$s</string>
-    <string name="settings_section_legal">法的情報</string>
-    <string name="settings_privacy_title">プライバシーポリシー</string>
+    <string name="settings_birthday_subtitle">誕生日や大切な日に通知</string>    <string name="settings_dark_mode_title">ダークモード</string>
+    <string name="settings_dark_mode_subtitle">ダークテーマを使用</string>    <string name="settings_color_palette">カラーパレット</string>    <string name="settings_trash_title">ゴミ箱</string>
+    <string name="settings_trash_subtitle">削除された連絡先 · 30日後に自動削除</string>    <string name="settings_theme_cd">テーマ %1$s</string>    <string name="settings_privacy_title">プライバシーポリシー</string>
     <string name="settings_privacy_subtitle">データの使用方法</string>
 
     <!-- ── Bottom navigation ──────────────────────────────────────────────── -->
@@ -199,16 +186,12 @@
     <string name="notif_channel_birthday_name">誕生日</string>
     <string name="notif_channel_birthday_desc">連絡先の誕生日リマインダー</string>
 
-    <!-- ── Notification content (Workers) ────────────────────────────────── -->
-    <string name="notif_birthday_title">🎂 今日は誕生日！</string>
-    <string name="notif_birthday_text">今日は%1$sの誕生日です。お祝いを忘れずに！</string>
-    <!-- args: 1=distanceKm 2=city 3=radiusKm 4=firstName 5=days -->
-    <string name="notif_proximity_title">%1$sが近くにいます！</string>
-    <string name="notif_proximity_text">%2$sまで%1$d kmです（設定範囲：%3$d km）。%4$sと連絡を取っていないのは%5$d日になります！</string>
-    <string name="notif_geofence_title">%1$sが近くにいます！</string>
-    <!-- args: 1=city 2=daysSince -->
-    <string name="notif_geofence_text">現在%1$sにいます — 最後に会ってから%2$d日が経ちました！</string>
-    <string name="notif_geofence_city_fallback">この市区町村</string>
+    <!-- ── Notification content (Workers) — 温かい「思い出アプリ」のトーン (v6.0.1) ── -->
+    <!-- %1$s = 連絡先の名前 -->
+    <string name="notif_birthday_title">🎂 今日は%1$sの誕生日です！</string>
+    <string name="notif_birthday_body">お祝いのメッセージを忘れずに送りましょう。</string>
+    <string name="notif_proximity_title">📍 %1$sがすぐ近くにいます</string>
+    <string name="notif_proximity_body">同じエリアにいます。ちょっと連絡してみませんか？</string>
 
     <!-- ── プロフィール編集：補足項目 ────────────────────────────────────── -->
     <string name="person_more_info_show">他の情報を追加</string>
@@ -294,11 +277,10 @@
     <string name="relation_not_found">プロフィールが見つかりません</string>
     <!-- v4.5 — 連絡先の並べ替え、拡張フッター、フォルダ管理 -->
     <string name="sort_title">並べ替え</string>
-    <string name="sort_name_asc">名前 A→Z</string>
-    <string name="sort_name_desc">名前 Z→A</string>
-    <string name="sort_created_desc">新しい順</string>
-    <string name="sort_created_asc">古い順</string>
-    <string name="sort_updated_desc">最近更新した順</string>
+    <string name="sort_criterion_modified">更新日</string>
+    <string name="sort_criterion_created">作成日</string>
+    <string name="sort_direction_ascending">昇順</string>
+    <string name="sort_direction_descending">降順</string>
     <string name="categories_fav_action">お気に入り</string>
     <string name="categories_group_action">グループ化</string>
     <string name="categories_move_to">「%1$s」に移動</string>
@@ -327,9 +309,7 @@
     <string name="view_mode_title">表示</string>
     <string name="view_mode_list">リスト</string>
     <string name="view_mode_grid">グリッド</string>
-    <string name="view_mode_detail">詳細</string>
-    <string name="sort_custom">カスタム順</string>
-    <string name="add_count">追加 (%1$d)</string>
+    <string name="view_mode_detail">詳細</string>    <string name="add_count">追加 (%1$d)</string>
     <!-- v5.2 — コンテキスト共有、今後のイベント、バックアップと復元 -->
     <string name="share_action">共有</string>
     <string name="share_sheet_title">選択項目を共有</string>
@@ -371,9 +351,6 @@
     <string name="contacts_permission_denied">連絡先の権限が拒否されたため、インポートできません。</string>
     <!-- v5.3.2 — 移動中のカテゴリー即時作成 -->
     <string name="move_create_category">新しいカテゴリー</string>
-    <!-- v5.4 — アクティブ近接エンジン -->
-    <string name="notif_proximity_v2_title">近くにいます！📍</string>
-    <string name="notif_proximity_v2_text">%1$s の近くを通っています。%2$s がこの辺りにいます。ちょっと挨拶してみませんか？👋</string>
     <string name="permission_allow">許可</string>
     <!-- v5.4.1 — ネイティブ連絡先の選択インポート -->
     <string name="welcome_select_button">インポートする連絡先を選ぶ</string>
@@ -391,4 +368,78 @@
     <!-- v5.5 — バックアップを設定 > データへ移動 -->
     <string name="settings_backup_subtitle">データのエクスポート / 復元（.jtr ファイル）</string>
     <string name="share_preview_loading">画像を読み込み中…</string>
+    <!-- v6.0.0 — Instagram 風セレクター + 通知の確認 -->
+    <string name="gallery_category_favorites">お気に入り</string>
+    <string name="gallery_category_photos">写真</string>
+    <string name="gallery_all_albums">すべてのアルバム</string>
+    <string name="gallery_select_album_title">アルバムを選択</string>
+    <string name="gallery_albums_section">アルバム</string>
+    <string name="gallery_see_all">すべて表示</string>
+    <string name="gallery_see_less">表示を減らす</string>
+    <string name="gallery_partial_access_message">一部の写真へのアクセスのみを許可しています。</string>
+    <string name="gallery_partial_access_manage">さらに選択</string>
+    <!-- v6.0.2 — 権限フロー（システム主導） -->
+    <string name="settings_notif_rationale_title">通知を許可しますか？</string>
+    <string name="settings_notif_rationale_message">JTR は誕生日や大切な日のリマインダーを、あなたのスマホに直接お届けします。</string>
+    <string name="settings_notif_blocked_title">通知がオフになっています</string>
+    <string name="settings_notif_blocked_message">システム設定で JTR の通知がブロックされています。設定を開いて再度有効にしてください。</string>
+    <string name="settings_location_rationale_title">位置情報を許可しますか？</string>
+    <string name="settings_location_rationale_message">JTR は位置情報を使って、連絡先の近くにいるときにお知らせします。情報が端末の外に出ることはありません。</string>
+    <string name="settings_location_blocked_title">位置情報がオフになっています</string>
+    <string name="settings_location_blocked_message">システム設定で JTR の位置情報がブロックされています。設定を開いて許可してください。</string>
+    <!-- v6.1.0 — 設定 v2（カード・言語・文字サイズ） -->
+    <string name="settings_section_general">一般</string>
+    <string name="settings_section_others">その他</string>
+    <string name="settings_language_title">言語</string>
+    <string name="settings_language_system">システムの言語</string>
+    <string name="settings_font_size_title">文字サイズ</string>
+    <string name="settings_font_small">小</string>
+    <string name="settings_font_normal">標準</string>
+    <string name="settings_font_large">大</string>
+    <string name="settings_font_xlarge">特大</string>
+    <string name="settings_font_preview_text">いろはにほへと ちりぬるを わかよたれそ つねならむ</string>
+    <string name="settings_share_title">JTR を共有</string>
+    <string name="settings_share_text">JTR — Just To Remember：大切な人を思い出すための、100% ローカルなプライベート連絡帳。</string>
+    <!-- v6.1.8 — 不足していたキーを補完（values/ と同期） -->
+    <string name="person_phone_label">電話</string>
+    <string name="person_email_label">メール</string>
+    <string name="person_action_call">発信</string>
+    <string name="person_action_sms">SMS</string>
+    <string name="person_action_email">メール</string>
+
+    <!-- ── ローカルセキュリティ (v6.2.0)：パターンロック ──────────────────── -->
+    <string name="settings_section_security">セキュリティ</string>
+    <string name="security_set_password">パスワードを設定</string>
+    <string name="security_set_password_subtitle">パターンで JTR をロック</string>
+    <string name="security_change_password">パスワードを変更</string>
+    <string name="security_biometric_title">生体認証でロック解除</string>
+    <string name="security_biometric_subtitle">生体認証またはデバイスの PIN で解除</string>
+    <string name="security_setup_draw_title">ロック解除パターンを描いてください</string>
+    <string name="security_setup_confirm_title">確認のためもう一度パターンを描いてください</string>
+    <string name="security_pattern_too_short">少なくとも %1$d 個の点をつないでください</string>
+    <string name="security_pattern_mismatch">パターンが一致しません。もう一度お試しください。</string>
+    <string name="security_recovery_title">リカバリーコード</string>
+    <string name="security_recovery_message">このコードを控えてください。パターンを忘れたときにリセットできる唯一の方法です。二度と表示されません。</string>
+    <string name="security_recovery_copy">コードをコピー</string>
+    <string name="security_recovery_copied">コードをコピーしました</string>
+    <string name="security_recovery_done">控えました</string>
+    <string name="security_enable_biometric_title">生体認証でのロック解除を有効にしますか？</string>
+    <string name="security_enable_biometric_message">指紋・顔・デバイスの PIN で JTR をすばやく解除できます。</string>
+    <string name="security_enable">有効にする</string>
+    <string name="security_not_now">後で</string>
+    <string name="security_lock_title">JTR はロックされています</string>
+    <string name="security_lock_subtitle">パターンを描いてロックを解除</string>
+    <string name="security_use_biometric">生体認証を使う</string>
+    <string name="security_forgot_pattern">パターンをお忘れですか？</string>
+    <string name="security_wrong_pattern">パターンが違います</string>
+    <string name="security_locked_out">試行回数が多すぎます。%1$d 秒後にもう一度お試しください。</string>
+    <string name="security_recovery_enter_title">リカバリーコードを入力</string>
+    <string name="security_recovery_enter_hint">XXXX-XXXX-XXXX</string>
+    <string name="security_recovery_invalid">リカバリーコードが無効です</string>
+    <string name="security_recovery_reset">パターンをリセット</string>
+    <string name="security_auth_title">本人確認</string>
+    <string name="security_auth_subtitle">現在のパターンを描いてください</string>
+    <string name="security_biometric_prompt_title">JTR のロックを解除</string>
+    <string name="security_biometric_prompt_subtitle">本人確認をしてください</string>
+    <string name="settings_proximity_location_off">位置情報がオフです — タップして近接リマインダー用に有効にしてください</string>
 </resources>

@@ -56,7 +56,7 @@ class ProximityCheckWorker(
         // Toggles globaux (Paramètres).
         val prefs = context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
         if (!prefs.getBoolean("notifications_enabled", true) ||
-            !prefs.getBoolean("proximity_enabled", true)
+            !prefs.getBoolean("proximity_enabled", false)
         ) {
             return@withContext Result.success()
         }

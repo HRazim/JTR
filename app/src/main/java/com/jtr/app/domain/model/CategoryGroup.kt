@@ -21,5 +21,9 @@ data class CategoryGroup(
     // v4.5 (DB v15) — illustration de couverture optionnelle (style tuile catégorie).
     val imagePath: String? = null,
     // v4.5 (DB v16) — groupe parent : permet les SOUS-GROUPES imbriqués (null = racine).
-    val parentGroupId: Long? = null
+    val parentGroupId: Long? = null,
+    // v6.1.7 (DB v18) — date de création du dossier, pour le tri « Création » mixte
+    // (dossiers + catégories) cohérent avec l'accueil. Backfillée par la migration.
+    @ColumnInfo(defaultValue = "0")
+    val createdAt: Long = System.currentTimeMillis()
 )

@@ -10,7 +10,8 @@ import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
-import com.jtr.app.ui.components.JtrSortOption
+import com.jtr.app.ui.components.JtrSortCriterion
+import com.jtr.app.ui.components.jtrSortCriterion
 import com.jtr.app.ui.components.JtrViewMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,34 +23,47 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * Tri des entrées de premier niveau (catégories + dossiers). Les modèles ne portent
- * pas de date de création : les critères sont le nom et l'ordre personnalisé
- * (position issue du drag & drop) — favoris toujours épinglés en tête.
+ * Tri des entrées de premier niveau (catégories + dossiers), en PARITÉ avec les
+ * contacts (v6.1.7) : Nom A → Z / Z → A + Dernière modification + Création
+ * (récent → ancien / ancien → récent). Favoris toujours épinglés en tête.
+ * L'« ordre personnalisé » (position du drag & drop) a été retiré (v6.1.3). Les
+ * horodatages reposent sur `Category.createdAt` / `CategoryGroup.createdAt` et sur
+ * la « dernière activité » calculée ([CategoryRepository.getCategoryLastActivity]).
  */
-enum class CategorySortOrder { CUSTOM, NAME_ASC, NAME_DESC }
+enum class CategorySortOrder { NAME_ASC, NAME_DESC, UPDATED_DESC, UPDATED_ASC, CREATED_DESC, CREATED_ASC }
 
-/** Options du menu harmonisé (section Tri) pour les CATÉGORIES / DOSSIERS. */
-internal fun categorySortOptions(
+/**
+ * Critères de tri des CATÉGORIES / DOSSIERS, identiques aux contacts (mêmes libellés,
+ * modèle à deux axes v6.2.6) : Nom · Date de modification · Date de création, chacun
+ * avec un sens croissant/décroissant (défaut : Nom croissant, dates décroissant).
+ */
+internal fun categorySortCriteria(
     current: CategorySortOrder,
     onSelect: (CategorySortOrder) -> Unit
-): List<JtrSortOption> = listOf(
-    CategorySortOrder.CUSTOM to R.string.sort_custom,
-    CategorySortOrder.NAME_ASC to R.string.sort_name_asc,
-    CategorySortOrder.NAME_DESC to R.string.sort_name_desc,
-).map { (order, labelRes) -> JtrSortOption(labelRes, order == current) { onSelect(order) } }
+): List<JtrSortCriterion> = listOf(
+    jtrSortCriterion(R.string.common_name_label, current,
+        CategorySortOrder.NAME_ASC, CategorySortOrder.NAME_DESC,
+        defaultDescending = false, onSelect = onSelect),
+    jtrSortCriterion(R.string.sort_criterion_modified, current,
+        CategorySortOrder.UPDATED_ASC, CategorySortOrder.UPDATED_DESC,
+        defaultDescending = true, onSelect = onSelect),
+    jtrSortCriterion(R.string.sort_criterion_created, current,
+        CategorySortOrder.CREATED_ASC, CategorySortOrder.CREATED_DESC,
+        defaultDescending = true, onSelect = onSelect),
+)
 
 /** Applique [order] à des entrées mixtes (dossiers + catégories indépendantes). */
 internal fun sortTopEntries(entries: List<TopEntry>, order: CategorySortOrder): List<TopEntry> {
-    val comparator = when (order) {
-        CategorySortOrder.CUSTOM ->
-            compareByDescending<TopEntry> { it.isFavorite }
-                .thenBy { it.position }.thenBy { it.sortName }
-        CategorySortOrder.NAME_ASC ->
-            compareByDescending<TopEntry> { it.isFavorite }.thenBy { it.sortName }
-        CategorySortOrder.NAME_DESC ->
-            compareByDescending<TopEntry> { it.isFavorite }.thenByDescending { it.sortName }
+    val base = when (order) {
+        CategorySortOrder.NAME_ASC -> compareBy<TopEntry> { it.sortName }
+        CategorySortOrder.NAME_DESC -> compareByDescending<TopEntry> { it.sortName }
+        CategorySortOrder.UPDATED_DESC -> compareByDescending<TopEntry> { it.lastActivity }
+        CategorySortOrder.UPDATED_ASC -> compareBy<TopEntry> { it.lastActivity }
+        CategorySortOrder.CREATED_DESC -> compareByDescending<TopEntry> { it.createdAt }
+        CategorySortOrder.CREATED_ASC -> compareBy<TopEntry> { it.createdAt }
     }
-    return entries.sortedWith(comparator)
+    // Favoris toujours en tête (cohérent avec l'ordre DAO `isFavorite DESC`).
+    return entries.sortedWith(compareByDescending<TopEntry> { it.isFavorite }.then(base))
 }
 
 class CategoryViewModel(application: Application) : AndroidViewModel(application) {
@@ -72,7 +86,7 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
     // Tri des entrées de premier niveau, persisté.
     private val _sortOrder = MutableStateFlow(
         runCatching { CategorySortOrder.valueOf(prefs.getString(SORT_PREF_KEY, null) ?: "") }
-            .getOrDefault(CategorySortOrder.CUSTOM)
+            .getOrDefault(CategorySortOrder.NAME_ASC)
     )
     val sortOrder: StateFlow<CategorySortOrder> = _sortOrder.asStateFlow()
 
@@ -104,6 +118,13 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
 
     /** Nombre de contacts actifs par categoryId — utilisé pour le dialogue de confirmation. */
     val personCountByCategory: StateFlow<Map<String, Int>> = repo.getPersonCountsPerCategory()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    /**
+     * « Dernière modification » par categoryId (v6.1.7) : max de l'ajout d'un membre
+     * et de l'édition d'un membre. Alimente le tri « Dernière modification ».
+     */
+    val categoryActivity: StateFlow<Map<String, Long>> = repo.getCategoryLastActivity()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     /** Dossiers/groupes (triés favoris d'abord, puis position). */

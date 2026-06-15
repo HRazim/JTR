@@ -1,5 +1,6 @@
 package com.jtr.app.domain.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -36,5 +37,12 @@ import androidx.room.Index
 )
 data class PersonCategoryJoin(
     val personId: String,
-    val categoryId: String
+    val categoryId: String,
+    // v6.1.7 (DB v18) — horodatage de l'AJOUT de la personne à cette catégorie.
+    // Renseigné par défaut à la construction (tous les chemins d'insertion créent un
+    // PersonCategoryJoin sans préciser ce champ) → capture l'événement « membre ajouté »
+    // sans polluer Person.updatedAt. Alimente le tri « Dernière modification » des
+    // catégories. Défaut SQL "0" : la migration v17→v18 backfille les liens existants.
+    @ColumnInfo(defaultValue = "0")
+    val addedAt: Long = System.currentTimeMillis()
 )

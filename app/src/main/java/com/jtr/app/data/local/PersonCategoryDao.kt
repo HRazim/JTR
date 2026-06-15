@@ -6,6 +6,12 @@ import com.jtr.app.domain.model.PersonCategoryJoin
 import kotlinx.coroutines.flow.Flow
 
 /**
+ * Dernière activité d'une catégorie (v6.1.7) : le plus récent entre l'ajout d'un
+ * membre (`addedAt`) et la dernière modification d'un membre (`Person.updatedAt`).
+ */
+data class CategoryActivity(val categoryId: String, val lastActivity: Long)
+
+/**
  * DAO pour la table de jointure person_category_join (Many-to-Many).
  *
  * Principe clé : les opérations de ce DAO ne touchent QUE les liens.
@@ -94,4 +100,21 @@ interface PersonCategoryDao {
         WHERE pcj.categoryId = :categoryId AND p.deletedAt IS NULL
     """)
     suspend fun countActivePersonsInCategory(categoryId: String): Int
+
+    /**
+     * « Dernière modification » par catégorie (v6.1.7) = MAX, par catégorie, du plus
+     * récent entre l'horodatage d'ajout du lien (`addedAt`, événement « membre ajouté »)
+     * et la dernière modification du membre (`Person.updatedAt`, événement « profil
+     * modifié »). Seuls les membres ACTIFS comptent. Les catégories sans membre actif
+     * sont absentes du résultat → l'appelant retombe alors sur `Category.createdAt`.
+     */
+    @Query("""
+        SELECT pcj.categoryId AS categoryId,
+               MAX(CASE WHEN pcj.addedAt > p.updatedAt THEN pcj.addedAt ELSE p.updatedAt END) AS lastActivity
+        FROM person_category_join pcj
+        INNER JOIN persons p ON p.id = pcj.personId
+        WHERE p.deletedAt IS NULL
+        GROUP BY pcj.categoryId
+    """)
+    fun getCategoryActivity(): Flow<List<CategoryActivity>>
 }
