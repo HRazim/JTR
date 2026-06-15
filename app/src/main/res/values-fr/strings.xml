@@ -458,4 +458,14 @@
     <string name="security_biometric_prompt_title">Déverrouiller JTR</string>
     <string name="security_biometric_prompt_subtitle">Confirmez votre identité</string>
     <string name="settings_proximity_location_off">La localisation est désactivée — appuyez pour l\'activer pour les rappels de proximité</string>
+    <!-- v7.0.3 — sections de notes personnalisables -->
+    <string name="note_section_add">Ajouter une section</string>
+    <string name="note_section_default_notes">Notes</string>
+    <string name="note_section_title_hint">Titre de la section</string>
+    <string name="note_section_content_hint">Écrivez quelque chose…</string>
+    <string name="note_section_delete">Supprimer la section</string>
+    <string name="note_section_delete_confirm_title">Supprimer cette section ?</string>
+    <string name="note_section_delete_confirm_text">Son contenu sera définitivement supprimé.</string>
+    <string name="note_section_icon_picker_title">Choisir une icône</string>
+    <string name="note_section_reorder_cd">Glisser pour réordonner</string>
 </resources>

@@ -167,4 +167,43 @@ class AppDatabaseMigrationTest {
             assertEquals(0, c.getInt(2))
         }
     }
+
+    /**
+     * Migration v19 → v20 (sections de notes, v7.0.3) : la colonne `noteSections` est
+     * AJOUTÉE (TEXT NOT NULL DEFAULT '[]') sans perte, les colonnes héritées `notes` /
+     * `likes` sont CONSERVÉES intactes (le backfill en sections est côté code, sans
+     * perte). `runMigrationsAndValidate(..., true, ...)` valide en prime la conformité
+     * STRUCTURELLE du schéma résultant à `20.json`.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate19To20_addsNoteSectionsAndKeepsLegacyNotes() {
+        val personId = "person-pre-v20"
+
+        helper.createDatabase(testDb, 19).use { db ->
+            db.execSQL(
+                "INSERT INTO persons " +
+                    "(id, firstName, notes, likes, birthdateNotify, cityNotify, isFavorite, " +
+                    "createdAt, updatedAt, birthdateReminderOffsetMinutes) " +
+                    "VALUES ('$personId', 'Carol', 'Aime le thé', 'Randonnée', 0, 0, 0, " +
+                    "1700000000000, 1700000000000, 0)"
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 20, true, AppDatabase.MIGRATION_19_20
+        )
+
+        db.query(
+            "SELECT notes, likes, noteSections FROM persons WHERE id = ?",
+            arrayOf(personId)
+        ).use { c ->
+            assertTrue("Le contact doit survivre à la migration", c.moveToFirst())
+            // Notes héritées INTACTES (aucune perte) — le backfill en sections est côté code.
+            assertEquals("Aime le thé", c.getString(0))
+            assertEquals("Randonnée", c.getString(1))
+            // Nouvelle colonne ajoutée avec son défaut '[]'.
+            assertEquals("[]", c.getString(2))
+        }
+    }
 }

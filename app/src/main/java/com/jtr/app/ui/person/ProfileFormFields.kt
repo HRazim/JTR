@@ -35,6 +35,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.domain.model.DynamicLine
+import com.jtr.app.domain.model.NoteSection
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -67,10 +68,8 @@ fun ProfileFormFields(
     firstNameError: Boolean,
     nameDetails: NameDetails,
     onNameDetailsChange: (NameDetails) -> Unit,
-    notes: String,
-    onNotesChange: (String) -> Unit,
-    likes: String,
-    onLikesChange: (String) -> Unit,
+    noteSections: List<NoteSection>,
+    onNoteSectionsChange: (List<NoteSection>) -> Unit,
     phoneLines: List<DynamicLine>,
     onPhoneLinesChange: (List<DynamicLine>) -> Unit,
     emailLines: List<DynamicLine>,
@@ -99,7 +98,6 @@ fun ProfileFormFields(
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
-    val sentences = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -116,48 +114,11 @@ fun ProfileFormFields(
             onNameDetailsChange = onNameDetailsChange
         )
 
-        // ── 2. Notes (accessible instantanément — approche Note-First) ─────────
-        // Auto-scroll : le grand champ grandit au fil de la frappe ; à chaque
-        // saisie (et à la prise de focus), bringIntoView() ramène le champ dans
-        // la zone visible au-dessus du clavier — le texte ne sort plus de l'écran.
-        var localNotes by remember(notes) { mutableStateOf(notes) }
-        val notesBringIntoView = remember { BringIntoViewRequester() }
-        val notesScope = rememberCoroutineScope()
-        SoftTextField(
-            value = localNotes,
-            onValueChange = {
-                localNotes = it
-                onNotesChange(it)
-                notesScope.launch { notesBringIntoView.bringIntoView() }
-            },
-            placeholder = stringResource(R.string.person_notes_label),
-            leadingIcon = Icons.AutoMirrored.Filled.Notes,
-            singleLine = false,
-            minLines = 4,
-            maxLines = 10,
-            keyboardOptions = sentences,
-            modifier = Modifier
-                .fillMaxWidth()
-                .bringIntoViewRequester(notesBringIntoView)
-                .onFocusEvent { focusState ->
-                    if (focusState.isFocused) {
-                        notesScope.launch { notesBringIntoView.bringIntoView() }
-                    }
-                }
-        )
-
-        // ── 3. Ce qu'il aime ──────────────────────────────────────────────────
-        var localLikes by remember(likes) { mutableStateOf(likes) }
-        SoftTextField(
-            value = localLikes,
-            onValueChange = { localLikes = it; onLikesChange(it) },
-            placeholder = stringResource(R.string.person_likes_label),
-            leadingIcon = Icons.Default.Favorite,
-            singleLine = false,
-            minLines = 2,
-            maxLines = 5,
-            keyboardOptions = sentences,
-            modifier = Modifier.fillMaxWidth()
+        // ── 2. Sections de notes personnalisables (v7.0.3, cœur de JTR) ────────
+        // Remplacent les anciens champs fixes « Misc notes » / « What they like ».
+        NoteSectionsEditor(
+            sections = noteSections,
+            onSectionsChange = onNoteSectionsChange
         )
 
         // ── 4. Bouton MASTER « + Ajouter d'autres informations » ──────────────
@@ -314,7 +275,7 @@ fun ProfileFormFields(
 /** Couleurs du champ souple : conteneur teinté discret (surfaceVariant), sans soulignement. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun softFieldColors() = TextFieldDefaults.colors(
+internal fun softFieldColors() = TextFieldDefaults.colors(
     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
     disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -331,7 +292,7 @@ private fun softFieldColors() = TextFieldDefaults.colors(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SoftTextField(
+internal fun SoftTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,

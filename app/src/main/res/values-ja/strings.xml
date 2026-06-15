@@ -458,4 +458,14 @@
     <string name="security_biometric_prompt_title">JTR のロックを解除</string>
     <string name="security_biometric_prompt_subtitle">本人確認をしてください</string>
     <string name="settings_proximity_location_off">位置情報がオフです — タップして近接リマインダー用に有効にしてください</string>
+    <!-- v7.0.3 — カスタマイズ可能なメモのセクション -->
+    <string name="note_section_add">セクションを追加</string>
+    <string name="note_section_default_notes">メモ</string>
+    <string name="note_section_title_hint">セクションのタイトル</string>
+    <string name="note_section_content_hint">入力してください…</string>
+    <string name="note_section_delete">セクションを削除</string>
+    <string name="note_section_delete_confirm_title">このセクションを削除しますか？</string>
+    <string name="note_section_delete_confirm_text">内容は完全に削除されます。</string>
+    <string name="note_section_icon_picker_title">アイコンを選択</string>
+    <string name="note_section_reorder_cd">ドラッグして並べ替え</string>
 </resources>

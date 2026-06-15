@@ -14,8 +14,13 @@ import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
 
 /**
- * AppDatabase — Version 19.
+ * AppDatabase — Version 20.
  *
+ * v20 : Sections de notes personnalisables (v7.0.3). Ajout de Person.noteSections
+ *       (TEXT NOT NULL DEFAULT '[]', liste JSON [NoteSection]). Les colonnes héritées
+ *       `notes` / `likes` sont CONSERVÉES (jamais supprimées) ; leur contenu est
+ *       backfillé SANS PERTE en sections côté code (conversion paresseuse au
+ *       chargement/sauvegarde, [deriveNoteSections]) → ZÉRO perte ([MIGRATION_19_20]).
  * v19 : Rappels à délai configurable (v7.0). Ajout de Person.birthdateReminderOffset
  *       Minutes (INTEGER NOT NULL DEFAULT 0) — projection scalaire du délai de rappel
  *       de l'anniversaire (0 = « le jour J »). Le délai des AUTRES dates importantes
@@ -43,7 +48,7 @@ import com.jtr.app.domain.model.SocialLinkEntity
 @Database(
     entities = [Person::class, Category::class, CategoryGroup::class,
         PersonCategoryJoin::class, SocialLinkEntity::class],
-    version = 19,
+    version = 20,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -213,6 +218,28 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration v19 → v20, ZÉRO perte de données — sections de notes (v7.0.3).
+         *
+         * Une SEULE instruction : ajoute la colonne JSON `noteSections` (NOT NULL DEFAULT
+         * '[]', aligné sur @ColumnInfo(defaultValue="[]")). Les lignes existantes prennent
+         * automatiquement la valeur par défaut '[]'.
+         *
+         * Le BACKFILL des notes héritées (`notes` / `likes`) en sections se fait CÔTÉ CODE
+         * (conversion paresseuse au chargement/sauvegarde, [deriveNoteSections]) — on évite
+         * la construction de JSON en SQL brut (fragile sur l'échappement des guillemets) et
+         * on garantit des titres par défaut LOCALISÉS. Les colonnes `notes` / `likes` sont
+         * CONSERVÉES intactes : aucune perte possible.
+         *
+         * Uniquement un ALTER TABLE ADD COLUMN : aucune table recréée, aucune ligne
+         * supprimée → la migration destructive (filet de sécurité) n'est jamais atteinte.
+         */
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE persons ADD COLUMN noteSections TEXT NOT NULL DEFAULT '[]'")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -222,7 +249,7 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                         MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
-                        MIGRATION_18_19)
+                        MIGRATION_18_19, MIGRATION_19_20)
                     // Filet de sécurité ultime UNIQUEMENT : tous les chemins de version
                     // ont une migration explicite ci-dessus, donc la destruction n'est
                     // jamais déclenchée en pratique (données utilisateur préservées).

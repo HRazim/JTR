@@ -32,6 +32,11 @@ data class Person(
     val lastContactedAt: Long? = null,
     val notes: String? = null,
     val likes: String? = null,
+    // v7.0.3 (DB v20) — sections de notes personnalisables (titre + icône + contenu),
+    // sérialisées en JSON. Remplacent `notes`/`likes` dans l'UI ; ces deux colonnes
+    // sont CONSERVÉES (héritées) et backfillées sans perte (cf. [deriveNoteSections]).
+    @ColumnInfo(defaultValue = "[]")
+    val noteSections: List<NoteSection> = emptyList(),
     val origin: String? = null,
     val phoneNumber: String? = null,
     val email: String? = null,

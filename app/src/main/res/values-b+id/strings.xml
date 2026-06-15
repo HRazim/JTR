@@ -450,4 +450,14 @@
     <string name="security_biometric_prompt_title">Buka kunci JTR</string>
     <string name="security_biometric_prompt_subtitle">Konfirmasi identitasmu</string>
     <string name="settings_proximity_location_off">Lokasi mati — ketuk untuk mengaktifkannya untuk pengingat kedekatan</string>
+    <!-- v7.0.3 — bagian catatan yang dapat disesuaikan -->
+    <string name="note_section_add">Tambah bagian</string>
+    <string name="note_section_default_notes">Catatan</string>
+    <string name="note_section_title_hint">Judul bagian</string>
+    <string name="note_section_content_hint">Tulis sesuatu…</string>
+    <string name="note_section_delete">Hapus bagian</string>
+    <string name="note_section_delete_confirm_title">Hapus bagian ini?</string>
+    <string name="note_section_delete_confirm_text">Isinya akan dihapus permanen.</string>
+    <string name="note_section_icon_picker_title">Pilih ikon</string>
+    <string name="note_section_reorder_cd">Seret untuk menyusun ulang</string>
 </resources>

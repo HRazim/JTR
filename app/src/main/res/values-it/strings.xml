@@ -447,4 +447,14 @@
     <string name="security_biometric_prompt_title">Sblocca JTR</string>
     <string name="security_biometric_prompt_subtitle">Conferma la tua identità</string>
     <string name="settings_proximity_location_off">La posizione è disattivata — tocca per attivarla per i promemoria di prossimità</string>
+    <!-- v7.0.3 — sezioni di note personalizzabili -->
+    <string name="note_section_add">Aggiungi una sezione</string>
+    <string name="note_section_default_notes">Note</string>
+    <string name="note_section_title_hint">Titolo della sezione</string>
+    <string name="note_section_content_hint">Scrivi qualcosa…</string>
+    <string name="note_section_delete">Elimina sezione</string>
+    <string name="note_section_delete_confirm_title">Eliminare questa sezione?</string>
+    <string name="note_section_delete_confirm_text">Il suo contenuto sarà eliminato definitivamente.</string>
+    <string name="note_section_icon_picker_title">Scegli un\'icona</string>
+    <string name="note_section_reorder_cd">Trascina per riordinare</string>
 </resources>

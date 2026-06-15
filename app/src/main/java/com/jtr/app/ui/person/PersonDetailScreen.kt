@@ -79,6 +79,8 @@ import kotlinx.coroutines.launch
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.domain.model.deriveNoteSections
+import com.jtr.app.domain.model.effectiveNoteSections
 import com.jtr.app.utils.SocialPlatform
 import com.jtr.app.utils.extractSocialLinks
 import com.jtr.app.utils.icon
@@ -131,8 +133,7 @@ fun PersonDetailScreen(
     val vmJobTitle by editVm.jobTitle.collectAsStateWithLifecycle()
     val vmDepartment by editVm.department.collectAsStateWithLifecycle()
     val vmCompany by editVm.company.collectAsStateWithLifecycle()
-    val vmLikes by editVm.likes.collectAsStateWithLifecycle()
-    val vmNotes by editVm.notes.collectAsStateWithLifecycle()
+    val vmNoteSections by editVm.noteSections.collectAsStateWithLifecycle()
     val vmNameDetails by editVm.nameDetails.collectAsStateWithLifecycle()
     val vmPhoneLines by editVm.phoneLines.collectAsStateWithLifecycle()
     val vmEmailLines by editVm.emailLines.collectAsStateWithLifecycle()
@@ -150,6 +151,18 @@ fun PersonDetailScreen(
         val c = cityFromMap ?: return@LaunchedEffect
         editVm.onCityFromMap(c, latFromMap, lngFromMap)
         onMapResultConsumed()
+    }
+
+    // Titres par défaut LOCALISÉS (langue in-app) des sections issues du backfill legacy.
+    val notesTitle = stringResource(R.string.note_section_default_notes)
+    val likesTitle = stringResource(R.string.person_likes_label)
+    // À l'entrée en édition d'un profil LEGACY (sections vides mais notes/likes hérités),
+    // sème la conversion sans perte — une seule fois (garde « liste vide »).
+    LaunchedEffect(person?.id, isEditing) {
+        if (isEditing && editVm.noteSections.value.isEmpty()) {
+            val derived = deriveNoteSections(person?.notes, person?.likes, notesTitle, likesTitle)
+            if (derived.isNotEmpty()) editVm.onNoteSectionsChanged(derived)
+        }
     }
 
     // Galerie IN-APP par ALBUMS (v5.5) — l'utilisateur ne quitte pas l'application.
@@ -471,10 +484,8 @@ fun PersonDetailScreen(
                     firstNameError = firstNameError,
                     nameDetails = vmNameDetails,
                     onNameDetailsChange = { editVm.onNameDetailsChanged(it) },
-                    notes = vmNotes,
-                    onNotesChange = { editVm.onNotesChanged(it) },
-                    likes = vmLikes,
-                    onLikesChange = { editVm.onLikesChanged(it) },
+                    noteSections = vmNoteSections,
+                    onNoteSectionsChange = { editVm.onNoteSectionsChanged(it) },
                     phoneLines = vmPhoneLines,
                     onPhoneLinesChange = { editVm.onPhoneLinesChanged(it) },
                     emailLines = vmEmailLines,
@@ -601,21 +612,22 @@ fun PersonDetailScreen(
                         cityLat = person.cityLat, cityLng = person.cityLng)
                 }
 
-                // 9. Notes & 10. Ce qu'il aime — grands blocs de texte tout en bas
-                if (person.notes != null || person.likes != null) {
+                // 9. Sections de notes — grands blocs de texte tout en bas (v7.0.3).
+                // Sections persistées, ou conversion sans perte des notes héritées (legacy).
+                // On masque les sections vides en lecture.
+                val readSections = person.effectiveNoteSections(notesTitle, likesTitle)
+                    .filter { it.content.isNotBlank() }
+                if (readSections.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
                     HorizontalDivider()
                     Spacer(Modifier.height(4.dp))
-                }
-                if (person.notes != null) {
-                    DetailTextBlock(icon = Icons.AutoMirrored.Filled.Notes,
-                        label = stringResource(R.string.person_notes_label),
-                        value = person.notes)
-                }
-                if (person.likes != null) {
-                    DetailTextBlock(icon = Icons.Default.Favorite,
-                        label = stringResource(R.string.person_likes_label),
-                        value = person.likes)
+                    readSections.forEach { s ->
+                        DetailTextBlock(
+                            icon = NoteIcons.icon(s.iconKey),
+                            label = s.title,
+                            value = s.content
+                        )
+                    }
                 }
 
                 // Legacy : genre (retiré du formulaire), affiché discrètement en bas.

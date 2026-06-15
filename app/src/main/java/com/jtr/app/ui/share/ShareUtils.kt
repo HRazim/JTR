@@ -160,10 +160,18 @@ object ShareUtils {
             lines += "${context.getString(R.string.section_emails)} : ${emails.joinToString(", ")}"
         }
 
-        person.notes?.takeIf { it.isNotBlank() }
-            ?.let { lines += "${context.getString(R.string.person_notes_label)} : $it" }
-        person.likes?.takeIf { it.isNotBlank() }
-            ?.let { lines += "${context.getString(R.string.person_likes_label)} : $it" }
+        // v7.0.3 — sections de notes personnalisables ; repli sur les notes héritées
+        // (notes/likes) pour les profils non encore convertis.
+        if (person.noteSections.isNotEmpty()) {
+            person.noteSections.sortedBy { it.order }
+                .filter { it.content.isNotBlank() }
+                .forEach { lines += "${it.title} : ${it.content}" }
+        } else {
+            person.notes?.takeIf { it.isNotBlank() }
+                ?.let { lines += "${context.getString(R.string.person_notes_label)} : $it" }
+            person.likes?.takeIf { it.isNotBlank() }
+                ?.let { lines += "${context.getString(R.string.person_likes_label)} : $it" }
+        }
 
         return lines
     }

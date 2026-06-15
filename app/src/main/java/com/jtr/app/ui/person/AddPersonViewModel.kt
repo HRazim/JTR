@@ -8,6 +8,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.DynamicLine
+import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.utils.extractSocialLinks
@@ -80,11 +81,10 @@ class AddPersonViewModel(
     private val _company = MutableStateFlow("")
     val company: StateFlow<String> = _company.asStateFlow()
 
-    private val _likes = MutableStateFlow("")
-    val likes: StateFlow<String> = _likes.asStateFlow()
-
-    private val _notes = MutableStateFlow("")
-    val notes: StateFlow<String> = _notes.asStateFlow()
+    // v7.0.3 — sections de notes personnalisables (remplacent notes/likes dans l'UI).
+    // Liste vide au départ : l'écran sème la section « Notes » par défaut (titre localisé).
+    private val _noteSections = MutableStateFlow<List<NoteSection>>(emptyList())
+    val noteSections: StateFlow<List<NoteSection>> = _noteSections.asStateFlow()
 
     // ── Listes dynamiques « Contacts Google » (v4.5) ──────────────────────────
     private val _nameDetails = MutableStateFlow(NameDetails())
@@ -152,8 +152,7 @@ class AddPersonViewModel(
     fun onJobTitleChanged(v: String) { _jobTitle.value = v }
     fun onDepartmentChanged(v: String) { _department.value = v }
     fun onCompanyChanged(v: String) { _company.value = v }
-    fun onLikesChanged(v: String) { _likes.value = v }
-    fun onNotesChanged(v: String) { _notes.value = v }
+    fun onNoteSectionsChanged(v: List<NoteSection>) { _noteSections.value = v }
 
     fun onPhotoSelected(uri: Uri) {
         viewModelScope.launch {
@@ -195,8 +194,8 @@ class AddPersonViewModel(
                 cityLng = _cityLng.value,
                 cityNotify = _cityNotify.value && proximityAllowed(),
                 photoUri = _photoUri.value,
-                notes = _notes.value.trim().ifBlank { null },
-                likes = _likes.value.trim().ifBlank { null },
+                // notes/likes héritées : laissées nulles (les sections portent le contenu).
+                noteSections = sanitizeNoteSections(_noteSections.value),
                 origin = _origin.value.trim().ifBlank { null },
                 jobTitle = _jobTitle.value.trim().ifBlank { null },
                 department = _department.value.trim().ifBlank { null },

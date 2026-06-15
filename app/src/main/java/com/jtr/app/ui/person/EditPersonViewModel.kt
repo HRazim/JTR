@@ -8,6 +8,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.DynamicLine
+import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.utils.extractSocialLinks
@@ -91,6 +92,12 @@ class EditPersonViewModel(
 
     private val _notes = MutableStateFlow("")
     val notes: StateFlow<String> = _notes.asStateFlow()
+
+    // v7.0.3 — sections de notes personnalisables (source de vérité de l'UI ; les
+    // colonnes notes/likes restent héritées). Peuplées depuis Room, semées si legacy.
+    private val _noteSections = MutableStateFlow<List<NoteSection>>(emptyList())
+    val noteSections: StateFlow<List<NoteSection>> = _noteSections.asStateFlow()
+    fun onNoteSectionsChanged(v: List<NoteSection>) { _noteSections.value = v }
 
     private val _phoneNumber = MutableStateFlow("")
     val phoneNumber: StateFlow<String> = _phoneNumber.asStateFlow()
@@ -248,6 +255,9 @@ class EditPersonViewModel(
         _company.value = p.company ?: ""
         _likes.value = p.likes ?: ""
         _notes.value = p.notes ?: ""
+        // Sections persistées telles quelles ; pour un profil legacy (liste vide), l'écran
+        // sème la conversion des notes héritées (titres localisés) à l'entrée en édition.
+        _noteSections.value = p.noteSections
         _phoneNumber.value = p.phoneNumber ?: ""
         _email.value = p.email ?: ""
         _photoUri.value = p.photoUri
@@ -397,6 +407,9 @@ class EditPersonViewModel(
         photoUri       = _photoUri.value,
         notes          = _notes.value.trim().ifBlank { null },
         likes          = _likes.value.trim().ifBlank { null },
+        // v7.0.3 — les sections deviennent la source de vérité (notes/likes héritées
+        // laissées telles quelles, inutilisées par l'UI).
+        noteSections   = sanitizeNoteSections(_noteSections.value),
         origin         = _origin.value.trim().ifBlank { null },
         jobTitle       = _jobTitle.value.trim().ifBlank { null },
         department     = _department.value.trim().ifBlank { null },

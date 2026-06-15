@@ -36,6 +36,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.jtr.app.R
+import com.jtr.app.domain.model.NOTE_ICON_NOTES
+import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.ui.components.rememberGalleryImagePicker
 import com.jtr.app.utils.getSocialIcon
 import kotlinx.coroutines.launch
@@ -60,8 +62,7 @@ fun AddPersonScreen(
     val jobTitle        by viewModel.jobTitle.collectAsStateWithLifecycle()
     val department      by viewModel.department.collectAsStateWithLifecycle()
     val company         by viewModel.company.collectAsStateWithLifecycle()
-    val likes           by viewModel.likes.collectAsStateWithLifecycle()
-    val notes           by viewModel.notes.collectAsStateWithLifecycle()
+    val noteSections    by viewModel.noteSections.collectAsStateWithLifecycle()
     val nameDetails     by viewModel.nameDetails.collectAsStateWithLifecycle()
     val phoneLines      by viewModel.phoneLines.collectAsStateWithLifecycle()
     val emailLines      by viewModel.emailLines.collectAsStateWithLifecycle()
@@ -154,6 +155,17 @@ fun AddPersonScreen(
         val c = cityFromMap ?: return@LaunchedEffect
         viewModel.onCityFromMap(c, latFromMap, lngFromMap)
         onMapResultConsumed()
+    }
+
+    // Nouveau contact : démarre avec UNE section « Notes » par défaut (titre localisé,
+    // semé ici pour respecter la langue in-app). Idempotent (ne re-sème pas si non vide).
+    val defaultNotesTitle = stringResource(R.string.note_section_default_notes)
+    LaunchedEffect(Unit) {
+        if (viewModel.noteSections.value.isEmpty()) {
+            viewModel.onNoteSectionsChanged(
+                listOf(NoteSection(title = defaultNotesTitle, iconKey = NOTE_ICON_NOTES, order = 0))
+            )
+        }
     }
 
     // Galerie IN-APP par ALBUMS (v5.5) — l'utilisateur ne quitte pas l'application.
@@ -324,10 +336,8 @@ fun AddPersonScreen(
                 firstNameError = firstNameError,
                 nameDetails = nameDetails,
                 onNameDetailsChange = viewModel::onNameDetailsChanged,
-                notes = notes,
-                onNotesChange = viewModel::onNotesChanged,
-                likes = likes,
-                onLikesChange = viewModel::onLikesChanged,
+                noteSections = noteSections,
+                onNoteSectionsChange = viewModel::onNoteSectionsChanged,
                 phoneLines = phoneLines,
                 onPhoneLinesChange = viewModel::onPhoneLinesChanged,
                 emailLines = emailLines,

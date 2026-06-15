@@ -447,4 +447,14 @@
     <string name="security_biometric_prompt_title">Разблокировать JTR</string>
     <string name="security_biometric_prompt_subtitle">Подтвердите свою личность</string>
     <string name="settings_proximity_location_off">Геолокация выключена — нажмите, чтобы включить её для напоминаний о близости</string>
+    <!-- v7.0.3 — настраиваемые разделы заметок -->
+    <string name="note_section_add">Добавить раздел</string>
+    <string name="note_section_default_notes">Заметки</string>
+    <string name="note_section_title_hint">Название раздела</string>
+    <string name="note_section_content_hint">Напишите что-нибудь…</string>
+    <string name="note_section_delete">Удалить раздел</string>
+    <string name="note_section_delete_confirm_title">Удалить этот раздел?</string>
+    <string name="note_section_delete_confirm_text">Его содержимое будет удалено навсегда.</string>
+    <string name="note_section_icon_picker_title">Выберите значок</string>
+    <string name="note_section_reorder_cd">Перетащите для изменения порядка</string>
 </resources>

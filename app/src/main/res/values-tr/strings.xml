@@ -447,4 +447,14 @@
     <string name="security_biometric_prompt_title">JTR kilidini aç</string>
     <string name="security_biometric_prompt_subtitle">Kimliğini doğrula</string>
     <string name="settings_proximity_location_off">Konum kapalı — yakınlık hatırlatmaları için açmak üzere dokun</string>
+    <!-- v7.0.3 — özelleştirilebilir not bölümleri -->
+    <string name="note_section_add">Bölüm ekle</string>
+    <string name="note_section_default_notes">Notlar</string>
+    <string name="note_section_title_hint">Bölüm başlığı</string>
+    <string name="note_section_content_hint">Bir şeyler yaz…</string>
+    <string name="note_section_delete">Bölümü sil</string>
+    <string name="note_section_delete_confirm_title">Bu bölüm silinsin mi?</string>
+    <string name="note_section_delete_confirm_text">İçeriği kalıcı olarak silinecek.</string>
+    <string name="note_section_icon_picker_title">Bir simge seç</string>
+    <string name="note_section_reorder_cd">Yeniden sıralamak için sürükle</string>
 </resources>
