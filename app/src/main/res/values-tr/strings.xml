@@ -250,6 +250,24 @@
     <string name="custom_label_dialog_hint">Etiket adı</string>
     <string name="notif_importantdate_title">📅 Bugün önemli bir tarih!</string>
     <string name="notif_importantdate_text">Bugün %2$s için %1$s!</string>
+    <!-- v7.0 — tarih başına hatırlatma süresi (doğum günü + önemli tarihler) -->
+    <string name="reminder_label">Hatırlatıcı</string>
+    <string name="reminder_preset_on_day">Aynı gün</string>
+    <string name="reminder_preset_10min">10 dk önce</string>
+    <string name="reminder_preset_1hour">1 saat önce</string>
+    <string name="reminder_preset_1day">1 gün önce</string>
+    <string name="reminder_preset_1week">1 hafta önce</string>
+    <string name="reminder_preset_custom">Özel</string>
+    <string name="reminder_unit_minutes">Dakika</string>
+    <string name="reminder_unit_hours">Saat</string>
+    <string name="reminder_unit_days">Gün</string>
+    <string name="reminder_unit_weeks">Hafta</string>
+    <string name="reminder_value_minutes">%1$d dk önce</string>
+    <string name="reminder_value_hours">%1$d sa önce</string>
+    <string name="reminder_value_days">%1$d gün önce</string>
+    <string name="reminder_value_weeks">%1$d hf önce</string>
+    <string name="reminder_decrease">Azalt</string>
+    <string name="reminder_increase">Artır</string>
     <string name="section_work">İş</string>
     <string name="person_job_title_label">Unvan</string>
     <string name="person_department_label">Departman</string>

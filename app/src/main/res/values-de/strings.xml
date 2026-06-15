@@ -250,6 +250,24 @@
     <string name="custom_label_dialog_hint">Labelname</string>
     <string name="notif_importantdate_title">📅 Heute ist ein wichtiger Termin!</string>
     <string name="notif_importantdate_text">Heute ist %1$s von %2$s!</string>
+    <!-- v7.0 — Vorlaufzeit der Erinnerung pro Datum (Geburtstag + wichtige Daten) -->
+    <string name="reminder_label">Erinnerung</string>
+    <string name="reminder_preset_on_day">Am Tag selbst</string>
+    <string name="reminder_preset_10min">10 Min vorher</string>
+    <string name="reminder_preset_1hour">1 Std vorher</string>
+    <string name="reminder_preset_1day">1 Tag vorher</string>
+    <string name="reminder_preset_1week">1 Woche vorher</string>
+    <string name="reminder_preset_custom">Benutzerdefiniert</string>
+    <string name="reminder_unit_minutes">Minuten</string>
+    <string name="reminder_unit_hours">Stunden</string>
+    <string name="reminder_unit_days">Tage</string>
+    <string name="reminder_unit_weeks">Wochen</string>
+    <string name="reminder_value_minutes">%1$d Min vorher</string>
+    <string name="reminder_value_hours">%1$d Std vorher</string>
+    <string name="reminder_value_days">%1$d T vorher</string>
+    <string name="reminder_value_weeks">%1$d Wo vorher</string>
+    <string name="reminder_decrease">Verringern</string>
+    <string name="reminder_increase">Erhöhen</string>
     <string name="section_work">Arbeit</string>
     <string name="person_job_title_label">Position</string>
     <string name="person_department_label">Abteilung</string>

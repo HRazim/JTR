@@ -250,6 +250,24 @@
     <string name="custom_label_dialog_hint">Название ярлыка</string>
     <string name="notif_importantdate_title">📅 Сегодня важная дата!</string>
     <string name="notif_importantdate_text">Сегодня %1$s у %2$s!</string>
+    <!-- v7.0 — заблаговременность напоминания по дате (день рождения + важные даты) -->
+    <string name="reminder_label">Напоминание</string>
+    <string name="reminder_preset_on_day">В тот же день</string>
+    <string name="reminder_preset_10min">За 10 мин</string>
+    <string name="reminder_preset_1hour">За 1 ч</string>
+    <string name="reminder_preset_1day">За 1 день</string>
+    <string name="reminder_preset_1week">За 1 неделю</string>
+    <string name="reminder_preset_custom">Свой вариант</string>
+    <string name="reminder_unit_minutes">Минуты</string>
+    <string name="reminder_unit_hours">Часы</string>
+    <string name="reminder_unit_days">Дни</string>
+    <string name="reminder_unit_weeks">Недели</string>
+    <string name="reminder_value_minutes">За %1$d мин</string>
+    <string name="reminder_value_hours">За %1$d ч</string>
+    <string name="reminder_value_days">За %1$d дн.</string>
+    <string name="reminder_value_weeks">За %1$d нед.</string>
+    <string name="reminder_decrease">Уменьшить</string>
+    <string name="reminder_increase">Увеличить</string>
     <string name="section_work">Работа</string>
     <string name="person_job_title_label">Должность</string>
     <string name="person_department_label">Отдел</string>

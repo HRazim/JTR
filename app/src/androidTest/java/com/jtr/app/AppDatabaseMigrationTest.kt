@@ -127,4 +127,44 @@ class AppDatabaseMigrationTest {
             assertTrue("category_groups.createdAt doit être backfillé (> 0)", c.getLong(0) > 0L)
         }
     }
+
+    /**
+     * Migration v18 → v19 (rappels à délai configurable, v7.0) : la colonne
+     * persons.birthdateReminderOffsetMinutes est AJOUTÉE sans perte, et les contacts
+     * préexistants sont BACKFILLÉS à 0 (« le jour J » — comportement inchangé).
+     * `runMigrationsAndValidate(..., true, ...)` valide en prime la conformité
+     * STRUCTURELLE du schéma résultant à `19.json` (présence + affinité INTEGER NOT NULL).
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate18To19_addsReminderOffsetAndBackfillsExistingRows() {
+        val personId = "person-pre-v19"
+
+        helper.createDatabase(testDb, 18).use { db ->
+            db.execSQL(
+                "INSERT INTO persons " +
+                    "(id, firstName, birthdate, birthdateNotify, cityNotify, isFavorite, " +
+                    "createdAt, updatedAt) " +
+                    "VALUES ('$personId', 'Bob', 631152000000, 1, 0, 0, " +
+                    "1700000000000, 1700000000000)"
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 19, true, AppDatabase.MIGRATION_18_19
+        )
+
+        db.query(
+            "SELECT birthdate, birthdateNotify, birthdateReminderOffsetMinutes " +
+                "FROM persons WHERE id = ?",
+            arrayOf(personId)
+        ).use { c ->
+            assertTrue("Le contact doit survivre à la migration", c.moveToFirst())
+            // Données préexistantes intactes…
+            assertEquals(631152000000L, c.getLong(0))
+            assertEquals(1, c.getInt(1))
+            // …et le nouveau délai backfillé à 0 (« le jour J »).
+            assertEquals(0, c.getInt(2))
+        }
+    }
 }

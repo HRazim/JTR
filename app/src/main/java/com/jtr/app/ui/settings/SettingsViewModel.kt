@@ -3,9 +3,12 @@ package com.jtr.app.ui.settings
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.jtr.app.worker.ReminderScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 /**
  * SettingsViewModel — Persiste les préférences de notification via SharedPreferences.
@@ -39,6 +42,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setNotificationsEnabled(enabled: Boolean) {
         _notificationsEnabled.value = enabled
         prefs.edit().putBoolean("notifications_enabled", enabled).apply()
+        // (Dés)active immédiatement les alarmes de rappel (annulation si coupé, réarmement
+        // sinon) — la modification du toggle prend effet sans attendre l'ouverture suivante.
+        rescheduleReminders()
     }
 
     fun setProximityEnabled(enabled: Boolean) {
@@ -49,6 +55,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setBirthdayEnabled(enabled: Boolean) {
         _birthdayEnabled.value = enabled
         prefs.edit().putBoolean("birthday_enabled", enabled).apply()
+        rescheduleReminders()
+    }
+
+    private fun rescheduleReminders() {
+        viewModelScope.launch { ReminderScheduler.rescheduleAll(getApplication()) }
     }
 
     /**

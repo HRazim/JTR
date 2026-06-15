@@ -247,6 +247,24 @@
     <string name="custom_label_dialog_hint">Label name</string>
     <string name="notif_importantdate_title">📅 Important date today!</string>
     <string name="notif_importantdate_text">It\'s %1$s of %2$s today!</string>
+    <!-- v7.0 — reminder lead time per notifiable date (birthday + important dates) -->
+    <string name="reminder_label">Reminder</string>
+    <string name="reminder_preset_on_day">On the day</string>
+    <string name="reminder_preset_10min">10 min before</string>
+    <string name="reminder_preset_1hour">1 h before</string>
+    <string name="reminder_preset_1day">1 day before</string>
+    <string name="reminder_preset_1week">1 week before</string>
+    <string name="reminder_preset_custom">Custom</string>
+    <string name="reminder_unit_minutes">Minutes</string>
+    <string name="reminder_unit_hours">Hours</string>
+    <string name="reminder_unit_days">Days</string>
+    <string name="reminder_unit_weeks">Weeks</string>
+    <string name="reminder_value_minutes">%1$d min before</string>
+    <string name="reminder_value_hours">%1$d h before</string>
+    <string name="reminder_value_days">%1$d d before</string>
+    <string name="reminder_value_weeks">%1$d w before</string>
+    <string name="reminder_decrease">Decrease</string>
+    <string name="reminder_increase">Increase</string>
     <!-- v4.5 — informations professionnelles + validation email -->
     <string name="section_work">Work</string>
     <string name="person_job_title_label">Job title</string>

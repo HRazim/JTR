@@ -12,13 +12,20 @@ import java.util.UUID
  * — ou, pour un type « Personnalisé », directement le libellé saisi par l'utilisateur.
  *
  * `notify` (v4.5) ne concerne que les dates importantes : quand il vaut `true`,
- * [com.jtr.app.worker.ImportantDateCheckWorker] envoie une alerte le jour dit.
+ * une alerte est planifiée pour cette date (cf. [com.jtr.app.worker.ReminderScheduler]).
  * Valeur par défaut `false` ⇒ rétrocompatible avec les JSON pré-v4.5 (champ absent).
+ *
+ * `reminderOffsetMinutes` (v7.0) — délai de rappel AVANT l'ancre minuit (00:00) du
+ * jour J, exprimé en minutes (1 h = 60, 1 jour = 1440, 1 semaine = 10080). `0` (défaut)
+ * = « Le jour J » (à minuit). Comme ce champ est sérialisé en JSON, les anciens profils
+ * (champ absent) le désérialisent à `0` sans migration de colonne — la migration Room
+ * v18→v19 ne concerne QUE la projection scalaire de l'anniversaire.
  */
 @Serializable
 data class DynamicLine(
     val id: String = UUID.randomUUID().toString(),
     val value: String = "",
     val label: String = "",
-    val notify: Boolean = false
+    val notify: Boolean = false,
+    val reminderOffsetMinutes: Int = 0
 )

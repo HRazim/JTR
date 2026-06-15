@@ -242,6 +242,24 @@
     <string name="custom_label_dialog_hint">Nom du libellé</string>
     <string name="notif_importantdate_title">📅 Date importante aujourd\'hui !</string>
     <string name="notif_importantdate_text">C\'est %1$s de %2$s aujourd\'hui !</string>
+    <!-- v7.0 — délai de rappel par date notifiable (anniversaire + dates importantes) -->
+    <string name="reminder_label">Rappel</string>
+    <string name="reminder_preset_on_day">Le jour J</string>
+    <string name="reminder_preset_10min">10 min avant</string>
+    <string name="reminder_preset_1hour">1 h avant</string>
+    <string name="reminder_preset_1day">1 jour avant</string>
+    <string name="reminder_preset_1week">1 semaine avant</string>
+    <string name="reminder_preset_custom">Personnalisé</string>
+    <string name="reminder_unit_minutes">Minutes</string>
+    <string name="reminder_unit_hours">Heures</string>
+    <string name="reminder_unit_days">Jours</string>
+    <string name="reminder_unit_weeks">Semaines</string>
+    <string name="reminder_value_minutes">%1$d min avant</string>
+    <string name="reminder_value_hours">%1$d h avant</string>
+    <string name="reminder_value_days">%1$d j avant</string>
+    <string name="reminder_value_weeks">%1$d sem. avant</string>
+    <string name="reminder_decrease">Diminuer</string>
+    <string name="reminder_increase">Augmenter</string>
     <!-- v4.5 — informations professionnelles + validation email -->
     <string name="section_work">Travail</string>
     <string name="person_job_title_label">Intitulé du poste</string>

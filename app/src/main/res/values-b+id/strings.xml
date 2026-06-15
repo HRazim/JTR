@@ -253,6 +253,24 @@
     <string name="custom_label_dialog_hint">Nama label</string>
     <string name="notif_importantdate_title">📅 Hari ini tanggal penting!</string>
     <string name="notif_importantdate_text">Hari ini %1$s dari %2$s!</string>
+    <!-- v7.0 — waktu pengingat sebelum setiap tanggal (ulang tahun + tanggal penting) -->
+    <string name="reminder_label">Pengingat</string>
+    <string name="reminder_preset_on_day">Pada hari H</string>
+    <string name="reminder_preset_10min">10 mnt sebelumnya</string>
+    <string name="reminder_preset_1hour">1 jam sebelumnya</string>
+    <string name="reminder_preset_1day">1 hari sebelumnya</string>
+    <string name="reminder_preset_1week">1 minggu sebelumnya</string>
+    <string name="reminder_preset_custom">Khusus</string>
+    <string name="reminder_unit_minutes">Menit</string>
+    <string name="reminder_unit_hours">Jam</string>
+    <string name="reminder_unit_days">Hari</string>
+    <string name="reminder_unit_weeks">Minggu</string>
+    <string name="reminder_value_minutes">%1$d mnt sebelumnya</string>
+    <string name="reminder_value_hours">%1$d jam sebelumnya</string>
+    <string name="reminder_value_days">%1$d hari sebelumnya</string>
+    <string name="reminder_value_weeks">%1$d mgg sebelumnya</string>
+    <string name="reminder_decrease">Kurangi</string>
+    <string name="reminder_increase">Tambah</string>
     <string name="section_work">Pekerjaan</string>
     <string name="person_job_title_label">Jabatan</string>
     <string name="person_department_label">Departemen</string>

@@ -18,6 +18,12 @@ data class Person(
     val photoUri: String? = null,
     val birthdate: Long? = null,
     val birthdateNotify: Boolean = false,
+    // v7.0 (DB v19) — délai de rappel de l'anniversaire en MINUTES avant l'ancre
+    // minuit (0 = « Le jour J »). Projection scalaire dénormalisée de la ligne
+    // anniversaire (cf. DynamicLine.reminderOffsetMinutes), au même titre que
+    // birthdate / birthdateNotify. Repli pour les profils n'ayant que le scalaire.
+    @ColumnInfo(defaultValue = "0")
+    val birthdateReminderOffsetMinutes: Int = 0,
     val city: String? = null,
     val cityLat: Double? = null,           // NOUVEAU PP3 : coordonnées GPS
     val cityLng: Double? = null,           // NOUVEAU PP3 : pour le géofencing

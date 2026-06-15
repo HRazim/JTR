@@ -250,6 +250,24 @@
     <string name="custom_label_dialog_hint">Nome dell\'etichetta</string>
     <string name="notif_importantdate_title">📅 Oggi è una data importante!</string>
     <string name="notif_importantdate_text">Oggi è %1$s di %2$s!</string>
+    <!-- v7.0 — anticipo del promemoria per data (compleanno + date importanti) -->
+    <string name="reminder_label">Promemoria</string>
+    <string name="reminder_preset_on_day">Il giorno stesso</string>
+    <string name="reminder_preset_10min">10 min prima</string>
+    <string name="reminder_preset_1hour">1 h prima</string>
+    <string name="reminder_preset_1day">1 giorno prima</string>
+    <string name="reminder_preset_1week">1 settimana prima</string>
+    <string name="reminder_preset_custom">Personalizzato</string>
+    <string name="reminder_unit_minutes">Minuti</string>
+    <string name="reminder_unit_hours">Ore</string>
+    <string name="reminder_unit_days">Giorni</string>
+    <string name="reminder_unit_weeks">Settimane</string>
+    <string name="reminder_value_minutes">%1$d min prima</string>
+    <string name="reminder_value_hours">%1$d h prima</string>
+    <string name="reminder_value_days">%1$d g prima</string>
+    <string name="reminder_value_weeks">%1$d sett. prima</string>
+    <string name="reminder_decrease">Diminuisci</string>
+    <string name="reminder_increase">Aumenta</string>
     <string name="section_work">Lavoro</string>
     <string name="person_job_title_label">Posizione</string>
     <string name="person_department_label">Reparto</string>

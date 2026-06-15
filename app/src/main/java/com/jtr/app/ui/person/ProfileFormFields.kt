@@ -660,6 +660,18 @@ private fun DateLinesSection(
                     })
                 }
             )
+            // Délai de rappel (v7.0) — visible UNIQUEMENT quand la cloche est active :
+            // un rappel n'a de sens que pour une date qui notifie.
+            if (line.notify) {
+                ReminderRow(
+                    offsetMinutes = line.reminderOffsetMinutes,
+                    onOffsetChange = { newOffset ->
+                        onLinesChange(lines.map {
+                            if (it.id == line.id) it.copy(reminderOffsetMinutes = newOffset) else it
+                        })
+                    }
+                )
+            }
         }
         AddLineButton(stringResource(R.string.add_date)) {
             onLinesChange(lines + DynamicLine(label = FieldTypes.DATE_BIRTHDAY))

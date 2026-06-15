@@ -242,6 +242,24 @@
     <string name="custom_label_dialog_hint">Nombre de la etiqueta</string>
     <string name="notif_importantdate_title">📅 ¡Fecha importante hoy!</string>
     <string name="notif_importantdate_text">¡Hoy es %1$s de %2$s!</string>
+    <!-- v7.0 — antelación del recordatorio por fecha (cumpleaños + fechas importantes) -->
+    <string name="reminder_label">Recordatorio</string>
+    <string name="reminder_preset_on_day">El mismo día</string>
+    <string name="reminder_preset_10min">10 min antes</string>
+    <string name="reminder_preset_1hour">1 h antes</string>
+    <string name="reminder_preset_1day">1 día antes</string>
+    <string name="reminder_preset_1week">1 semana antes</string>
+    <string name="reminder_preset_custom">Personalizado</string>
+    <string name="reminder_unit_minutes">Minutos</string>
+    <string name="reminder_unit_hours">Horas</string>
+    <string name="reminder_unit_days">Días</string>
+    <string name="reminder_unit_weeks">Semanas</string>
+    <string name="reminder_value_minutes">%1$d min antes</string>
+    <string name="reminder_value_hours">%1$d h antes</string>
+    <string name="reminder_value_days">%1$d d antes</string>
+    <string name="reminder_value_weeks">%1$d sem antes</string>
+    <string name="reminder_decrease">Disminuir</string>
+    <string name="reminder_increase">Aumentar</string>
     <!-- v4.5 — información profesional + validación de email -->
     <string name="section_work">Trabajo</string>
     <string name="person_job_title_label">Puesto</string>

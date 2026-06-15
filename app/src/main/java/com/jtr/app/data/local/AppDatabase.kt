@@ -14,8 +14,13 @@ import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
 
 /**
- * AppDatabase — Version 18.
+ * AppDatabase — Version 19.
  *
+ * v19 : Rappels à délai configurable (v7.0). Ajout de Person.birthdateReminderOffset
+ *       Minutes (INTEGER NOT NULL DEFAULT 0) — projection scalaire du délai de rappel
+ *       de l'anniversaire (0 = « le jour J »). Le délai des AUTRES dates importantes
+ *       vit dans le JSON dateLines (DynamicLine.reminderOffsetMinutes) → aucune colonne.
+ *       ZÉRO perte de données ([MIGRATION_18_19]).
  * v18 : Tri des catégories en parité avec les contacts (v6.1.7). Ajout de
  *       Category.createdAt, CategoryGroup.createdAt et PersonCategoryJoin.addedAt
  *       (tous INTEGER NOT NULL DEFAULT 0, backfillés à l'horodatage de migration) —
@@ -38,7 +43,7 @@ import com.jtr.app.domain.model.SocialLinkEntity
 @Database(
     entities = [Person::class, Category::class, CategoryGroup::class,
         PersonCategoryJoin::class, SocialLinkEntity::class],
-    version = 18,
+    version = 19,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -183,6 +188,31 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration v18 → v19, ZÉRO perte de données — rappels à délai configurable (v7.0).
+         *
+         * 1. ADD COLUMN persons.birthdateReminderOffsetMinutes (NOT NULL DEFAULT 0, aligné
+         *    sur @ColumnInfo(defaultValue="0")) : délai de rappel de l'anniversaire en
+         *    minutes avant minuit (0 = « le jour J »).
+         * 2. Backfill EXPLICITE des lignes préexistantes à 0 (comportement « le jour J »
+         *    inchangé pour les contacts d'avant v19 — aucune régression).
+         *
+         * Le délai des autres dates importantes est porté par le JSON dateLines
+         * (DynamicLine.reminderOffsetMinutes, désérialisé à 0 si absent) : aucune colonne,
+         * donc aucune autre instruction SQL. Uniquement un ALTER TABLE ADD COLUMN : aucune
+         * table recréée, aucune ligne supprimée → la migration destructive (filet de
+         * sécurité) n'est jamais atteinte.
+         */
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE persons ADD COLUMN birthdateReminderOffsetMinutes " +
+                        "INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL("UPDATE persons SET birthdateReminderOffsetMinutes = 0")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -191,7 +221,8 @@ abstract class AppDatabase : RoomDatabase() {
                     "jtr_database"
                 )
                     .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
-                        MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
+                        MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
+                        MIGRATION_18_19)
                     // Filet de sécurité ultime UNIQUEMENT : tous les chemins de version
                     // ont une migration explicite ci-dessus, donc la destruction n'est
                     // jamais déclenchée en pratique (données utilisateur préservées).

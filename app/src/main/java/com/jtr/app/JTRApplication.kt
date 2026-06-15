@@ -30,9 +30,9 @@ class JTRApplication : Application() {
         createNotificationChannels()
         scheduleProximityChecks()
         scheduleImportantDateChecks()
-        // Balayage IMMÉDIAT à chaque démarrage : une date fixée POUR AUJOURD'HUI
-        // notifie sans attendre le balayage quotidien (anti-doublon par jour dans le
-        // Worker → pas de spam même si l'app est rouverte plusieurs fois).
+        // Réarmement IMMÉDIAT à chaque démarrage (hors thread principal, via le Worker) :
+        // les alarmes exactes des rappels sont (re)programmées et toute fenêtre déjà
+        // ouverte est rattrapée. Idempotent → pas de doublon même à réouvertures répétées.
         ImportantDateCheckWorker.runNow(this)
     }
 
@@ -82,14 +82,13 @@ class JTRApplication : Application() {
     }
 
     /**
-     * Planifie le balayage quotidien des dates importantes (anniversaires et dates
-     * personnalisées marquées « notifier »). Voir [ImportantDateCheckWorker].
+     * Filet de sécurité quotidien (v7.0) : réarme les alarmes exactes des rappels de
+     * dates importantes via [ImportantDateCheckWorker], au cas où une alarme aurait été
+     * perdue (force-stop, optimisations agressives). La livraison précise reste assurée
+     * par les alarmes exactes ([com.jtr.app.worker.ReminderScheduler]).
      *
-     * Délai initial calé sur le prochain créneau du matin ([CHECK_HOUR_OF_DAY]) :
-     * la notification arrive ainsi le jour même à une heure pertinente, et non à
-     * un instant arbitraire dépendant de l'heure d'installation. Politique UPDATE :
-     * les installations existantes (ancien planning sans délai) sont recalées sans
-     * dupliquer le travail.
+     * Délai initial calé sur le prochain créneau du matin ([CHECK_HOUR_OF_DAY]).
+     * Politique UPDATE : les installations existantes sont recalées sans dupliquer le travail.
      */
     private fun scheduleImportantDateChecks() {
         val request = PeriodicWorkRequestBuilder<ImportantDateCheckWorker>(

@@ -11,7 +11,7 @@ import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.utils.extractSocialLinks
-import com.jtr.app.worker.ImportantDateCheckWorker
+import com.jtr.app.worker.ReminderScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -276,7 +276,8 @@ class EditPersonViewModel(
                 listOf(DynamicLine(
                     value = millisToRawDigits(it, spec.order),
                     label = FieldTypes.DATE_BIRTHDAY,
-                    notify = p.birthdateNotify // reporte l'ancienne cloche globale sur la ligne
+                    notify = p.birthdateNotify, // reporte l'ancienne cloche globale sur la ligne
+                    reminderOffsetMinutes = p.birthdateReminderOffsetMinutes // …et le délai scalaire
                 ))
             }
             ?: listOf(DynamicLine(label = FieldTypes.DATE_BIRTHDAY))
@@ -343,6 +344,9 @@ class EditPersonViewModel(
             repository.syncMirrorRelations(updated, p.relationLines)
             _person.value = updated
             _isEditing.value = false
+            // Réarme les rappels (délais par date) immédiatement après l'écriture en base :
+            // appel DIRECT (pas via WorkManager) → ni report Doze ni course avec la base.
+            ReminderScheduler.rescheduleAll(getApplication())
         }
     }
 
@@ -367,10 +371,10 @@ class EditPersonViewModel(
             }
             repository.propagateRelationNameChange(updated.id, p.fullName, updated.fullName)
             repository.syncMirrorRelations(updated, p.relationLines)
-            // Une date fixée POUR AUJOURD'HUI doit notifier TOUT DE SUITE : appel DIRECT
-            // (pas via WorkManager) APRÈS l'écriture en base → post immédiat, non différé
-            // par Doze et sans course (la nouvelle entrée est déjà visible).
-            ImportantDateCheckWorker.checkAndNotify(getApplication())
+            // Réarme les rappels (délais par date) immédiatement après l'écriture en base :
+            // appel DIRECT (pas via WorkManager) → ni report Doze ni course avec la base. Une
+            // date déjà due aujourd'hui est rattrapée à l'instant par [rescheduleAll].
+            ReminderScheduler.rescheduleAll(getApplication())
             onSuccess()
         }
     }
@@ -383,6 +387,9 @@ class EditPersonViewModel(
         birthdate      = _birthdate.value,
         // Dénormalisation : la cloche globale vient désormais de la ligne anniversaire.
         birthdateNotify = _dateLines.value.any { it.label == FieldTypes.DATE_BIRTHDAY && it.notify },
+        // …de même que le délai de rappel scalaire (projection de la ligne anniversaire).
+        birthdateReminderOffsetMinutes = _dateLines.value
+            .firstOrNull { it.label == FieldTypes.DATE_BIRTHDAY }?.reminderOffsetMinutes ?: 0,
         city           = _city.value.trim().ifBlank { null },
         cityLat        = _cityLat.value,
         cityLng        = _cityLng.value,

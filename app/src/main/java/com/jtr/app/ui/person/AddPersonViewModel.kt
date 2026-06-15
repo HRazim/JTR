@@ -11,7 +11,7 @@ import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.utils.extractSocialLinks
-import com.jtr.app.worker.ImportantDateCheckWorker
+import com.jtr.app.worker.ReminderScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -179,6 +179,9 @@ class AddPersonViewModel(
             // birthdateNotify dénormalise désormais la cloche de la ligne anniversaire.
             val notifyBirthday = _dateLines.value
                 .any { it.label == FieldTypes.DATE_BIRTHDAY && it.notify }
+            // …et birthdateReminderOffsetMinutes le délai de rappel de cette même ligne.
+            val birthdayOffset = _dateLines.value
+                .firstOrNull { it.label == FieldTypes.DATE_BIRTHDAY }?.reminderOffsetMinutes ?: 0
             val nd = _nameDetails.value
 
             val person = Person(
@@ -186,6 +189,7 @@ class AddPersonViewModel(
                 lastName = _lastName.value.trim().ifBlank { null },
                 birthdate = birthday,
                 birthdateNotify = notifyBirthday,
+                birthdateReminderOffsetMinutes = birthdayOffset,
                 city = _city.value.trim().ifBlank { null },
                 cityLat = _cityLat.value,
                 cityLng = _cityLng.value,
@@ -232,10 +236,10 @@ class AddPersonViewModel(
             // « nouvelles » (aucune snapshot antérieure).
             repository.syncMirrorRelations(person, previousLines = null)
 
-            // Une date fixée POUR AUJOURD'HUI doit notifier TOUT DE SUITE : appel DIRECT
-            // (pas via WorkManager) APRÈS l'écriture en base → post immédiat, non différé
-            // par Doze et sans course (la nouvelle entrée est déjà visible).
-            ImportantDateCheckWorker.checkAndNotify(getApplication())
+            // Réarme les rappels (délais par date) immédiatement après l'écriture en base :
+            // appel DIRECT (pas via WorkManager) → ni report Doze ni course avec la base. Une
+            // date déjà due aujourd'hui est rattrapée à l'instant par [rescheduleAll].
+            ReminderScheduler.rescheduleAll(getApplication())
 
             onSuccess()
         }

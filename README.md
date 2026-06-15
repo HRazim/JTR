@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> Un carnet de contacts Android **100 % local** qui se souvient du contexte humain de vos relations. · Version **6.3.1**
+> Un carnet de contacts Android **100 % local** qui se souvient du contexte humain de vos relations. · Version **7.0.0**
 
 JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde une **mémoire sociale** de chaque personne (goûts, anniversaires, ville, notes, réseaux sociaux, relations) et vous rappelle proactivement les dates importantes ainsi que les contacts dont vous êtes physiquement proche.
 
@@ -42,7 +42,7 @@ JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde un
 - **Tri à deux axes** : critère (Nom · Date de modification · Date de création) + sens **croissant/décroissant**, partagé par l'accueil et les catégories ; les favoris restent épinglés en tête.
 
 ### Rappels (notifications locales)
-- **Anniversaires** et **dates importantes** : notification *heads-up* le jour même, déclenchée immédiatement à l'enregistrement et balayée quotidiennement.
+- **Anniversaires** et **dates importantes** : notification *heads-up* avec un **délai de rappel configurable par date** (le jour J · 10 min · 1 h · 1 jour · 1 semaine · personnalisé), déclenchée à la minute près via une **alarme exacte** ancrée à minuit du jour J, réarmée à la sauvegarde et au redémarrage.
 - **Moteur de proximité** : alerte lorsqu'on passe près d'un contact (Worker périodique + geofencing, rayon ~10 km, anti-spam 48 h, ouverture directe de la fiche au tap).
 
 ### Sécurité locale (optionnelle)
@@ -75,15 +75,15 @@ UI (Jetpack Compose) ─► ViewModel (StateFlow) ─► Repository ─► Room 
 |--------|--------------|
 | Langage / SDK | Kotlin 2.1.0 · JVM 17 · `minSdk 26` · `compile/targetSdk 35` |
 | UI | Jetpack Compose (BOM 2024.12.01) · Material 3 · Navigation Compose |
-| Persistance | Room 2.6.1 (via **KSP**) — base **v18** · DataStore · EncryptedSharedPreferences |
-| Tâches de fond | WorkManager · `ProcessLifecycleOwner` |
+| Persistance | Room 2.6.1 (via **KSP**) — base **v19** · DataStore · EncryptedSharedPreferences |
+| Tâches de fond | WorkManager · `AlarmManager` (alarmes exactes) · `ProcessLifecycleOwner` |
 | Carte & réseau | MapLibre 11.5 · Retrofit / OkHttp · kotlinx.serialization (Nominatim) |
 | Localisation | Play Services Location (FusedLocation + Geofencing) |
 | Sécurité | `androidx.security:security-crypto` · `androidx.biometric` |
 | Images | Coil |
 | Tests | JUnit · MockK · Turbine · Truth · `room-testing` (test de migration) |
 
-> ⚠️ La base Room est en **v18** avec `fallbackToDestructiveMigration()` comme filet de sécurité : toute évolution de schéma **doit** fournir une `Migration` explicite (sinon perte de données utilisateur).
+> ⚠️ La base Room est en **v19** avec `fallbackToDestructiveMigration()` comme filet de sécurité : toute évolution de schéma **doit** fournir une `Migration` explicite (sinon perte de données utilisateur).
 
 ---
 
@@ -112,7 +112,7 @@ Ou ouvrir le dossier dans Android Studio puis **Run ▶** sur un appareil/émula
 app/src/main/java/com/jtr/app/
 ├── domain/model/      # Entités Room (Person, Category, CategoryGroup, joins, SocialLink)
 ├── data/
-│   ├── local/         # AppDatabase (v18) + DAOs
+│   ├── local/         # AppDatabase (v19) + DAOs
 │   ├── remote/        # Nominatim (Retrofit)
 │   ├── repository/    # Person / Category / Geocoding…
 │   ├── backup/        # Sauvegarde & restauration .jtr
@@ -120,7 +120,7 @@ app/src/main/java/com/jtr/app/
 ├── ui/                # navigation · home · person · category · map · settings ·
 │                      # theme · trash · welcome · components · backup · share
 ├── security/          # Verrou : SecurityManager, PatternLockView, biométrie, écrans
-├── worker/            # ImportantDateCheckWorker · ProximityCheckWorker · Geofence receiver
+├── worker/            # ReminderScheduler + AlarmReceiver/BootReceiver · ImportantDateCheckWorker · ProximityCheckWorker · Geofence receiver
 └── utils/             # LocaleManager, LocationUtils, helpers
 ```
 

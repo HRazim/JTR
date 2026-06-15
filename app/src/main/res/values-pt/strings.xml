@@ -250,6 +250,24 @@
     <string name="custom_label_dialog_hint">Nome da etiqueta</string>
     <string name="notif_importantdate_title">📅 Hoje é uma data importante!</string>
     <string name="notif_importantdate_text">Hoje é %1$s de %2$s!</string>
+    <!-- v7.0 — antecedência do lembrete por data (aniversário + datas importantes) -->
+    <string name="reminder_label">Lembrete</string>
+    <string name="reminder_preset_on_day">No dia</string>
+    <string name="reminder_preset_10min">10 min antes</string>
+    <string name="reminder_preset_1hour">1 h antes</string>
+    <string name="reminder_preset_1day">1 dia antes</string>
+    <string name="reminder_preset_1week">1 semana antes</string>
+    <string name="reminder_preset_custom">Personalizado</string>
+    <string name="reminder_unit_minutes">Minutos</string>
+    <string name="reminder_unit_hours">Horas</string>
+    <string name="reminder_unit_days">Dias</string>
+    <string name="reminder_unit_weeks">Semanas</string>
+    <string name="reminder_value_minutes">%1$d min antes</string>
+    <string name="reminder_value_hours">%1$d h antes</string>
+    <string name="reminder_value_days">%1$d d antes</string>
+    <string name="reminder_value_weeks">%1$d sem antes</string>
+    <string name="reminder_decrease">Diminuir</string>
+    <string name="reminder_increase">Aumentar</string>
     <string name="section_work">Trabalho</string>
     <string name="person_job_title_label">Cargo</string>
     <string name="person_department_label">Departamento</string>
