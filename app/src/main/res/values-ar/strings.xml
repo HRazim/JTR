@@ -266,8 +266,6 @@
     <string name="reminder_value_hours">قبل %1$d ساعة</string>
     <string name="reminder_value_days">قبل %1$d يوم</string>
     <string name="reminder_value_weeks">قبل %1$d أسبوع</string>
-    <string name="reminder_decrease">إنقاص</string>
-    <string name="reminder_increase">زيادة</string>
     <string name="section_work">العمل</string>
     <string name="person_job_title_label">المسمّى الوظيفي</string>
     <string name="person_department_label">القسم</string>

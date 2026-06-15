@@ -5,11 +5,11 @@ package com.jtr.app.domain.model
  * l'ancre minuit (00:00) du jour J. Une seule valeur unifie minutes/heures/jours/
  * semaines : 1 h = 60, 1 jour = 1440, 1 semaine = 10080 ; `0` = « le jour J ».
  */
-enum class ReminderUnit(val minutes: Int) {
-    MINUTES(1),
-    HOURS(60),
-    DAYS(1440),
-    WEEKS(10080)
+enum class ReminderUnit(val minutes: Int, val max: Int) {
+    MINUTES(1, 60),
+    HOURS(60, 24),
+    DAYS(1440, 30),
+    WEEKS(10080, 12)
 }
 
 /** Préréglages proposés en premier dans la feuille de rappel (en minutes). */

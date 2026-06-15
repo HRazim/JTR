@@ -11,21 +11,26 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.domain.model.ReminderPresets
@@ -127,9 +131,14 @@ fun ReminderRow(offsetMinutes: Int, onOffsetChange: (Int) -> Unit) {
 }
 
 /**
- * Feuille montante de sélection du délai de rappel (v7.0), au style des feuilles
- * « Tri / Affichage » : préréglages (un seul sélectionné, coche) + « Personnalisé »
- * qui déplie un pas-à-pas compact (nombre + unité). Tokens de thème uniquement.
+ * Feuille montante de sélection du délai de rappel (style des feuilles « Tri / Affichage ») :
+ * préréglages (un seul sélectionné, coche) + « Personnalisé » qui déplie un sélecteur
+ * compact (nombre borné + unité).
+ *
+ * v7.0.1 — la feuille s'ouvre en mode ÉTENDU ([rememberModalBottomSheetState] avec
+ * `skipPartiallyExpanded = true`) et son contenu est DÉFILABLE : quand « Personnalisé »
+ * est déplié, le sélecteur et les unités restent toujours atteignables (rien ne dépasse
+ * sous le bas de l'écran), insets système respectés. Tokens de thème uniquement.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -141,52 +150,62 @@ fun ReminderOffsetSheet(
     val matchesPreset = ReminderPresets.VALUES.contains(currentOffsetMinutes)
     var customMode by remember { mutableStateOf(!matchesPreset) }
 
-    // État du pas-à-pas personnalisé : décompose la valeur courante, ou (1, JOURS) si la
-    // sélection courante est un préréglage (point de départ raisonnable).
+    // État du sélecteur personnalisé : décompose la valeur courante (bornée à l'unité),
+    // ou (1, JOURS) si la sélection courante est un préréglage (point de départ raisonnable).
     val initial = remember {
         if (matchesPreset) 1 to ReminderUnit.DAYS else decomposeReminderOffset(currentOffsetMinutes)
     }
-    var count by remember { mutableIntStateOf(initial.first.coerceAtLeast(1)) }
     var unit by remember { mutableStateOf(initial.second) }
+    var count by remember { mutableIntStateOf(initial.first.coerceIn(1, initial.second.max)) }
 
-    fun applyCustom() {
-        customMode = true
-        onSelect((count * unit.minutes).coerceAtLeast(1))
-    }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Text(
-            text = stringResource(R.string.reminder_label),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-        )
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+            Text(
+                text = stringResource(R.string.reminder_label),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+            )
 
-        presetRows.forEach { (labelRes, value) ->
+            presetRows.forEach { (labelRes, value) ->
+                SheetRow(
+                    label = stringResource(labelRes),
+                    selected = !customMode && currentOffsetMinutes == value,
+                    onClick = { onSelect(value); onDismiss() }
+                )
+            }
+
             SheetRow(
-                label = stringResource(labelRes),
-                selected = !customMode && currentOffsetMinutes == value,
-                onClick = { onSelect(value); onDismiss() }
+                label = stringResource(R.string.reminder_preset_custom),
+                selected = customMode,
+                onClick = {
+                    customMode = true
+                    onSelect((count * unit.minutes).coerceAtLeast(1))
+                }
             )
+
+            AnimatedVisibility(visible = customMode) {
+                CustomSelector(
+                    count = count,
+                    unit = unit,
+                    onCountChange = {
+                        count = it.coerceIn(1, unit.max)
+                        onSelect((count * unit.minutes).coerceAtLeast(1))
+                    },
+                    onUnitChange = { newUnit ->
+                        unit = newUnit
+                        // Borne la valeur au nouveau maximum (ex. 45 min → Heures → 24).
+                        count = count.coerceIn(1, newUnit.max)
+                        onSelect((count * newUnit.minutes).coerceAtLeast(1))
+                    }
+                )
+            }
+
+            Spacer(Modifier.navigationBarsPadding())
         }
-
-        SheetRow(
-            label = stringResource(R.string.reminder_preset_custom),
-            selected = customMode,
-            onClick = { applyCustom() }
-        )
-
-        AnimatedVisibility(visible = customMode) {
-            CustomStepper(
-                count = count,
-                unit = unit,
-                onCountChange = { count = it; onSelect((count * unit.minutes).coerceAtLeast(1)) },
-                onUnitChange = { unit = it; onSelect((count * unit.minutes).coerceAtLeast(1)) }
-            )
-        }
-
-        Spacer(Modifier.navigationBarsPadding())
     }
 }
 
@@ -217,45 +236,31 @@ private fun SheetRow(label: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** Pas-à-pas compact : [−] nombre [+] + sélecteur d'unité (chips). */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Sélecteur compact : un nombre BORNÉ (menu déroulant, plus de taps répétés) + les chips
+ * d'unité. Aperçu vivant du choix à droite. Bornes par unité via [ReminderUnit.max].
+ */
 @Composable
-private fun CustomStepper(
+private fun CustomSelector(
     count: Int,
     unit: ReminderUnit,
     onCountChange: (Int) -> Unit,
     onUnitChange: (ReminderUnit) -> Unit
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(
-                onClick = { onCountChange((count - 1).coerceAtLeast(1)) },
-                enabled = count > 1
-            ) {
-                Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.reminder_decrease))
-            }
-            Text(
-                text = count.toString(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.widthIn(min = 40.dp)
+            NumberDropdown(
+                value = count,
+                max = unit.max,
+                onValueChange = onCountChange,
+                modifier = Modifier.width(120.dp)
             )
-            IconButton(
-                onClick = { onCountChange((count + 1).coerceAtMost(999)) },
-                enabled = count < 999
-            ) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.reminder_increase))
-            }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(12.dp))
             Text(
-                // Aperçu vivant du choix (« 3 j avant »).
+                // Aperçu vivant du choix (« 3 jours avant »).
                 text = reminderOffsetLabel(count * unit.minutes),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
@@ -267,6 +272,43 @@ private fun CustomStepper(
                     selected = unit == u,
                     onClick = { onUnitChange(u) },
                     label = { Text(stringResource(reminderUnitLabelRes(u))) }
+                )
+            }
+        }
+    }
+}
+
+/** Menu déroulant borné `1..[max]` — sélection rapide d'une valeur (zéro tap répété). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NumberDropdown(
+    value: Int,
+    max: Int,
+    onValueChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = value.toString(),
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            (1..max).forEach { n ->
+                DropdownMenuItem(
+                    text = { Text(n.toString()) },
+                    onClick = { onValueChange(n); expanded = false }
                 )
             }
         }

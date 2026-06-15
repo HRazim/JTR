@@ -266,8 +266,6 @@
     <string name="reminder_value_hours">%1$d시간 전</string>
     <string name="reminder_value_days">%1$d일 전</string>
     <string name="reminder_value_weeks">%1$d주 전</string>
-    <string name="reminder_decrease">감소</string>
-    <string name="reminder_increase">증가</string>
     <string name="section_work">직장</string>
     <string name="person_job_title_label">직책</string>
     <string name="person_department_label">부서</string>

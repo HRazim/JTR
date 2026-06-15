@@ -258,8 +258,6 @@
     <string name="reminder_value_hours">%1$d時間前</string>
     <string name="reminder_value_days">%1$d日前</string>
     <string name="reminder_value_weeks">%1$d週間前</string>
-    <string name="reminder_decrease">減らす</string>
-    <string name="reminder_increase">増やす</string>
     <!-- v4.5 — 仕事情報 + メール検証 -->
     <string name="section_work">仕事</string>
     <string name="person_job_title_label">役職</string>

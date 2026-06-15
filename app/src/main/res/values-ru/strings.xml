@@ -266,8 +266,6 @@
     <string name="reminder_value_hours">За %1$d ч</string>
     <string name="reminder_value_days">За %1$d дн.</string>
     <string name="reminder_value_weeks">За %1$d нед.</string>
-    <string name="reminder_decrease">Уменьшить</string>
-    <string name="reminder_increase">Увеличить</string>
     <string name="section_work">Работа</string>
     <string name="person_job_title_label">Должность</string>
     <string name="person_department_label">Отдел</string>

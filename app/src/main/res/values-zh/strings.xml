@@ -258,8 +258,6 @@
     <string name="reminder_value_hours">提前%1$d小时</string>
     <string name="reminder_value_days">提前%1$d天</string>
     <string name="reminder_value_weeks">提前%1$d周</string>
-    <string name="reminder_decrease">减少</string>
-    <string name="reminder_increase">增加</string>
     <!-- v4.5 — 工作信息 + 电子邮件验证 -->
     <string name="section_work">工作</string>
     <string name="person_job_title_label">职位</string>

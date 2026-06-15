@@ -258,8 +258,6 @@
     <string name="reminder_value_hours">%1$d h avant</string>
     <string name="reminder_value_days">%1$d j avant</string>
     <string name="reminder_value_weeks">%1$d sem. avant</string>
-    <string name="reminder_decrease">Diminuer</string>
-    <string name="reminder_increase">Augmenter</string>
     <!-- v4.5 — informations professionnelles + validation email -->
     <string name="section_work">Travail</string>
     <string name="person_job_title_label">Intitulé du poste</string>
