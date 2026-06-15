@@ -12,7 +12,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -174,9 +173,25 @@ fun AddPersonScreen(
                             contentDescription = stringResource(R.string.common_back))
                     }
                 },
+                actions = {
+                    // Enregistrement SOBRE en haut à droite (v7.0.2) — remplace le gros
+                    // bouton plein-largeur du bas. La logique de sauvegarde est inchangée.
+                    IconButton(onClick = {
+                        // Le ViewModel bloque déjà la sauvegarde (firstNameError) ;
+                        // on double d'un message clair et actionnable.
+                        if (firstName.isBlank()) {
+                            scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
+                        }
+                        viewModel.savePerson(onSuccess = onNavigateBack)
+                    }) {
+                        Icon(Icons.Default.Check,
+                            contentDescription = stringResource(R.string.person_save))
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         },
@@ -286,14 +301,16 @@ fun AddPersonScreen(
                     }
                 }
             }
-            OutlinedButton(
+            // Affordance d'ajout discrète « + » (v7.0.2) — plus de bouton bordé lourd.
+            TextButton(
                 onClick = { showAddLinkDialog = true },
                 modifier = Modifier.align(Alignment.Start),
-                shape = RoundedCornerShape(12.dp)
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Icon(Icons.Default.AddLink, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.person_add_social_link))
+                Text(stringResource(R.string.person_add_social_link),
+                    style = MaterialTheme.typography.labelLarge)
             }
 
             HorizontalDivider()
@@ -340,23 +357,8 @@ fun AddPersonScreen(
                 onCompanyChange = viewModel::onCompanyChanged
             )
 
+            // Enregistrement déplacé en haut à droite (v7.0.2) — plus de gros bouton bas.
             Spacer(modifier = Modifier.height(8.dp))
-
-            Button(
-                onClick = {
-                    // Le ViewModel bloque déjà la sauvegarde (firstNameError) ;
-                    // on double d'un message clair et actionnable.
-                    if (firstName.isBlank()) {
-                        scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
-                    }
-                    viewModel.savePerson(onSuccess = onNavigateBack)
-                },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(stringResource(R.string.person_save),
-                    style = MaterialTheme.typography.titleMedium)
-            }
         }
 
         if (showAddLinkDialog) {

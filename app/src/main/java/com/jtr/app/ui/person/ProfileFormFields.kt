@@ -19,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -40,7 +42,12 @@ import java.util.Locale
  * Formulaire de profil PARTAGÉ entre la création (AddPersonScreen) et l'édition
  * (PersonDetailScreen) — ergonomie « Contacts Google » épurée en v4.5.
  *
- * Ordre vertical (point 2 de la refonte) :
+ * v7.0.2 — refonte de STYLE uniquement (structure, ordre et comportement INCHANGÉS) :
+ * les champs adoptent un habillage « carte souple » léger (conteneur [ColorScheme.surfaceVariant]
+ * discret, coins arrondis généreux, sans soulignement), une icône en tête, et le libellé
+ * passe en placeholder. Les affordances d'ajout deviennent un « + » discret.
+ *
+ * Ordre vertical (inchangé) :
  *  1. Nom (champ unique épuré + sous-champs avancés repliables) ;
  *  2. Notes puis « Ce qu'il aime » (approche Note-First) ;
  *  3. section repliable « Ajouter d'autres informations » : Dates importantes →
@@ -96,7 +103,7 @@ fun ProfileFormFields(
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // ── 1. Nom (champ unique + sous-champs avancés repliables) ─────────────
         NameSection(
@@ -116,15 +123,19 @@ fun ProfileFormFields(
         var localNotes by remember(notes) { mutableStateOf(notes) }
         val notesBringIntoView = remember { BringIntoViewRequester() }
         val notesScope = rememberCoroutineScope()
-        OutlinedTextField(
+        SoftTextField(
             value = localNotes,
             onValueChange = {
                 localNotes = it
                 onNotesChange(it)
                 notesScope.launch { notesBringIntoView.bringIntoView() }
             },
-            label = { Text(stringResource(R.string.person_notes_label)) },
-            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Notes, null) },
+            placeholder = stringResource(R.string.person_notes_label),
+            leadingIcon = Icons.AutoMirrored.Filled.Notes,
+            singleLine = false,
+            minLines = 4,
+            maxLines = 10,
+            keyboardOptions = sentences,
             modifier = Modifier
                 .fillMaxWidth()
                 .bringIntoViewRequester(notesBringIntoView)
@@ -132,23 +143,21 @@ fun ProfileFormFields(
                     if (focusState.isFocused) {
                         notesScope.launch { notesBringIntoView.bringIntoView() }
                     }
-                },
-            minLines = 4, maxLines = 10,
-            shape = RoundedCornerShape(12.dp),
-            keyboardOptions = sentences
+                }
         )
 
         // ── 3. Ce qu'il aime ──────────────────────────────────────────────────
         var localLikes by remember(likes) { mutableStateOf(likes) }
-        OutlinedTextField(
+        SoftTextField(
             value = localLikes,
             onValueChange = { localLikes = it; onLikesChange(it) },
-            label = { Text(stringResource(R.string.person_likes_label)) },
-            leadingIcon = { Icon(Icons.Default.Favorite, null) },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 2, maxLines = 5,
-            shape = RoundedCornerShape(12.dp),
-            keyboardOptions = sentences
+            placeholder = stringResource(R.string.person_likes_label),
+            leadingIcon = Icons.Default.Favorite,
+            singleLine = false,
+            minLines = 2,
+            maxLines = 5,
+            keyboardOptions = sentences,
+            modifier = Modifier.fillMaxWidth()
         )
 
         // ── 4. Bouton MASTER « + Ajouter d'autres informations » ──────────────
@@ -158,7 +167,7 @@ fun ProfileFormFields(
         OutlinedButton(
             onClick = { showMore = !showMore },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(16.dp)
         ) {
             Icon(
                 if (showMore) Icons.Default.ExpandLess else Icons.Default.Add,
@@ -176,7 +185,7 @@ fun ProfileFormFields(
         AnimatedVisibility(visible = showMore) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 // 5.1 Dates importantes (accordéon)
                 DateLinesSection(lines = dateLines, onLinesChange = onDateLinesChange)
@@ -232,44 +241,39 @@ fun ProfileFormFields(
 
                 // 5.6 Origine — juste AU-DESSUS de la ville (miroir du mode lecture)
                 var localOrigin by remember(origin) { mutableStateOf(origin) }
-                OutlinedTextField(
+                SoftTextField(
                     value = localOrigin,
                     onValueChange = { localOrigin = it; onOriginChange(it) },
-                    label = { Text(stringResource(R.string.person_origin_label)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus(),
-                    shape = RoundedCornerShape(12.dp),
-                    leadingIcon = { Icon(Icons.Default.Public, null) },
+                    placeholder = stringResource(R.string.person_origin_label),
+                    leadingIcon = Icons.Default.Public,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) })
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
                 )
 
                 // 5.7 Ville & mini-carte (toute fin des blocs structurés)
-                SectionLabel(stringResource(R.string.person_city_label))
                 var localCity by remember(city) { mutableStateOf(city) }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
-                    OutlinedTextField(
+                    SoftTextField(
                         value = localCity,
                         onValueChange = { localCity = it; onCityChange(it) },
-                        label = { Text(stringResource(R.string.person_city_label)) },
-                        modifier = Modifier.weight(1f).bringIntoViewOnFocus(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
+                        placeholder = stringResource(R.string.person_city_label),
+                        leadingIcon = Icons.Default.LocationOn,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(
                             onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-                        trailingIcon = {
-                            if (cityHasCoords) {
+                        trailingIcon = if (cityHasCoords) {
+                            {
                                 Icon(Icons.Default.MyLocation, null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp))
                             }
-                        },
+                        } else null,
                         // Ville saisie SANS coordonnées → guide très visible vers
                         // l'icône carte (validation de l'adresse précise).
                         supportingText = if (localCity.isNotBlank() && !cityHasCoords) ({
@@ -278,9 +282,13 @@ fun ProfileFormFields(
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.SemiBold
                             )
-                        }) else null
+                        }) else null,
+                        modifier = Modifier.weight(1f).bringIntoViewOnFocus()
                     )
-                    IconButton(onClick = onNavigateToMap, modifier = Modifier.padding(top = 4.dp)) {
+                    FilledTonalIconButton(
+                        onClick = onNavigateToMap,
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
                         Icon(Icons.Default.Map,
                             contentDescription = stringResource(R.string.person_city_map_cd),
                             tint = MaterialTheme.colorScheme.primary)
@@ -297,6 +305,64 @@ fun ProfileFormFields(
             }
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Champ « carte souple » réutilisable (v7.0.2) — TextField rempli léger
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Couleurs du champ souple : conteneur teinté discret (surfaceVariant), sans soulignement. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun softFieldColors() = TextFieldDefaults.colors(
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    errorContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    focusedIndicatorColor = Color.Transparent,
+    unfocusedIndicatorColor = Color.Transparent,
+    disabledIndicatorColor = Color.Transparent,
+    errorIndicatorColor = Color.Transparent
+)
+
+/**
+ * Champ de texte « carte souple » : conteneur léger arrondi, icône en tête, libellé
+ * en placeholder. Habillage commun à tous les champs simples du formulaire (v7.0.2).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SoftTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    leadingIcon: ImageVector?,
+    modifier: Modifier = Modifier,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
+    isError: Boolean = false,
+    supportingText: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null
+) {
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = { Text(placeholder) },
+        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
+        trailingIcon = trailingIcon,
+        singleLine = singleLine,
+        minLines = minLines,
+        maxLines = maxLines,
+        isError = isError,
+        supportingText = supportingText,
+        shape = RoundedCornerShape(16.dp),
+        colors = softFieldColors(),
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        modifier = modifier
+    )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -325,7 +391,7 @@ private fun AccordionSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(leadingIcon, contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(8.dp))
             Text(title, style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f))
@@ -356,6 +422,7 @@ private fun splitDisplayName(text: String): Pair<String, String> {
 private fun joinDisplayName(first: String, last: String): String =
     listOf(first, last).filter { it.isNotBlank() }.joinToString(" ")
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NameSection(
     firstName: String,
@@ -376,10 +443,10 @@ private fun NameSection(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            OutlinedTextField(
+            SoftTextField(
                 value = displayName,
                 onValueChange = { input ->
                     displayName = input
@@ -387,20 +454,21 @@ private fun NameSection(
                     onFirstNameChange(f)
                     onLastNameChange(l)
                 },
-                label = { Text(stringResource(R.string.person_full_name_label)) },
-                leadingIcon = { Icon(Icons.Default.Badge, null) },
+                placeholder = stringResource(R.string.person_full_name_label),
+                leadingIcon = Icons.Default.Badge,
                 isError = firstNameError,
                 supportingText = if (firstNameError) ({
                     Text(stringResource(R.string.person_first_name_required))
                 }) else null,
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
                 modifier = Modifier.weight(1f)
             )
-            IconButton(onClick = { expanded = !expanded }) {
+            FilledTonalIconButton(
+                onClick = { expanded = !expanded },
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
                 Icon(
                     if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = if (expanded) stringResource(R.string.name_details_hide)
@@ -443,12 +511,11 @@ private fun NameSection(
 @Composable
 private fun NameSubField(label: String, value: String, onChange: (String) -> Unit) {
     val focusManager = LocalFocusManager.current
-    OutlinedTextField(
+    SoftTextField(
         value = value,
         onValueChange = onChange,
-        label = { Text(label) },
-        singleLine = true,
-        shape = RoundedCornerShape(12.dp),
+        placeholder = label,
+        leadingIcon = null,
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
@@ -492,7 +559,7 @@ private fun JobSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Work, contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(8.dp))
             Text(
                 stringResource(R.string.section_work_title),
@@ -508,33 +575,29 @@ private fun JobSection(
         }
         AnimatedVisibility(visible = expanded) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
+                SoftTextField(
                     value = jobTitle,
                     onValueChange = onJobTitleChange,
-                    label = { Text(stringResource(R.string.person_job_title_label)) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    placeholder = stringResource(R.string.person_job_title_label),
+                    leadingIcon = Icons.Default.Work,
                     keyboardOptions = opts,
                     keyboardActions = actions,
                     modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
                 )
-                OutlinedTextField(
+                SoftTextField(
                     value = department,
                     onValueChange = onDepartmentChange,
-                    label = { Text(stringResource(R.string.person_department_label)) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    placeholder = stringResource(R.string.person_department_label),
+                    leadingIcon = Icons.Default.Apartment,
                     keyboardOptions = opts,
                     keyboardActions = actions,
                     modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
                 )
-                OutlinedTextField(
+                SoftTextField(
                     value = company,
                     onValueChange = onCompanyChange,
-                    label = { Text(stringResource(R.string.person_company_label)) },
-                    leadingIcon = { Icon(Icons.Default.Business, null) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    placeholder = stringResource(R.string.person_company_label),
+                    leadingIcon = Icons.Default.Business,
                     keyboardOptions = opts,
                     keyboardActions = actions,
                     modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
@@ -764,7 +827,7 @@ private fun DynamicLineRow(
     }
 }
 
-/** Champ de valeur, en autocomplétion si [suggestions] est fourni. */
+/** Champ de valeur (carte souple), en autocomplétion si [suggestions] est fourni. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun ValueField(
@@ -793,18 +856,22 @@ private fun ValueField(
             }
         }
 
+    // Placeholder visible quand le champ est vide : masque de date si fourni, sinon
+    // le libellé du champ (le libellé flottant est supprimé — habillage « carte souple »).
+    val hint = placeholder ?: valueLabel
+
     val field: @Composable (Modifier) -> Unit = { fieldModifier ->
-        OutlinedTextField(
+        TextField(
             value = value,
             onValueChange = onValueChange,
-            label = { Text(valueLabel) },
-            placeholder = placeholder?.let { ph -> { Text(ph) } },
+            placeholder = { Text(hint) },
             singleLine = true,
             isError = isError,
             supportingText = if (isError && errorMessage != null) {
                 { Text(errorMessage) }
             } else null,
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = softFieldColors(),
             visualTransformation = visualTransformation,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { onImeNext() }),
@@ -830,12 +897,13 @@ private fun ValueField(
         onExpandedChange = { expanded = it },
         modifier = modifier
     ) {
-        OutlinedTextField(
+        TextField(
             value = value,
             onValueChange = { onValueChange(it); expanded = true },
-            label = { Text(valueLabel) },
+            placeholder = { Text(hint) },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = softFieldColors(),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { onImeNext() }),
             modifier = Modifier
@@ -937,15 +1005,6 @@ private fun CustomLabelDialog(
     )
 }
 
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary
-    )
-}
-
 /**
  * Ramène le champ porteur dans la zone visible (au-dessus du clavier) à la prise
  * de focus. Appliqué aux champs du bas du formulaire (Origine, Ville, Pro) qui,
@@ -963,12 +1022,13 @@ private fun Modifier.bringIntoViewOnFocus(): Modifier {
         }
 }
 
+/** Affordance d'ajout discrète : « + » + court libellé (v7.0.2). */
 @Composable
 private fun AddLineButton(text: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
+    TextButton(onClick = onClick, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
-        Text(text)
+        Text(text, style = MaterialTheme.typography.labelLarge)
     }
 }
 

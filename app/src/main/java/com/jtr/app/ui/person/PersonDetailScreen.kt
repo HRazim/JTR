@@ -10,8 +10,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -256,6 +254,20 @@ fun PersonDetailScreen(
                     }
                 },
                 actions = {
+                    if (isEditing) {
+                        // Enregistrement SOBRE en haut à droite (v7.0.2) — remplace le FAB.
+                        // La logique de sauvegarde (commitAllEdits) est strictement inchangée.
+                        IconButton(onClick = {
+                            if (vmFirstName.isBlank()) {
+                                scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
+                            }
+                            editVm.commitAllEdits()
+                        }) {
+                            Icon(Icons.Default.Check,
+                                contentDescription = stringResource(R.string.person_save),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                        }
+                    }
                     if (!isEditing) {
                         // Étoile favori : jaune vif si actif, toggle instantané en base.
                         IconButton(onClick = { editVm.toggleFavorite() }) {
@@ -312,28 +324,6 @@ fun PersonDetailScreen(
                 )
             )
         },
-        floatingActionButton = {
-            AnimatedVisibility(
-                visible = isEditing,
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut()
-            ) {
-                ExtendedFloatingActionButton(
-                    text = { Text(stringResource(R.string.person_save)) },
-                    icon = { Icon(Icons.Default.Check, contentDescription = null) },
-                    onClick = {
-                        // Le ViewModel bloque déjà la sauvegarde (firstNameError) ;
-                        // on double d'un message clair et actionnable.
-                        if (vmFirstName.isBlank()) {
-                            scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
-                        }
-                        editVm.commitAllEdits()
-                    },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
 
@@ -357,7 +347,7 @@ fun PersonDetailScreen(
                 .pointerInput(isEditing) {
                     if (!isEditing) detectTapGestures(onDoubleTap = { editVm.enterEditMode() })
                 }
-                .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 96.dp),
+                .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
@@ -1018,13 +1008,16 @@ private fun SocialLinksSection(
                             }
                         }
                     }
-                    OutlinedButton(
+                    // Affordance d'ajout discrète « + » (v7.0.2) — plus de bouton bordé lourd.
+                    TextButton(
                         onClick = onAddClick,
-                        modifier = Modifier.align(Alignment.Start)
+                        modifier = Modifier.align(Alignment.Start),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Icon(Icons.Default.AddLink, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.person_add_social_link))
+                        Text(stringResource(R.string.person_add_social_link),
+                            style = MaterialTheme.typography.labelLarge)
                     }
                 }
             } else {
