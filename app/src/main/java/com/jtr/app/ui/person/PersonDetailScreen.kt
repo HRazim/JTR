@@ -178,6 +178,10 @@ fun PersonDetailScreen(
     val locationOffMsg = stringResource(R.string.location_off_settings)
     val dateInvalidMsg = stringResource(R.string.person_date_year_invalid)
     val dateSpec = remember { resolveDateFormatSpec(java.util.Locale.getDefault()) }
+    // État du mode réordonnancement des notes, hissé pour rendre le footer au niveau écran.
+    val noteReorderState = rememberNoteReorderState()
+    // Sortie du mode édition → réinitialise le footer de réordonnancement.
+    LaunchedEffect(isEditing) { if (!isEditing) noteReorderState.reset() }
     // Verrou proximité : la notif de proximité n'est activable que si les
     // notifications globales ET la proximité sont actives dans les paramètres.
     val proximityAllowed = remember {
@@ -369,6 +373,9 @@ fun PersonDetailScreen(
             return@Scaffold
         }
 
+        // Box racine de l'écran : ancre le footer de réordonnancement des notes en bas
+        // (align BottomCenter), au-dessus du contenu défilant, calé au ras des touches.
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -532,7 +539,8 @@ fun PersonDetailScreen(
                     department = vmDepartment,
                     onDepartmentChange = { editVm.onDepartmentChanged(it) },
                     company = vmCompany,
-                    onCompanyChange = { editVm.onCompanyChanged(it) }
+                    onCompanyChange = { editVm.onCompanyChanged(it) },
+                    noteReorderState = noteReorderState
                 )
             } else {
                 // ── Mode lecture : ordre IDENTIQUE au formulaire ─────────────────
@@ -664,6 +672,18 @@ fun PersonDetailScreen(
                     )
                 }
             }
+        }
+
+        // Footer de réordonnancement des notes — ancré en bas de l'ÉCRAN (v7.0.7), visible
+        // uniquement en édition ; calé au ras des touches via NoteReorderFooter (plus de Popup).
+        if (isEditing) {
+            NoteReorderFooter(
+                state = noteReorderState,
+                sections = vmNoteSections,
+                onSectionsChange = { editVm.onNoteSectionsChanged(it) },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
         }
     }
 

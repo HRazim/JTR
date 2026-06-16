@@ -86,6 +86,8 @@ fun AddPersonScreen(
     val locationOffMsg = stringResource(R.string.location_off_settings)
     val dateInvalidMsg = stringResource(R.string.person_date_year_invalid)
     val dateSpec = remember { resolveDateFormatSpec(Locale.getDefault()) }
+    // État du mode réordonnancement des notes, hissé pour rendre le footer au niveau écran.
+    val noteReorderState = rememberNoteReorderState()
     // Verrou proximité : activable uniquement si notifications + proximité globales actives.
     val proximityAllowed = remember {
         val p = context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
@@ -228,6 +230,9 @@ fun AddPersonScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
+        // Box racine de l'écran : permet d'ancrer le footer de réordonnancement en bas
+        // (align BottomCenter) au-dessus du contenu défilant, calé au ras des touches.
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -383,12 +388,22 @@ fun AddPersonScreen(
                 department = department,
                 onDepartmentChange = viewModel::onDepartmentChanged,
                 company = company,
-                onCompanyChange = viewModel::onCompanyChanged
+                onCompanyChange = viewModel::onCompanyChanged,
+                noteReorderState = noteReorderState
             )
 
             // Enregistrement déplacé en haut à droite (v7.0.2) — plus de gros bouton bas.
             Spacer(modifier = Modifier.height(8.dp))
         }
+
+        // Footer de réordonnancement des notes — ancré en bas de l'ÉCRAN (v7.0.7), calé au
+        // ras des touches système via NoteReorderFooter (inset une seule fois ; plus de Popup).
+        NoteReorderFooter(
+            state = noteReorderState,
+            sections = noteSections,
+            onSectionsChange = viewModel::onNoteSectionsChanged,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
 
         if (showAddLinkDialog) {
             AddSocialLinkDialog(
@@ -407,6 +422,7 @@ fun AddPersonScreen(
                 },
                 onDismiss = { pendingCropUri = null }
             )
+        }
         }
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,6 +53,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -66,8 +68,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import com.jtr.app.R
 import com.jtr.app.domain.model.NOTE_ICON_NOTES
 import com.jtr.app.domain.model.NoteSection
@@ -107,7 +107,33 @@ object NoteIcons {
 }
 
 /** Section supprimée mémorisée pour l'annulation (undo) : contenu + position d'origine. */
-private data class DeletedNoteSection(val section: NoteSection, val index: Int)
+internal data class DeletedNoteSection(val section: NoteSection, val index: Int)
+
+/**
+ * État hissé du mode réordonnancement des sections (v7.0.7) — permet de RENDRE le footer
+ * (« Glisser… » / Supprimer / Terminé) et le bandeau undo au niveau de l'ÉCRAN (bottom bar)
+ * plutôt qu'en Popup, pour un calage FIABLE au ras de la barre système (inset appliqué une
+ * seule fois). Partagé entre [NoteSectionsEditor] (qui pilote l'état au fil de l'interaction)
+ * et [NoteReorderFooter] (qui le rend, ancré en bas de l'écran). L'INTERACTION est inchangée.
+ */
+@Stable
+class NoteReorderState {
+    /** Section « active » (saisie/glissée) ; le footer est visible tant qu'elle est non nulle. */
+    internal var grabbedId by mutableStateOf<String?>(null)
+
+    /** Section supprimée en attente d'annulation (undo). */
+    internal var pendingUndo by mutableStateOf<DeletedNoteSection?>(null)
+
+    /** Réinitialise le mode (ex. sortie du mode édition d'une fiche). */
+    fun reset() {
+        grabbedId = null
+        pendingUndo = null
+    }
+}
+
+/** Crée et mémorise l'état de réordonnancement à hisser dans l'écran hôte. */
+@Composable
+fun rememberNoteReorderState(): NoteReorderState = remember { NoteReorderState() }
 
 /**
  * Éditeur des sections de notes personnalisables — remplace les deux champs fixes
@@ -132,27 +158,20 @@ private data class DeletedNoteSection(val section: NoteSection, val index: Int)
 fun NoteSectionsEditor(
     sections: List<NoteSection>,
     onSectionsChange: (List<NoteSection>) -> Unit,
+    reorderState: NoteReorderState,
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
-
-    // Section « active » (saisie/glissée) pour laquelle le footer s'affiche. Posée à
-    // l'amorce du glisser, elle persiste après le dépose pour permettre Supprimer / Terminé.
-    var grabbedId by remember { mutableStateOf<String?>(null) }
-    var pendingDeleteId by remember { mutableStateOf<String?>(null) }
     var iconPickerForId by remember { mutableStateOf<String?>(null) }
-    var pendingUndo by remember { mutableStateOf<DeletedNoteSection?>(null) }
 
     fun reindex(list: List<NoteSection>) = list.mapIndexed { i, s -> s.copy(order = i) }
 
     // Si la section active disparaît (suppression, rechargement), on quitte le mode footer.
+    // Le footer/undo sont désormais rendus au niveau ÉCRAN (cf. [NoteReorderFooter]).
     LaunchedEffect(sections) {
-        if (grabbedId != null && sections.none { it.id == grabbedId }) grabbedId = null
-    }
-
-    // Retour système : referme le footer avant de quitter l'écran.
-    BackHandler(enabled = grabbedId != null && pendingDeleteId == null && iconPickerForId == null) {
-        grabbedId = null
+        if (reorderState.grabbedId != null && sections.none { it.id == reorderState.grabbedId }) {
+            reorderState.grabbedId = null
+        }
     }
 
     Column(
@@ -178,15 +197,14 @@ fun NoteSectionsEditor(
                     reorderScope = reorderScope,
                     onIconClick = { iconPickerForId = section.id },
                     onGrabStarted = {
-                        grabbedId = section.id
-                        pendingUndo = null
+                        reorderState.grabbedId = section.id
+                        reorderState.pendingUndo = null
                         focusManager.clearFocus()
                     },
                     onFieldFocused = {
-                        // Dès qu'on écrit dans un champ : footer/undo masqués (pas de
-                        // superposition sur le texte ni la barre de sélection système).
-                        grabbedId = null
-                        pendingUndo = null
+                        // Éditer un champ masque le footer/undo (rendus au niveau écran).
+                        reorderState.grabbedId = null
+                        reorderState.pendingUndo = null
                     },
                     onTitleChange = { newTitle ->
                         onSectionsChange(sections.map {
@@ -218,62 +236,6 @@ fun NoteSectionsEditor(
         }
     }
 
-    // Footer contextuel (ancré en bas de l'écran via Popup).
-    if (grabbedId != null) {
-        Popup(
-            alignment = Alignment.BottomCenter,
-            properties = PopupProperties(focusable = false)
-        ) {
-            // PAS de navigationBarsPadding ici : le Popup positionne DÉJÀ son contenu
-            // au-dessus de la barre de boutons système ; l'ajouter compterait l'inset
-            // deux fois (bande résiduelle ≈ hauteur de la barre). On ne garde qu'une
-            // petite marge interne → la ligne Supprimer/Terminé est au ras des touches.
-            Surface(
-                tonalElevation = 3.dp,
-                shadowElevation = 8.dp,
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        stringResource(R.string.note_section_reorder_cd),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .padding(bottom = 2.dp)
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(onClick = { pendingDeleteId = grabbedId }) {
-                            Icon(
-                                Icons.Default.DeleteOutline,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                stringResource(R.string.common_delete),
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                        Spacer(Modifier.weight(1f))
-                        TextButton(onClick = { grabbedId = null }) {
-                            Text(stringResource(R.string.common_done))
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     // Sélecteur d'icône (grille du jeu curé).
     iconPickerForId?.let { id ->
         val current = sections.firstOrNull { it.id == id }?.iconKey ?: NOTE_ICON_NOTES
@@ -285,6 +247,106 @@ fun NoteSectionsEditor(
             },
             onDismiss = { iconPickerForId = null }
         )
+    }
+
+}
+
+/**
+ * Footer du mode réordonnancement (« Glisser… » / Supprimer / Terminé) + bandeau undo,
+ * RENDUS AU NIVEAU ÉCRAN (v7.0.7) — à placer dans un conteneur ancré en bas (ex.
+ * `Box(Modifier.fillMaxSize())` + `Modifier.align(Alignment.BottomCenter)`). L'inset de
+ * barre de navigation est appliqué UNE SEULE FOIS ici → calage FIABLE au ras des touches
+ * système (plus de `Popup`, plus de bande résiduelle). Se masque de lui-même hors mode
+ * réordonnancement / hors undo. [state] est partagé avec [NoteSectionsEditor] ;
+ * [sections]/[onSectionsChange] = la même liste hissée par l'écran (suppression / undo).
+ * L'interaction est identique — seuls le LIEU et la MÉTHODE de rendu changent.
+ */
+@Composable
+fun NoteReorderFooter(
+    state: NoteReorderState,
+    sections: List<NoteSection>,
+    onSectionsChange: (List<NoteSection>) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var pendingDeleteId by remember { mutableStateOf<String?>(null) }
+    fun reindex(list: List<NoteSection>) = list.mapIndexed { i, s -> s.copy(order = i) }
+
+    // Retour système : referme le mode réordonnancement (la confirmation a son propre retour).
+    BackHandler(enabled = state.grabbedId != null && pendingDeleteId == null) {
+        state.grabbedId = null
+    }
+
+    when {
+        // Footer contextuel.
+        state.grabbedId != null -> Surface(
+            tonalElevation = 3.dp,
+            shadowElevation = 8.dp,
+            color = MaterialTheme.colorScheme.surface,
+            modifier = modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    stringResource(R.string.note_section_reorder_cd),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(bottom = 2.dp)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = { pendingDeleteId = state.grabbedId }) {
+                        Icon(
+                            Icons.Default.DeleteOutline,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            stringResource(R.string.common_delete),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { state.grabbedId = null }) {
+                        Text(stringResource(R.string.common_done))
+                    }
+                }
+            }
+        }
+        // Bandeau d'annulation après suppression.
+        state.pendingUndo != null -> Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(12.dp)
+        ) {
+            Snackbar(
+                action = {
+                    TextButton(onClick = {
+                        state.pendingUndo?.let { u ->
+                            val restored = sections.toMutableList()
+                            restored.add(u.index.coerceIn(0, restored.size), u.section)
+                            onSectionsChange(reindex(restored))
+                        }
+                        state.pendingUndo = null
+                    }) {
+                        Text(
+                            stringResource(R.string.common_undo),
+                            color = MaterialTheme.colorScheme.inversePrimary
+                        )
+                    }
+                }
+            ) { Text(stringResource(R.string.note_section_deleted)) }
+        }
     }
 
     // Confirmation de suppression (anti-perte accidentelle).
@@ -300,11 +362,11 @@ fun NoteSectionsEditor(
                     val idx = sections.indexOfFirst { it.id == id }
                     if (idx >= 0) {
                         // Mémorise contenu + position pour l'annulation, puis retire.
-                        pendingUndo = DeletedNoteSection(sections[idx], idx)
+                        state.pendingUndo = DeletedNoteSection(sections[idx], idx)
                         onSectionsChange(reindex(sections.filter { it.id != id }))
                     }
                     pendingDeleteId = null
-                    if (grabbedId == id) grabbedId = null
+                    if (state.grabbedId == id) state.grabbedId = null
                 }) {
                     Text(stringResource(R.string.common_delete),
                         color = MaterialTheme.colorScheme.error)
@@ -318,43 +380,11 @@ fun NoteSectionsEditor(
         )
     }
 
-    // Bandeau d'annulation (undo) après suppression — restaure la section à sa place.
-    if (pendingUndo != null && grabbedId == null) {
-        Popup(
-            alignment = Alignment.BottomCenter,
-            properties = PopupProperties(focusable = false)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp)
-            ) {
-                Snackbar(
-                    action = {
-                        TextButton(onClick = {
-                            pendingUndo?.let { u ->
-                                val restored = sections.toMutableList()
-                                restored.add(u.index.coerceIn(0, restored.size), u.section)
-                                onSectionsChange(reindex(restored))
-                            }
-                            pendingUndo = null
-                        }) {
-                            Text(
-                                stringResource(R.string.common_undo),
-                                color = MaterialTheme.colorScheme.inversePrimary
-                            )
-                        }
-                    }
-                ) { Text(stringResource(R.string.note_section_deleted)) }
-            }
-        }
-    }
-
     // Auto-disparition du bandeau après quelques secondes.
-    LaunchedEffect(pendingUndo) {
-        if (pendingUndo != null) {
+    LaunchedEffect(state.pendingUndo) {
+        if (state.pendingUndo != null) {
             delay(4000)
-            pendingUndo = null
+            state.pendingUndo = null
         }
     }
 }

@@ -95,6 +95,7 @@ fun ProfileFormFields(
     onDepartmentChange: (String) -> Unit,
     company: String,
     onCompanyChange: (String) -> Unit,
+    noteReorderState: NoteReorderState,
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
@@ -118,7 +119,8 @@ fun ProfileFormFields(
         // Remplacent les anciens champs fixes « Misc notes » / « What they like ».
         NoteSectionsEditor(
             sections = noteSections,
-            onSectionsChange = onNoteSectionsChange
+            onSectionsChange = onNoteSectionsChange,
+            reorderState = noteReorderState
         )
 
         // ── 4. Bouton MASTER « + Ajouter d'autres informations » ──────────────
