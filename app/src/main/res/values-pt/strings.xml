@@ -9,6 +9,9 @@
     <string name="crop_hint">Arrasta para mover · aproxima os dedos para ampliar · cantos para redimensionar</string>
     <string name="common_ok">OK</string>
     <string name="common_delete">Eliminar</string>
+    <string name="common_done">Concluído</string>
+    <string name="common_undo">Desfazer</string>
+    <string name="note_section_deleted">Secção eliminada</string>
     <string name="common_save">Guardar</string>
     <string name="common_back">Voltar</string>
     <string name="common_edit">Editar</string>
@@ -85,6 +88,7 @@
     <string name="person_birthday_clear">Limpar</string>
     <string name="person_birthday_notify">Notificar no aniversário</string>
     <string name="person_birthday_invalid">Data inválida</string>
+    <string name="person_date_year_invalid">Introduza um ano válido de 4 dígitos</string>
     <string name="birthday_token_day">DD</string>
     <string name="birthday_token_month">MM</string>
     <string name="birthday_token_year">AAAA</string>
@@ -355,6 +359,7 @@
     <string name="save_requires_first_name">É necessário um nome próprio para guardar.</string>
     <string name="city_map_hint">Toca no ícone do mapa para validar a morada exata.</string>
     <string name="location_denied_settings">Permissão de localização negada. Vai às definições do telemóvel para a permitir.</string>
+    <string name="location_off_settings">Ative a localização nas definições para usar este alerta.</string>
     <string name="favorites_category">Favoritos</string>
     <string name="action_move_to_trash">Mover para o lixo</string>
     <string name="action_trash_short">Lixo</string>
@@ -447,4 +452,12 @@
     <string name="security_biometric_prompt_title">Desbloquear o JTR</string>
     <string name="security_biometric_prompt_subtitle">Confirma a tua identidade</string>
     <string name="settings_proximity_location_off">A localização está desativada — toca para a ativar para os lembretes de proximidade</string>
+    <!-- v7.0.3 — secções de notas personalizáveis -->
+    <string name="note_section_add">Adicionar uma secção</string>
+    <string name="note_section_default_notes">Notas</string>
+    <string name="note_section_title_hint">Título da secção</string>
+    <string name="note_section_content_hint">Escreve algo…</string>    <string name="note_section_delete_confirm_title">Eliminar esta secção?</string>
+    <string name="note_section_delete_confirm_text">O seu conteúdo será removido permanentemente.</string>
+    <string name="note_section_icon_picker_title">Escolher um ícone</string>
+    <string name="note_section_reorder_cd">Arrasta para reordenar</string>
 </resources>

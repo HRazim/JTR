@@ -9,6 +9,9 @@
     <string name="crop_hint">Taşımak için sürükle · yakınlaştırmak için iki parmak · köşelerle boyutlandır</string>
     <string name="common_ok">Tamam</string>
     <string name="common_delete">Sil</string>
+    <string name="common_done">Bitti</string>
+    <string name="common_undo">Geri al</string>
+    <string name="note_section_deleted">Bölüm silindi</string>
     <string name="common_save">Kaydet</string>
     <string name="common_back">Geri</string>
     <string name="common_edit">Düzenle</string>
@@ -85,6 +88,7 @@
     <string name="person_birthday_clear">Temizle</string>
     <string name="person_birthday_notify">Doğum gününde bildir</string>
     <string name="person_birthday_invalid">Geçersiz tarih</string>
+    <string name="person_date_year_invalid">Geçerli bir 4 haneli yıl girin</string>
     <string name="birthday_token_day">GG</string>
     <string name="birthday_token_month">AA</string>
     <string name="birthday_token_year">YYYY</string>
@@ -355,6 +359,7 @@
     <string name="save_requires_first_name">Kaydetmek için bir ad gerekli.</string>
     <string name="city_map_hint">Tam adresi doğrulamak için harita simgesine dokun.</string>
     <string name="location_denied_settings">Konum izni reddedildi. İzin vermek için telefonunun ayarlarına git.</string>
+    <string name="location_off_settings">Bu uyarıyı kullanmak için ayarlardan konumu aç.</string>
     <string name="favorites_category">Favoriler</string>
     <string name="action_move_to_trash">Çöp kutusuna taşı</string>
     <string name="action_trash_short">Çöp Kutusu</string>
@@ -447,4 +452,12 @@
     <string name="security_biometric_prompt_title">JTR kilidini aç</string>
     <string name="security_biometric_prompt_subtitle">Kimliğini doğrula</string>
     <string name="settings_proximity_location_off">Konum kapalı — yakınlık hatırlatmaları için açmak üzere dokun</string>
+    <!-- v7.0.3 — özelleştirilebilir not bölümleri -->
+    <string name="note_section_add">Bölüm ekle</string>
+    <string name="note_section_default_notes">Notlar</string>
+    <string name="note_section_title_hint">Bölüm başlığı</string>
+    <string name="note_section_content_hint">Bir şeyler yaz…</string>    <string name="note_section_delete_confirm_title">Bu bölüm silinsin mi?</string>
+    <string name="note_section_delete_confirm_text">İçeriği kalıcı olarak silinecek.</string>
+    <string name="note_section_icon_picker_title">Bir simge seç</string>
+    <string name="note_section_reorder_cd">Yeniden sıralamak için sürükle</string>
 </resources>

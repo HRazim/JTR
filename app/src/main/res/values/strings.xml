@@ -9,6 +9,9 @@
     <string name="crop_hint">Drag to move · pinch to zoom · corners to resize</string>
     <string name="common_ok">OK</string>
     <string name="common_delete">Delete</string>
+    <string name="common_done">Done</string>
+    <string name="common_undo">Undo</string>
+    <string name="note_section_deleted">Section deleted</string>
     <string name="common_save">Save</string>
     <string name="common_back">Back</string>
     <string name="common_edit">Edit</string>
@@ -85,6 +88,7 @@
     <string name="person_birthday_clear">Clear</string>
     <string name="person_birthday_notify">Notify on birthday</string>
     <string name="person_birthday_invalid">Invalid date</string>
+    <string name="person_date_year_invalid">Enter a valid 4-digit year</string>
     <string name="birthday_token_day">DD</string>
     <string name="birthday_token_month">MM</string>
     <string name="birthday_token_year">YYYY</string>
@@ -358,6 +362,7 @@
     <string name="save_requires_first_name">A first name is required to save.</string>
     <string name="city_map_hint">Tap the map icon to validate the precise address.</string>
     <string name="location_denied_settings">Location permission was denied. Go to your phone settings to allow it.</string>
+    <string name="location_off_settings">Turn on location in your settings to use this alert.</string>
     <string name="favorites_category">Favorites</string>
     <string name="action_move_to_trash">Move to trash</string>
     <string name="action_trash_short">Trash</string>
@@ -473,4 +478,12 @@
 
     <!-- ── Proximity / location coherence (v6.2.4) ─────────────────────────── -->
     <string name="settings_proximity_location_off">Location is off — tap to enable it for proximity reminders</string>
+    <!-- v7.0.3 — customizable note sections -->
+    <string name="note_section_add">Add a section</string>
+    <string name="note_section_default_notes">Notes</string>
+    <string name="note_section_title_hint">Section title</string>
+    <string name="note_section_content_hint">Write something…</string>    <string name="note_section_delete_confirm_title">Delete this section?</string>
+    <string name="note_section_delete_confirm_text">Its content will be permanently removed.</string>
+    <string name="note_section_icon_picker_title">Choose an icon</string>
+    <string name="note_section_reorder_cd">Drag to reorder</string>
 </resources>

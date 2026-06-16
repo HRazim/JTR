@@ -163,6 +163,26 @@ fun millisToRawDigits(millis: Long, order: List<DateField>): String {
     }
 }
 
+/** Année plancher (impose 4 chiffres) pour une date importante saisie. */
+private const val MIN_DATE_YEAR = 1000
+
+/**
+ * Valide une date saisie (chiffres bruts) pour l'UI ET la sauvegarde (v7.0.5).
+ *
+ * Une valeur vide est acceptée (date optionnelle) ; sinon la date doit être COMPLÈTE et
+ * parseable, avec une **année cohérente à 4 chiffres** dans une plage raisonnable
+ * (≥ [MIN_DATE_YEAR], ≤ année courante). Rejette notamment une année incomplète à 3 chiffres
+ * (la date n'atteint pas la longueur attendue → [rawDigitsToMillis] renvoie `null`).
+ */
+fun isDateLineValid(raw: String, spec: DateFormatSpec): Boolean {
+    if (raw.isBlank()) return true
+    val millis = rawDigitsToMillis(raw, spec) ?: return false
+    val cal = Calendar.getInstance()
+    val maxYear = cal.get(Calendar.YEAR)
+    cal.timeInMillis = millis
+    return cal.get(Calendar.YEAR) in MIN_DATE_YEAR..maxYear
+}
+
 /**
  * Parse les chiffres bruts en timestamp (midi local) ou `null` si incomplet/invalide.
  * [LocalDate.of] valide strictement les plages et les années bissextiles.

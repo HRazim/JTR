@@ -10,8 +10,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -66,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.rememberGalleryImagePicker
+import com.jtr.app.utils.LocationUtils
 import com.jtr.app.utils.getSocialIcon
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -81,6 +80,8 @@ import kotlinx.coroutines.launch
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.domain.model.deriveNoteSections
+import com.jtr.app.domain.model.effectiveNoteSections
 import com.jtr.app.utils.SocialPlatform
 import com.jtr.app.utils.extractSocialLinks
 import com.jtr.app.utils.icon
@@ -133,8 +134,7 @@ fun PersonDetailScreen(
     val vmJobTitle by editVm.jobTitle.collectAsStateWithLifecycle()
     val vmDepartment by editVm.department.collectAsStateWithLifecycle()
     val vmCompany by editVm.company.collectAsStateWithLifecycle()
-    val vmLikes by editVm.likes.collectAsStateWithLifecycle()
-    val vmNotes by editVm.notes.collectAsStateWithLifecycle()
+    val vmNoteSections by editVm.noteSections.collectAsStateWithLifecycle()
     val vmNameDetails by editVm.nameDetails.collectAsStateWithLifecycle()
     val vmPhoneLines by editVm.phoneLines.collectAsStateWithLifecycle()
     val vmEmailLines by editVm.emailLines.collectAsStateWithLifecycle()
@@ -154,6 +154,18 @@ fun PersonDetailScreen(
         onMapResultConsumed()
     }
 
+    // Titres par défaut LOCALISÉS (langue in-app) des sections issues du backfill legacy.
+    val notesTitle = stringResource(R.string.note_section_default_notes)
+    val likesTitle = stringResource(R.string.person_likes_label)
+    // À l'entrée en édition d'un profil LEGACY (sections vides mais notes/likes hérités),
+    // sème la conversion sans perte — une seule fois (garde « liste vide »).
+    LaunchedEffect(person?.id, isEditing) {
+        if (isEditing && editVm.noteSections.value.isEmpty()) {
+            val derived = deriveNoteSections(person?.notes, person?.likes, notesTitle, likesTitle)
+            if (derived.isNotEmpty()) editVm.onNoteSectionsChanged(derived)
+        }
+    }
+
     // Galerie IN-APP par ALBUMS (v5.5) — l'utilisateur ne quitte pas l'application.
     val photoPicker = rememberGalleryImagePicker { uri -> pendingCropUri = uri }
 
@@ -163,6 +175,13 @@ fun PersonDetailScreen(
     val proximityBlockedMsg = stringResource(R.string.person_proximity_blocked_snackbar)
     val firstNameRequiredMsg = stringResource(R.string.save_requires_first_name)
     val locationDeniedMsg = stringResource(R.string.location_denied_settings)
+    val locationOffMsg = stringResource(R.string.location_off_settings)
+    val dateInvalidMsg = stringResource(R.string.person_date_year_invalid)
+    val dateSpec = remember { resolveDateFormatSpec(java.util.Locale.getDefault()) }
+    // État du mode réordonnancement des notes, hissé pour rendre le footer au niveau écran.
+    val noteReorderState = rememberNoteReorderState()
+    // Sortie du mode édition → réinitialise le footer de réordonnancement.
+    LaunchedEffect(isEditing) { if (!isEditing) noteReorderState.reset() }
     // Verrou proximité : la notif de proximité n'est activable que si les
     // notifications globales ET la proximité sont actives dans les paramètres.
     val proximityAllowed = remember {
@@ -194,21 +213,32 @@ fun PersonDetailScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            editVm.onCityNotifyChanged(true)
-            ensureBackgroundLocation()
+            // Permission accordée : encore faut-il que le SERVICE de localisation soit actif.
+            if (LocationUtils.isLocationEnabled(context)) {
+                editVm.onCityNotifyChanged(true)
+                ensureBackgroundLocation()
+            } else {
+                scope.launch { snackbarHostState.showSnackbar(locationOffMsg) }
+            }
         } else {
             scope.launch { snackbarHostState.showSnackbar(locationDeniedMsg) }
         }
     }
+    // Active la proximité seulement si la localisation est réellement utilisable (permission
+    // ET service système) ; sinon informe SANS rediriger (l'édition n'est pas interrompue).
     val onProximityToggle: (Boolean) -> Unit = { wanted ->
-        if (wanted && ContextCompat.checkSelfPermission(
+        when {
+            !wanted -> editVm.onCityNotifyChanged(false)
+            ContextCompat.checkSelfPermission(
                 context, Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        } else {
-            editVm.onCityNotifyChanged(wanted)
-            if (wanted) ensureBackgroundLocation()
+            ) != PackageManager.PERMISSION_GRANTED ->
+                locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            !LocationUtils.isLocationEnabled(context) ->
+                scope.launch { snackbarHostState.showSnackbar(locationOffMsg) }
+            else -> {
+                editVm.onCityNotifyChanged(true)
+                ensureBackgroundLocation()
+            }
         }
     }
 
@@ -256,6 +286,25 @@ fun PersonDetailScreen(
                     }
                 },
                 actions = {
+                    if (isEditing) {
+                        // Enregistrement SOBRE en haut à droite (v7.0.2) — remplace le FAB.
+                        // La logique de sauvegarde (commitAllEdits) est strictement inchangée.
+                        IconButton(onClick = {
+                            // commitAllEdits bloque déjà (nom requis / date invalide) ;
+                            // on double d'un message clair sur ce qui empêche d'enregistrer.
+                            when {
+                                vmFirstName.isBlank() ->
+                                    scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
+                                vmDateLines.any { !isDateLineValid(it.value, dateSpec) } ->
+                                    scope.launch { snackbarHostState.showSnackbar(dateInvalidMsg) }
+                            }
+                            editVm.commitAllEdits()
+                        }) {
+                            Icon(Icons.Default.Check,
+                                contentDescription = stringResource(R.string.person_save),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                        }
+                    }
                     if (!isEditing) {
                         // Étoile favori : jaune vif si actif, toggle instantané en base.
                         IconButton(onClick = { editVm.toggleFavorite() }) {
@@ -312,28 +361,6 @@ fun PersonDetailScreen(
                 )
             )
         },
-        floatingActionButton = {
-            AnimatedVisibility(
-                visible = isEditing,
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut()
-            ) {
-                ExtendedFloatingActionButton(
-                    text = { Text(stringResource(R.string.person_save)) },
-                    icon = { Icon(Icons.Default.Check, contentDescription = null) },
-                    onClick = {
-                        // Le ViewModel bloque déjà la sauvegarde (firstNameError) ;
-                        // on double d'un message clair et actionnable.
-                        if (vmFirstName.isBlank()) {
-                            scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
-                        }
-                        editVm.commitAllEdits()
-                    },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
 
@@ -346,6 +373,9 @@ fun PersonDetailScreen(
             return@Scaffold
         }
 
+        // Box racine de l'écran : ancre le footer de réordonnancement des notes en bas
+        // (align BottomCenter), au-dessus du contenu défilant, calé au ras des touches.
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -357,7 +387,7 @@ fun PersonDetailScreen(
                 .pointerInput(isEditing) {
                     if (!isEditing) detectTapGestures(onDoubleTap = { editVm.enterEditMode() })
                 }
-                .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 96.dp),
+                .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
@@ -481,10 +511,8 @@ fun PersonDetailScreen(
                     firstNameError = firstNameError,
                     nameDetails = vmNameDetails,
                     onNameDetailsChange = { editVm.onNameDetailsChanged(it) },
-                    notes = vmNotes,
-                    onNotesChange = { editVm.onNotesChanged(it) },
-                    likes = vmLikes,
-                    onLikesChange = { editVm.onLikesChanged(it) },
+                    noteSections = vmNoteSections,
+                    onNoteSectionsChange = { editVm.onNoteSectionsChanged(it) },
                     phoneLines = vmPhoneLines,
                     onPhoneLinesChange = { editVm.onPhoneLinesChanged(it) },
                     emailLines = vmEmailLines,
@@ -511,7 +539,8 @@ fun PersonDetailScreen(
                     department = vmDepartment,
                     onDepartmentChange = { editVm.onDepartmentChanged(it) },
                     company = vmCompany,
-                    onCompanyChange = { editVm.onCompanyChanged(it) }
+                    onCompanyChange = { editVm.onCompanyChanged(it) },
+                    noteReorderState = noteReorderState
                 )
             } else {
                 // ── Mode lecture : ordre IDENTIQUE au formulaire ─────────────────
@@ -611,21 +640,22 @@ fun PersonDetailScreen(
                         cityLat = person.cityLat, cityLng = person.cityLng)
                 }
 
-                // 9. Notes & 10. Ce qu'il aime — grands blocs de texte tout en bas
-                if (person.notes != null || person.likes != null) {
+                // 9. Sections de notes — grands blocs de texte tout en bas (v7.0.3).
+                // Sections persistées, ou conversion sans perte des notes héritées (legacy).
+                // On masque les sections vides en lecture.
+                val readSections = person.effectiveNoteSections(notesTitle, likesTitle)
+                    .filter { it.content.isNotBlank() }
+                if (readSections.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
                     HorizontalDivider()
                     Spacer(Modifier.height(4.dp))
-                }
-                if (person.notes != null) {
-                    DetailTextBlock(icon = Icons.AutoMirrored.Filled.Notes,
-                        label = stringResource(R.string.person_notes_label),
-                        value = person.notes)
-                }
-                if (person.likes != null) {
-                    DetailTextBlock(icon = Icons.Default.Favorite,
-                        label = stringResource(R.string.person_likes_label),
-                        value = person.likes)
+                    readSections.forEach { s ->
+                        DetailTextBlock(
+                            icon = NoteIcons.icon(s.iconKey),
+                            label = s.title,
+                            value = s.content
+                        )
+                    }
                 }
 
                 // Legacy : genre (retiré du formulaire), affiché discrètement en bas.
@@ -642,6 +672,18 @@ fun PersonDetailScreen(
                     )
                 }
             }
+        }
+
+        // Footer de réordonnancement des notes — ancré en bas de l'ÉCRAN (v7.0.7), visible
+        // uniquement en édition ; calé au ras des touches via NoteReorderFooter (plus de Popup).
+        if (isEditing) {
+            NoteReorderFooter(
+                state = noteReorderState,
+                sections = vmNoteSections,
+                onSectionsChange = { editVm.onNoteSectionsChanged(it) },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
         }
     }
 
@@ -1018,13 +1060,16 @@ private fun SocialLinksSection(
                             }
                         }
                     }
-                    OutlinedButton(
+                    // Affordance d'ajout discrète « + » (v7.0.2) — plus de bouton bordé lourd.
+                    TextButton(
                         onClick = onAddClick,
-                        modifier = Modifier.align(Alignment.Start)
+                        modifier = Modifier.align(Alignment.Start),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Icon(Icons.Default.AddLink, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.person_add_social_link))
+                        Text(stringResource(R.string.person_add_social_link),
+                            style = MaterialTheme.typography.labelLarge)
                     }
                 }
             } else {

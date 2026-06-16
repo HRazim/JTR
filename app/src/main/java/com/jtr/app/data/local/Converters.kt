@@ -2,6 +2,7 @@ package com.jtr.app.data.local
 
 import androidx.room.TypeConverter
 import com.jtr.app.domain.model.DynamicLine
+import com.jtr.app.domain.model.NoteSection
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -33,5 +34,23 @@ class Converters {
             json.decodeFromString<List<DynamicLine>>(value)
         } catch (_: Exception) {
             null
+        }
+
+    // ── Sections de notes personnalisables (v7.0.3, DB v20) ───────────────────
+    // Colonne NON NULL (DEFAULT '[]') : la valeur n'est jamais SQL NULL. Le param
+    // d'écriture est rendu nullable par robustesse (restauration d'une sauvegarde
+    // ANTÉRIEURE où le champ est absent → Gson peut laisser null) → encodé en '[]'.
+
+    @TypeConverter
+    fun fromNoteSections(value: List<NoteSection>?): String =
+        json.encodeToString(value ?: emptyList())
+
+    @TypeConverter
+    fun toNoteSections(value: String?): List<NoteSection> =
+        if (value.isNullOrBlank()) emptyList()
+        else try {
+            json.decodeFromString<List<NoteSection>>(value)
+        } catch (_: Exception) {
+            emptyList()
         }
 }

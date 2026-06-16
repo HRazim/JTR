@@ -14,8 +14,8 @@ android {
         applicationId = "com.jtr.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 47
-        versionName = "7.0.1"
+        versionCode = 53
+        versionName = "7.0.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -107,6 +107,9 @@ dependencies {
 
     // MapLibre (carte native) — 11.5.0 : premier release avec support 16 KB pages (PR #2852)
     implementation("org.maplibre.gl:android-sdk:11.5.0")
+
+    // Réordonnancement par glisser fiable (drag-and-drop Compose éprouvé) — sections de notes
+    implementation("sh.calvin.reorderable:reorderable:2.4.3")
 
     // Gson + Coil
     implementation("com.google.code.gson:gson:2.11.0")
