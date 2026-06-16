@@ -88,6 +88,7 @@
     <string name="person_birthday_clear">Effacer</string>
     <string name="person_birthday_notify">Notifier le jour de l\'anniversaire</string>
     <string name="person_birthday_invalid">Date invalide</string>
+    <string name="person_date_year_invalid">Entrez une année valide à 4 chiffres</string>
     <string name="birthday_token_day">JJ</string>
     <string name="birthday_token_month">MM</string>
     <string name="birthday_token_year">AAAA</string>
@@ -356,6 +357,7 @@
     <string name="save_requires_first_name">Un prénom au minimum est requis pour sauvegarder.</string>
     <string name="city_map_hint">Appuyez sur l\'icône carte pour valider l\'adresse précise.</string>
     <string name="location_denied_settings">La permission de localisation a été refusée. Allez dans les paramètres de votre téléphone pour l\'autoriser.</string>
+    <string name="location_off_settings">Activez la localisation dans les paramètres pour utiliser cette alerte.</string>
     <string name="favorites_category">Favoris</string>
     <string name="action_move_to_trash">Mettre à la corbeille</string>
     <string name="action_trash_short">Corbeille</string>

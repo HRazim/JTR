@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.rememberGalleryImagePicker
+import com.jtr.app.utils.LocationUtils
 import com.jtr.app.utils.getSocialIcon
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -174,6 +175,9 @@ fun PersonDetailScreen(
     val proximityBlockedMsg = stringResource(R.string.person_proximity_blocked_snackbar)
     val firstNameRequiredMsg = stringResource(R.string.save_requires_first_name)
     val locationDeniedMsg = stringResource(R.string.location_denied_settings)
+    val locationOffMsg = stringResource(R.string.location_off_settings)
+    val dateInvalidMsg = stringResource(R.string.person_date_year_invalid)
+    val dateSpec = remember { resolveDateFormatSpec(java.util.Locale.getDefault()) }
     // Verrou proximité : la notif de proximité n'est activable que si les
     // notifications globales ET la proximité sont actives dans les paramètres.
     val proximityAllowed = remember {
@@ -205,21 +209,32 @@ fun PersonDetailScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            editVm.onCityNotifyChanged(true)
-            ensureBackgroundLocation()
+            // Permission accordée : encore faut-il que le SERVICE de localisation soit actif.
+            if (LocationUtils.isLocationEnabled(context)) {
+                editVm.onCityNotifyChanged(true)
+                ensureBackgroundLocation()
+            } else {
+                scope.launch { snackbarHostState.showSnackbar(locationOffMsg) }
+            }
         } else {
             scope.launch { snackbarHostState.showSnackbar(locationDeniedMsg) }
         }
     }
+    // Active la proximité seulement si la localisation est réellement utilisable (permission
+    // ET service système) ; sinon informe SANS rediriger (l'édition n'est pas interrompue).
     val onProximityToggle: (Boolean) -> Unit = { wanted ->
-        if (wanted && ContextCompat.checkSelfPermission(
+        when {
+            !wanted -> editVm.onCityNotifyChanged(false)
+            ContextCompat.checkSelfPermission(
                 context, Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        } else {
-            editVm.onCityNotifyChanged(wanted)
-            if (wanted) ensureBackgroundLocation()
+            ) != PackageManager.PERMISSION_GRANTED ->
+                locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            !LocationUtils.isLocationEnabled(context) ->
+                scope.launch { snackbarHostState.showSnackbar(locationOffMsg) }
+            else -> {
+                editVm.onCityNotifyChanged(true)
+                ensureBackgroundLocation()
+            }
         }
     }
 
@@ -271,8 +286,13 @@ fun PersonDetailScreen(
                         // Enregistrement SOBRE en haut à droite (v7.0.2) — remplace le FAB.
                         // La logique de sauvegarde (commitAllEdits) est strictement inchangée.
                         IconButton(onClick = {
-                            if (vmFirstName.isBlank()) {
-                                scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
+                            // commitAllEdits bloque déjà (nom requis / date invalide) ;
+                            // on double d'un message clair sur ce qui empêche d'enregistrer.
+                            when {
+                                vmFirstName.isBlank() ->
+                                    scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
+                                vmDateLines.any { !isDateLineValid(it.value, dateSpec) } ->
+                                    scope.launch { snackbarHostState.showSnackbar(dateInvalidMsg) }
                             }
                             editVm.commitAllEdits()
                         }) {

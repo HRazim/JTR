@@ -88,6 +88,7 @@
     <string name="person_birthday_clear">Temizle</string>
     <string name="person_birthday_notify">Doğum gününde bildir</string>
     <string name="person_birthday_invalid">Geçersiz tarih</string>
+    <string name="person_date_year_invalid">Geçerli bir 4 haneli yıl girin</string>
     <string name="birthday_token_day">GG</string>
     <string name="birthday_token_month">AA</string>
     <string name="birthday_token_year">YYYY</string>
@@ -358,6 +359,7 @@
     <string name="save_requires_first_name">Kaydetmek için bir ad gerekli.</string>
     <string name="city_map_hint">Tam adresi doğrulamak için harita simgesine dokun.</string>
     <string name="location_denied_settings">Konum izni reddedildi. İzin vermek için telefonunun ayarlarına git.</string>
+    <string name="location_off_settings">Bu uyarıyı kullanmak için ayarlardan konumu aç.</string>
     <string name="favorites_category">Favoriler</string>
     <string name="action_move_to_trash">Çöp kutusuna taşı</string>
     <string name="action_trash_short">Çöp Kutusu</string>

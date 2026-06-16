@@ -88,6 +88,7 @@
     <string name="person_birthday_clear">Очистить</string>
     <string name="person_birthday_notify">Уведомлять в день рождения</string>
     <string name="person_birthday_invalid">Неверная дата</string>
+    <string name="person_date_year_invalid">Введите корректный год из 4 цифр</string>
     <string name="birthday_token_day">ДД</string>
     <string name="birthday_token_month">ММ</string>
     <string name="birthday_token_year">ГГГГ</string>
@@ -358,6 +359,7 @@
     <string name="save_requires_first_name">Для сохранения требуется имя.</string>
     <string name="city_map_hint">Нажмите значок карты, чтобы подтвердить точный адрес.</string>
     <string name="location_denied_settings">Доступ к геолокации запрещён. Разрешите его в настройках телефона.</string>
+    <string name="location_off_settings">Включите геолокацию в настройках, чтобы использовать это оповещение.</string>
     <string name="favorites_category">Избранное</string>
     <string name="action_move_to_trash">Переместить в корзину</string>
     <string name="action_trash_short">Корзина</string>

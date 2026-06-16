@@ -39,8 +39,10 @@ import com.jtr.app.R
 import com.jtr.app.domain.model.NOTE_ICON_NOTES
 import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.ui.components.rememberGalleryImagePicker
+import com.jtr.app.utils.LocationUtils
 import com.jtr.app.utils.getSocialIcon
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +83,9 @@ fun AddPersonScreen(
     val proximityBlockedMsg = stringResource(R.string.person_proximity_blocked_snackbar)
     val firstNameRequiredMsg = stringResource(R.string.save_requires_first_name)
     val locationDeniedMsg = stringResource(R.string.location_denied_settings)
+    val locationOffMsg = stringResource(R.string.location_off_settings)
+    val dateInvalidMsg = stringResource(R.string.person_date_year_invalid)
+    val dateSpec = remember { resolveDateFormatSpec(Locale.getDefault()) }
     // Verrou proximité : activable uniquement si notifications + proximité globales actives.
     val proximityAllowed = remember {
         val p = context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
@@ -111,21 +116,32 @@ fun AddPersonScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            viewModel.onCityNotifyChanged(true)
-            ensureBackgroundLocation()
+            // Permission accordée : encore faut-il que le SERVICE de localisation soit actif.
+            if (LocationUtils.isLocationEnabled(context)) {
+                viewModel.onCityNotifyChanged(true)
+                ensureBackgroundLocation()
+            } else {
+                scope.launch { snackbarHostState.showSnackbar(locationOffMsg) }
+            }
         } else {
             scope.launch { snackbarHostState.showSnackbar(locationDeniedMsg) }
         }
     }
+    // Active la proximité seulement si la localisation est réellement utilisable (permission
+    // ET service système) ; sinon informe SANS rediriger (l'édition n'est pas interrompue).
     val onProximityToggle: (Boolean) -> Unit = { wanted ->
-        if (wanted && ContextCompat.checkSelfPermission(
+        when {
+            !wanted -> viewModel.onCityNotifyChanged(false)
+            ContextCompat.checkSelfPermission(
                 context, Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        } else {
-            viewModel.onCityNotifyChanged(wanted)
-            if (wanted) ensureBackgroundLocation()
+            ) != PackageManager.PERMISSION_GRANTED ->
+                locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            !LocationUtils.isLocationEnabled(context) ->
+                scope.launch { snackbarHostState.showSnackbar(locationOffMsg) }
+            else -> {
+                viewModel.onCityNotifyChanged(true)
+                ensureBackgroundLocation()
+            }
         }
     }
 
@@ -189,10 +205,13 @@ fun AddPersonScreen(
                     // Enregistrement SOBRE en haut à droite (v7.0.2) — remplace le gros
                     // bouton plein-largeur du bas. La logique de sauvegarde est inchangée.
                     IconButton(onClick = {
-                        // Le ViewModel bloque déjà la sauvegarde (firstNameError) ;
-                        // on double d'un message clair et actionnable.
-                        if (firstName.isBlank()) {
-                            scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
+                        // Le ViewModel bloque déjà la sauvegarde (nom requis / date invalide) ;
+                        // on double d'un message clair indiquant ce qui empêche d'enregistrer.
+                        when {
+                            firstName.isBlank() ->
+                                scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
+                            dateLines.any { !isDateLineValid(it.value, dateSpec) } ->
+                                scope.launch { snackbarHostState.showSnackbar(dateInvalidMsg) }
                         }
                         viewModel.savePerson(onSuccess = onNavigateBack)
                     }) {

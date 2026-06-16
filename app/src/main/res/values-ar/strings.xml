@@ -88,6 +88,7 @@
     <string name="person_birthday_clear">مسح</string>
     <string name="person_birthday_notify">تنبيه في عيد الميلاد</string>
     <string name="person_birthday_invalid">تاريخ غير صالح</string>
+    <string name="person_date_year_invalid">أدخل سنة صحيحة من 4 أرقام</string>
     <string name="birthday_token_day">DD</string>
     <string name="birthday_token_month">MM</string>
     <string name="birthday_token_year">YYYY</string>
@@ -358,6 +359,7 @@
     <string name="save_requires_first_name">يلزم إدخال الاسم الأول للحفظ.</string>
     <string name="city_map_hint">اضغط رمز الخريطة لتأكيد العنوان الدقيق.</string>
     <string name="location_denied_settings">تم رفض إذن الموقع. انتقل إلى إعدادات هاتفك للسماح به.</string>
+    <string name="location_off_settings">فعّل تحديد الموقع في الإعدادات لاستخدام هذا التنبيه.</string>
     <string name="favorites_category">المفضّلة</string>
     <string name="action_move_to_trash">نقل إلى سلة المهملات</string>
     <string name="action_trash_short">سلة المهملات</string>

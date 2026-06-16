@@ -402,42 +402,38 @@ private fun NameSection(
     var displayName by rememberSaveable { mutableStateOf(joinDisplayName(firstName, lastName)) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            SoftTextField(
-                value = displayName,
-                onValueChange = { input ->
-                    displayName = input
-                    val (f, l) = splitDisplayName(input)
-                    onFirstNameChange(f)
-                    onLastNameChange(l)
-                },
-                placeholder = stringResource(R.string.person_full_name_label),
-                leadingIcon = Icons.Default.Badge,
-                isError = firstNameError,
-                supportingText = if (firstNameError) ({
-                    Text(stringResource(R.string.person_first_name_required))
-                }) else null,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-                modifier = Modifier.weight(1f)
-            )
-            FilledTonalIconButton(
-                onClick = { expanded = !expanded },
-                modifier = Modifier.padding(top = 4.dp)
-            ) {
-                Icon(
-                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (expanded) stringResource(R.string.name_details_hide)
-                    else stringResource(R.string.name_details_show),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        // Chevron de dépliage des sous-champs DANS la carte du nom (bord de fin), façon
+        // pilule Google (icône + champ + chevron) — plus de bouton circulaire externe.
+        // RTL : le trailingIcon est placé du bon côté automatiquement par le TextField.
+        SoftTextField(
+            value = displayName,
+            onValueChange = { input ->
+                displayName = input
+                val (f, l) = splitDisplayName(input)
+                onFirstNameChange(f)
+                onLastNameChange(l)
+            },
+            placeholder = stringResource(R.string.person_full_name_label),
+            leadingIcon = Icons.Default.Badge,
+            isError = firstNameError,
+            supportingText = if (firstNameError) ({
+                Text(stringResource(R.string.person_first_name_required))
+            }) else null,
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+            trailingIcon = {
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(
+                        if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) stringResource(R.string.name_details_hide)
+                        else stringResource(R.string.name_details_show),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
 
         AnimatedVisibility(visible = expanded) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -648,6 +644,7 @@ private fun DateLinesSection(
         }
     }
     val invalidMsg = stringResource(R.string.person_birthday_invalid)
+    val yearInvalidMsg = stringResource(R.string.person_date_year_invalid)
 
     AccordionSection(
         title = stringResource(R.string.section_dates),
@@ -656,7 +653,11 @@ private fun DateLinesSection(
     ) {
         lines.forEach { line ->
             val complete = line.value.length == maxLen
-            val isError = complete && rawDigitsToMillis(line.value, spec) == null
+            // v7.0.5 — la date est validée DÈS qu'elle est non vide : une année incomplète
+            // (ex. 3 chiffres) ou hors plage raisonnable est refusée, avec retour clair.
+            val isError = line.value.isNotBlank() && !isDateLineValid(line.value, spec)
+            // Incomplet → guide vers une année à 4 chiffres ; complet mais invalide → date invalide.
+            val errorMessage = if (!complete) yearInvalidMsg else invalidMsg
             DynamicLineRow(
                 line = line,
                 types = FieldTypes.DATE,
@@ -670,7 +671,7 @@ private fun DateLinesSection(
                 visualTransformation = transformation,
                 placeholder = placeholder,
                 isError = isError,
-                errorMessage = invalidMsg,
+                errorMessage = errorMessage,
                 showDelete = lines.size > 1,
                 onTypeChange = { k ->
                     onLinesChange(lines.map { if (it.id == line.id) it.copy(label = k) else it })

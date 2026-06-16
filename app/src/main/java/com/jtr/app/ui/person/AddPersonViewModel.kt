@@ -163,11 +163,14 @@ class AddPersonViewModel(
 
     fun savePerson(onSuccess: () -> Unit) {
         if (_firstName.value.isBlank()) { _firstNameError.value = true; return }
+        // v7.0.5 — refuse la sauvegarde si une date importante est incomplète/invalide
+        // (ex. année à 3 chiffres) ; le champ affiche déjà l'erreur côté formulaire.
+        val spec = resolveDateFormatSpec(Locale.getDefault())
+        if (_dateLines.value.any { !isDateLineValid(it.value, spec) }) return
         viewModelScope.launch {
             // Listes complètes persistées en JSON ; scalaires `phoneNumber`/`email`/
             // `birthdate` = projection « 1ère ligne » dénormalisée pour les workers,
             // cartes et actions rapides qui lisent encore ces colonnes.
-            val spec = resolveDateFormatSpec(Locale.getDefault())
             val phone = _phoneLines.value.firstOrNull { it.value.isNotBlank() }?.value?.trim()
             // Projection scalaire : 1er email syntaxiquement valide (contenant « @ »).
             val email = _emailLines.value

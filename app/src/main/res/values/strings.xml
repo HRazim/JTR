@@ -88,6 +88,7 @@
     <string name="person_birthday_clear">Clear</string>
     <string name="person_birthday_notify">Notify on birthday</string>
     <string name="person_birthday_invalid">Invalid date</string>
+    <string name="person_date_year_invalid">Enter a valid 4-digit year</string>
     <string name="birthday_token_day">DD</string>
     <string name="birthday_token_month">MM</string>
     <string name="birthday_token_year">YYYY</string>
@@ -361,6 +362,7 @@
     <string name="save_requires_first_name">A first name is required to save.</string>
     <string name="city_map_hint">Tap the map icon to validate the precise address.</string>
     <string name="location_denied_settings">Location permission was denied. Go to your phone settings to allow it.</string>
+    <string name="location_off_settings">Turn on location in your settings to use this alert.</string>
     <string name="favorites_category">Favorites</string>
     <string name="action_move_to_trash">Move to trash</string>
     <string name="action_trash_short">Trash</string>

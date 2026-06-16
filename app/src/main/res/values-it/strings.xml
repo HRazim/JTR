@@ -88,6 +88,7 @@
     <string name="person_birthday_clear">Cancella</string>
     <string name="person_birthday_notify">Avvisa il giorno del compleanno</string>
     <string name="person_birthday_invalid">Data non valida</string>
+    <string name="person_date_year_invalid">Inserisci un anno valido di 4 cifre</string>
     <string name="birthday_token_day">GG</string>
     <string name="birthday_token_month">MM</string>
     <string name="birthday_token_year">AAAA</string>
@@ -358,6 +359,7 @@
     <string name="save_requires_first_name">Per salvare è necessario un nome.</string>
     <string name="city_map_hint">Tocca l\'icona della mappa per confermare l\'indirizzo preciso.</string>
     <string name="location_denied_settings">Autorizzazione alla posizione negata. Vai nelle impostazioni del telefono per consentirla.</string>
+    <string name="location_off_settings">Attiva la posizione nelle impostazioni per usare questo avviso.</string>
     <string name="favorites_category">Preferiti</string>
     <string name="action_move_to_trash">Sposta nel cestino</string>
     <string name="action_trash_short">Cestino</string>

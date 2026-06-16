@@ -91,6 +91,7 @@
     <string name="person_birthday_clear">Bersihkan</string>
     <string name="person_birthday_notify">Beri tahu saat ulang tahun</string>
     <string name="person_birthday_invalid">Tanggal tidak valid</string>
+    <string name="person_date_year_invalid">Masukkan tahun 4 digit yang valid</string>
     <string name="birthday_token_day">DD</string>
     <string name="birthday_token_month">MM</string>
     <string name="birthday_token_year">YYYY</string>
@@ -361,6 +362,7 @@
     <string name="save_requires_first_name">Nama depan diperlukan untuk menyimpan.</string>
     <string name="city_map_hint">Ketuk ikon peta untuk memvalidasi alamat yang tepat.</string>
     <string name="location_denied_settings">Izin lokasi ditolak. Buka pengaturan ponsel untuk mengizinkannya.</string>
+    <string name="location_off_settings">Aktifkan lokasi di pengaturan untuk memakai peringatan ini.</string>
     <string name="favorites_category">Favorit</string>
     <string name="action_move_to_trash">Pindahkan ke sampah</string>
     <string name="action_trash_short">Sampah</string>

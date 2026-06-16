@@ -88,6 +88,7 @@
     <string name="person_birthday_clear">지우기</string>
     <string name="person_birthday_notify">생일에 알림</string>
     <string name="person_birthday_invalid">잘못된 날짜</string>
+    <string name="person_date_year_invalid">유효한 4자리 연도를 입력하세요</string>
     <string name="birthday_token_day">DD</string>
     <string name="birthday_token_month">MM</string>
     <string name="birthday_token_year">YYYY</string>
@@ -358,6 +359,7 @@
     <string name="save_requires_first_name">저장하려면 이름이 필요합니다.</string>
     <string name="city_map_hint">정확한 주소를 확인하려면 지도 아이콘을 누르세요.</string>
     <string name="location_denied_settings">위치 권한이 거부되었습니다. 휴대폰 설정에서 허용하세요.</string>
+    <string name="location_off_settings">이 알림을 사용하려면 설정에서 위치를 켜세요.</string>
     <string name="favorites_category">즐겨찾기</string>
     <string name="action_move_to_trash">휴지통으로 이동</string>
     <string name="action_trash_short">휴지통</string>

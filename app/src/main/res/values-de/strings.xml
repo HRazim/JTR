@@ -88,6 +88,7 @@
     <string name="person_birthday_clear">Löschen</string>
     <string name="person_birthday_notify">Am Geburtstag benachrichtigen</string>
     <string name="person_birthday_invalid">Ungültiges Datum</string>
+    <string name="person_date_year_invalid">Gib ein gültiges 4-stelliges Jahr ein</string>
     <string name="birthday_token_day">TT</string>
     <string name="birthday_token_month">MM</string>
     <string name="birthday_token_year">JJJJ</string>
@@ -358,6 +359,7 @@
     <string name="save_requires_first_name">Zum Speichern ist ein Vorname erforderlich.</string>
     <string name="city_map_hint">Tippe auf das Kartensymbol, um die genaue Adresse zu bestätigen.</string>
     <string name="location_denied_settings">Standortberechtigung wurde verweigert. Erlaube sie in den Einstellungen deines Telefons.</string>
+    <string name="location_off_settings">Aktiviere den Standort in den Einstellungen, um diese Benachrichtigung zu nutzen.</string>
     <string name="favorites_category">Favoriten</string>
     <string name="action_move_to_trash">In den Papierkorb verschieben</string>
     <string name="action_trash_short">Papierkorb</string>

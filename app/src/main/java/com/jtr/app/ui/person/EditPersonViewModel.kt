@@ -337,6 +337,9 @@ class EditPersonViewModel(
     fun commitAllEdits() {
         val p = _person.value ?: return
         if (_firstName.value.isBlank()) { _firstNameError.value = true; return }
+        // v7.0.5 — refuse une date importante incomplète/invalide (ex. année à 3 chiffres).
+        val dateSpec = resolveDateFormatSpec(Locale.getDefault())
+        if (_dateLines.value.any { !isDateLineValid(it.value, dateSpec) }) return
         collapseDynamicLines()
         viewModelScope.launch {
             val updated = buildUpdatedPerson(p)
@@ -372,6 +375,9 @@ class EditPersonViewModel(
     fun updatePerson(onSuccess: () -> Unit) {
         val p = _person.value ?: return
         if (_firstName.value.isBlank()) { _firstNameError.value = true; return }
+        // v7.0.5 — refuse une date importante incomplète/invalide (ex. année à 3 chiffres).
+        val dateSpec = resolveDateFormatSpec(Locale.getDefault())
+        if (_dateLines.value.any { !isDateLineValid(it.value, dateSpec) }) return
         viewModelScope.launch {
             val updated = buildUpdatedPerson(p)
             if (_city.value.trim() != (p.city ?: "") && _cityLat.value == null) {

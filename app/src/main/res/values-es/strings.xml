@@ -88,6 +88,7 @@
     <string name="person_birthday_clear">Borrar</string>
     <string name="person_birthday_notify">Notificar el día del cumpleaños</string>
     <string name="person_birthday_invalid">Fecha no válida</string>
+    <string name="person_date_year_invalid">Introduce un año válido de 4 cifras</string>
     <string name="birthday_token_day">DD</string>
     <string name="birthday_token_month">MM</string>
     <string name="birthday_token_year">AAAA</string>
@@ -356,6 +357,7 @@
     <string name="save_requires_first_name">Se requiere al menos un nombre para guardar.</string>
     <string name="city_map_hint">Pulsa el icono del mapa para validar la dirección precisa.</string>
     <string name="location_denied_settings">El permiso de ubicación fue denegado. Ve a los ajustes del teléfono para permitirlo.</string>
+    <string name="location_off_settings">Activa la ubicación en los ajustes para usar esta alerta.</string>
     <string name="favorites_category">Favoritos</string>
     <string name="action_move_to_trash">Mover a la papelera</string>
     <string name="action_trash_short">Papelera</string>
