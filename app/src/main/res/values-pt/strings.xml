@@ -9,6 +9,9 @@
     <string name="crop_hint">Arrasta para mover · aproxima os dedos para ampliar · cantos para redimensionar</string>
     <string name="common_ok">OK</string>
     <string name="common_delete">Eliminar</string>
+    <string name="common_done">Concluído</string>
+    <string name="common_undo">Desfazer</string>
+    <string name="note_section_deleted">Secção eliminada</string>
     <string name="common_save">Guardar</string>
     <string name="common_back">Voltar</string>
     <string name="common_edit">Editar</string>
@@ -451,9 +454,7 @@
     <string name="note_section_add">Adicionar uma secção</string>
     <string name="note_section_default_notes">Notas</string>
     <string name="note_section_title_hint">Título da secção</string>
-    <string name="note_section_content_hint">Escreve algo…</string>
-    <string name="note_section_delete">Eliminar secção</string>
-    <string name="note_section_delete_confirm_title">Eliminar esta secção?</string>
+    <string name="note_section_content_hint">Escreve algo…</string>    <string name="note_section_delete_confirm_title">Eliminar esta secção?</string>
     <string name="note_section_delete_confirm_text">O seu conteúdo será removido permanentemente.</string>
     <string name="note_section_icon_picker_title">Escolher um ícone</string>
     <string name="note_section_reorder_cd">Arrasta para reordenar</string>

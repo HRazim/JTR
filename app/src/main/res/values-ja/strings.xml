@@ -9,6 +9,9 @@
     <string name="crop_hint">ドラッグで移動 · ピンチでズーム · 角でサイズ変更</string>
     <string name="common_ok">OK</string>
     <string name="common_delete">削除</string>
+    <string name="common_done">完了</string>
+    <string name="common_undo">元に戻す</string>
+    <string name="note_section_deleted">セクションを削除しました</string>
     <string name="common_save">保存</string>
     <string name="common_back">戻る</string>
     <string name="common_edit">編集</string>
@@ -462,9 +465,7 @@
     <string name="note_section_add">セクションを追加</string>
     <string name="note_section_default_notes">メモ</string>
     <string name="note_section_title_hint">セクションのタイトル</string>
-    <string name="note_section_content_hint">入力してください…</string>
-    <string name="note_section_delete">セクションを削除</string>
-    <string name="note_section_delete_confirm_title">このセクションを削除しますか？</string>
+    <string name="note_section_content_hint">入力してください…</string>    <string name="note_section_delete_confirm_title">このセクションを削除しますか？</string>
     <string name="note_section_delete_confirm_text">内容は完全に削除されます。</string>
     <string name="note_section_icon_picker_title">アイコンを選択</string>
     <string name="note_section_reorder_cd">ドラッグして並べ替え</string>

@@ -9,6 +9,9 @@
     <string name="crop_hint">拖动移动 · 双指缩放 · 边角调整大小</string>
     <string name="common_ok">确定</string>
     <string name="common_delete">删除</string>
+    <string name="common_done">完成</string>
+    <string name="common_undo">撤销</string>
+    <string name="note_section_deleted">已删除分区</string>
     <string name="common_save">保存</string>
     <string name="common_back">返回</string>
     <string name="common_edit">编辑</string>
@@ -462,9 +465,7 @@
     <string name="note_section_add">添加分区</string>
     <string name="note_section_default_notes">备注</string>
     <string name="note_section_title_hint">分区标题</string>
-    <string name="note_section_content_hint">写点什么…</string>
-    <string name="note_section_delete">删除分区</string>
-    <string name="note_section_delete_confirm_title">删除此分区？</string>
+    <string name="note_section_content_hint">写点什么…</string>    <string name="note_section_delete_confirm_title">删除此分区？</string>
     <string name="note_section_delete_confirm_text">其内容将被永久删除。</string>
     <string name="note_section_icon_picker_title">选择图标</string>
     <string name="note_section_reorder_cd">拖动以重新排序</string>

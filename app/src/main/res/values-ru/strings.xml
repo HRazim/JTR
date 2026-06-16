@@ -9,6 +9,9 @@
     <string name="crop_hint">Перетащите, чтобы переместить · сведите пальцы для масштаба · углы для размера</string>
     <string name="common_ok">ОК</string>
     <string name="common_delete">Удалить</string>
+    <string name="common_done">Готово</string>
+    <string name="common_undo">Отменить</string>
+    <string name="note_section_deleted">Раздел удалён</string>
     <string name="common_save">Сохранить</string>
     <string name="common_back">Назад</string>
     <string name="common_edit">Изменить</string>
@@ -451,9 +454,7 @@
     <string name="note_section_add">Добавить раздел</string>
     <string name="note_section_default_notes">Заметки</string>
     <string name="note_section_title_hint">Название раздела</string>
-    <string name="note_section_content_hint">Напишите что-нибудь…</string>
-    <string name="note_section_delete">Удалить раздел</string>
-    <string name="note_section_delete_confirm_title">Удалить этот раздел?</string>
+    <string name="note_section_content_hint">Напишите что-нибудь…</string>    <string name="note_section_delete_confirm_title">Удалить этот раздел?</string>
     <string name="note_section_delete_confirm_text">Его содержимое будет удалено навсегда.</string>
     <string name="note_section_icon_picker_title">Выберите значок</string>
     <string name="note_section_reorder_cd">Перетащите для изменения порядка</string>

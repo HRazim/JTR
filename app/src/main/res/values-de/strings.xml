@@ -9,6 +9,9 @@
     <string name="crop_hint">Zum Verschieben ziehen · zwei Finger zum Zoomen · Ecken zum Anpassen</string>
     <string name="common_ok">OK</string>
     <string name="common_delete">Löschen</string>
+    <string name="common_done">Fertig</string>
+    <string name="common_undo">Rückgängig</string>
+    <string name="note_section_deleted">Abschnitt gelöscht</string>
     <string name="common_save">Speichern</string>
     <string name="common_back">Zurück</string>
     <string name="common_edit">Bearbeiten</string>
@@ -451,9 +454,7 @@
     <string name="note_section_add">Abschnitt hinzufügen</string>
     <string name="note_section_default_notes">Notizen</string>
     <string name="note_section_title_hint">Abschnittstitel</string>
-    <string name="note_section_content_hint">Schreibe etwas…</string>
-    <string name="note_section_delete">Abschnitt löschen</string>
-    <string name="note_section_delete_confirm_title">Diesen Abschnitt löschen?</string>
+    <string name="note_section_content_hint">Schreibe etwas…</string>    <string name="note_section_delete_confirm_title">Diesen Abschnitt löschen?</string>
     <string name="note_section_delete_confirm_text">Sein Inhalt wird endgültig entfernt.</string>
     <string name="note_section_icon_picker_title">Symbol auswählen</string>
     <string name="note_section_reorder_cd">Zum Umsortieren ziehen</string>

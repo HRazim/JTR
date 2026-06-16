@@ -9,6 +9,9 @@
     <string name="crop_hint">끌어서 이동 · 손가락을 벌려 확대 · 모서리로 크기 조절</string>
     <string name="common_ok">확인</string>
     <string name="common_delete">삭제</string>
+    <string name="common_done">완료</string>
+    <string name="common_undo">실행 취소</string>
+    <string name="note_section_deleted">섹션이 삭제되었습니다</string>
     <string name="common_save">저장</string>
     <string name="common_back">뒤로</string>
     <string name="common_edit">편집</string>
@@ -451,9 +454,7 @@
     <string name="note_section_add">섹션 추가</string>
     <string name="note_section_default_notes">메모</string>
     <string name="note_section_title_hint">섹션 제목</string>
-    <string name="note_section_content_hint">내용을 입력하세요…</string>
-    <string name="note_section_delete">섹션 삭제</string>
-    <string name="note_section_delete_confirm_title">이 섹션을 삭제할까요?</string>
+    <string name="note_section_content_hint">내용을 입력하세요…</string>    <string name="note_section_delete_confirm_title">이 섹션을 삭제할까요?</string>
     <string name="note_section_delete_confirm_text">내용이 영구적으로 삭제됩니다.</string>
     <string name="note_section_icon_picker_title">아이콘 선택</string>
     <string name="note_section_reorder_cd">드래그하여 순서 변경</string>

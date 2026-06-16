@@ -12,6 +12,9 @@
     <string name="crop_hint">Seret untuk memindahkan · cubit untuk memperbesar · sudut untuk mengubah ukuran</string>
     <string name="common_ok">OK</string>
     <string name="common_delete">Hapus</string>
+    <string name="common_done">Selesai</string>
+    <string name="common_undo">Urungkan</string>
+    <string name="note_section_deleted">Bagian dihapus</string>
     <string name="common_save">Simpan</string>
     <string name="common_back">Kembali</string>
     <string name="common_edit">Edit</string>
@@ -454,9 +457,7 @@
     <string name="note_section_add">Tambah bagian</string>
     <string name="note_section_default_notes">Catatan</string>
     <string name="note_section_title_hint">Judul bagian</string>
-    <string name="note_section_content_hint">Tulis sesuatu…</string>
-    <string name="note_section_delete">Hapus bagian</string>
-    <string name="note_section_delete_confirm_title">Hapus bagian ini?</string>
+    <string name="note_section_content_hint">Tulis sesuatu…</string>    <string name="note_section_delete_confirm_title">Hapus bagian ini?</string>
     <string name="note_section_delete_confirm_text">Isinya akan dihapus permanen.</string>
     <string name="note_section_icon_picker_title">Pilih ikon</string>
     <string name="note_section_reorder_cd">Seret untuk menyusun ulang</string>

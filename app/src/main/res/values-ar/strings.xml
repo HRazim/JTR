@@ -9,6 +9,9 @@
     <string name="crop_hint">اسحب للتحريك · باعد إصبعيك للتكبير · الزوايا لتغيير الحجم</string>
     <string name="common_ok">موافق</string>
     <string name="common_delete">حذف</string>
+    <string name="common_done">تم</string>
+    <string name="common_undo">تراجع</string>
+    <string name="note_section_deleted">تم حذف القسم</string>
     <string name="common_save">حفظ</string>
     <string name="common_back">رجوع</string>
     <string name="common_edit">تعديل</string>
@@ -451,9 +454,7 @@
     <string name="note_section_add">إضافة قسم</string>
     <string name="note_section_default_notes">ملاحظات</string>
     <string name="note_section_title_hint">عنوان القسم</string>
-    <string name="note_section_content_hint">اكتب شيئًا…</string>
-    <string name="note_section_delete">حذف القسم</string>
-    <string name="note_section_delete_confirm_title">حذف هذا القسم؟</string>
+    <string name="note_section_content_hint">اكتب شيئًا…</string>    <string name="note_section_delete_confirm_title">حذف هذا القسم؟</string>
     <string name="note_section_delete_confirm_text">سيُحذف محتواه نهائيًا.</string>
     <string name="note_section_icon_picker_title">اختر أيقونة</string>
     <string name="note_section_reorder_cd">اسحب لإعادة الترتيب</string>

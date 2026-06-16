@@ -9,6 +9,9 @@
     <string name="crop_hint">Taşımak için sürükle · yakınlaştırmak için iki parmak · köşelerle boyutlandır</string>
     <string name="common_ok">Tamam</string>
     <string name="common_delete">Sil</string>
+    <string name="common_done">Bitti</string>
+    <string name="common_undo">Geri al</string>
+    <string name="note_section_deleted">Bölüm silindi</string>
     <string name="common_save">Kaydet</string>
     <string name="common_back">Geri</string>
     <string name="common_edit">Düzenle</string>
@@ -451,9 +454,7 @@
     <string name="note_section_add">Bölüm ekle</string>
     <string name="note_section_default_notes">Notlar</string>
     <string name="note_section_title_hint">Bölüm başlığı</string>
-    <string name="note_section_content_hint">Bir şeyler yaz…</string>
-    <string name="note_section_delete">Bölümü sil</string>
-    <string name="note_section_delete_confirm_title">Bu bölüm silinsin mi?</string>
+    <string name="note_section_content_hint">Bir şeyler yaz…</string>    <string name="note_section_delete_confirm_title">Bu bölüm silinsin mi?</string>
     <string name="note_section_delete_confirm_text">İçeriği kalıcı olarak silinecek.</string>
     <string name="note_section_icon_picker_title">Bir simge seç</string>
     <string name="note_section_reorder_cd">Yeniden sıralamak için sürükle</string>
