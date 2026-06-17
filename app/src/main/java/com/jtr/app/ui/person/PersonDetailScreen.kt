@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.rememberGalleryImagePicker
+import com.jtr.app.utils.DateCanonical
 import com.jtr.app.utils.LocationUtils
 import com.jtr.app.utils.getSocialIcon
 import androidx.compose.ui.viewinterop.AndroidView
@@ -548,7 +549,7 @@ fun PersonDetailScreen(
                 val dates = person.dateLines?.takeIf { it.isNotEmpty() }
                     ?: person.birthdate?.let {
                         listOf(DynamicLine(
-                            value = millisToRawDigits(it, resolveDateFormatSpec(Locale.getDefault()).order),
+                            value = DateCanonical.millisToIso(it),
                             label = FieldTypes.DATE_BIRTHDAY,
                             notify = person.birthdateNotify
                         ))
@@ -1286,11 +1287,11 @@ private fun ContactLinesBlock(
  */
 @Composable
 private fun DatesBlock(lines: List<DynamicLine>) {
-    val spec = remember { resolveDateFormatSpec(Locale.getDefault()) }
+    // Affichage localisé (d MMMM yyyy) à partir d'une valeur STOCKÉE locale-libre (ISO).
     val formatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.getDefault()) }
     val rendered = remember(lines) {
         lines.mapNotNull { line ->
-            val millis = rawDigitsToMillis(line.value, spec) ?: return@mapNotNull null
+            val millis = storedDateToMillis(line.value) ?: return@mapNotNull null
             Triple(line.label, formatter.format(Date(millis)), line.notify)
         }
     }

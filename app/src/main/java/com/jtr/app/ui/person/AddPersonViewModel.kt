@@ -212,7 +212,9 @@ class AddPersonViewModel(
                 nickname = nd.nickname.trim().ifBlank { null },
                 phoneLines = sanitizeLines(_phoneLines.value),
                 emailLines = sanitizeEmailLines(_emailLines.value),
-                dateLines = sanitizeLines(_dateLines.value),
+                // v7.1.0 — dates persistées en ISO canonique (locale-libre), jamais en
+                // chiffres bruts ordonnés par la locale (ancien bug du changement de langue).
+                dateLines = sanitizeLines(canonicalizeDateLinesForStorage(_dateLines.value, spec)),
                 relationLines = sanitizeLines(_relationLines.value)
             )
 

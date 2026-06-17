@@ -17,13 +17,11 @@ import com.jtr.app.R
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.ui.person.FieldTypes
-import com.jtr.app.ui.person.millisToRawDigits
-import com.jtr.app.ui.person.rawDigitsToMillis
-import com.jtr.app.ui.person.resolveDateFormatSpec
+import com.jtr.app.ui.person.storedDateToMillis
+import com.jtr.app.utils.DateCanonical
 import com.jtr.app.utils.JtrNotificationManager
 import kotlinx.coroutines.flow.first
 import java.util.Calendar
-import java.util.Locale
 
 /**
  * ReminderScheduler — planification PRÉCISE (à la minute) des rappels de dates
@@ -100,9 +98,8 @@ object ReminderScheduler {
             return
         }
 
-        val spec = resolveDateFormatSpec(Locale.getDefault())
         val now = System.currentTimeMillis()
-        val events = collectEvents(app, spec)
+        val events = collectEvents(app)
         val active = HashSet<String>()
 
         events.forEach { ev ->
@@ -130,16 +127,16 @@ object ReminderScheduler {
 
     // ── Construction des évènements ───────────────────────────────────────────
 
-    private suspend fun collectEvents(context: Context, spec: com.jtr.app.ui.person.DateFormatSpec): List<Event> {
+    private suspend fun collectEvents(context: Context): List<Event> {
         val persons = PersonRepository(context).getAllActive().first()
         val out = ArrayList<Event>()
         persons.forEach { p ->
-            // dateLines JSON en priorité ; repli sur le scalaire birthdate (legacy).
+            // dateLines JSON en priorité ; repli sur le scalaire birthdate (legacy), en ISO.
             val lines: List<DynamicLine> = p.dateLines?.takeIf { it.isNotEmpty() }
                 ?: p.birthdate?.let {
                     listOf(
                         DynamicLine(
-                            value = millisToRawDigits(it, spec.order),
+                            value = DateCanonical.millisToIso(it),
                             label = FieldTypes.DATE_BIRTHDAY,
                             notify = p.birthdateNotify,
                             reminderOffsetMinutes = p.birthdateReminderOffsetMinutes
@@ -148,7 +145,8 @@ object ReminderScheduler {
                 }.orEmpty()
             lines.forEach { line ->
                 if (!line.notify) return@forEach
-                val millis = rawDigitsToMillis(line.value, spec) ?: return@forEach
+                // Interprétation LOCALE-LIBRE de la valeur stockée (ISO), repli hérité géré.
+                val millis = storedDateToMillis(line.value) ?: return@forEach
                 out += Event(
                     personId = p.id,
                     firstName = p.firstName,

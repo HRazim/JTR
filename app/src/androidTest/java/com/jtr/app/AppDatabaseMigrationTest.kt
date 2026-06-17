@@ -4,12 +4,14 @@ import androidx.room.testing.MigrationTestHelper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.jtr.app.data.local.AppDatabase
+import org.json.JSONArray
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.IOException
+import java.util.Calendar
 
 /**
  * Validation stricte de la migration Room v11 → v12 (refonte « Contacts Google »).
@@ -204,6 +206,59 @@ class AppDatabaseMigrationTest {
             assertEquals("Randonnée", c.getString(1))
             // Nouvelle colonne ajoutée avec son défaut '[]'.
             assertEquals("[]", c.getString(2))
+        }
+    }
+
+    /**
+     * Migration v20 → v21 (dates canoniques, v7.1.0) : les valeurs de `dateLines` stockées
+     * en chiffres bruts ordonnés par la locale sont converties en ISO `yyyy-MM-dd`.
+     *  - l'ANNIVERSAIRE (« 12251995 » à l'anglaise) est réécrit depuis le scalaire canonique
+     *    `birthdate` (vérité, locale-libre) → « 1995-12-25 » sans ambiguïté de locale ;
+     *  - une autre date NON ambiguë (« 25121990 », jour 25 ⇒ forcément JJ/MM) → « 1990-12-25 ».
+     * Aucune perte : les champs non-date (id, label, notify…) sont préservés.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate20To21_convertsLocaleDigitsToCanonicalIso() {
+        val personId = "person-pre-v21"
+        // Scalaire canonique de l'anniversaire (midi local du 25/12/1995) — vérité absolue.
+        val birthMillis = Calendar.getInstance()
+            .apply { clear(); set(1995, Calendar.DECEMBER, 25, 12, 0, 0) }
+            .timeInMillis
+        // dateLines HÉRITÉ : anniversaire en ordre en-US + une date « anniversary » en JJ/MM.
+        val legacyDateLines =
+            """[{"id":"d1","value":"12251995","label":"birthday","notify":false,"reminderOffsetMinutes":0},""" +
+                """{"id":"d2","value":"25121990","label":"anniversary","notify":true,"reminderOffsetMinutes":0}]"""
+
+        helper.createDatabase(testDb, 20).use { db ->
+            db.execSQL(
+                "INSERT INTO persons " +
+                    "(id, firstName, birthdate, birthdateNotify, cityNotify, isFavorite, " +
+                    "createdAt, updatedAt, birthdateReminderOffsetMinutes, noteSections, dateLines) " +
+                    "VALUES (?, ?, ?, 0, 0, 0, 1700000000000, 1700000000000, 0, '[]', ?)",
+                arrayOf<Any?>(personId, "Dora", birthMillis, legacyDateLines)
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 21, true, AppDatabase.MIGRATION_20_21
+        )
+
+        db.query("SELECT dateLines FROM persons WHERE id = ?", arrayOf(personId)).use { c ->
+            assertTrue("Le contact doit survivre à la migration", c.moveToFirst())
+            val arr = JSONArray(c.getString(0))
+            val byLabel = HashMap<String, String>()
+            val notifyByLabel = HashMap<String, Boolean>()
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                byLabel[o.getString("label")] = o.getString("value")
+                notifyByLabel[o.getString("label")] = o.getBoolean("notify")
+            }
+            // Dates converties en ISO canonique, locale-libre.
+            assertEquals("1995-12-25", byLabel["birthday"])
+            assertEquals("1990-12-25", byLabel["anniversary"])
+            // Champs non-date PRÉSERVÉS (aucune perte).
+            assertEquals(true, notifyByLabel["anniversary"])
         }
     }
 }

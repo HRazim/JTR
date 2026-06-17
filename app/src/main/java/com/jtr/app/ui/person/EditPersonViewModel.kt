@@ -282,6 +282,9 @@ class EditPersonViewModel(
                 ?.let { listOf(DynamicLine(value = it, label = FieldTypes.EMAIL_HOME)) }
             ?: listOf(DynamicLine(label = FieldTypes.EMAIL_HOME))
         _dateLines.value = p.dateLines?.takeIf { it.isNotEmpty() }
+            // v7.1.0 — la valeur STOCKÉE est en ISO canonique : on la reconvertit en chiffres
+            // bruts dans la locale COURANTE pour la saisie (changer de langue ne casse plus rien).
+            ?.map { it.copy(value = storedDateToRawDigits(it.value, spec)) }
             ?: p.birthdate?.let {
                 listOf(DynamicLine(
                     value = millisToRawDigits(it, spec.order),
@@ -395,7 +398,10 @@ class EditPersonViewModel(
         }
     }
 
-    private fun buildUpdatedPerson(p: Person) = p.copy(
+    private fun buildUpdatedPerson(p: Person): Person {
+        // v7.1.0 — dates converties en ISO canonique (locale-libre) avant persistance.
+        val spec = resolveDateFormatSpec(Locale.getDefault())
+        return p.copy(
         updatedAt      = System.currentTimeMillis(),
         firstName      = _firstName.value.trim(),
         lastName       = _lastName.value.trim().ifBlank { null },
@@ -429,9 +435,10 @@ class EditPersonViewModel(
         nickname       = _nameDetails.value.nickname.trim().ifBlank { null },
         phoneLines     = sanitizeLines(_phoneLines.value),
         emailLines     = sanitizeEmailLines(_emailLines.value),
-        dateLines      = sanitizeLines(_dateLines.value),
+        dateLines      = sanitizeLines(canonicalizeDateLinesForStorage(_dateLines.value, spec)),
         relationLines  = sanitizeLines(_relationLines.value)
-    )
+        )
+    }
 
     /**
      * Déclenché quand la back-stack entry est définitivement détruite (back, finish…).
