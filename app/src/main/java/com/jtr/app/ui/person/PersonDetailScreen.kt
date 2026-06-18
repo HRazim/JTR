@@ -390,9 +390,6 @@ fun PersonDetailScreen(
         // Box racine de l'écran : ancre le footer de réordonnancement des notes en bas
         // (align BottomCenter), au-dessus du contenu défilant, calé au ras des touches.
         Box(modifier = Modifier.fillMaxSize()) {
-        // Défilement INSTANTANÉ des bringIntoView du formulaire (v7.1.1) → la ligne de note suit
-        // le clavier frame par frame pendant son animation (pas de snap/flash). Cf. NoteContentField.
-        WithInstantBringIntoView {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -691,7 +688,6 @@ fun PersonDetailScreen(
                 }
             }
         }
-        } // WithInstantBringIntoView
 
         // Footer de réordonnancement des notes — ancré en bas de l'ÉCRAN (v7.0.7), visible
         // uniquement en édition ; calé au ras des touches via NoteReorderFooter (plus de Popup).
