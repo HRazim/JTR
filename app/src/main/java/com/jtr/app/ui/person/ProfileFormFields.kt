@@ -971,12 +971,13 @@ private fun CustomLabelDialog(
 
 /**
  * Ramène le champ porteur dans la zone visible (au-dessus du clavier) à la prise
- * de focus. Appliqué aux champs du bas du formulaire (Origine, Ville, Pro) qui,
- * sinon, restaient masqués par l'IME selon l'ordre d'ouverture.
+ * de focus. Appliqué aux champs du bas du formulaire (Origine, Ville, Pro) ET, depuis
+ * v7.1.1, aux sections de notes ([NoteSectionsEditor], même package) qui, sinon,
+ * restaient masqués par l'IME selon l'ordre d'ouverture.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Modifier.bringIntoViewOnFocus(): Modifier {
+internal fun Modifier.bringIntoViewOnFocus(): Modifier {
     val requester = remember { BringIntoViewRequester() }
     val scope = rememberCoroutineScope()
     return this

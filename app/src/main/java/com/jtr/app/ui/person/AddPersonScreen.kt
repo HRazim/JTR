@@ -228,18 +228,29 @@ fun AddPersonScreen(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        // Inset IME appliqué EXACTEMENT UNE FOIS (v7.1.1) : l'app est edge-to-edge
+        // (enableEdgeToEdge, targetSdk 35) → la fenêtre NE se redimensionne PAS, le clavier
+        // est un inset. On l'ajoute aux insets du Scaffold (systemBars ∪ ime) → paddingValues
+        // intègre déjà le clavier en bas. Le conteneur défilant ne fait QUE .padding(pv) (aucun
+        // imePadding/consumeWindowInsets en plus) → viewport réduit d'exactement la hauteur du
+        // clavier (ni zéro = texte sous le clavier, ni double = grand vide).
+        contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.ime)
     ) { paddingValues ->
         // Box racine de l'écran : permet d'ancrer le footer de réordonnancement en bas
         // (align BottomCenter) au-dessus du contenu défilant, calé au ras des touches.
         Box(modifier = Modifier.fillMaxSize()) {
+        // Défilement INSTANTANÉ des bringIntoView du formulaire (v7.1.1) → la ligne de note suit
+        // le clavier frame par frame pendant son animation (pas de snap/flash). Cf. NoteContentField.
+        WithInstantBringIntoView {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                // paddingValues intègre DÉJÀ l'inset clavier (Scaffold.contentWindowInsets =
+                // systemBars ∪ ime ci-dessus) → le viewport se réduit d'exactement la hauteur du
+                // clavier. PAS de imePadding/consumeWindowInsets ici (sinon double inset = vide).
+                // L'auto-scroll repose sur BringIntoView (focus + curseur du TextField).
                 .padding(paddingValues)
-                // Pas de .imePadding() ici : l'activité est en adjustResize (edge-to-edge),
-                // la fenêtre se redimensionne déjà à l'ouverture du clavier. Ajouter
-                // imePadding() en plus doublait l'inset et créait un vide blanc géant.
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -395,6 +406,7 @@ fun AddPersonScreen(
             // Enregistrement déplacé en haut à droite (v7.0.2) — plus de gros bouton bas.
             Spacer(modifier = Modifier.height(8.dp))
         }
+        } // WithInstantBringIntoView
 
         // Footer de réordonnancement des notes — ancré en bas de l'ÉCRAN (v7.0.7), calé au
         // ras des touches système via NoteReorderFooter (inset une seule fois ; plus de Popup).

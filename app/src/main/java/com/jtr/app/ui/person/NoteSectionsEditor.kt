@@ -1,12 +1,19 @@
 package com.jtr.app.ui.person
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +22,9 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -51,27 +60,41 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.domain.model.NOTE_ICON_NOTES
 import com.jtr.app.domain.model.NoteSection
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 import sh.calvin.reorderable.ReorderableColumn
 import sh.calvin.reorderable.ReorderableScope
 
@@ -467,22 +490,160 @@ private fun NoteSectionCard(
                     modifier = Modifier
                         .weight(1f)
                         .onFocusChanged { if (it.isFocused) onFieldFocused() }
+                        .bringIntoViewOnFocus()
                 )
             }
-            SoftTextField(
+            NoteContentField(
                 value = section.content,
                 onValueChange = onContentChange,
-                placeholder = stringResource(R.string.note_section_content_hint),
-                leadingIcon = null,
-                singleLine = false,
-                minLines = 3,
-                maxLines = 10,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onFocusChanged { if (it.isFocused) onFieldFocused() }
+                onFocused = onFieldFocused,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
+}
+
+/**
+ * Spec de défilement « instantané » (v7.1.1) pour le conteneur défilant des écrans Add/Edit :
+ * rend les `bringIntoView` du formulaire NON animés (`snap()`). Indispensable au suivi CONTINU du
+ * clavier pendant son animation d'ouverture : on rejoue `bringIntoView` à CHAQUE frame de l'inset
+ * IME et chaque ajustement doit être immédiat (sinon des animations s'empilent → jank/retard et la
+ * ligne ne « colle » pas au clavier). Le mouvement visible vient de l'IME ; le scroll le suit pile.
+ * Fourni via `LocalBringIntoViewSpec` autour du `verticalScroll` (cf. AddPersonScreen / PersonDetailScreen).
+ */
+@OptIn(ExperimentalFoundationApi::class)
+internal val InstantBringIntoViewSpec: BringIntoViewSpec = object : BringIntoViewSpec {
+    override val scrollAnimationSpec: AnimationSpec<Float> = snap()
+
+    // Distance MINIMALE pour rendre le rect visible (réplique du défaut de Compose, le défaut étant
+    // `internal`) : 0 si déjà visible ou plus grand que le conteneur, sinon on aligne sur le bord le
+    // plus proche. Pour la bande basse, cela amène son bord bas au bord bas du viewport (= clavier).
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val leadingEdge = offset
+        val trailingEdge = offset + size
+        return when {
+            leadingEdge >= 0f && trailingEdge <= containerSize -> 0f
+            leadingEdge < 0f && trailingEdge > containerSize -> 0f
+            abs(leadingEdge) < abs(trailingEdge - containerSize) -> leadingEdge
+            else -> trailingEdge - containerSize
+        }
+    }
+}
+
+/**
+ * Fournit [InstantBringIntoViewSpec] au `verticalScroll` du formulaire (à placer AUTOUR du
+ * conteneur défilant). Encapsule l'opt-in expérimental → les écrans Add/Edit n'ont rien à importer.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun WithInstantBringIntoView(content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalBringIntoViewSpec provides InstantBringIntoViewSpec, content = content)
+}
+
+/**
+ * Champ de CONTENU d'une note (v7.1.1) — habillage « carte souple » + **auto-scroll au ras du
+ * clavier pendant la saisie**.
+ *
+ * Problème résolu : le `BringIntoView` interne du `TextField` ne se propage pas de façon fiable
+ * jusqu'au défilement de la PAGE à travers `ReorderableColumn` + le `graphicsLayer` de la carte
+ * → en écrivant une longue note, le clavier masquait le texte (ou une grande bande vide
+ * apparaissait). Ici, on suit le curseur EXPLICITEMENT : on amène dans la vue la **bande basse**
+ * du champ (là où est le curseur quand on **écrit/descend** dans la note) à chaque frappe et au
+ * focus. Le viewport étant réduit d'EXACTEMENT la hauteur du clavier (Scaffold.contentWindowInsets
+ * ∪ ime), la ligne en cours se cale juste au-dessus du clavier, sans grande bande vide.
+ *
+ * On n'agit QUE sur une **modification EN FIN de texte** (ajout/suppression au bout, détectée par
+ * `startsWith` plutôt que par la sélection — robuste). L'édition AU MILIEU d'une note ne provoque
+ * donc aucun saut vers le bas (pas de régression de frappe). Le champ GRANDIT avec le contenu
+ * (`maxLines` non plafonné) → c'est bien la PAGE qui défile, pas un mini-défilement interne.
+ *
+ * v7.1.1 — recentrage AUSSI à la PRISE DE FOCUS (avant toute frappe) pour supprimer le vide
+ * transitoire à l'ouverture du clavier. Le clavier s'ANIME (~200-300 ms) : `WindowInsets.ime`
+ * varie pendant l'animation. Pour éviter une course de timing (« une fois sur deux »), on observe
+ * l'inset via `snapshotFlow + distinctUntilChanged + collectLatest` → chaque nouvelle valeur
+ * ANNULE le recentrage précédent, et SEUL le dernier (inset STABILISÉ, clavier posé) recentre,
+ * après `withFrameNanos` (layout final posé). On vise toujours la **bande basse** et UNIQUEMENT si
+ * le curseur est en fin de texte (cas écriture) — un focus AU MILIEU ne provoque aucun saut. La
+ * sélection vient d'un [TextFieldValue] local (le suivi en frappe reste basé sur `startsWith`).
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun NoteContentField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onFocused: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val bring = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+    var heightPx by remember { mutableIntStateOf(0) }
+    // Vrai si la dernière modif portait sur la FIN du texte (écriture/ajout) → on suit alors.
+    var lastEditAtEnd by remember { mutableStateOf(false) }
+    var isFocused by remember { mutableStateOf(false) }
+    // Valeur locale AVEC sélection (curseur), synchronisée sur la valeur hissée (chargement, undo…).
+    var tfv by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+    LaunchedEffect(value) {
+        if (value != tfv.text) tfv = TextFieldValue(value, TextRange(value.length))
+    }
+
+    fun bottomStripRect() =
+        Rect(left = 0f, top = heightPx - 1f, right = 1f, bottom = heightPx.toFloat())
+
+    fun bringBottomIntoView() {
+        if (heightPx <= 0) return
+        scope.launch { bring.bringIntoView(bottomStripRect()) }
+    }
+
+    // Recentrage AU FOCUS, SUIVI CONTINU de l'animation du clavier : on réagit à CHAQUE valeur
+    // animée de l'inset IME (snapshotFlow émet pendant la montée du clavier) et, à chaque frame,
+    // on re-cale la bande basse au ras du bord COURANT du clavier. L'ajustement est INSTANTANÉ
+    // (le scroll de la PAGE utilise un BringIntoViewSpec `snap()` — cf. InstantBringIntoViewSpec
+    // fourni par les écrans) : pas de bringIntoView animés qui s'empilent → la ligne « monte avec »
+    // le clavier sans espace ni flash, et la DERNIÈRE valeur (inset stabilisé) laisse la position
+    // exacte et stable (déterminisme conservé). Garde « curseur en fin » : cas « on va écrire ».
+    val imeInsets = WindowInsets.ime
+    val density = LocalDensity.current
+    LaunchedEffect(isFocused) {
+        if (!isFocused) return@LaunchedEffect
+        snapshotFlow { imeInsets.getBottom(density) }
+            .distinctUntilChanged()
+            .collect { ime ->
+                if (ime <= 0) return@collect
+                if (!(tfv.selection.collapsed && tfv.selection.end >= tfv.text.length)) return@collect
+                if (heightPx > 0) bring.bringIntoView(bottomStripRect())
+            }
+    }
+
+    TextField(
+        value = tfv,
+        onValueChange = { newValue ->
+            // Modif en fin de texte = ajout au bout (new commence par old) ou suppression au bout
+            // (old commence par new). Une insertion AU MILIEU casse les deux → pas de suivi.
+            lastEditAtEnd = newValue.text.startsWith(tfv.text) || tfv.text.startsWith(newValue.text)
+            val textChanged = newValue.text != tfv.text
+            tfv = newValue
+            if (textChanged) {
+                onValueChange(newValue.text)
+                if (lastEditAtEnd) bringBottomIntoView()
+            }
+        },
+        placeholder = { Text(stringResource(R.string.note_section_content_hint)) },
+        singleLine = false,
+        minLines = 3,
+        maxLines = Int.MAX_VALUE,
+        shape = RoundedCornerShape(16.dp),
+        colors = softFieldColors(),
+        modifier = modifier
+            // Quand le champ GRANDIT (saut de ligne) ET que la dernière modif était en fin, on
+            // ré-amène le bas dans la vue après la re-mesure → la nouvelle ligne reste au ras.
+            .onSizeChanged { size ->
+                val grew = size.height > heightPx
+                heightPx = size.height
+                if (grew && lastEditAtEnd) bringBottomIntoView()
+            }
+            .bringIntoViewRequester(bring)
+            .onFocusChanged { isFocused = it.isFocused; if (it.isFocused) onFocused() }
+    )
 }
 
 /** Grille de sélection d'icône depuis le jeu curé [NoteIcons]. */

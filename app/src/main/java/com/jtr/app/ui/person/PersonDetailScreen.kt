@@ -362,7 +362,13 @@ fun PersonDetailScreen(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        // Inset IME appliqué EXACTEMENT UNE FOIS (v7.1.1) : app edge-to-edge (targetSdk 35) → la
+        // fenêtre ne se redimensionne pas, le clavier est un inset. On l'ajoute aux insets du
+        // Scaffold (systemBars ∪ ime) → paddingValues intègre le clavier ; le conteneur défilant
+        // ne fait QUE .padding(pv) (aucun imePadding en plus) → viewport réduit d'exactement la
+        // hauteur du clavier (ni texte sous le clavier, ni grand vide).
+        contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.ime)
     ) { paddingValues ->
 
         if (isLoading || person == null) {
@@ -377,13 +383,17 @@ fun PersonDetailScreen(
         // Box racine de l'écran : ancre le footer de réordonnancement des notes en bas
         // (align BottomCenter), au-dessus du contenu défilant, calé au ras des touches.
         Box(modifier = Modifier.fillMaxSize()) {
+        // Défilement INSTANTANÉ des bringIntoView du formulaire (v7.1.1) → la ligne de note suit
+        // le clavier frame par frame pendant son animation (pas de snap/flash). Cf. NoteContentField.
+        WithInstantBringIntoView {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                // paddingValues intègre DÉJÀ l'inset clavier (Scaffold.contentWindowInsets =
+                // systemBars ∪ ime ci-dessus) → le viewport se réduit d'exactement la hauteur du
+                // clavier. PAS de imePadding/consumeWindowInsets ici (sinon double inset = vide).
+                // L'auto-scroll repose sur BringIntoView (focus + curseur du TextField).
                 .padding(paddingValues)
-                // Pas de .imePadding() ici : l'activité est en adjustResize (edge-to-edge),
-                // la fenêtre se redimensionne déjà à l'ouverture du clavier. Ajouter
-                // imePadding() en plus doublait l'inset et créait un vide blanc géant.
                 .verticalScroll(rememberScrollState())
                 .pointerInput(isEditing) {
                     if (!isEditing) detectTapGestures(onDoubleTap = { editVm.enterEditMode() })
@@ -674,6 +684,7 @@ fun PersonDetailScreen(
                 }
             }
         }
+        } // WithInstantBringIntoView
 
         // Footer de réordonnancement des notes — ancré en bas de l'ÉCRAN (v7.0.7), visible
         // uniquement en édition ; calé au ras des touches via NoteReorderFooter (plus de Popup).
