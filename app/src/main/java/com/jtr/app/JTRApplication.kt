@@ -12,6 +12,9 @@ import com.jtr.app.utils.GeofenceManager
 import com.jtr.app.utils.JtrNotificationManager
 import com.jtr.app.worker.ImportantDateCheckWorker
 import com.jtr.app.worker.ProximityCheckWorker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.maplibre.android.MapLibre
 import java.util.concurrent.TimeUnit
 
@@ -22,6 +25,14 @@ import java.util.concurrent.TimeUnit
  * et WorkManager pour les vérifications de proximité périodiques.
  */
 class JTRApplication : Application() {
+
+    /**
+     * Scope APPLICATIF (v7.1.4) — vit aussi longtemps que le process. Sert au **flush final**
+     * de l'auto-save : une écriture lancée ici se TERMINE même si l'écran (et son `viewModelScope`)
+     * est détruit dans la foulée (retour, navigation, fermeture). SupervisorJob → l'échec d'une
+     * tâche n'annule pas les autres ; Dispatchers.IO → écritures Room/photos hors thread principal.
+     */
+    val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()

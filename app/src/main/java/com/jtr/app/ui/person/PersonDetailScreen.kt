@@ -128,11 +128,10 @@ fun PersonDetailScreen(
     val isEditing by editVm.isEditing.collectAsStateWithLifecycle()
     val isLoading by editVm.isLoading.collectAsStateWithLifecycle()
 
-    // Retour système PENDANT l'édition : annule l'édition et revient au DÉTAIL du profil
-    // (même comportement que la croix de la barre et que « Enregistrer »), au lieu de
-    // dépiler tout l'écran jusqu'à l'accueil. Hors édition : garde inactive → la
-    // navigation arrière normale (retour au précédent) reprend.
-    BackHandler(enabled = isEditing) { editVm.cancelEdit() }
+    // Retour système PENDANT l'édition (v7.1.4) : SAUVEGARDE les modifications (flush) et revient
+    // au DÉTAIL du profil — avec l'auto-save, quitter ne perd plus rien (plus d'annulation). Hors
+    // édition : garde inactive → la navigation arrière normale (retour au précédent) reprend.
+    BackHandler(enabled = isEditing) { editVm.exitEdit() }
     val vmFirstName by editVm.firstName.collectAsStateWithLifecycle()
     val vmLastName by editVm.lastName.collectAsStateWithLifecycle()
     val vmCity by editVm.city.collectAsStateWithLifecycle()
@@ -282,14 +281,15 @@ fun PersonDetailScreen(
                     )
                 },
                 navigationIcon = {
+                    // v7.1.4 — flèche retour (auto-mirrored RTL) en édition AUSSI : avec l'auto-save,
+                    // ce bouton SAUVEGARDE (flush) et sort, comme le retour Android. L'icône ✗
+                    // suggérait à tort « abandonner » → flèche cohérente. Comportement inchangé.
                     IconButton(onClick = {
-                        if (isEditing) editVm.cancelEdit() else onNavigateBack()
+                        if (isEditing) editVm.exitEdit() else onNavigateBack()
                     }) {
                         Icon(
-                            imageVector = if (isEditing) Icons.Default.Close
-                                          else Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = if (isEditing) stringResource(R.string.common_cancel)
-                                                 else stringResource(R.string.common_back)
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 },
