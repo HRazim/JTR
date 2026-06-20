@@ -10,6 +10,8 @@ import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.ui.components.JtrViewMode
+import com.jtr.app.utils.matchesAllTokens
+import com.jtr.app.utils.searchTokens
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -94,9 +96,10 @@ class CategoryGroupDetailViewModel(
         val singles = cats.filter { it.parentGroupId == groupId }
             .map { TopEntry.Single(it, lastActivity = activityOf(it)) }
         val all = folders + singles
+        val tokens = query.searchTokens()
         val filtered =
-            if (query.isBlank()) all
-            else all.filter { it.sortName.contains(query.trim().lowercase()) }
+            if (tokens.isEmpty()) all
+            else all.filter { it.sortName.matchesAllTokens(tokens) }
         sortTopEntries(filtered, order)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

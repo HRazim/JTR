@@ -10,12 +10,16 @@ import com.jtr.app.domain.model.Person
 import com.jtr.app.ui.person.FieldTypes
 import com.jtr.app.utils.matchesSearch
 import com.jtr.app.utils.normalizeForSearch
+import com.jtr.app.utils.searchTokens
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -36,6 +40,11 @@ class SelectContactsViewModel(
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    /** Requête débouncée alimentant le filtre (cf. HomeViewModel) — vide = sans délai. */
+    @OptIn(FlowPreview::class)
+    private val debouncedQuery: Flow<String> =
+        _searchQuery.debounce { if (it.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
 
     fun setSearchQuery(query: String) { _searchQuery.value = query }
     fun clearSearch() { _searchQuery.value = "" }
@@ -65,16 +74,14 @@ class SelectContactsViewModel(
     val candidates: StateFlow<List<Person>> = combine(
         repository.getAllActive(),
         repository.getByCategory(categoryId),
-        _searchQuery
+        debouncedQuery
     ) { all, members, query ->
         val memberIds = members.mapTo(HashSet()) { it.id }
         val available = all.filter { it.id !in memberIds }
-        if (query.isBlank()) available
-        else {
-            val normalized = query.normalizeForSearch()
-            available.filter {
-                it.matchesSearch(normalized) { key -> relationTypeLabels[key] }
-            }
+        val tokens = query.searchTokens()
+        if (tokens.isEmpty()) available
+        else available.filter {
+            it.matchesSearch(tokens) { key -> relationTypeLabels[key] }
         }
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -88,5 +95,10 @@ class SelectContactsViewModel(
             _selectedIds.value = emptySet()
             onDone()
         }
+    }
+
+    companion object {
+        /** Délai d'inactivité avant de relancer le filtre de recherche (ms). */
+        private const val SEARCH_DEBOUNCE_MS = 250L
     }
 }

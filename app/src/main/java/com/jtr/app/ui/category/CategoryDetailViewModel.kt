@@ -17,7 +17,9 @@ import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.person.FieldTypes
 import com.jtr.app.utils.matchesSearch
 import com.jtr.app.utils.normalizeForSearch
+import com.jtr.app.utils.searchTokens
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -88,6 +90,11 @@ class CategoryDetailViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    /** Requête débouncée alimentant le filtre (cf. HomeViewModel) — vide = sans délai. */
+    @OptIn(FlowPreview::class)
+    private val debouncedQuery: Flow<String> =
+        _searchQuery.debounce { if (it.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
+
     // Tri préféré pour CETTE catégorie, restauré depuis les préférences.
     private val _sortOrder = MutableStateFlow(
         runCatching { ContactSortOrder.valueOf(prefs.getString(sortPrefKey, null) ?: "") }
@@ -150,15 +157,13 @@ class CategoryDetailViewModel(
     // Filtrage multi-critères + tri sur Dispatchers.Default (UI 120 Hz préservée).
     val persons: StateFlow<List<Person>> = combine(
         personsSource,
-        _searchQuery,
+        debouncedQuery,
         _sortOrder
     ) { allPersons, query, order ->
-        val filtered = if (query.isBlank()) allPersons
-        else {
-            val normalizedQuery = query.normalizeForSearch()
-            allPersons.filter {
-                it.matchesSearch(normalizedQuery) { key -> relationTypeLabels[key] }
-            }
+        val tokens = query.searchTokens()
+        val filtered = if (tokens.isEmpty()) allPersons
+        else allPersons.filter {
+            it.matchesSearch(tokens) { key -> relationTypeLabels[key] }
         }
         sortPersonsBy(filtered, order)
     }.flowOn(Dispatchers.Default)
@@ -236,6 +241,9 @@ class CategoryDetailViewModel(
 
     companion object {
         private const val VIEW_PREF_KEY = "category_detail_view_mode"
+
+        /** Délai d'inactivité avant de relancer le filtre de recherche (ms). */
+        private const val SEARCH_DEBOUNCE_MS = 250L
 
         /** Id sentinelle de la catégorie virtuelle « Favoris » (aucune ligne Room). */
         const val FAVORITES_CATEGORY_ID = "jtr_favorites"

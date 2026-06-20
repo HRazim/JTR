@@ -12,11 +12,8 @@ import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
-import com.jtr.app.utils.matchesSearch
-import com.jtr.app.utils.normalizeForSearch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import java.io.File
 
 /**
@@ -59,17 +56,10 @@ class PersonRepository(context: Context) {
 
     fun getAllActive(): Flow<List<Person>> = dao.getAllActive()
 
-    /**
-     * Recherche multi-critères accent-insensitive via le matcher partagé
-     * [matchesSearch] (nom, entreprise, poste, ville/origine, relations…).
-     * Ex : "therese" trouve "Thérèse", "francois" trouve "François".
-     */
-    fun search(query: String): Flow<List<Person>> {
-        val normalizedQuery = query.normalizeForSearch()
-        return dao.getAllActive().map { persons ->
-            persons.filter { it.matchesSearch(normalizedQuery) }
-        }
-    }
+    // La recherche de personnes n'a PAS de point d'entrée Repository dédié : tous les
+    // écrans observent getAllActive() et appliquent le moteur CENTRAL en mémoire
+    // (utils/TextUtils.matchesSearch, multi-mots accent-insensible, débouncé hors
+    // thread principal). Une seule logique, aucune requête LIKE incohérente.
 
     /** Contacts actifs d'une catégorie (via table de jointure Many-to-Many). */
     fun getByCategory(categoryId: String): Flow<List<Person>> =

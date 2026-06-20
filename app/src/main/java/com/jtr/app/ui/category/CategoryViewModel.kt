@@ -13,6 +13,8 @@ import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.ui.components.JtrSortCriterion
 import com.jtr.app.ui.components.jtrSortCriterion
 import com.jtr.app.ui.components.JtrViewMode
+import com.jtr.app.utils.matchesAllTokens
+import com.jtr.app.utils.searchTokens
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -112,8 +114,9 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
         repo.getAllActive(),
         _searchQuery
     ) { list, query ->
-        if (query.isBlank()) list
-        else list.filter { it.name.contains(query, ignoreCase = true) }
+        val tokens = query.searchTokens()
+        if (tokens.isEmpty()) list
+        else list.filter { it.name.matchesAllTokens(tokens) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Nombre de contacts actifs par categoryId — utilisé pour le dialogue de confirmation. */

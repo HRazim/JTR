@@ -11,6 +11,11 @@ import java.text.Normalizer
  *   2. Supprime tous les "Combining Diacritical Marks" (U+0300–U+036F)
  *   3. Passe en minuscules
  *
+ * NOTE i18n / RTL : seul le bloc Unicode latin « Combining Diacritical Marks »
+ * (U+0300–U+036F) est retiré. Les diacritiques ARABES (harakat, U+064B+) ne sont
+ * PAS dans ce bloc → l'arabe est préservé tel quel ; `lowercase()` est un no-op sur
+ * les scripts sans casse. La normalisation ne dénature donc aucun script non-latin.
+ *
  * Exemples :
  *   "Thérèse"  → "therese"
  *   "François" → "francois"
@@ -28,42 +33,86 @@ fun String.normalizeForSearch(): String =
 fun String.containsNormalized(other: String): Boolean =
     this.normalizeForSearch().contains(other.normalizeForSearch())
 
+/** Séparateur de mots : tout bloc d'espaces (espaces multiples, tabulations, retours). */
+private val WHITESPACE = Regex("\\s+")
+
 /**
- * Moteur de recherche multi-critères PARTAGÉ (Accueil, catégories, sélection de
- * contacts). [normalizedQuery] doit déjà être passé par [normalizeForSearch].
+ * Découpe une requête en TOKENS de recherche normalisés — base UNIQUE du moteur de
+ * recherche de l'app (à passer ensuite à [matchesSearch] / [matchesAllTokens]).
  *
- * Champs interrogés : prénom/nom (+ surnom), entreprise, poste/département,
- * ville/origine, notes/« ce qu'il aime », téléphone/email (scalaires + lignes
- * dynamiques) et les RELATIONS — noms liés, libellés personnalisés, et types
- * standards via [relationTypeLabel] (clé → libellé localisé déjà normalisé,
- * fourni par la couche UI ; `null` si la clé est inconnue).
+ *   - trim : les blocs d'espaces en tête/queue produisent des morceaux vides, éliminés
+ *     ("Nathan " → ["nathan"], pas d'échec sur l'espace final) ;
+ *   - réduction des espaces multiples internes ("Nathan   Jamel" → ["nathan","jamel"]) ;
+ *   - accents/casse insensibles (via [normalizeForSearch]).
+ */
+fun String.searchTokens(): List<String> =
+    normalizeForSearch().split(WHITESPACE).filter { it.isNotEmpty() }
+
+/**
+ * Vrai si ce texte libre contient TOUS les [tokens] en sous-chaîne (tokens déjà
+ * normalisés via [searchTokens]). Une requête sans token (vide) matche tout.
+ *
+ * Sert aux recherches sur un seul libellé : nom d'un contact dans le sélecteur de
+ * relation, nom d'une catégorie/dossier, nom affiché d'un contact natif à importer.
+ */
+fun String.matchesAllTokens(tokens: List<String>): Boolean {
+    if (tokens.isEmpty()) return true
+    val blob = normalizeForSearch()
+    return tokens.all { blob.contains(it) }
+}
+
+/**
+ * Moteur de recherche multi-critères CENTRAL et UNIQUE (Accueil, catégories,
+ * sélection de contacts, relations…). Toute recherche de personne de l'app passe
+ * par ici → comportement strictement identique partout.
+ *
+ * Construit un « blob » cherchable normalisé = concaténation de TOUS les champs
+ * cherchables (nom complet + sous-champs, surnom, nom phonétique, entreprise,
+ * poste/département, ville/origine, notes/likes, téléphones/emails — scalaires ET
+ * lignes dynamiques — et les RELATIONS : noms liés + libellés). Une personne matche
+ * si CHAQUE token (mot de la requête) y figure en sous-chaîne : **ET sur les tokens,
+ * OU sur les champs**. Ainsi « Nathan Jamel » trouve { firstName=Nathan, lastName=
+ * Jamel } (chaque mot dans un champ différent), tout comme « Nathan », « tha » ou
+ * « jamel nathan » (ordre libre).
+ *
+ * [tokens] doivent provenir de [searchTokens] (tokenisation faite une seule fois en
+ * amont, hors de la boucle de filtrage). [relationTypeLabel] résout une clé de type
+ * standard en libellé localisé DÉJÀ normalisé (« friend » → « ami »…), fourni par la
+ * couche UI ; `null` pour une clé inconnue (libellé personnalisé, pris brut).
  */
 fun Person.matchesSearch(
-    normalizedQuery: String,
+    tokens: List<String>,
     relationTypeLabel: (String) -> String? = { null }
 ): Boolean {
-    if (normalizedQuery.isBlank()) return true
+    if (tokens.isEmpty()) return true
+    val blob = buildSearchBlob(relationTypeLabel)
+    return tokens.all { blob.contains(it) }
+}
 
-    val scalarFields = listOfNotNull(
-        firstName, lastName, nickname,
-        company, jobTitle, department,
-        city, origin,
-        notes, likes,
-        phoneNumber, email
-    )
-    if (scalarFields.any { it.normalizeForSearch().contains(normalizedQuery) }) return true
-
-    val lineValues = listOfNotNull(phoneLines, emailLines)
-        .flatten().map { it.value }
-    if (lineValues.any { it.normalizeForSearch().contains(normalizedQuery) }) return true
-
-    // Relations : nom du contact lié, libellé personnalisé brut, ou type standard
-    // localisé (« Ami », « Collègue »… — résolu par l'appelant).
-    relationLines?.forEach { line ->
-        if (line.value.normalizeForSearch().contains(normalizedQuery)) return true
-        val localized = relationTypeLabel(line.label)
-        val label = localized ?: line.label.normalizeForSearch()
-        if (label.contains(normalizedQuery)) return true
+/** Concatène, normalisés et séparés par des espaces, tous les champs cherchables. */
+private fun Person.buildSearchBlob(relationTypeLabel: (String) -> String?): String {
+    val sb = StringBuilder()
+    fun add(value: String?) {
+        if (!value.isNullOrBlank()) sb.append(value.normalizeForSearch()).append(' ')
     }
-    return false
+    // Nom complet + sous-champs avancés
+    add(firstName); add(lastName); add(middleName); add(prefix); add(suffix)
+    add(nickname); add(phonetic)
+    // Professionnel
+    add(company); add(jobTitle); add(department)
+    // Lieu
+    add(city); add(origin)
+    // Notes (champs hérités — les sections de notes restent dans noteSections)
+    add(notes); add(likes)
+    // Contacts (scalaires + lignes dynamiques)
+    add(phoneNumber); add(email)
+    phoneLines?.forEach { add(it.value) }
+    emailLines?.forEach { add(it.value) }
+    // Relations : nom du contact lié + libellé (type localisé normalisé, sinon brut)
+    relationLines?.forEach { line ->
+        add(line.value)
+        val label = relationTypeLabel(line.label) ?: line.label.normalizeForSearch()
+        if (label.isNotBlank()) sb.append(label).append(' ')
+    }
+    return sb.toString()
 }
