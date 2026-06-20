@@ -471,4 +471,10 @@
     <string name="note_section_delete_confirm_text">其内容将被永久删除。</string>
     <string name="note_section_icon_picker_title">选择图标</string>
     <string name="note_section_reorder_cd">拖动以重新排序</string>
+    <!-- v7.1.5 — manage a person's categories from their profile -->
+    <string name="person_add_to_category">添加到分类</string>
+    <string name="person_manage_categories">管理分类</string>
+    <string name="person_categories_dialog_title">分类</string>
+    <string name="person_category_new">新建分类</string>
+    <string name="person_categories_empty">暂无分类。创建一个开始吧。</string>
 </resources>

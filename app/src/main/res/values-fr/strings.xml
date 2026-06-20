@@ -471,4 +471,10 @@
     <string name="note_section_delete_confirm_text">Son contenu sera définitivement supprimé.</string>
     <string name="note_section_icon_picker_title">Choisir une icône</string>
     <string name="note_section_reorder_cd">Glisser pour réordonner</string>
+    <!-- v7.1.5 — manage a person's categories from their profile -->
+    <string name="person_add_to_category">Ajouter à une catégorie</string>
+    <string name="person_manage_categories">Gérer les catégories</string>
+    <string name="person_categories_dialog_title">Catégories</string>
+    <string name="person_category_new">Nouvelle catégorie</string>
+    <string name="person_categories_empty">Aucune catégorie pour le moment. Créez-en une pour commencer.</string>
 </resources>

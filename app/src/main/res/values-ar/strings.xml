@@ -460,4 +460,10 @@
     <string name="note_section_delete_confirm_text">سيُحذف محتواه نهائيًا.</string>
     <string name="note_section_icon_picker_title">اختر أيقونة</string>
     <string name="note_section_reorder_cd">اسحب لإعادة الترتيب</string>
+    <!-- v7.1.5 — manage a person's categories from their profile -->
+    <string name="person_add_to_category">إضافة إلى فئة</string>
+    <string name="person_manage_categories">إدارة الفئات</string>
+    <string name="person_categories_dialog_title">الفئات</string>
+    <string name="person_category_new">فئة جديدة</string>
+    <string name="person_categories_empty">لا توجد فئات بعد. أنشئ واحدة للبدء.</string>
 </resources>

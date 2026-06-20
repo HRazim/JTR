@@ -105,8 +105,6 @@ import kotlin.math.abs
 @Composable
 fun PersonDetailScreen(
     person: Person?,
-    /** Catégories du profil sous forme de paires (id, nom) — badges cliquables. */
-    categories: List<Pair<String, String>> = emptyList(),
     onNavigateBack: () -> Unit,
     onNavigateToPerson: (String) -> Unit = {},
     onNavigateToCategory: (String) -> Unit = {},
@@ -123,10 +121,20 @@ fun PersonDetailScreen(
     var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
+    var showCategoryDialog by remember { mutableStateOf(false) }
 
     val editVm: EditPersonViewModel = viewModel()
     val isEditing by editVm.isEditing.collectAsStateWithLifecycle()
     val isLoading by editVm.isLoading.collectAsStateWithLifecycle()
+
+    // Catégories de la personne (v7.1.5) : source RÉACTIVE unique (table de jointure) pour
+    // les badges de la fiche ET le sélecteur « Gérer les catégories ». Remplace le
+    // chargement one-shot de la navigation → les chips se mettent à jour sans recharger.
+    val categoriesVm: PersonCategoriesViewModel = viewModel()
+    val categoryChips by categoriesVm.personCategoryChips.collectAsStateWithLifecycle()
+    val memberCategoryIds by categoriesVm.memberCategoryIds.collectAsStateWithLifecycle()
+    val allCategories by categoriesVm.allCategories.collectAsStateWithLifecycle()
+    val categoryGroups by categoriesVm.groups.collectAsStateWithLifecycle()
 
     // Retour système PENDANT l'édition (v7.1.4) : SAUVEGARDE les modifications (flush) et revient
     // au DÉTAIL du profil — avec l'auto-save, quitter ne perd plus rien (plus d'annulation). Hors
@@ -153,7 +161,12 @@ fun PersonDetailScreen(
     val socialLinks by editVm.socialLinks.collectAsStateWithLifecycle()
     val vmPendingPhotoUri        by editVm.pendingPhotoUri.collectAsStateWithLifecycle()
 
-    LaunchedEffect(person?.id) { person?.id?.let { editVm.loadPerson(it) } }
+    LaunchedEffect(person?.id) {
+        person?.id?.let {
+            editVm.loadPerson(it)
+            categoriesVm.bind(it)
+        }
+    }
 
     LaunchedEffect(cityFromMap) {
         val c = cityFromMap ?: return@LaunchedEffect
@@ -345,6 +358,20 @@ fun PersonDetailScreen(
                                         tint = MaterialTheme.colorScheme.primary) },
                                     onClick = { menuExpanded = false; editVm.enterEditMode() }
                                 )
+                                // Libellé RÉACTIF : « Ajouter à une catégorie » si la personne
+                                // n'en a aucune, sinon « Gérer les catégories » (v7.1.5).
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(stringResource(
+                                            if (memberCategoryIds.isEmpty())
+                                                R.string.person_add_to_category
+                                            else R.string.person_manage_categories
+                                        ))
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Folder, null,
+                                        tint = MaterialTheme.colorScheme.primary) },
+                                    onClick = { menuExpanded = false; showCategoryDialog = true }
+                                )
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.common_delete)) },
                                     leadingIcon = { Icon(Icons.Default.Delete, null,
@@ -491,11 +518,12 @@ fun PersonDetailScreen(
                 }
             }
 
-            if (categories.isNotEmpty()) {
+            if (categoryChips.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     // Badges INTERACTIFS (v5.3.4) : un tap ouvre le détail de la catégorie.
-                    categories.forEach { (categoryId, name) ->
+                    // Source RÉACTIVE (v7.1.5) → ajout/retrait depuis le sélecteur reflété ici.
+                    categoryChips.forEach { (categoryId, name) ->
                         SuggestionChip(
                             onClick = { onNavigateToCategory(categoryId) },
                             label = { Text(name) },
@@ -726,6 +754,19 @@ fun PersonDetailScreen(
         AddSocialLinkDialog(
             onConfirm = { url -> editVm.addSocialLink(url) },
             onDismiss = { showAddLinkDialog = false }
+        )
+    }
+
+    if (showCategoryDialog && person != null) {
+        ManageCategoriesDialog(
+            categories = allCategories,
+            groups = categoryGroups,
+            memberIds = memberCategoryIds,
+            onToggle = { id, inCat -> categoriesVm.setInCategory(id, inCat) },
+            onCreateCategory = { name, color, imagePath ->
+                categoriesVm.createCategoryAndAssign(name, color, imagePath)
+            },
+            onDismiss = { showCategoryDialog = false }
         )
     }
 

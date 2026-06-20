@@ -471,4 +471,10 @@
     <string name="note_section_delete_confirm_text">内容は完全に削除されます。</string>
     <string name="note_section_icon_picker_title">アイコンを選択</string>
     <string name="note_section_reorder_cd">ドラッグして並べ替え</string>
+    <!-- v7.1.5 — manage a person's categories from their profile -->
+    <string name="person_add_to_category">カテゴリーに追加</string>
+    <string name="person_manage_categories">カテゴリーを管理</string>
+    <string name="person_categories_dialog_title">カテゴリー</string>
+    <string name="person_category_new">新しいカテゴリー</string>
+    <string name="person_categories_empty">カテゴリーがまだありません。作成して始めましょう。</string>
 </resources>

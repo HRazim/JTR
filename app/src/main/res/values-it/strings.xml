@@ -460,4 +460,10 @@
     <string name="note_section_delete_confirm_text">Il suo contenuto sarà eliminato definitivamente.</string>
     <string name="note_section_icon_picker_title">Scegli un\'icona</string>
     <string name="note_section_reorder_cd">Trascina per riordinare</string>
+    <!-- v7.1.5 — manage a person's categories from their profile -->
+    <string name="person_add_to_category">Aggiungi a una categoria</string>
+    <string name="person_manage_categories">Gestisci categorie</string>
+    <string name="person_categories_dialog_title">Categorie</string>
+    <string name="person_category_new">Nuova categoria</string>
+    <string name="person_categories_empty">Ancora nessuna categoria. Creane una per iniziare.</string>
 </resources>

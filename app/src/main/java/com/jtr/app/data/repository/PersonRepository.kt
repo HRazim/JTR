@@ -91,6 +91,14 @@ class PersonRepository(context: Context) {
     suspend fun getCategoryIdsForPerson(personId: String): List<String> =
         categoryDao.getCategoryIdsForPersonSync(personId)
 
+    /**
+     * IDs des catégories d'une personne — Flow RÉACTIF (table de jointure).
+     * Pilote les badges de la fiche et le sélecteur « Gérer les catégories » :
+     * toute insertion/suppression de lien se reflète immédiatement dans l'UI.
+     */
+    fun observeCategoryIdsForPerson(personId: String): Flow<List<String>> =
+        categoryDao.getCategoryIdsForPerson(personId)
+
     // =========================================================
     // SOCIAL LINKS
     // =========================================================

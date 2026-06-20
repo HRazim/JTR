@@ -463,4 +463,10 @@
     <string name="note_section_delete_confirm_text">Isinya akan dihapus permanen.</string>
     <string name="note_section_icon_picker_title">Pilih ikon</string>
     <string name="note_section_reorder_cd">Seret untuk menyusun ulang</string>
+    <!-- v7.1.5 — manage a person's categories from their profile -->
+    <string name="person_add_to_category">Tambahkan ke kategori</string>
+    <string name="person_manage_categories">Kelola kategori</string>
+    <string name="person_categories_dialog_title">Kategori</string>
+    <string name="person_category_new">Kategori baru</string>
+    <string name="person_categories_empty">Belum ada kategori. Buat satu untuk memulai.</string>
 </resources>
