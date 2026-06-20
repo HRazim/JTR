@@ -17,7 +17,9 @@ import com.jtr.app.domain.model.Person
 import com.jtr.app.ui.person.FieldTypes
 import com.jtr.app.ui.person.millisToRawDigits
 import com.jtr.app.ui.person.resolveDateFormatSpec
+import com.jtr.app.ui.person.storedDateToMillis
 import com.jtr.app.ui.person.typeLabelResOrNull
+import com.jtr.app.utils.DateCanonical
 import java.io.File
 import java.util.Locale
 import java.util.UUID
@@ -95,10 +97,14 @@ object ShareUtils {
 
     // ── Construction du contenu (lignes partagées TEXTE ↔ PDF) ────────────────
 
-    /** Insère les séparateurs localisés dans une date saisie en chiffres bruts. */
-    private fun formatRawDate(raw: String): String {
+    /**
+     * Formate une date STOCKÉE (ISO canonique, repli hérité géré) en chaîne localisée
+     * « JJ/MM/AAAA » selon la locale courante. Interprétation LOCALE-LIBRE (v7.1.0).
+     */
+    private fun formatStoredDate(value: String): String {
+        val millis = storedDateToMillis(value) ?: return value
         val spec = resolveDateFormatSpec(Locale.getDefault())
-        if (raw.length != spec.segmentLengths.sum()) return raw
+        val raw = millisToRawDigits(millis, spec.order)
         val sb = StringBuilder()
         var idx = 0
         spec.segmentLengths.forEachIndexed { i, len ->
@@ -134,15 +140,14 @@ object ShareUtils {
         person.city?.takeIf { it.isNotBlank() }
             ?.let { lines += "${context.getString(R.string.person_city_label)} : $it" }
 
-        // Dates clés (lignes dynamiques, repli sur le scalaire birthdate legacy).
-        val spec = resolveDateFormatSpec(Locale.getDefault())
+        // Dates clés (lignes dynamiques, repli sur le scalaire birthdate legacy en ISO).
         val dates = person.dateLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
             ?: person.birthdate?.let {
                 listOf(com.jtr.app.domain.model.DynamicLine(
-                    value = millisToRawDigits(it, spec.order), label = FieldTypes.DATE_BIRTHDAY))
+                    value = DateCanonical.millisToIso(it), label = FieldTypes.DATE_BIRTHDAY))
             }.orEmpty()
         dates.forEach { line ->
-            lines += "${typeLabel(context, FieldTypes.DATE, line.label)} : ${formatRawDate(line.value)}"
+            lines += "${typeLabel(context, FieldTypes.DATE, line.label)} : ${formatStoredDate(line.value)}"
         }
 
         person.relationLines?.filter { it.value.isNotBlank() }?.forEach { line ->

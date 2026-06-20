@@ -228,7 +228,14 @@ fun AddPersonScreen(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        // Inset IME appliqué EXACTEMENT UNE FOIS (v7.1.1) : l'app est edge-to-edge
+        // (enableEdgeToEdge, targetSdk 35) → la fenêtre NE se redimensionne PAS, le clavier
+        // est un inset. On l'ajoute aux insets du Scaffold (systemBars ∪ ime) → paddingValues
+        // intègre déjà le clavier en bas. Le conteneur défilant ne fait QUE .padding(pv) (aucun
+        // imePadding/consumeWindowInsets en plus) → viewport réduit d'exactement la hauteur du
+        // clavier (ni zéro = texte sous le clavier, ni double = grand vide).
+        contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.ime)
     ) { paddingValues ->
         // Box racine de l'écran : permet d'ancrer le footer de réordonnancement en bas
         // (align BottomCenter) au-dessus du contenu défilant, calé au ras des touches.
@@ -236,10 +243,11 @@ fun AddPersonScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                // paddingValues intègre DÉJÀ l'inset clavier (Scaffold.contentWindowInsets =
+                // systemBars ∪ ime ci-dessus) → le viewport se réduit d'exactement la hauteur du
+                // clavier. PAS de imePadding/consumeWindowInsets ici (sinon double inset = vide).
+                // L'auto-scroll repose sur BringIntoView (focus + curseur du TextField).
                 .padding(paddingValues)
-                // Pas de .imePadding() ici : l'activité est en adjustResize (edge-to-edge),
-                // la fenêtre se redimensionne déjà à l'ouverture du clavier. Ajouter
-                // imePadding() en plus doublait l'inset et créait un vide blanc géant.
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),

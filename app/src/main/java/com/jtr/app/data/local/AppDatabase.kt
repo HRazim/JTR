@@ -12,10 +12,22 @@ import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.utils.DateCanonical
+import org.json.JSONArray
+import java.util.Locale
 
 /**
- * AppDatabase — Version 20.
+ * AppDatabase — Version 21.
  *
+ * v21 : Dates en forme CANONIQUE (v7.1.0). AUCUN changement de schéma — migration de
+ *       DONNÉES uniquement : les dates de `dateLines` (JSON) étaient stockées en chiffres
+ *       bruts ordonnés selon la locale de saisie (changer de langue cassait l'affichage et
+ *       BLOQUAIT la sauvegarde). [MIGRATION_20_21] convertit ces valeurs vers l'ISO
+ *       `yyyy-MM-dd` (locale-libre). Anti-ambiguïté : l'anniversaire est dérivé du scalaire
+ *       canonique `Person.birthdate` (vérité), les autres dates via désambiguïsation par
+ *       validité ([DateCanonical.legacyRawDigitsToIso]) ; une valeur incertaine est
+ *       PRÉSERVÉE telle quelle (jamais de fausse date). Schéma identique à v20 → la
+ *       migration destructive (filet) n'est jamais atteinte.
  * v20 : Sections de notes personnalisables (v7.0.3). Ajout de Person.noteSections
  *       (TEXT NOT NULL DEFAULT '[]', liste JSON [NoteSection]). Les colonnes héritées
  *       `notes` / `likes` sont CONSERVÉES (jamais supprimées) ; leur contenu est
@@ -48,7 +60,7 @@ import com.jtr.app.domain.model.SocialLinkEntity
 @Database(
     entities = [Person::class, Category::class, CategoryGroup::class,
         PersonCategoryJoin::class, SocialLinkEntity::class],
-    version = 20,
+    version = 21,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -240,6 +252,76 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration v20 → v21, ZÉRO perte de données — dates en forme canonique (v7.1.0).
+         *
+         * Migration de DONNÉES uniquement (aucune colonne ajoutée/supprimée) : réécrit les
+         * valeurs de date du JSON `dateLines` (chiffres bruts ordonnés par la locale de
+         * saisie) en ISO `yyyy-MM-dd` locale-libre, en Kotlin (parsing JSON via [JSONArray],
+         * découplé du modèle Room qui évolue).
+         *
+         * Stratégie anti-ambiguïté (dates `12/25/1995` vs `25/12/1995`), DÉTERMINISTE :
+         *  - ANNIVERSAIRE (label « birthday ») → dérivé du scalaire canonique
+         *    `Person.birthdate` (vérité absolue, calculé à la dernière sauvegarde, déjà
+         *    locale-libre) → jamais ambigu ;
+         *  - autres dates → [DateCanonical.legacyRawDigitsToIso] : une seule interprétation
+         *    valide est retenue, une vraie ambiguïté est tranchée par l'ordre de la locale
+         *    courante (meilleur proxy de la locale d'écriture) ;
+         *  - valeur déjà ISO → ignorée (idempotent) ; valeur INCERTAINE (aucune date valide)
+         *    → PRÉSERVÉE telle quelle (jamais de fausse date écrite).
+         *
+         * Les UPDATE sont appliqués APRÈS fermeture du curseur de lecture. Aucune table
+         * recréée → la migration destructive (filet de sécurité) n'est jamais atteinte.
+         */
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val tieBreak = DateCanonical.currentOrder(Locale.getDefault())
+                val updates = ArrayList<Pair<String, String>>() // id → nouveau JSON dateLines
+
+                db.query(
+                    "SELECT id, dateLines, birthdate FROM persons " +
+                        "WHERE dateLines IS NOT NULL AND trim(dateLines) <> ''"
+                ).use { c ->
+                    val idIdx = c.getColumnIndexOrThrow("id")
+                    val dlIdx = c.getColumnIndexOrThrow("dateLines")
+                    val bdIdx = c.getColumnIndexOrThrow("birthdate")
+                    while (c.moveToNext()) {
+                        val id = c.getString(idIdx) ?: continue
+                        val json = c.getString(dlIdx) ?: continue
+                        val birthdate = if (c.isNull(bdIdx)) null else c.getLong(bdIdx)
+                        val arr = try { JSONArray(json) } catch (_: Exception) { continue }
+
+                        var changed = false
+                        var birthdayUsed = false
+                        for (i in 0 until arr.length()) {
+                            val obj = arr.optJSONObject(i) ?: continue
+                            val value = obj.optString("value", "")
+                            if (value.isBlank() || DateCanonical.isIso(value)) continue
+                            // « birthday » : const FieldTypes.DATE_BIRTHDAY (literal pour ne pas
+                            // coupler la migration à la couche UI, plus stable dans le temps).
+                            val iso = if (obj.optString("label", "") == "birthday" &&
+                                !birthdayUsed && birthdate != null
+                            ) {
+                                birthdayUsed = true
+                                DateCanonical.millisToIso(birthdate)
+                            } else {
+                                DateCanonical.legacyRawDigitsToIso(value, tieBreak)
+                            }
+                            if (iso != null && iso != value) {
+                                obj.put("value", iso)
+                                changed = true
+                            }
+                        }
+                        if (changed) updates += id to arr.toString()
+                    }
+                }
+
+                updates.forEach { (id, newJson) ->
+                    db.execSQL("UPDATE persons SET dateLines = ? WHERE id = ?", arrayOf(newJson, id))
+                }
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -249,7 +331,7 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                         MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
-                        MIGRATION_18_19, MIGRATION_19_20)
+                        MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
                     // Filet de sécurité ultime UNIQUEMENT : tous les chemins de version
                     // ont une migration explicite ci-dessus, donc la destruction n'est
                     // jamais déclenchée en pratique (données utilisateur préservées).

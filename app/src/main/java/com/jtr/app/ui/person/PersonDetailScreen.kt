@@ -13,12 +13,16 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -50,6 +54,8 @@ import androidx.compose.ui.graphics.Color
 import coil.request.ImageRequest
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
@@ -64,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.rememberGalleryImagePicker
+import com.jtr.app.utils.DateCanonical
 import com.jtr.app.utils.LocationUtils
 import com.jtr.app.utils.getSocialIcon
 import androidx.compose.ui.viewinterop.AndroidView
@@ -92,6 +99,7 @@ import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,11 +128,10 @@ fun PersonDetailScreen(
     val isEditing by editVm.isEditing.collectAsStateWithLifecycle()
     val isLoading by editVm.isLoading.collectAsStateWithLifecycle()
 
-    // Retour système PENDANT l'édition : annule l'édition et revient au DÉTAIL du profil
-    // (même comportement que la croix de la barre et que « Enregistrer »), au lieu de
-    // dépiler tout l'écran jusqu'à l'accueil. Hors édition : garde inactive → la
-    // navigation arrière normale (retour au précédent) reprend.
-    BackHandler(enabled = isEditing) { editVm.cancelEdit() }
+    // Retour système PENDANT l'édition (v7.1.4) : SAUVEGARDE les modifications (flush) et revient
+    // au DÉTAIL du profil — avec l'auto-save, quitter ne perd plus rien (plus d'annulation). Hors
+    // édition : garde inactive → la navigation arrière normale (retour au précédent) reprend.
+    BackHandler(enabled = isEditing) { editVm.exitEdit() }
     val vmFirstName by editVm.firstName.collectAsStateWithLifecycle()
     val vmLastName by editVm.lastName.collectAsStateWithLifecycle()
     val vmCity by editVm.city.collectAsStateWithLifecycle()
@@ -274,14 +281,15 @@ fun PersonDetailScreen(
                     )
                 },
                 navigationIcon = {
+                    // v7.1.4 — flèche retour (auto-mirrored RTL) en édition AUSSI : avec l'auto-save,
+                    // ce bouton SAUVEGARDE (flush) et sort, comme le retour Android. L'icône ✗
+                    // suggérait à tort « abandonner » → flèche cohérente. Comportement inchangé.
                     IconButton(onClick = {
-                        if (isEditing) editVm.cancelEdit() else onNavigateBack()
+                        if (isEditing) editVm.exitEdit() else onNavigateBack()
                     }) {
                         Icon(
-                            imageVector = if (isEditing) Icons.Default.Close
-                                          else Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = if (isEditing) stringResource(R.string.common_cancel)
-                                                 else stringResource(R.string.common_back)
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 },
@@ -361,7 +369,13 @@ fun PersonDetailScreen(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        // Inset IME appliqué EXACTEMENT UNE FOIS (v7.1.1) : app edge-to-edge (targetSdk 35) → la
+        // fenêtre ne se redimensionne pas, le clavier est un inset. On l'ajoute aux insets du
+        // Scaffold (systemBars ∪ ime) → paddingValues intègre le clavier ; le conteneur défilant
+        // ne fait QUE .padding(pv) (aucun imePadding en plus) → viewport réduit d'exactement la
+        // hauteur du clavier (ni texte sous le clavier, ni grand vide).
+        contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.ime)
     ) { paddingValues ->
 
         if (isLoading || person == null) {
@@ -379,10 +393,11 @@ fun PersonDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                // paddingValues intègre DÉJÀ l'inset clavier (Scaffold.contentWindowInsets =
+                // systemBars ∪ ime ci-dessus) → le viewport se réduit d'exactement la hauteur du
+                // clavier. PAS de imePadding/consumeWindowInsets ici (sinon double inset = vide).
+                // L'auto-scroll repose sur BringIntoView (focus + curseur du TextField).
                 .padding(paddingValues)
-                // Pas de .imePadding() ici : l'activité est en adjustResize (edge-to-edge),
-                // la fenêtre se redimensionne déjà à l'ouverture du clavier. Ajouter
-                // imePadding() en plus doublait l'inset et créait un vide blanc géant.
                 .verticalScroll(rememberScrollState())
                 .pointerInput(isEditing) {
                     if (!isEditing) detectTapGestures(onDoubleTap = { editVm.enterEditMode() })
@@ -548,7 +563,7 @@ fun PersonDetailScreen(
                 val dates = person.dateLines?.takeIf { it.isNotEmpty() }
                     ?: person.birthdate?.let {
                         listOf(DynamicLine(
-                            value = millisToRawDigits(it, resolveDateFormatSpec(Locale.getDefault()).order),
+                            value = DateCanonical.millisToIso(it),
                             label = FieldTypes.DATE_BIRTHDAY,
                             notify = person.birthdateNotify
                         ))
@@ -775,6 +790,10 @@ private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
     val scale = remember { Animatable(1f) }
     val offsetX = remember { Animatable(0f) }
     val offsetY = remember { Animatable(0f) }
+    // Translation de FERMETURE par glissement (façon Instagram), distincte du pan de
+    // zoom : à l'échelle de base, la photo suit le doigt puis revient en ressort.
+    val dismissX = remember { Animatable(0f) }
+    val dismissY = remember { Animatable(0f) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     // Taille intrinsèque de l'image chargée → dimensions réellement affichées (Fit).
     var intrinsicSize by remember { mutableStateOf<Size?>(null) }
@@ -806,12 +825,31 @@ private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
         )
     }
 
-    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+    // Progression du glissement de fermeture (0 = repos, 1 = plein effet), basée sur la
+    // distance verticale rapportée à ~30 % de la hauteur écran. Pilote l'estompage du
+    // fond noir et le léger rétrécissement de la photo (lue en phase de dessin).
+    fun dismissFraction(): Float {
+        val h = containerSize.height
+        if (h <= 0) return 0f
+        return (abs(dismissY.value) / (h * 0.30f)).coerceIn(0f, 1f)
+    }
+
+    val backSpring = spring<Float>(dampingRatio = Spring.DampingRatioMediumBouncy)
+
+    // Retour élastique : la photo reprend sa place (translation de fermeture → 0).
+    fun springBackDismiss() {
+        scope.launch { dismissX.animateTo(0f, backSpring) }
+        scope.launch { dismissY.animateTo(0f, backSpring) }
+    }
+
+    // Fermeture confirmée : la photo poursuit sa sortie dans le sens du doigt (fond
+    // déjà estompé via dismissFraction), puis on referme le visualiseur.
+    fun animateOutAndDismiss() {
         scope.launch {
-            scale.snapTo((scale.value * zoomChange).coerceIn(1f, 5f))
-            val max = maxPanAt(scale.value)
-            offsetX.snapTo((offsetX.value + panChange.x).coerceIn(-max.x, max.x))
-            offsetY.snapTo((offsetY.value + panChange.y).coerceIn(-max.y, max.y))
+            val h = containerSize.height.toFloat().takeIf { it > 0f } ?: 2000f
+            val dir = if (dismissY.value < 0f) -1f else 1f
+            dismissY.animateTo(dir * h, tween(durationMillis = 200, easing = FastOutSlowInEasing))
+            onDismiss()
         }
     }
 
@@ -852,15 +890,17 @@ private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.92f))
                 .onSizeChanged { containerSize = it },
             contentAlignment = Alignment.Center
         ) {
-            // ZONE NOIRE / letterbox : tap simple = fermeture IMMÉDIATE. Aucun
-            // onDoubleTap ici → zéro délai de détection (fermeture snappy).
+            // FOND noir / letterbox : s'estompe à mesure du glissement de fermeture
+            // (alpha lu en phase de dessin → pas de recomposition). Tap simple =
+            // fermeture IMMÉDIATE (aucun onDoubleTap ici → fermeture snappy).
             Box(
                 modifier = Modifier
                     .matchParentSize()
+                    .graphicsLayer { alpha = 1f - dismissFraction() }
+                    .background(Color.Black.copy(alpha = 0.92f))
                     .pointerInput(Unit) { detectTapGestures { onDismiss() } }
             )
 
@@ -879,12 +919,96 @@ private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
                 modifier = photoModifier
                     .align(Alignment.Center)
                     .graphicsLayer {
-                        scaleX = scale.value
-                        scaleY = scale.value
-                        translationX = offsetX.value
-                        translationY = offsetY.value
+                        // Échelle = zoom × léger rétrécissement de fermeture (jusqu'à
+                        // ~0.85) ; translation = pan de zoom + suivi du doigt.
+                        val ds = 1f - 0.15f * dismissFraction()
+                        scaleX = scale.value * ds
+                        scaleY = scale.value * ds
+                        translationX = offsetX.value + dismissX.value
+                        translationY = offsetY.value + dismissY.value
                     }
-                    .transformable(state = transformState)
+                    // Geste unifié : pinch/pan quand la photo est zoomée (>1×), sinon
+                    // glisser-pour-fermer à l'échelle de base. Les taps restent gérés
+                    // par le detectTapGestures ci-dessous (cohabitation par slop).
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            var acting = false
+                            var mode = 0            // 1 = zoom/pan, 2 = fermeture
+                            var dismissing = false
+                            var slop = Offset.Zero
+                            var canceled = false
+                            val touchSlop = viewConfiguration.touchSlop
+                            val velocityTracker = VelocityTracker()
+
+                            do {
+                                val event = awaitPointerEvent()
+                                canceled = event.changes.any { it.isConsumed }
+                                if (!canceled) {
+                                    val pressed = event.changes.count { it.pressed }
+                                    val zoom = event.calculateZoom()
+                                    val pan = event.calculatePan()
+
+                                    // Détermination du mode au franchissement du slop :
+                                    // 2 doigts OU déjà zoomée → zoom/pan ; sinon fermeture.
+                                    if (!acting) {
+                                        if (pressed >= 2) {
+                                            acting = true; mode = 1
+                                        } else {
+                                            slop += pan
+                                            if (slop.getDistance() > touchSlop) {
+                                                acting = true
+                                                mode = if (scale.value > 1f) 1 else 2
+                                                dismissing = mode == 2
+                                            }
+                                        }
+                                    }
+
+                                    if (acting) {
+                                        // 2e doigt pendant la fermeture → bascule en zoom.
+                                        if (mode == 2 && pressed >= 2) {
+                                            springBackDismiss()
+                                            dismissing = false
+                                            mode = 1
+                                        }
+                                        if (mode == 1) {
+                                            // snapTo lancés sur le scope de composition :
+                                            // l'AwaitPointerEventScope est suspendu restreint.
+                                            scope.launch {
+                                                scale.snapTo((scale.value * zoom).coerceIn(1f, 5f))
+                                                val max = maxPanAt(scale.value)
+                                                offsetX.snapTo((offsetX.value + pan.x).coerceIn(-max.x, max.x))
+                                                offsetY.snapTo((offsetY.value + pan.y).coerceIn(-max.y, max.y))
+                                            }
+                                        } else {
+                                            event.changes.firstOrNull { it.pressed }
+                                                ?.let { velocityTracker.addPointerInputChange(it) }
+                                            scope.launch {
+                                                dismissX.snapTo(dismissX.value + pan.x)
+                                                dismissY.snapTo(dismissY.value + pan.y)
+                                            }
+                                        }
+                                        event.changes.forEach { if (it.pressed) it.consume() }
+                                    }
+                                }
+                            } while (!canceled && event.changes.any { it.pressed })
+
+                            // Relâchement : seuil de distance (20 % hauteur) OU de vélocité
+                            // → fermeture fluide ; sinon retour élastique à l'origine.
+                            if (dismissing) {
+                                if (canceled) {
+                                    springBackDismiss()
+                                } else {
+                                    val v = velocityTracker.calculateVelocity()
+                                    val h = containerSize.height
+                                    val farEnough = h > 0 && abs(dismissY.value) > h * 0.20f
+                                    val fastEnough = abs(v.y) > 1200f
+                                    if (farEnough || fastEnough) animateOutAndDismiss()
+                                    else springBackDismiss()
+                                }
+                            }
+                        }
+                    }
                     .pointerInput(Unit) {
                         detectTapGestures(
                             // Tap sur la photo : dézoom (animé) si zoomée, sinon ferme.
@@ -915,6 +1039,8 @@ private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
+                    // S'estompe avec le glissement de fermeture (contrôles masqués).
+                    .graphicsLayer { alpha = 1f - dismissFraction() }
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(Color.Black.copy(alpha = 0.45f))
@@ -1286,11 +1412,11 @@ private fun ContactLinesBlock(
  */
 @Composable
 private fun DatesBlock(lines: List<DynamicLine>) {
-    val spec = remember { resolveDateFormatSpec(Locale.getDefault()) }
+    // Affichage localisé (d MMMM yyyy) à partir d'une valeur STOCKÉE locale-libre (ISO).
     val formatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.getDefault()) }
     val rendered = remember(lines) {
         lines.mapNotNull { line ->
-            val millis = rawDigitsToMillis(line.value, spec) ?: return@mapNotNull null
+            val millis = storedDateToMillis(line.value) ?: return@mapNotNull null
             Triple(line.label, formatter.format(Date(millis)), line.notify)
         }
     }

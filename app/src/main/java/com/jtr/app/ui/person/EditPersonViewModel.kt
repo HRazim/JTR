@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.jtr.app.JTRApplication
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.NoteSection
@@ -23,6 +24,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 
 class EditPersonViewModel(
     application: Application,
@@ -36,6 +38,18 @@ class EditPersonViewModel(
     private fun proximityAllowed(): Boolean =
         prefs.getBoolean("notifications_enabled", true) &&
             prefs.getBoolean("proximity_enabled", false)
+
+    // ── Auto-save (v7.1.4) ────────────────────────────────────────────────────
+    // Scope SURVIVANT (applicatif) pour le flush final ; repli local hors JTRApplication (tests).
+    private val appScope: CoroutineScope =
+        (application as? JTRApplication)?.applicationScope
+            ?: CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    /** « Sale » = au moins un champ du profil modifié depuis la dernière persistance. */
+    private val dirty = AtomicBoolean(false)
+    private val autoSave = AutoSaveController(viewModelScope, appScope) { final -> persistEdits(final) }
+    /** À appeler à toute modification d'un champ éditable → arme le debounce de l'auto-save. */
+    private fun markDirty() { dirty.set(true); autoSave.markDirty() }
+    // ──────────────────────────────────────────────────────────────────────────
 
     private val _person = MutableStateFlow<Person?>(null)
     val person: StateFlow<Person?> = _person.asStateFlow()
@@ -97,7 +111,7 @@ class EditPersonViewModel(
     // colonnes notes/likes restent héritées). Peuplées depuis Room, semées si legacy.
     private val _noteSections = MutableStateFlow<List<NoteSection>>(emptyList())
     val noteSections: StateFlow<List<NoteSection>> = _noteSections.asStateFlow()
-    fun onNoteSectionsChanged(v: List<NoteSection>) { _noteSections.value = v }
+    fun onNoteSectionsChanged(v: List<NoteSection>) { _noteSections.value = v; markDirty() }
 
     private val _phoneNumber = MutableStateFlow("")
     val phoneNumber: StateFlow<String> = _phoneNumber.asStateFlow()
@@ -121,11 +135,11 @@ class EditPersonViewModel(
     private val _relationLines = MutableStateFlow(listOf(DynamicLine(label = FieldTypes.RELATION_FRIEND)))
     val relationLines: StateFlow<List<DynamicLine>> = _relationLines.asStateFlow()
 
-    fun onNameDetailsChanged(v: NameDetails) { _nameDetails.value = v }
-    fun onPhoneLinesChanged(v: List<DynamicLine>) { _phoneLines.value = v }
-    fun onEmailLinesChanged(v: List<DynamicLine>) { _emailLines.value = v }
-    fun onDateLinesChanged(v: List<DynamicLine>) { _dateLines.value = v }
-    fun onRelationLinesChanged(v: List<DynamicLine>) { _relationLines.value = v }
+    fun onNameDetailsChanged(v: NameDetails) { _nameDetails.value = v; markDirty() }
+    fun onPhoneLinesChanged(v: List<DynamicLine>) { _phoneLines.value = v; markDirty() }
+    fun onEmailLinesChanged(v: List<DynamicLine>) { _emailLines.value = v; markDirty() }
+    fun onDateLinesChanged(v: List<DynamicLine>) { _dateLines.value = v; markDirty() }
+    fun onRelationLinesChanged(v: List<DynamicLine>) { _relationLines.value = v; markDirty() }
 
     /** Noms des autres contacts — alimente l'autocomplétion des relations. */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -220,6 +234,7 @@ class EditPersonViewModel(
         _city.value = city
         _cityLat.value = lat
         _cityLng.value = lng
+        markDirty()
     }
 
     fun loadPerson(personId: String) {
@@ -282,6 +297,9 @@ class EditPersonViewModel(
                 ?.let { listOf(DynamicLine(value = it, label = FieldTypes.EMAIL_HOME)) }
             ?: listOf(DynamicLine(label = FieldTypes.EMAIL_HOME))
         _dateLines.value = p.dateLines?.takeIf { it.isNotEmpty() }
+            // v7.1.0 — la valeur STOCKÉE est en ISO canonique : on la reconvertit en chiffres
+            // bruts dans la locale COURANTE pour la saisie (changer de langue ne casse plus rien).
+            ?.map { it.copy(value = storedDateToRawDigits(it.value, spec)) }
             ?: p.birthdate?.let {
                 listOf(DynamicLine(
                     value = millisToRawDigits(it, spec.order),
@@ -309,20 +327,20 @@ class EditPersonViewModel(
             .firstNotNullOfOrNull { rawDigitsToMillis(it.value, spec) }
     }
 
-    fun onFirstNameChanged(v: String)    { _firstName.value = v; _firstNameError.value = false }
-    fun onLastNameChanged(v: String)     { _lastName.value = v }
-    fun onGenderChanged(v: String?)      { _gender.value = v }
-    fun onBirthdateChanged(v: Long?)     { _birthdate.value = v }
-    fun onCityChanged(v: String)         { _city.value = v; _cityLat.value = null; _cityLng.value = null }
-    fun onCityNotifyChanged(v: Boolean)  { _cityNotify.value = v }
-    fun onOriginChanged(v: String)        { _origin.value = v }
-    fun onJobTitleChanged(v: String)     { _jobTitle.value = v }
-    fun onDepartmentChanged(v: String)   { _department.value = v }
-    fun onCompanyChanged(v: String)      { _company.value = v }
-    fun onLikesChanged(v: String)        { _likes.value = v }
-    fun onNotesChanged(v: String)        { _notes.value = v }
-    fun onPhoneNumberChanged(v: String)  { _phoneNumber.value = v }
-    fun onEmailChanged(v: String)        { _email.value = v }
+    fun onFirstNameChanged(v: String)    { _firstName.value = v; _firstNameError.value = false; markDirty() }
+    fun onLastNameChanged(v: String)     { _lastName.value = v; markDirty() }
+    fun onGenderChanged(v: String?)      { _gender.value = v; markDirty() }
+    fun onBirthdateChanged(v: Long?)     { _birthdate.value = v; markDirty() }
+    fun onCityChanged(v: String)         { _city.value = v; _cityLat.value = null; _cityLng.value = null; markDirty() }
+    fun onCityNotifyChanged(v: Boolean)  { _cityNotify.value = v; markDirty() }
+    fun onOriginChanged(v: String)        { _origin.value = v; markDirty() }
+    fun onJobTitleChanged(v: String)     { _jobTitle.value = v; markDirty() }
+    fun onDepartmentChanged(v: String)   { _department.value = v; markDirty() }
+    fun onCompanyChanged(v: String)      { _company.value = v; markDirty() }
+    fun onLikesChanged(v: String)        { _likes.value = v; markDirty() }
+    fun onNotesChanged(v: String)        { _notes.value = v; markDirty() }
+    fun onPhoneNumberChanged(v: String)  { _phoneNumber.value = v; markDirty() }
+    fun onEmailChanged(v: String)        { _email.value = v; markDirty() }
 
     fun onPhotoSelected(uri: Uri) {
         // Nettoie l'éventuel fichier crops/ précédent avant de le remplacer
@@ -342,6 +360,8 @@ class EditPersonViewModel(
         if (_dateLines.value.any { !isDateLineValid(it.value, dateSpec) }) return
         collapseDynamicLines()
         viewModelScope.launch {
+            // Photo en attente persistée ici aussi (le bouton « Enregistrer » = flush immédiat).
+            finalizePendingPhoto()
             val updated = buildUpdatedPerson(p)
             if (_city.value.trim() != (p.city ?: "") && _cityLat.value == null) {
                 repository.updateWithGeocoding(updated, p.city)
@@ -356,6 +376,7 @@ class EditPersonViewModel(
             // relations sur les fiches liées (diff avec la snapshot d'avant édition).
             repository.syncMirrorRelations(updated, p.relationLines)
             _person.value = updated
+            dirty.set(false)
             _isEditing.value = false
             // Réarme les rappels (délais par date) immédiatement après l'écriture en base :
             // appel DIRECT (pas via WorkManager) → ni report Doze ni course avec la base.
@@ -363,12 +384,57 @@ class EditPersonViewModel(
         }
     }
 
-    /** Annule le mode édition et restaure les champs depuis la snapshot locale. */
-    fun cancelEdit() {
-        val p = _person.value ?: run { _isEditing.value = false; return }
-        populateFields(p)
+    /**
+     * Quitte le mode édition en CONSERVANT les modifications (v7.1.4) : déclenche un flush final
+     * dans le scope SURVIVANT (la saisie est de toute façon auto-sauvegardée en continu), puis
+     * repasse en lecture. Remplace l'ancien « annuler » — avec l'auto-save, plus de rejet/perte.
+     * Appelé par le retour Android et la croix de la barre en mode édition.
+     */
+    fun exitEdit() {
+        autoSave.flush()
         _firstNameError.value = false
         _isEditing.value = false
+    }
+
+    /**
+     * Auto-save : persiste les champs du profil si « sale », en RÉUTILISANT la logique existante
+     * ([buildUpdatedPerson] → canonisation ISO des dates, sections JSON, relations miroirs). Jamais
+     * d'écriture identique (comparaison hors `updatedAt`) ni de fiche sans nom (raw préservé en
+     * mémoire). [final] (sortie/arrière-plan) ajoute la finalisation : photo définitive + rappels.
+     * Aucune géolocalisation réseau ici (réservée au save manuel) → l'auto-save ne fait jamais d'I/O
+     * réseau. S'exécute dans `viewModelScope` (frappe) ou `applicationScope` (flush survivant).
+     */
+    private suspend fun persistEdits(final: Boolean) {
+        val p = _person.value ?: return
+        // Ne persiste jamais une fiche au nom vide (saisie en cours) — le brut reste en mémoire ;
+        // dirty NON consommé → la sauvegarde reprend dès qu'un nom est saisi.
+        if (_firstName.value.isBlank()) return
+        val pendingPhoto = _pendingPhotoUri.value != null
+        // getAndSet : consomme le flag ATOMIQUEMENT. Une frappe survenant pendant l'écriture le
+        // RÉARME (+ re-signale le debounce) → jamais d'écrasement silencieux = aucune perte.
+        val wasDirty = dirty.getAndSet(false)
+        if (!wasDirty && !(final && pendingPhoto)) return
+        if (final && pendingPhoto) finalizePendingPhoto()
+        collapseDynamicLines()
+        val updated = buildUpdatedPerson(p)
+        // Pas d'écriture identique : comparaison hors `updatedAt` (estampille de l'écriture).
+        if (updated.copy(updatedAt = p.updatedAt) != p) {
+            repository.update(updated)
+            repository.propagateRelationNameChange(updated.id, p.fullName, updated.fullName)
+            repository.syncMirrorRelations(updated, p.relationLines)
+            _person.value = updated
+        }
+        if (final) ReminderScheduler.rescheduleAll(getApplication())
+    }
+
+    /** Copie la photo recadrée (crops/ temporaire) vers le stockage permanent (filesDir/photos/). */
+    private suspend fun finalizePendingPhoto() {
+        val uri = _pendingPhotoUri.value ?: return
+        val path = withContext(Dispatchers.IO) { copyPhotoToStorage(uri) } ?: return
+        _photoUri.value = path
+        uri.path?.let { File(it).delete() }
+        _pendingPhotoUri.value = null
+        savedStateHandle.remove<Uri>("pending_photo_uri")
     }
 
     /** Sauvegarde et navigue — utilisé depuis EditPersonScreen. */
@@ -395,7 +461,10 @@ class EditPersonViewModel(
         }
     }
 
-    private fun buildUpdatedPerson(p: Person) = p.copy(
+    private fun buildUpdatedPerson(p: Person): Person {
+        // v7.1.0 — dates converties en ISO canonique (locale-libre) avant persistance.
+        val spec = resolveDateFormatSpec(Locale.getDefault())
+        return p.copy(
         updatedAt      = System.currentTimeMillis(),
         firstName      = _firstName.value.trim(),
         lastName       = _lastName.value.trim().ifBlank { null },
@@ -429,28 +498,20 @@ class EditPersonViewModel(
         nickname       = _nameDetails.value.nickname.trim().ifBlank { null },
         phoneLines     = sanitizeLines(_phoneLines.value),
         emailLines     = sanitizeEmailLines(_emailLines.value),
-        dateLines      = sanitizeLines(_dateLines.value),
+        dateLines      = sanitizeLines(canonicalizeDateLinesForStorage(_dateLines.value, spec)),
         relationLines  = sanitizeLines(_relationLines.value)
-    )
+        )
+    }
 
     /**
-     * Déclenché quand la back-stack entry est définitivement détruite (back, finish…).
-     * Lance la persistance de la photo dans un CoroutineScope indépendant du
-     * viewModelScope (déjà en cours d'annulation à ce stade) pour garantir que
-     * l'opération I/O + Room se termine même si le ViewModel est nettoyé.
+     * Back-stack entry définitivement détruite (back, navigation, fermeture). Le `viewModelScope`
+     * est déjà en cours d'annulation → le flush final passe par le scope APPLICATIF survivant via
+     * [AutoSaveController.dispose] : la persistance des dernières modifications ET de la photo en
+     * attente se TERMINE même si le ViewModel est nettoyé dans la foulée (cf. persistEdits final).
      */
     override fun onCleared() {
         super.onCleared()
-        val pendingUri = _pendingPhotoUri.value ?: return
-        val personId   = _person.value?.id      ?: return
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            val permanentPath = copyPhotoToStorage(pendingUri) ?: return@launch
-            // Lecture fraîche en DB pour intégrer d'éventuels commits antérieurs
-            val latest = repository.getById(personId) ?: return@launch
-            repository.update(latest.copy(photoUri = permanentPath))
-            // Supprime le fichier temporaire filesDir/crops/
-            pendingUri.path?.let { File(it).delete() }
-        }
+        autoSave.dispose()
     }
 
     private fun copyPhotoToStorage(uri: Uri): String? = try {

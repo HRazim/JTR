@@ -15,8 +15,7 @@ import com.jtr.app.ui.category.ContactSortOrder
 import com.jtr.app.ui.category.sortPersonsBy
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.person.FieldTypes
-import com.jtr.app.ui.person.rawDigitsToMillis
-import com.jtr.app.ui.person.resolveDateFormatSpec
+import com.jtr.app.ui.person.storedDateToMillis
 import com.jtr.app.utils.LocationUtils
 import com.jtr.app.utils.matchesSearch
 import com.jtr.app.utils.normalizeForSearch
@@ -27,7 +26,6 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.Calendar
-import java.util.Locale
 
 /**
  * Événement à venir (≤ 7 jours) affiché dans le bandeau de l'Accueil :
@@ -126,14 +124,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private fun computeUpcomingEvents(persons: List<Person>): List<UpcomingEvent> {
-        val spec = resolveDateFormatSpec(Locale.getDefault())
         val today = LocalDate.now()
         val events = ArrayList<UpcomingEvent>()
         persons.forEach { person ->
             val dates: List<Pair<Long, String>> =
                 person.dateLines?.takeIf { it.isNotEmpty() }
                     ?.mapNotNull { line ->
-                        rawDigitsToMillis(line.value, spec)?.let { it to line.label }
+                        // Interprétation LOCALE-LIBRE (ISO canonique), repli hérité géré.
+                        storedDateToMillis(line.value)?.let { it to line.label }
                     }
                     ?: person.birthdate?.let { listOf(it to FieldTypes.DATE_BIRTHDAY) }.orEmpty()
             dates.forEach { (millis, label) ->

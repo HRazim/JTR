@@ -10,6 +10,7 @@ import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.utils.DateCanonical
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
@@ -186,7 +187,9 @@ class BackupManager(context: Context) {
                 db.withTransaction {
                     groups.forEach { db.categoryGroupDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt))) }
                     categories.forEach { db.categoryDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt))) }
-                    persons.forEach { db.personDao().insert(it.copy(photoUri = rewrite(it.photoUri, true))) }
+                    // v7.1.0 — normalise les dates des sauvegardes ANCIENNES (chiffres bruts
+                    // locale-dépendants) vers l'ISO canonique : round-trip sûr, locale-libre.
+                    persons.forEach { db.personDao().insert(canonicalizeDates(it.copy(photoUri = rewrite(it.photoUri, true)))) }
                     db.personCategoryDao().insertAll(joins.map { it.copy(addedAt = orRestore(it.addedAt)) })
                     socialLinks.forEach { db.socialLinkDao().insert(it) }
                 }
@@ -197,6 +200,30 @@ class BackupManager(context: Context) {
                 throw e
             }
         }
+    }
+
+    /**
+     * Normalise les dates d'un profil restauré vers l'ISO canonique (v7.1.0). Les archives
+     * récentes sont déjà en ISO (no-op) ; les anciennes portent des chiffres bruts ordonnés
+     * par la locale : l'anniversaire est dérivé du scalaire `birthdate` (vérité), les autres
+     * dates désambiguïsées par validité — une valeur incertaine est PRÉSERVÉE (aucune perte).
+     */
+    private fun canonicalizeDates(p: Person): Person {
+        val lines = p.dateLines ?: return p
+        val tieBreak = DateCanonical.currentOrder(Locale.getDefault())
+        var birthdayUsed = false
+        val normalized = lines.map { line ->
+            if (line.value.isBlank() || DateCanonical.isIso(line.value)) return@map line
+            // « birthday » : const FieldTypes.DATE_BIRTHDAY (literal pour découpler du module UI).
+            val iso = if (line.label == "birthday" && !birthdayUsed && p.birthdate != null) {
+                birthdayUsed = true
+                DateCanonical.millisToIso(p.birthdate)
+            } else {
+                DateCanonical.legacyRawDigitsToIso(line.value, tieBreak)
+            }
+            if (iso != null) line.copy(value = iso) else line
+        }
+        return p.copy(dateLines = normalized)
     }
 
     /** Résout un champ image vers un fichier local existant (file:// ou chemin brut). */

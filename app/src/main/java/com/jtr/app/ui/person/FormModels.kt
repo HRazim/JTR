@@ -3,6 +3,7 @@ package com.jtr.app.ui.person
 import androidx.annotation.StringRes
 import com.jtr.app.R
 import com.jtr.app.domain.model.DynamicLine
+import com.jtr.app.utils.DateCanonical
 import java.time.LocalDate
 import java.time.chrono.IsoChronology
 import java.time.format.DateTimeFormatterBuilder
@@ -184,10 +185,11 @@ fun isDateLineValid(raw: String, spec: DateFormatSpec): Boolean {
 }
 
 /**
- * Parse les chiffres bruts en timestamp (midi local) ou `null` si incomplet/invalide.
- * [LocalDate.of] valide strictement les plages et les années bissextiles.
+ * Découpe des chiffres bruts (ordre de [spec]) en [LocalDate] strictement valide, ou
+ * `null` si la longueur, le format ou la date sont invalides. Cœur partagé par les
+ * conversions vers millis (legacy) et vers l'ISO canonique.
  */
-fun rawDigitsToMillis(raw: String, spec: DateFormatSpec): Long? {
+private fun rawDigitsToLocalDate(raw: String, spec: DateFormatSpec): LocalDate? {
     if (raw.length != spec.segmentLengths.sum()) return null
     var idx = 0
     var day = 0; var month = 0; var year = 0
@@ -204,11 +206,93 @@ fun rawDigitsToMillis(raw: String, spec: DateFormatSpec): Long? {
     if (year < 1) return null
     return try {
         LocalDate.of(year, month, day) // valide mois (1..12), jour et bissextiles
-        Calendar.getInstance().apply {
-            clear()
-            set(year, month - 1, day, 12, 0, 0)
-        }.timeInMillis
     } catch (_: Exception) {
         null
     }
 }
+
+/**
+ * Parse les chiffres bruts (ordre [spec]) en timestamp (midi local), ou `null`. Conservé
+ * pour la SAISIE du formulaire (qui manipule toujours des chiffres bruts en locale courante)
+ * et pour le repli ultime sur une valeur héritée non encore canonisée.
+ */
+fun rawDigitsToMillis(raw: String, spec: DateFormatSpec): Long? {
+    val d = rawDigitsToLocalDate(raw, spec) ?: return null
+    return Calendar.getInstance().apply {
+        clear()
+        set(d.year, d.monthValue - 1, d.dayOfMonth, 12, 0, 0)
+    }.timeInMillis
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pont CANONIQUE (v7.1.0) — la forme STOCKÉE est l'ISO yyyy-MM-dd (locale-libre) ;
+// le formulaire travaille en chiffres bruts (ordre de la locale courante). Ces ponts
+// convertissent UNIQUEMENT au bord (chargement / sauvegarde / lecture).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** L'enum interne du formulaire vers l'ordre canonique de [DateCanonical]. */
+private fun DateFormatSpec.canonicalOrder(): DateCanonical.DateOrder = when {
+    order.firstOrNull() == DateField.YEAR -> DateCanonical.DateOrder.YMD
+    order.indexOf(DateField.MONTH) in 0 until order.indexOf(DateField.DAY) ->
+        DateCanonical.DateOrder.MDY
+    else -> DateCanonical.DateOrder.DMY
+}
+
+/** Chiffres bruts du formulaire (ordre [spec]) → ISO `yyyy-MM-dd`, ou `null` si invalide. */
+fun rawDigitsToIso(raw: String, spec: DateFormatSpec): String? {
+    val d = rawDigitsToLocalDate(raw, spec) ?: return null
+    return "%04d-%02d-%02d".format(d.year, d.monthValue, d.dayOfMonth)
+}
+
+/** ISO `yyyy-MM-dd` → chiffres bruts dans l'ordre de [spec] (pour réinjection au formulaire). */
+fun isoToRawDigits(iso: String, spec: DateFormatSpec): String = try {
+    val d = LocalDate.parse(iso)
+    spec.order.joinToString("") {
+        when (it) {
+            DateField.DAY -> "%02d".format(d.dayOfMonth)
+            DateField.MONTH -> "%02d".format(d.monthValue)
+            DateField.YEAR -> "%04d".format(d.year)
+        }
+    }
+} catch (_: Exception) {
+    ""
+}
+
+/**
+ * Valeur STOCKÉE d'une date (ISO canonique OU chiffres bruts hérités) → chiffres bruts du
+ * FORMULAIRE dans la locale courante. Une donnée héritée ambiguë non convertible est
+ * conservée telle quelle (meilleur effort, jamais de perte).
+ */
+fun storedDateToRawDigits(value: String, spec: DateFormatSpec): String {
+    if (value.isBlank()) return value
+    if (DateCanonical.isIso(value)) return isoToRawDigits(value, spec)
+    val iso = DateCanonical.legacyRawDigitsToIso(value, spec.canonicalOrder())
+    return if (iso != null) isoToRawDigits(iso, spec) else value
+}
+
+/**
+ * Valeur STOCKÉE d'une date → epoch millis (midi local), de façon LOCALE-LIBRE pour l'ISO.
+ * Repli pour une donnée héritée : désambiguïsation puis, en dernier recours, lecture dans
+ * la locale courante. Utilisé par tous les consommateurs en LECTURE (workers, accueil,
+ * fiche, partage) — l'interprétation ne dépend plus de la langue.
+ */
+fun storedDateToMillis(value: String): Long? {
+    if (value.isBlank()) return null
+    DateCanonical.isoToMillis(value)?.let { return it }
+    val spec = resolveDateFormatSpec(Locale.getDefault())
+    DateCanonical.legacyRawDigitsToIso(value, spec.canonicalOrder())
+        ?.let { DateCanonical.isoToMillis(it) }
+        ?.let { return it }
+    return rawDigitsToMillis(value, spec)
+}
+
+/**
+ * Convertit les lignes de date du FORMULAIRE (chiffres bruts, ordre [spec]) vers la forme
+ * canonique ISO AVANT persistance. Une valeur vide ou non convertible est laissée telle
+ * quelle (la sauvegarde est de toute façon bloquée si une date est invalide).
+ */
+fun canonicalizeDateLinesForStorage(lines: List<DynamicLine>, spec: DateFormatSpec): List<DynamicLine> =
+    lines.map { line ->
+        if (line.value.isBlank() || DateCanonical.isIso(line.value)) line
+        else rawDigitsToIso(line.value, spec)?.let { line.copy(value = it) } ?: line
+    }
