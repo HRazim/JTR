@@ -470,4 +470,10 @@
     <string name="person_relation_ambiguous">للتحقق</string>
     <string name="person_relation_linked_cd">جهة اتصال مرتبطة</string>
     <string name="relation_ambiguous_toast">عدة جهات اتصال بهذا الاسم — للتحقق</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">تعذّر فتح الملف (تم رفض الوصول أو نُقل الملف)</string>
+    <string name="backup_restore_not_archive">ملف نسخة JTR الاحتياطية (.jtr) غير صالح</string>
+    <string name="backup_restore_version">إصدار النسخة الاحتياطية غير متوافق</string>
+    <string name="backup_restore_corrupt">ملف النسخة الاحتياطية تالف</string>
+    <string name="backup_restore_write_failed">فشل الاستعادة: لم تتغيّر أي بيانات</string>
 </resources>

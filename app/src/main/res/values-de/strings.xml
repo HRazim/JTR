@@ -470,4 +470,10 @@
     <string name="person_relation_ambiguous">Zu prüfen</string>
     <string name="person_relation_linked_cd">Verknüpfter Kontakt</string>
     <string name="relation_ambiguous_toast">Mehrere Kontakte mit diesem Namen — zu prüfen</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">Datei nicht lesbar (Zugriff verweigert oder Datei verschoben)</string>
+    <string name="backup_restore_not_archive">Keine gültige JTR-Sicherungsdatei (.jtr)</string>
+    <string name="backup_restore_version">Inkompatible Sicherungsversion</string>
+    <string name="backup_restore_corrupt">Sicherungsdatei beschädigt</string>
+    <string name="backup_restore_write_failed">Wiederherstellung fehlgeschlagen — keine Daten geändert</string>
 </resources>

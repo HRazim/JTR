@@ -470,4 +470,10 @@
     <string name="person_relation_ambiguous">확인 필요</string>
     <string name="person_relation_linked_cd">연결된 연락처</string>
     <string name="relation_ambiguous_toast">이 이름의 연락처가 여러 명입니다 — 확인 필요</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">파일을 열 수 없습니다 (접근 거부 또는 파일 이동됨)</string>
+    <string name="backup_restore_not_archive">유효하지 않은 JTR 백업 파일(.jtr)</string>
+    <string name="backup_restore_version">호환되지 않는 백업 버전</string>
+    <string name="backup_restore_corrupt">백업 파일이 손상되었습니다</string>
+    <string name="backup_restore_write_failed">복원 실패: 변경된 데이터 없음</string>
 </resources>

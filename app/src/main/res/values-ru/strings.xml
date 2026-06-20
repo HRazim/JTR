@@ -470,4 +470,10 @@
     <string name="person_relation_ambiguous">Требует проверки</string>
     <string name="person_relation_linked_cd">Связанный контакт</string>
     <string name="relation_ambiguous_toast">Несколько контактов с этим именем — требует проверки</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">Не удалось открыть файл (доступ запрещён или файл перемещён)</string>
+    <string name="backup_restore_not_archive">Недопустимый файл резервной копии JTR (.jtr)</string>
+    <string name="backup_restore_version">Несовместимая версия резервной копии</string>
+    <string name="backup_restore_corrupt">Файл резервной копии повреждён</string>
+    <string name="backup_restore_write_failed">Не удалось восстановить: данные не изменены</string>
 </resources>

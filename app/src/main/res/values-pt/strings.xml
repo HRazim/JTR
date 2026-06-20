@@ -470,4 +470,10 @@
     <string name="person_relation_ambiguous">A verificar</string>
     <string name="person_relation_linked_cd">Contacto associado</string>
     <string name="relation_ambiguous_toast">Vários contactos têm este nome — a verificar</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">Não foi possível abrir o ficheiro (acesso negado ou ficheiro movido)</string>
+    <string name="backup_restore_not_archive">Ficheiro de cópia de segurança JTR (.jtr) inválido</string>
+    <string name="backup_restore_version">Versão de cópia de segurança incompatível</string>
+    <string name="backup_restore_corrupt">Ficheiro de cópia de segurança danificado</string>
+    <string name="backup_restore_write_failed">Falha ao restaurar: nenhum dado alterado</string>
 </resources>

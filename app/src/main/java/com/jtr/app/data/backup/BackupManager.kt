@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.room.withTransaction
 import com.google.gson.Gson
+import com.google.gson.JsonParseException
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
@@ -40,6 +41,35 @@ data class BackupPayload(
     val joins: List<PersonCategoryJoin>? = null,
     val socialLinks: List<SocialLinkEntity>? = null
 )
+
+/**
+ * Causes d'échec de RESTAURATION (v7.1.8) — permettent un message utilisateur DISTINCT
+ * au lieu du fourre-tout « invalid or inaccessible file ».
+ */
+enum class RestoreError {
+    /** Le flux du fichier n'a pas pu être ouvert (URI révoquée, fichier déplacé…). */
+    UNREADABLE,
+    /** Pas une archive `.jtr` valide (ZIP illisible ou `backup.json` absent/illisible). */
+    NOT_ARCHIVE,
+    /** Format de sauvegarde non reconnu (formatVersion différent). */
+    UNSUPPORTED_VERSION,
+    /** Structure corrompue (profils absents / champs requis vides). */
+    CORRUPT,
+    /** Écriture en base impossible (transaction annulée). */
+    WRITE_FAILED
+}
+
+/** Exception de restauration portant une [reason] typée pour l'UI. */
+class RestoreException(val reason: RestoreError, cause: Throwable? = null) :
+    Exception("Restore failed: $reason", cause)
+
+/**
+ * Coercition de robustesse (v7.1.8) : Gson ne respecte NI les valeurs par défaut Kotlin NI
+ * la non-nullité — un champ liste ABSENT du JSON arrive `null` malgré un type non-null, ce qui
+ * fait planter `data class copy()`/le constructeur (vérification non-null). Le paramètre est
+ * volontairement nullable pour qu'aucun « useless call » ne soit émis au site d'appel.
+ */
+private fun <T> coerceList(list: List<T>?): List<T> = list ?: emptyList()
 
 /**
  * Module de sauvegarde/restauration locale — fichier archive `.jtr` :
@@ -122,45 +152,64 @@ class BackupManager(context: Context) {
             var json: String? = null
             val extracted = HashMap<String, String>() // entrée zip → chemin restauré
 
-            val input = appContext.contentResolver.openInputStream(uri)
-                ?: error("Fichier illisible")
-            ZipInputStream(BufferedInputStream(input)).use { zip ->
-                var entry = zip.nextEntry
-                while (entry != null) {
-                    when {
-                        entry.name == JSON_ENTRY ->
-                            json = zip.readBytes().toString(Charsets.UTF_8)
-                        entry.name.startsWith(MEDIA_PREFIX) && !entry.isDirectory -> {
-                            // Anti « zip slip » : seul le nom de base est conservé.
-                            val safeName = File(entry.name).name
-                            val dir = File(appContext.filesDir, "photos").also { it.mkdirs() }
-                            val dest = File(dir, "restore_${UUID.randomUUID()}_$safeName")
-                            dest.outputStream().use { zip.copyTo(it) }
-                            extracted[entry.name] = dest.absolutePath
+            // 1) LECTURE via le FLUX SAF (content://) — jamais un chemin File brut. Toute
+            //    erreur d'ouverture (URI révoquée, fichier déplacé) → UNREADABLE distinct.
+            val input = try {
+                appContext.contentResolver.openInputStream(uri)
+            } catch (e: Exception) {
+                throw RestoreException(RestoreError.UNREADABLE, e)
+            } ?: throw RestoreException(RestoreError.UNREADABLE)
+
+            // 2) PARCOURS DU ZIP EN STREAMING (jamais tout en mémoire) : backup.json lu en
+            //    texte, médias extraits à la volée vers filesDir/photos. Un flux non-ZIP ou
+            //    tronqué → NOT_ARCHIVE.
+            try {
+                ZipInputStream(BufferedInputStream(input)).use { zip ->
+                    var entry = zip.nextEntry
+                    while (entry != null) {
+                        when {
+                            entry.name == JSON_ENTRY ->
+                                json = zip.readBytes().toString(Charsets.UTF_8)
+                            entry.name.startsWith(MEDIA_PREFIX) && !entry.isDirectory -> {
+                                // Anti « zip slip » : seul le nom de base est conservé.
+                                val safeName = File(entry.name).name
+                                val dir = File(appContext.filesDir, "photos").also { it.mkdirs() }
+                                val dest = File(dir, "restore_${UUID.randomUUID()}_$safeName")
+                                dest.outputStream().use { zip.copyTo(it) }
+                                extracted[entry.name] = dest.absolutePath
+                            }
                         }
+                        zip.closeEntry()
+                        entry = zip.nextEntry
                     }
-                    zip.closeEntry()
-                    entry = zip.nextEntry
                 }
+            } catch (e: java.util.zip.ZipException) {
+                extracted.values.forEach { p -> runCatching { File(p).delete() } }
+                throw RestoreException(RestoreError.NOT_ARCHIVE, e)
             }
 
             // À partir d'ici, tout échec doit NETTOYER les médias déjà extraits :
             // aucun fichier orphelin dans filesDir/photos après un import raté.
             try {
-                // Validation de structure (anti-corruption) AVANT toute écriture Room.
-                val payload = gson.fromJson(
-                    json ?: error("backup.json absent de l'archive"),
-                    BackupPayload::class.java
-                ) ?: error("JSON invalide")
-                check(payload.formatVersion == FORMAT_VERSION) { "Version de sauvegarde inconnue" }
-                val persons = checkNotNull(payload.persons) { "Structure invalide : profils absents" }
-                check(persons.all { it.id.isNotBlank() && it.firstName.isNotBlank() }) {
-                    "Structure invalide : profil corrompu"
-                }
+                // 3) PARSE + VALIDATION de structure AVANT toute écriture Room.
+                val payload = try {
+                    gson.fromJson(
+                        json ?: throw RestoreException(RestoreError.NOT_ARCHIVE),
+                        BackupPayload::class.java
+                    )
+                } catch (e: JsonParseException) {
+                    throw RestoreException(RestoreError.NOT_ARCHIVE, e)
+                } ?: throw RestoreException(RestoreError.NOT_ARCHIVE)
+
+                if (payload.formatVersion != FORMAT_VERSION)
+                    throw RestoreException(RestoreError.UNSUPPORTED_VERSION)
+                val persons = payload.persons
+                    ?: throw RestoreException(RestoreError.CORRUPT)
+                if (persons.any { it.id.isBlank() || it.firstName.isBlank() })
+                    throw RestoreException(RestoreError.CORRUPT)
                 val categories = payload.categories.orEmpty()
-                check(categories.all { it.id.isNotBlank() && it.name.isNotBlank() }) {
-                    "Structure invalide : catégorie corrompue"
-                }
+                if (categories.any { it.id.isBlank() || it.name.isBlank() })
+                    throw RestoreException(RestoreError.CORRUPT)
                 val groups = payload.groups.orEmpty()
                 val joins = payload.joins.orEmpty()
                 val socialLinks = payload.socialLinks.orEmpty()
@@ -181,21 +230,42 @@ class BackupManager(context: Context) {
                 val restoreTs = System.currentTimeMillis()
                 fun orRestore(ts: Long) = if (ts > 0L) ts else restoreTs
 
-                // Insertion ATOMIQUE (v5.5) dans l'ordre des dépendances : dossiers →
+                // 4) Insertion ATOMIQUE (v5.5) dans l'ordre des dépendances : dossiers →
                 // catégories → profils → liaisons → réseaux sociaux. Un échec au
                 // milieu annule TOUT (withTransaction) — jamais de base semi-restaurée.
-                db.withTransaction {
-                    groups.forEach { db.categoryGroupDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt))) }
-                    categories.forEach { db.categoryDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt))) }
-                    // v7.1.0 — normalise les dates des sauvegardes ANCIENNES (chiffres bruts
-                    // locale-dépendants) vers l'ISO canonique : round-trip sûr, locale-libre.
-                    persons.forEach { db.personDao().insert(canonicalizeDates(it.copy(photoUri = rewrite(it.photoUri, true)))) }
-                    db.personCategoryDao().insertAll(joins.map { it.copy(addedAt = orRestore(it.addedAt)) })
-                    socialLinks.forEach { db.socialLinkDao().insert(it) }
+                // Rétro-compat v7.1.6 : les relations héritées (par nom, sans linkedPersonId)
+                // sont insérées telles quelles et résolues au runtime (homonymes → « à vérifier »).
+                try {
+                    db.withTransaction {
+                        groups.forEach { db.categoryGroupDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt))) }
+                        categories.forEach { db.categoryDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt))) }
+                        // v7.1.0 — normalise les dates des sauvegardes ANCIENNES (chiffres bruts
+                        // locale-dépendants) vers l'ISO canonique : round-trip sûr, locale-libre.
+                        persons.forEach {
+                            // Gson n'honore NI les défauts Kotlin NI la non-nullité : un `.jtr`
+                            // ANTÉRIEUR aux sections de notes (v7.0.3) n'a pas de `noteSections`
+                            // → Gson le laisse `null` malgré le type non-null, ce qui faisait
+                            // ÉCHOUER `copy()`/le constructeur (NPE « parameter noteSections »)
+                            // → toute la restauration échouait. On coerce avant reconstruction.
+                            val safe = it.copy(
+                                noteSections = coerceList(it.noteSections),
+                                photoUri = rewrite(it.photoUri, true)
+                            )
+                            db.personDao().insert(canonicalizeDates(safe))
+                        }
+                        db.personCategoryDao().insertAll(joins.map { it.copy(addedAt = orRestore(it.addedAt)) })
+                        socialLinks.forEach { db.socialLinkDao().insert(it) }
+                    }
+                } catch (e: RestoreException) {
+                    throw e
+                } catch (e: Exception) {
+                    throw RestoreException(RestoreError.WRITE_FAILED, e)
                 }
 
                 persons.size
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                // Nettoyage des médias extraits : aucun fichier orphelin après un import raté.
+                // La cause réelle reste portée par RestoreException.cause (→ message UI distinct).
                 extracted.values.forEach { path -> runCatching { File(path).delete() } }
                 throw e
             }

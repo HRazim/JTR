@@ -481,4 +481,10 @@
     <string name="person_relation_ambiguous">À vérifier</string>
     <string name="person_relation_linked_cd">Contact lié</string>
     <string name="relation_ambiguous_toast">Plusieurs contacts portent ce nom — à vérifier</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">Fichier illisible (accès refusé ou fichier déplacé)</string>
+    <string name="backup_restore_not_archive">Fichier de sauvegarde JTR (.jtr) non valide</string>
+    <string name="backup_restore_version">Version de sauvegarde incompatible</string>
+    <string name="backup_restore_corrupt">Fichier de sauvegarde corrompu</string>
+    <string name="backup_restore_write_failed">Échec de la restauration — aucune donnée modifiée</string>
 </resources>

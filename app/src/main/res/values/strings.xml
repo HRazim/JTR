@@ -496,4 +496,10 @@
     <string name="person_relation_ambiguous">Needs review</string>
     <string name="person_relation_linked_cd">Linked contact</string>
     <string name="relation_ambiguous_toast">Several contacts share this name — needs review</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">Could not open the file (access denied or file moved)</string>
+    <string name="backup_restore_not_archive">Not a valid JTR backup (.jtr) file</string>
+    <string name="backup_restore_version">Incompatible backup version</string>
+    <string name="backup_restore_corrupt">Backup file is corrupted</string>
+    <string name="backup_restore_write_failed">Restore failed — no data was changed</string>
 </resources>
