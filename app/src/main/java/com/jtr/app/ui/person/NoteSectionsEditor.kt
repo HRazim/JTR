@@ -1,10 +1,12 @@
 package com.jtr.app.ui.person
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -75,9 +77,11 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -211,6 +215,11 @@ fun NoteSectionsEditor(
                 NoteSectionCard(
                     section = section,
                     isDragging = isDragging,
+                    // Section « active » (saisie via appui long, cible du footer Supprimer/Terminé) :
+                    // reste mise en évidence tant que le footer est visible → cible de suppression
+                    // non ambiguë jusqu'à la confirmation. Nul pendant l'édition (grabbedId remis à
+                    // null au focus d'un champ) → aucune mise en évidence parasite en frappe.
+                    isActive = section.id == reorderState.grabbedId,
                     reorderScope = reorderScope,
                     onIconClick = { iconPickerForId = section.id },
                     onGrabStarted = {
@@ -421,11 +430,21 @@ private fun <T> List<T>.moved(from: Int, to: Int): List<T> {
  * l'icône → sélecteur. Les `TextField` ne portent AUCUN geste de glisser ni gating de
  * focus → frappe clavier + sélection (Copier/Coller) 100 % natives, sans perte de focus.
  * [onFieldFocused] sert seulement à masquer le footer/undo pendant l'édition.
+ *
+ * FEEDBACK DE DÉPLACEMENT (v7.1.10) — piloté par [isDragging] (fourni par la lib), donc actif
+ * UNIQUEMENT pendant le glisser (jamais en édition → aucune recomposition fautive du focus) :
+ *  - élévation/ombre (0 → 10 dp) et léger scale (1 → 1.03) animés en `spring` (entrée ET sortie) ;
+ *  - lift TONAL surface → surfaceVariant : la carte saisie reste nettement identifiable même
+ *    quand l'ombre est discrète (mode sombre) ; `surfaceVariant` est tinté par palette en clair
+ *    comme en sombre (token sûr) → cohérent sur les 6 thèmes, indépendant de la direction (RTL) ;
+ *  - retour HAPTIQUE (LongPress) à l'ENTRÉE en déplacement seulement, dégradation propre si le
+ *    terminal/les réglages ne fournissent pas de haptique.
  */
 @Composable
 private fun NoteSectionCard(
     section: NoteSection,
     isDragging: Boolean,
+    isActive: Boolean,
     reorderScope: ReorderableScope,
     onIconClick: () -> Unit,
     onGrabStarted: () -> Unit,
@@ -434,6 +453,14 @@ private fun NoteSectionCard(
     onContentChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Retour haptique à l'ENTRÉE en déplacement seulement (transition isDragging false→true) :
+    // LaunchedEffect(isDragging) ne se relance qu'au changement de valeur ; le garde-fou `if`
+    // l'émet une seule fois, à la prise (pas au relâchement, pas à la composition initiale).
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(isDragging) {
+        if (isDragging) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
+
     val scale by animateFloatAsState(
         targetValue = if (isDragging) 1.03f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
@@ -443,6 +470,21 @@ private fun NoteSectionCard(
         targetValue = if (isDragging) 10.dp else 0.dp,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "noteSectionElevation"
+    )
+    // Lift tonal sûr clair ET sombre — la carte saisie/active se distingue même si l'ombre est
+    // discrète. Maintenu tant que la section est active (footer ouvert), pas seulement en glisser.
+    val containerColor by animateColorAsState(
+        targetValue = if (isDragging || isActive) MaterialTheme.colorScheme.surfaceVariant
+        else MaterialTheme.colorScheme.surface,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "noteSectionContainer"
+    )
+    // Liseré primaire animé sur la section ACTIVE → cible du footer (Supprimer) non ambiguë
+    // jusqu'à la confirmation ; indépendant de la direction (RTL) et lisible sur les 6 thèmes.
+    val borderWidth by animateDpAsState(
+        targetValue = if (isActive) 1.5.dp else 0.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "noteSectionBorder"
     )
 
     Card(
@@ -456,7 +498,9 @@ private fun NoteSectionCard(
                 clip = false
             },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        border = if (borderWidth > 0.dp)
+            BorderStroke(borderWidth, MaterialTheme.colorScheme.primary) else null,
+        colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(12.dp),

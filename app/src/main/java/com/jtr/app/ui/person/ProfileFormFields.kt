@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.NoteSection
+import com.jtr.app.utils.matchesAllTokens
+import com.jtr.app.utils.searchTokens
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -944,10 +946,13 @@ private fun RelationValueField(
 
     val hint = stringResource(R.string.common_name_label)
     var expanded by remember { mutableStateOf(false) }
+    // Autocomplétion via le moteur de recherche CENTRAL (multi-mots, accent/casse-
+    // insensible) : « Nathan Jamel », « jamel nathan » ou « nat » proposent le contact.
     val matches = remember(value, suggestions) {
-        if (value.isBlank()) emptyList()
+        val tokens = value.searchTokens()
+        if (tokens.isEmpty()) emptyList()
         else suggestions.filter {
-            it.name.contains(value, ignoreCase = true) && !it.name.equals(value, ignoreCase = true)
+            it.name.matchesAllTokens(tokens) && !it.name.equals(value.trim(), ignoreCase = true)
         }.take(5)
     }
     ExposedDropdownMenuBox(

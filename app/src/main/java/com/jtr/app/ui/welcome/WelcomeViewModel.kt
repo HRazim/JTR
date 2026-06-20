@@ -6,13 +6,17 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.data.contacts.ContactsImporter
 import com.jtr.app.data.contacts.DeviceContact
-import com.jtr.app.utils.normalizeForSearch
+import com.jtr.app.utils.matchesAllTokens
+import com.jtr.app.utils.searchTokens
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -44,6 +48,11 @@ class WelcomeViewModel(application: Application) : AndroidViewModel(application)
     private val _contactSearch = MutableStateFlow("")
     val contactSearch: StateFlow<String> = _contactSearch.asStateFlow()
 
+    /** Requête débouncée alimentant le filtre (cf. HomeViewModel) — vide = sans délai. */
+    @OptIn(FlowPreview::class)
+    private val debouncedSearch: Flow<String> =
+        _contactSearch.debounce { if (it.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
+
     fun setContactSearch(query: String) { _contactSearch.value = query }
 
     /** Coches de l'écran de sélection — survivent à la recherche et au scroll. */
@@ -56,13 +65,11 @@ class WelcomeViewModel(application: Application) : AndroidViewModel(application)
 
     /** Liste native filtrée par la recherche (calcul hors thread principal). */
     val filteredDeviceContacts: StateFlow<List<DeviceContact>> = combine(
-        _deviceContacts, _contactSearch
+        _deviceContacts, debouncedSearch
     ) { contacts, query ->
-        if (query.isBlank()) contacts
-        else {
-            val normalized = query.normalizeForSearch()
-            contacts.filter { it.displayName.normalizeForSearch().contains(normalized) }
-        }
+        val tokens = query.searchTokens()
+        if (tokens.isEmpty()) contacts
+        else contacts.filter { it.displayName.matchesAllTokens(tokens) }
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -100,5 +107,8 @@ class WelcomeViewModel(application: Application) : AndroidViewModel(application)
 
     companion object {
         const val FIRST_LAUNCH_KEY = "is_first_launch"
+
+        /** Délai d'inactivité avant de relancer le filtre de recherche (ms). */
+        private const val SEARCH_DEBOUNCE_MS = 250L
     }
 }

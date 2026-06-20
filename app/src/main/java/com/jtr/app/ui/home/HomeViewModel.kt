@@ -19,7 +19,9 @@ import com.jtr.app.ui.person.storedDateToMillis
 import com.jtr.app.utils.LocationUtils
 import com.jtr.app.utils.matchesSearch
 import com.jtr.app.utils.normalizeForSearch
+import com.jtr.app.utils.searchTokens
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -46,6 +48,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    /**
+     * Requête débouncée alimentant le FILTRE (le champ texte, lui, reste branché sur
+     * [searchQuery] pour un retour visuel immédiat). Une requête vide passe sans délai
+     * (effacement instantané) ; une saisie attend ~250 ms d'inactivité avant de filtrer
+     * → pas de recalcul à chaque frappe, fluide même à plusieurs milliers de contacts.
+     */
+    @OptIn(FlowPreview::class)
+    private val debouncedQuery: Flow<String> =
+        _searchQuery.debounce { if (it.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
 
     private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedIds: StateFlow<Set<String>> = _selectedIds.asStateFlow()
@@ -95,12 +107,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     // Filtrage multi-critères + tri exécutés sur Dispatchers.Default (flowOn) :
     // jamais de travail bloquant sur le thread principal — l'UI reste à 120 Hz.
     val persons: StateFlow<List<Person>> = combine(
-        repository.getAllActive(), _searchQuery, _sortOrder
+        repository.getAllActive(), debouncedQuery, _sortOrder
     ) { list, query, order ->
-        val filtered = if (query.isBlank()) list else {
-            val normalized = query.normalizeForSearch()
-            list.filter { it.matchesSearch(normalized) { key -> relationTypeLabels[key] } }
-        }
+        val tokens = query.searchTokens()
+        val filtered = if (tokens.isEmpty()) list
+            else list.filter { it.matchesSearch(tokens) { key -> relationTypeLabels[key] } }
         sortPersonsBy(filtered, order)
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -205,6 +216,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         private const val SORT_PREF_KEY = "home_sort_order"
         private const val VIEW_PREF_KEY = "home_view_mode"
         private const val UPCOMING_WINDOW_DAYS = 7
+
+        /** Délai d'inactivité avant de relancer le filtre de recherche (ms). */
+        private const val SEARCH_DEBOUNCE_MS = 250L
     }
 }
 
