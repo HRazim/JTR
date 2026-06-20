@@ -49,8 +49,12 @@ interface PersonDao {
     suspend fun getById(id: String): Person?
 
     /**
-     * Cherche l'id d'un contact actif par son nom (prénom, nom, ou « prénom nom »),
-     * insensible à la casse — utilisé par les relations cliquables du profil.
+     * Cherche les ids des contacts actifs portant ce nom (prénom, nom, ou « prénom nom »),
+     * insensible à la casse. Renvoie TOUS les correspondants (PAS de `LIMIT 1`) afin que
+     * l'appelant détecte l'AMBIGUÏTÉ : v7.1.6 — le nom n'étant ni unique ni stable, on ne
+     * relie une relation héritée à un contact QUE si la résolution est SANS ambiguïté
+     * (exactement un match). Plusieurs matches ⇒ « à vérifier », jamais de lien deviné.
+     * Les relations créées désormais portent directement [DynamicLine.linkedPersonId].
      */
     @Query("""
         SELECT id FROM persons
@@ -59,9 +63,8 @@ interface PersonDao {
             OR LOWER(TRIM(firstName || ' ' || COALESCE(lastName, ''))) = LOWER(:name)
             OR LOWER(lastName) = LOWER(:name)
         )
-        LIMIT 1
     """)
-    suspend fun findIdByName(name: String): String?
+    suspend fun findIdsByName(name: String): List<String>
 
     /** Flow réactif — émet à chaque écriture sur cette ligne. */
     @Query("SELECT * FROM persons WHERE id = :id")

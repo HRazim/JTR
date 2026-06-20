@@ -37,9 +37,23 @@
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
+    <!-- v7.1.7 — INTÉGRITÉ DES DONNÉES : Auto Backup et transfert d'appareil DÉSACTIVÉS.
+         JTR est 100 % local ; l'UNIQUE sauvegarde voulue est l'export `.jtr` manuel (mécanisme
+         applicatif, indépendant). Avec allowBackup=true, l'OS incluait la base Room dans l'Auto
+         Backup/Smart Switch et, à une réinstallation sans données, RESTAURAIT un instantané
+         PÉRIMÉ → écrasement des contacts.
+         • android:allowBackup="false" → désactive la sauvegarde CLOUD (toutes versions) et, sur
+           API ≤ 30, le transfert d'appareil + adb.
+         • android:dataExtractionRules → sur Android 12+ (API 31+), allowBackup ne régit PLUS le
+           transfert d'appareil (Smart Switch) : @xml/data_extraction_rules EXCLUT toutes les
+           données (base + prefs + photos) du cloud ET du device-transfer.
+         Résultat : aucune restauration OS ne peut écraser la base ; une réinstallation repart
+         sur une base vierge. -->
     <application
         android:name=".JTRApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:hardwareAccelerated="true"
         android:networkSecurityConfig="@xml/network_security_config"
         android:icon="@mipmap/ic_launcher"

@@ -471,4 +471,20 @@
     <string name="note_section_delete_confirm_text">其内容将被永久删除。</string>
     <string name="note_section_icon_picker_title">选择图标</string>
     <string name="note_section_reorder_cd">拖动以重新排序</string>
+    <!-- v7.1.5 — manage a person's categories from their profile -->
+    <string name="person_add_to_category">添加到分类</string>
+    <string name="person_manage_categories">管理分类</string>
+    <string name="person_categories_dialog_title">分类</string>
+    <string name="person_category_new">新建分类</string>
+    <string name="person_categories_empty">暂无分类。创建一个开始吧。</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">待核对</string>
+    <string name="person_relation_linked_cd">已关联联系人</string>
+    <string name="relation_ambiguous_toast">有多个同名联系人 — 待核对</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">无法打开文件（访问被拒绝或文件已移动）</string>
+    <string name="backup_restore_not_archive">无效的 JTR 备份文件（.jtr）</string>
+    <string name="backup_restore_version">备份版本不兼容</string>
+    <string name="backup_restore_corrupt">备份文件已损坏</string>
+    <string name="backup_restore_write_failed">恢复失败：未更改任何数据</string>
 </resources>

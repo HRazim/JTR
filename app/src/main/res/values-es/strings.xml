@@ -471,4 +471,20 @@
     <string name="note_section_delete_confirm_text">Su contenido se eliminará permanentemente.</string>
     <string name="note_section_icon_picker_title">Elegir un icono</string>
     <string name="note_section_reorder_cd">Arrastra para reordenar</string>
+    <!-- v7.1.5 — manage a person's categories from their profile -->
+    <string name="person_add_to_category">Añadir a una categoría</string>
+    <string name="person_manage_categories">Gestionar categorías</string>
+    <string name="person_categories_dialog_title">Categorías</string>
+    <string name="person_category_new">Nueva categoría</string>
+    <string name="person_categories_empty">Aún no hay categorías. Crea una para empezar.</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">Por verificar</string>
+    <string name="person_relation_linked_cd">Contacto vinculado</string>
+    <string name="relation_ambiguous_toast">Varios contactos tienen este nombre — por verificar</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">No se pudo abrir el archivo (acceso denegado o archivo movido)</string>
+    <string name="backup_restore_not_archive">Archivo de copia de seguridad JTR (.jtr) no válido</string>
+    <string name="backup_restore_version">Versión de copia de seguridad incompatible</string>
+    <string name="backup_restore_corrupt">Archivo de copia de seguridad dañado</string>
+    <string name="backup_restore_write_failed">Error al restaurar: no se modificó ningún dato</string>
 </resources>

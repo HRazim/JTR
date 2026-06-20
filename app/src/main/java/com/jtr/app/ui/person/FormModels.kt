@@ -59,6 +59,25 @@ data class NameDetails(
 /** Option de type sélectionnable dans le menu déroulant d'une ligne. */
 data class TypeOption(val key: String, @StringRes val labelRes: Int)
 
+/**
+ * Référence d'un contact pour l'autocomplétion des relations (v7.1.6) : on AFFICHE
+ * [name] mais on STOCKE [id] (clé stable, unique) dans [DynamicLine.linkedPersonId]
+ * dès qu'une suggestion est choisie — jamais le nom comme clé.
+ */
+data class PersonRef(val id: String, val name: String)
+
+/**
+ * Résultat de la résolution d'une relation cliquable (v7.1.6) — jamais de devinette :
+ *  - [Resolved] : cible identifiée sans ambiguïté (par id, ou un seul homonyme) ;
+ *  - [Ambiguous] : plusieurs homonymes ⇒ « à vérifier », aucune navigation ;
+ *  - [NotFound] : aucun contact correspondant (texte libre ou fiche supprimée).
+ */
+sealed interface RelationTarget {
+    data class Resolved(val personId: String) : RelationTarget
+    data object Ambiguous : RelationTarget
+    data object NotFound : RelationTarget
+}
+
 /** Catalogues de types par groupe + clés stables réutilisées par le repli au submit. */
 object FieldTypes {
     const val PHONE_MOBILE = "mobile"

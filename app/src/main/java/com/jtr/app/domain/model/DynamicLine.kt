@@ -20,6 +20,14 @@ import java.util.UUID
  * = « Le jour J » (à minuit). Comme ce champ est sérialisé en JSON, les anciens profils
  * (champ absent) le désérialisent à `0` sans migration de colonne — la migration Room
  * v18→v19 ne concerne QUE la projection scalaire de l'anniversaire.
+ *
+ * `linkedPersonId` (v7.1.6) — INTÉGRITÉ DES RELATIONS : pour une ligne de type relation,
+ * c'est l'**identifiant STABLE** ([Person.id], clé unique) du contact lié — la SEULE clé
+ * d'une relation. `value` ne sert qu'à l'AFFICHAGE (nom courant, modifiable, non unique) et
+ * ne doit JAMAIS servir à naviguer/résoudre/synchroniser. `null` = texte libre (contact non
+ * référencé) ou relation héritée non encore reliée. Sérialisé en JSON → rétrocompatible
+ * (JSON sans le champ ⇒ `null`), aucune migration de colonne. Sans objet pour les autres
+ * types de ligne (téléphone, email, date) qui le laissent `null`.
  */
 @Serializable
 data class DynamicLine(
@@ -27,5 +35,6 @@ data class DynamicLine(
     val value: String = "",
     val label: String = "",
     val notify: Boolean = false,
-    val reminderOffsetMinutes: Int = 0
+    val reminderOffsetMinutes: Int = 0,
+    val linkedPersonId: String? = null
 )

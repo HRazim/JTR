@@ -460,4 +460,20 @@
     <string name="note_section_delete_confirm_text">Его содержимое будет удалено навсегда.</string>
     <string name="note_section_icon_picker_title">Выберите значок</string>
     <string name="note_section_reorder_cd">Перетащите для изменения порядка</string>
+    <!-- v7.1.5 — manage a person's categories from their profile -->
+    <string name="person_add_to_category">Добавить в категорию</string>
+    <string name="person_manage_categories">Управление категориями</string>
+    <string name="person_categories_dialog_title">Категории</string>
+    <string name="person_category_new">Новая категория</string>
+    <string name="person_categories_empty">Категорий пока нет. Создайте, чтобы начать.</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">Требует проверки</string>
+    <string name="person_relation_linked_cd">Связанный контакт</string>
+    <string name="relation_ambiguous_toast">Несколько контактов с этим именем — требует проверки</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">Не удалось открыть файл (доступ запрещён или файл перемещён)</string>
+    <string name="backup_restore_not_archive">Недопустимый файл резервной копии JTR (.jtr)</string>
+    <string name="backup_restore_version">Несовместимая версия резервной копии</string>
+    <string name="backup_restore_corrupt">Файл резервной копии повреждён</string>
+    <string name="backup_restore_write_failed">Не удалось восстановить: данные не изменены</string>
 </resources>

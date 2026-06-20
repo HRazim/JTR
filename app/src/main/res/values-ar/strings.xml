@@ -460,4 +460,20 @@
     <string name="note_section_delete_confirm_text">سيُحذف محتواه نهائيًا.</string>
     <string name="note_section_icon_picker_title">اختر أيقونة</string>
     <string name="note_section_reorder_cd">اسحب لإعادة الترتيب</string>
+    <!-- v7.1.5 — manage a person's categories from their profile -->
+    <string name="person_add_to_category">إضافة إلى فئة</string>
+    <string name="person_manage_categories">إدارة الفئات</string>
+    <string name="person_categories_dialog_title">الفئات</string>
+    <string name="person_category_new">فئة جديدة</string>
+    <string name="person_categories_empty">لا توجد فئات بعد. أنشئ واحدة للبدء.</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">للتحقق</string>
+    <string name="person_relation_linked_cd">جهة اتصال مرتبطة</string>
+    <string name="relation_ambiguous_toast">عدة جهات اتصال بهذا الاسم — للتحقق</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">تعذّر فتح الملف (تم رفض الوصول أو نُقل الملف)</string>
+    <string name="backup_restore_not_archive">ملف نسخة JTR الاحتياطية (.jtr) غير صالح</string>
+    <string name="backup_restore_version">إصدار النسخة الاحتياطية غير متوافق</string>
+    <string name="backup_restore_corrupt">ملف النسخة الاحتياطية تالف</string>
+    <string name="backup_restore_write_failed">فشل الاستعادة: لم تتغيّر أي بيانات</string>
 </resources>

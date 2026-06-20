@@ -463,4 +463,20 @@
     <string name="note_section_delete_confirm_text">Isinya akan dihapus permanen.</string>
     <string name="note_section_icon_picker_title">Pilih ikon</string>
     <string name="note_section_reorder_cd">Seret untuk menyusun ulang</string>
+    <!-- v7.1.5 — manage a person's categories from their profile -->
+    <string name="person_add_to_category">Tambahkan ke kategori</string>
+    <string name="person_manage_categories">Kelola kategori</string>
+    <string name="person_categories_dialog_title">Kategori</string>
+    <string name="person_category_new">Kategori baru</string>
+    <string name="person_categories_empty">Belum ada kategori. Buat satu untuk memulai.</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">Perlu diperiksa</string>
+    <string name="person_relation_linked_cd">Kontak tertaut</string>
+    <string name="relation_ambiguous_toast">Beberapa kontak memiliki nama ini — perlu diperiksa</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">Tidak dapat membuka berkas (akses ditolak atau berkas dipindahkan)</string>
+    <string name="backup_restore_not_archive">Berkas cadangan JTR (.jtr) tidak valid</string>
+    <string name="backup_restore_version">Versi cadangan tidak kompatibel</string>
+    <string name="backup_restore_corrupt">Berkas cadangan rusak</string>
+    <string name="backup_restore_write_failed">Pemulihan gagal: tidak ada data yang berubah</string>
 </resources>

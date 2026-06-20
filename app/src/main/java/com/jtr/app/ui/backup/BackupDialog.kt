@@ -109,7 +109,7 @@ fun BackupDialog(
                         color = MaterialTheme.colorScheme.primary
                     )
                     is BackupUiState.Error -> Text(
-                        text = stringResource(R.string.backup_failed),
+                        text = stringResource(s.messageRes),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error
                     )

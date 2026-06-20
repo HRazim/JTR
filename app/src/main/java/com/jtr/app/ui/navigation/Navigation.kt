@@ -33,7 +33,6 @@ import androidx.annotation.StringRes
 import com.jtr.app.R
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.data.repository.CategoryRepository
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.Category
@@ -323,11 +322,7 @@ fun JTRMainScaffold(
             ) { backStackEntry ->
                 val personId = backStackEntry.arguments?.getString("personId") ?: ""
                 var person by remember { mutableStateOf<Person?>(null) }
-                // Paires (id, nom) : les badges de catégories du profil sont CLIQUABLES
-                // et naviguent vers le détail de la catégorie (v5.3.4).
-                var personCategories by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
                 val scope = rememberCoroutineScope()
-                val db = AppDatabase.getInstance(LocalContext.current)
                 val cityFromMap by backStackEntry.savedStateHandle
                     .getStateFlow<String?>("selected_city", null)
                     .collectAsStateWithLifecycle()
@@ -338,14 +333,11 @@ fun JTRMainScaffold(
                     .getStateFlow<Double?>("selected_lng", null)
                     .collectAsStateWithLifecycle()
 
-                // Chargement unique des métadonnées (catégories), puis écoute réactive
-                // de la personne via Flow Room : toute sauvegarde (commitAllEdits) déclenche
-                // une recomposition immédiate sans quitter l'écran.
+                // Écoute réactive de la personne via Flow Room : toute sauvegarde
+                // (commitAllEdits) déclenche une recomposition immédiate sans quitter l'écran.
+                // Les catégories du profil (badges + sélecteur) sont gérées réactivement par
+                // PersonCategoriesViewModel dans l'écran (v7.1.5).
                 LaunchedEffect(personId) {
-                    val categoryIds = db.personCategoryDao().getCategoryIdsForPersonSync(personId)
-                    personCategories = categoryIds.mapNotNull { id ->
-                        db.categoryDao().getById(id)?.name?.let { id to it }
-                    }
                     repository.markAsContacted(personId)
                     repository.observeById(personId).collect { updated ->
                         if (updated != null) person = updated
@@ -354,7 +346,6 @@ fun JTRMainScaffold(
 
                 PersonDetailScreen(
                     person = person,
-                    categories = personCategories,
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToPerson = { id -> navController.navigate(Routes.personDetail(id)) },
                     // Badge de catégorie → détail de la catégorie, instantanément.

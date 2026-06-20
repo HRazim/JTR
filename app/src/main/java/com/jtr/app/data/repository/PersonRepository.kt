@@ -82,14 +82,27 @@ class PersonRepository(context: Context) {
 
     suspend fun getById(id: String): Person? = dao.getById(id)
 
-    /** Résout l'id d'un contact par son nom (relations cliquables). */
-    suspend fun findIdByName(name: String): String? = dao.findIdByName(name)
+    /**
+     * Ids des contacts actifs portant ce nom (v7.1.6) — l'appelant classifie :
+     * 0 = introuvable, 1 = résolu sans ambiguïté, ≥2 = homonymes (« à vérifier »).
+     * Jamais de « devinette » : un nom ambigu ne relie rien. Repli pour les relations
+     * HÉRITÉES uniquement ; les relations récentes portent [DynamicLine.linkedPersonId].
+     */
+    suspend fun findIdsByName(name: String): List<String> = dao.findIdsByName(name.trim())
 
     fun observeById(id: String): kotlinx.coroutines.flow.Flow<Person?> = dao.observeById(id)
 
     /** IDs des catégories d'une personne (version suspend). */
     suspend fun getCategoryIdsForPerson(personId: String): List<String> =
         categoryDao.getCategoryIdsForPersonSync(personId)
+
+    /**
+     * IDs des catégories d'une personne — Flow RÉACTIF (table de jointure).
+     * Pilote les badges de la fiche et le sélecteur « Gérer les catégories » :
+     * toute insertion/suppression de lien se reflète immédiatement dans l'UI.
+     */
+    fun observeCategoryIdsForPerson(personId: String): Flow<List<String>> =
+        categoryDao.getCategoryIdsForPerson(personId)
 
     // =========================================================
     // SOCIAL LINKS
@@ -216,56 +229,64 @@ class PersonRepository(context: Context) {
 
     /**
      * Synchronise les fiches LIÉES après la sauvegarde de [person], dans UNE
-     * transaction Room :
+     * transaction Room — par IDENTIFIANT STABLE, jamais par nom (v7.1.6) :
      *  - chaque relation AJOUTÉE (présente maintenant, absente de
      *    [previousLines]) insère la relation INVERSE — type résolu par
-     *    [mirrorRelationLabel] — sur la fiche cible, résolue par NOM comme les
-     *    liens cliquables ([PersonDao.findIdByName]) ;
-     *  - chaque relation SUPPRIMÉE nettoie instantanément son miroir (même nom
-     *    + même type inverse) — aucune donnée fantôme.
+     *    [mirrorRelationLabel] — sur la fiche cible, identifiée par
+     *    [DynamicLine.linkedPersonId] (repli SANS AMBIGUÏTÉ par nom pour l'hérité) ;
+     *  - chaque relation SUPPRIMÉE nettoie instantanément son miroir (même id
+     *    source + même type inverse) — aucune donnée fantôme.
      *
-     * Idempotent : un miroir déjà présent n'est jamais dupliqué. Les valeurs ne
-     * résolvant aucun contact (nom libre) sont ignorées silencieusement.
+     * Idempotent : un miroir déjà présent n'est jamais dupliqué. Une cible introuvable
+     * ou un nom AMBIGU (homonymes) n'engendre AUCUN miroir (jamais de faux lien).
      */
     suspend fun syncMirrorRelations(person: Person, previousLines: List<DynamicLine>?) {
         val selfName = person.fullName.trim()
         if (selfName.isBlank()) return
 
-        fun keyOf(line: DynamicLine) = line.value.trim().lowercase() to line.label
-        val current = person.relationLines.orEmpty().filter { it.value.isNotBlank() }
-        val previous = previousLines.orEmpty().filter { it.value.isNotBlank() }
-        val currentKeys = current.map(::keyOf).toSet()
-        val previousKeys = previous.map(::keyOf).toSet()
-        val added = current.filter { keyOf(it) !in previousKeys }
-        val removed = previous.filter { keyOf(it) !in currentKeys }
+        // v7.1.6 — la CIBLE d'une relation est son id STABLE, jamais son nom : linkedPersonId
+        // en priorité ; repli SANS AMBIGUÏTÉ par nom (un seul homonyme) pour l'hérité ; jamais
+        // d'auto-relation. Un nom ambigu (≥2 homonymes) ou introuvable ne génère AUCUN miroir.
+        suspend fun targetIdOf(line: DynamicLine): String? {
+            val id = line.linkedPersonId ?: dao.findIdsByName(line.value.trim()).singleOrNull()
+            return id?.takeIf { it != person.id }
+        }
+        // Une relation est identifiée par (idCible, label) — pas par le nom affiché.
+        suspend fun keysOf(lines: List<DynamicLine>): Set<Pair<String, String>> =
+            lines.filter { it.value.isNotBlank() || it.linkedPersonId != null }
+                .mapNotNull { l -> targetIdOf(l)?.let { it to l.label } }
+                .toSet()
+
+        val currentKeys = keysOf(person.relationLines.orEmpty())
+        val previousKeys = keysOf(previousLines.orEmpty())
+        val added = currentKeys - previousKeys
+        val removed = previousKeys - currentKeys
         if (added.isEmpty() && removed.isEmpty()) return
 
+        // Le miroir sur la fiche cible est lui aussi identifié par l'id SOURCE (person.id),
+        // avec repli nom pour les miroirs hérités → robuste au renommage des deux côtés.
+        fun isMirrorOf(it: DynamicLine, mirrorLabel: String): Boolean =
+            it.label == mirrorLabel && (it.linkedPersonId == person.id ||
+                (it.linkedPersonId == null && it.value.trim().equals(selfName, ignoreCase = true)))
+
         db.withTransaction {
-            added.forEach { line ->
-                val targetId = dao.findIdByName(line.value.trim()) ?: return@forEach
-                if (targetId == person.id) return@forEach
+            added.forEach { (targetId, label) ->
                 val target = dao.getById(targetId) ?: return@forEach
-                val mirrorLabel = mirrorRelationLabel(line.label)
+                val mirrorLabel = mirrorRelationLabel(label)
                 val lines = target.relationLines.orEmpty()
-                val alreadyMirrored = lines.any {
-                    it.value.trim().equals(selfName, ignoreCase = true) && it.label == mirrorLabel
-                }
-                if (!alreadyMirrored) {
+                if (lines.none { isMirrorOf(it, mirrorLabel) }) {
                     dao.update(target.copy(
-                        relationLines = lines + DynamicLine(value = selfName, label = mirrorLabel),
+                        relationLines = lines + DynamicLine(
+                            value = selfName, label = mirrorLabel, linkedPersonId = person.id),
                         updatedAt = System.currentTimeMillis()
                     ))
                 }
             }
-            removed.forEach { line ->
-                val targetId = dao.findIdByName(line.value.trim()) ?: return@forEach
-                if (targetId == person.id) return@forEach
+            removed.forEach { (targetId, label) ->
                 val target = dao.getById(targetId) ?: return@forEach
-                val mirrorLabel = mirrorRelationLabel(line.label)
+                val mirrorLabel = mirrorRelationLabel(label)
                 val original = target.relationLines.orEmpty()
-                val filtered = original.filterNot {
-                    it.value.trim().equals(selfName, ignoreCase = true) && it.label == mirrorLabel
-                }
+                val filtered = original.filterNot { isMirrorOf(it, mirrorLabel) }
                 if (filtered.size != original.size) {
                     dao.update(target.copy(
                         relationLines = filtered.takeIf { it.isNotEmpty() },
@@ -292,7 +313,7 @@ class PersonRepository(context: Context) {
     suspend fun propagateRelationNameChange(personId: String, oldName: String, newName: String) {
         val old = oldName.trim()
         val new = newName.trim()
-        if (old.isBlank() || new.isBlank() || old.equals(new, ignoreCase = true)) return
+        if (new.isBlank() || old.equals(new, ignoreCase = true)) return
 
         db.withTransaction {
             dao.getAllSync().forEach { other ->
@@ -300,7 +321,12 @@ class PersonRepository(context: Context) {
                 val lines = other.relationLines ?: return@forEach
                 var changed = false
                 val rewritten = lines.map { line ->
-                    if (line.value.trim().equals(old, ignoreCase = true)) {
+                    // v7.1.6 — la cible est identifiée par l'id (précis, sûr face aux homonymes) ;
+                    // repli sur le nom uniquement pour les relations HÉRITÉES (sans linkedPersonId).
+                    val pointsToRenamed = line.linkedPersonId == personId ||
+                        (line.linkedPersonId == null && old.isNotBlank() &&
+                            line.value.trim().equals(old, ignoreCase = true))
+                    if (pointsToRenamed && line.value != new) {
                         changed = true
                         line.copy(value = new)
                     } else line

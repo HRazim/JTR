@@ -460,4 +460,20 @@
     <string name="note_section_delete_confirm_text">Il suo contenuto sarà eliminato definitivamente.</string>
     <string name="note_section_icon_picker_title">Scegli un\'icona</string>
     <string name="note_section_reorder_cd">Trascina per riordinare</string>
+    <!-- v7.1.5 — manage a person's categories from their profile -->
+    <string name="person_add_to_category">Aggiungi a una categoria</string>
+    <string name="person_manage_categories">Gestisci categorie</string>
+    <string name="person_categories_dialog_title">Categorie</string>
+    <string name="person_category_new">Nuova categoria</string>
+    <string name="person_categories_empty">Ancora nessuna categoria. Creane una per iniziare.</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">Da verificare</string>
+    <string name="person_relation_linked_cd">Contatto collegato</string>
+    <string name="relation_ambiguous_toast">Più contatti hanno questo nome — da verificare</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">Impossibile aprire il file (accesso negato o file spostato)</string>
+    <string name="backup_restore_not_archive">File di backup JTR (.jtr) non valido</string>
+    <string name="backup_restore_version">Versione di backup incompatibile</string>
+    <string name="backup_restore_corrupt">File di backup danneggiato</string>
+    <string name="backup_restore_write_failed">Ripristino non riuscito: nessun dato modificato</string>
 </resources>

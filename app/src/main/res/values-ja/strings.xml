@@ -471,4 +471,20 @@
     <string name="note_section_delete_confirm_text">内容は完全に削除されます。</string>
     <string name="note_section_icon_picker_title">アイコンを選択</string>
     <string name="note_section_reorder_cd">ドラッグして並べ替え</string>
+    <!-- v7.1.5 — manage a person's categories from their profile -->
+    <string name="person_add_to_category">カテゴリーに追加</string>
+    <string name="person_manage_categories">カテゴリーを管理</string>
+    <string name="person_categories_dialog_title">カテゴリー</string>
+    <string name="person_category_new">新しいカテゴリー</string>
+    <string name="person_categories_empty">カテゴリーがまだありません。作成して始めましょう。</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">要確認</string>
+    <string name="person_relation_linked_cd">リンクされた連絡先</string>
+    <string name="relation_ambiguous_toast">同じ名前の連絡先が複数あります — 要確認</string>
+    <!-- v7.1.8 — messages de restauration distincts -->
+    <string name="backup_restore_unreadable">ファイルを開けません（アクセス拒否またはファイルが移動）</string>
+    <string name="backup_restore_not_archive">無効な JTR バックアップファイル（.jtr）</string>
+    <string name="backup_restore_version">互換性のないバックアップバージョン</string>
+    <string name="backup_restore_corrupt">バックアップファイルが破損しています</string>
+    <string name="backup_restore_write_failed">復元に失敗しました：データは変更されていません</string>
 </resources>
