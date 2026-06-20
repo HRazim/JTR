@@ -598,19 +598,28 @@ fun PersonDetailScreen(
                     }
                 if (dates != null) DatesBlock(lines = dates)
 
-                // 3. Relations (règle 2 max) — noms cliquables → contact lié
+                // 3. Relations (règle 2 max) — cliquables → contact lié PAR IDENTIFIANT (v7.1.6).
+                // La navigation utilise linkedPersonId (repli SANS AMBIGUÏTÉ par nom pour l'hérité) :
+                // jamais d'ouverture devinée. Nom ambigu → « à vérifier » ; introuvable → message.
                 val relations = person.relationLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
                 if (relations != null) {
                     val notFoundMsg = stringResource(R.string.relation_not_found)
+                    val ambiguousMsg = stringResource(R.string.relation_ambiguous_toast)
                     ContactLinesBlock(
                         icon = Icons.Default.Group,
                         sectionLabel = stringResource(R.string.section_relations),
                         lines = relations,
                         types = FieldTypes.RELATION,
-                        onValueClick = { name ->
-                            editVm.findPersonIdByName(name) { id ->
-                                if (id != null && id != person.id) onNavigateToPerson(id)
-                                else Toast.makeText(context, notFoundMsg, Toast.LENGTH_SHORT).show()
+                        onLineClick = { line ->
+                            editVm.resolveRelationTarget(line) { target ->
+                                when (target) {
+                                    is RelationTarget.Resolved ->
+                                        if (target.personId != person.id) onNavigateToPerson(target.personId)
+                                    RelationTarget.Ambiguous ->
+                                        Toast.makeText(context, ambiguousMsg, Toast.LENGTH_SHORT).show()
+                                    RelationTarget.NotFound ->
+                                        Toast.makeText(context, notFoundMsg, Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }
                     )
@@ -627,9 +636,9 @@ fun PersonDetailScreen(
                         lines = phones,
                         types = FieldTypes.PHONE,
                         // Numéro cliquable → composition d'appel native.
-                        onValueClick = { number ->
+                        onLineClick = { line ->
                             context.startActivity(
-                                Intent(Intent.ACTION_DIAL, Uri.parse("tel:${number.trim()}")))
+                                Intent(Intent.ACTION_DIAL, Uri.parse("tel:${line.value.trim()}")))
                             editVm.markAsContacted()
                         }
                     )
@@ -644,9 +653,9 @@ fun PersonDetailScreen(
                         lines = emails,
                         types = FieldTypes.EMAIL,
                         // Email cliquable → messagerie native.
-                        onValueClick = { address ->
+                        onLineClick = { line ->
                             context.startActivity(
-                                Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${address.trim()}")))
+                                Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${line.value.trim()}")))
                             editVm.markAsContacted()
                         }
                     )
@@ -1404,7 +1413,7 @@ private fun ContactLinesBlock(
     sectionLabel: String,
     lines: List<DynamicLine>,
     types: List<TypeOption>,
-    onValueClick: ((String) -> Unit)? = null
+    onLineClick: ((DynamicLine) -> Unit)? = null
 ) {
     var showAll by remember { mutableStateOf(false) }
     val visible = if (lines.size > 2 && !showAll) lines.take(2) else lines
@@ -1427,12 +1436,13 @@ private fun ContactLinesBlock(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.widthIn(min = 56.dp))
-                    if (onValueClick != null) {
+                    if (onLineClick != null) {
                         // Valeur cliquable (relation/téléphone/email) — couleur primaire,
-                        // sans soulignement : l'interaction se découvre au clic.
+                        // sans soulignement : l'interaction se découvre au clic. La relation
+                        // navigue par identifiant (v7.1.6) : le clic transmet la LIGNE entière.
                         Text(line.value, style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.weight(1f).clickable { onValueClick(line.value) })
+                            modifier = Modifier.weight(1f).clickable { onLineClick(line) })
                     } else {
                         Text(line.value, style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.weight(1f))

@@ -466,4 +466,8 @@
     <string name="person_categories_dialog_title">카테고리</string>
     <string name="person_category_new">새 카테고리</string>
     <string name="person_categories_empty">아직 카테고리가 없습니다. 하나 만들어 시작하세요.</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">확인 필요</string>
+    <string name="person_relation_linked_cd">연결된 연락처</string>
+    <string name="relation_ambiguous_toast">이 이름의 연락처가 여러 명입니다 — 확인 필요</string>
 </resources>

@@ -466,4 +466,8 @@
     <string name="person_categories_dialog_title">الفئات</string>
     <string name="person_category_new">فئة جديدة</string>
     <string name="person_categories_empty">لا توجد فئات بعد. أنشئ واحدة للبدء.</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">للتحقق</string>
+    <string name="person_relation_linked_cd">جهة اتصال مرتبطة</string>
+    <string name="relation_ambiguous_toast">عدة جهات اتصال بهذا الاسم — للتحقق</string>
 </resources>

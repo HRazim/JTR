@@ -477,4 +477,8 @@
     <string name="person_categories_dialog_title">カテゴリー</string>
     <string name="person_category_new">新しいカテゴリー</string>
     <string name="person_categories_empty">カテゴリーがまだありません。作成して始めましょう。</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">要確認</string>
+    <string name="person_relation_linked_cd">リンクされた連絡先</string>
+    <string name="relation_ambiguous_toast">同じ名前の連絡先が複数あります — 要確認</string>
 </resources>

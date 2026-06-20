@@ -121,9 +121,10 @@ class AddPersonViewModel(
     private val _relationLines = MutableStateFlow(listOf(DynamicLine(label = FieldTypes.RELATION_FRIEND)))
     val relationLines: StateFlow<List<DynamicLine>> = _relationLines.asStateFlow()
 
-    /** Noms des contacts existants — alimente l'autocomplétion des relations. */
-    val relationSuggestions: StateFlow<List<String>> = repository.getAllActive()
-        .map { list -> list.map { it.fullName } }
+    /** Contacts (id + nom) existants — alimente l'autocomplétion des relations.
+     *  v7.1.6 : la sélection stocke l'id (clé stable) dans linkedPersonId, pas le nom. */
+    val relationSuggestions: StateFlow<List<PersonRef>> = repository.getAllActive()
+        .map { list -> list.map { PersonRef(it.id, it.fullName) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun onNameDetailsChanged(v: NameDetails) { _nameDetails.value = v; markDirty() }

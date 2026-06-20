@@ -466,4 +466,8 @@
     <string name="person_categories_dialog_title">Категории</string>
     <string name="person_category_new">Новая категория</string>
     <string name="person_categories_empty">Категорий пока нет. Создайте, чтобы начать.</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">Требует проверки</string>
+    <string name="person_relation_linked_cd">Связанный контакт</string>
+    <string name="relation_ambiguous_toast">Несколько контактов с этим именем — требует проверки</string>
 </resources>

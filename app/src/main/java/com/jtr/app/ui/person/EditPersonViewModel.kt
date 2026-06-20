@@ -141,12 +141,13 @@ class EditPersonViewModel(
     fun onDateLinesChanged(v: List<DynamicLine>) { _dateLines.value = v; markDirty() }
     fun onRelationLinesChanged(v: List<DynamicLine>) { _relationLines.value = v; markDirty() }
 
-    /** Noms des autres contacts — alimente l'autocomplétion des relations. */
+    /** Contacts (id + nom) des AUTRES fiches — alimente l'autocomplétion des relations.
+     *  v7.1.6 : on expose l'id (clé stable) en plus du nom affiché. */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val relationSuggestions: StateFlow<List<String>> = _person
+    val relationSuggestions: StateFlow<List<PersonRef>> = _person
         .flatMapLatest { p ->
             repository.getAllActive().map { list ->
-                list.filter { it.id != p?.id }.map { it.fullName }
+                list.filter { it.id != p?.id }.map { PersonRef(it.id, it.fullName) }
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -182,12 +183,33 @@ class EditPersonViewModel(
     }
 
     /**
-     * Résout (en arrière-plan, Coroutine) l'id d'un contact par son nom, pour les
-     * relations cliquables. [onResult] est rappelé sur le thread principal.
+     * Résout la CIBLE d'une relation cliquable par IDENTIFIANT STABLE (v7.1.6), jamais
+     * par nom : [DynamicLine.linkedPersonId] en priorité (vérifie que la fiche existe
+     * toujours) ; sinon, repli pour l'hérité — un seul homonyme ⇒ [RelationTarget.Resolved],
+     * plusieurs ⇒ [RelationTarget.Ambiguous] (« à vérifier », aucune navigation devinée),
+     * aucun ⇒ [RelationTarget.NotFound]. [onResult] est rappelé sur le thread principal.
      */
-    fun findPersonIdByName(name: String, onResult: (String?) -> Unit) {
-        if (name.isBlank()) { onResult(null); return }
-        viewModelScope.launch { onResult(repository.findIdByName(name.trim())) }
+    fun resolveRelationTarget(line: DynamicLine, onResult: (RelationTarget) -> Unit) {
+        viewModelScope.launch {
+            val linked = line.linkedPersonId
+            if (linked != null) {
+                onResult(
+                    if (repository.getById(linked) != null) RelationTarget.Resolved(linked)
+                    else RelationTarget.NotFound
+                )
+                return@launch
+            }
+            val name = line.value.trim()
+            if (name.isBlank()) { onResult(RelationTarget.NotFound); return@launch }
+            val ids = repository.findIdsByName(name)
+            onResult(
+                when (ids.size) {
+                    0 -> RelationTarget.NotFound
+                    1 -> RelationTarget.Resolved(ids.first())
+                    else -> RelationTarget.Ambiguous
+                }
+            )
+        }
     }
 
     /** Bascule le favori instantanément en base (sans toucher à updatedAt). */

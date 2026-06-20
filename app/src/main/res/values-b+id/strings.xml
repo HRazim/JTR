@@ -469,4 +469,8 @@
     <string name="person_categories_dialog_title">Kategori</string>
     <string name="person_category_new">Kategori baru</string>
     <string name="person_categories_empty">Belum ada kategori. Buat satu untuk memulai.</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">Perlu diperiksa</string>
+    <string name="person_relation_linked_cd">Kontak tertaut</string>
+    <string name="relation_ambiguous_toast">Beberapa kontak memiliki nama ini — perlu diperiksa</string>
 </resources>

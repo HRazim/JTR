@@ -492,4 +492,8 @@
     <string name="person_categories_dialog_title">Categories</string>
     <string name="person_category_new">New category</string>
     <string name="person_categories_empty">No categories yet. Create one to get started.</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">Needs review</string>
+    <string name="person_relation_linked_cd">Linked contact</string>
+    <string name="relation_ambiguous_toast">Several contacts share this name — needs review</string>
 </resources>

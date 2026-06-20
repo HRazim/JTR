@@ -477,4 +477,8 @@
     <string name="person_categories_dialog_title">Catégories</string>
     <string name="person_category_new">Nouvelle catégorie</string>
     <string name="person_categories_empty">Aucune catégorie pour le moment. Créez-en une pour commencer.</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">À vérifier</string>
+    <string name="person_relation_linked_cd">Contact lié</string>
+    <string name="relation_ambiguous_toast">Plusieurs contacts portent ce nom — à vérifier</string>
 </resources>

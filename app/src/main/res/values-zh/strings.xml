@@ -477,4 +477,8 @@
     <string name="person_categories_dialog_title">分类</string>
     <string name="person_category_new">新建分类</string>
     <string name="person_categories_empty">暂无分类。创建一个开始吧。</string>
+    <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
+    <string name="person_relation_ambiguous">待核对</string>
+    <string name="person_relation_linked_cd">已关联联系人</string>
+    <string name="relation_ambiguous_toast">有多个同名联系人 — 待核对</string>
 </resources>

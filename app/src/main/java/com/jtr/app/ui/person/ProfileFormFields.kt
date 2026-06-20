@@ -78,7 +78,7 @@ fun ProfileFormFields(
     onDateLinesChange: (List<DynamicLine>) -> Unit,
     relationLines: List<DynamicLine>,
     onRelationLinesChange: (List<DynamicLine>) -> Unit,
-    relationSuggestions: List<String>,
+    relationSuggestions: List<PersonRef>,
     city: String,
     cityHasCoords: Boolean,
     onCityChange: (String) -> Unit,
@@ -154,13 +154,8 @@ fun ProfileFormFields(
                 DateLinesSection(lines = dateLines, onLinesChange = onDateLinesChange)
 
                 // 5.2 Relations (accordéon + autocomplétion des contacts JTR)
-                TextLinesSection(
-                    title = stringResource(R.string.section_relations),
-                    leadingIcon = Icons.Default.Group,
-                    addLabel = stringResource(R.string.add_relation),
-                    valueLabel = stringResource(R.string.common_name_label),
-                    keyboardType = KeyboardType.Text,
-                    types = FieldTypes.RELATION,
+                // v7.1.6 : sélectionner une suggestion STOCKE l'id (linkedPersonId), pas le nom.
+                RelationLinesSection(
                     lines = relationLines,
                     onLinesChange = onRelationLinesChange,
                     suggestions = relationSuggestions
@@ -581,7 +576,6 @@ private fun TextLinesSection(
     types: List<TypeOption>,
     lines: List<DynamicLine>,
     onLinesChange: (List<DynamicLine>) -> Unit,
-    suggestions: List<String>? = null,
     validator: ((String) -> String?)? = null
 ) {
     val focusManager = LocalFocusManager.current
@@ -611,11 +605,98 @@ private fun TextLinesSection(
                     onLinesChange(lines.map { if (it.id == line.id) it.copy(label = k) else it })
                 },
                 onDelete = { onLinesChange(lines.filter { it.id != line.id }) },
-                onImeNext = { focusManager.moveFocus(FocusDirection.Down) },
-                suggestions = suggestions
+                onImeNext = { focusManager.moveFocus(FocusDirection.Down) }
             )
         }
         AddLineButton(addLabel) { onLinesChange(lines + DynamicLine(label = types.first().key)) }
+    }
+}
+
+/**
+ * Section RELATIONS (v7.1.6) — autocomplétion sur les CONTACTS (id + nom) : choisir une
+ * suggestion stocke l'identifiant STABLE dans [DynamicLine.linkedPersonId] (jamais le nom),
+ * tandis qu'une saisie manuelle défait le lien (texte libre). Un nom héritage AMBIGU
+ * (plusieurs homonymes, sans id) est signalé « à vérifier » pour invitation à re-sélectionner.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RelationLinesSection(
+    lines: List<DynamicLine>,
+    onLinesChange: (List<DynamicLine>) -> Unit,
+    suggestions: List<PersonRef>
+) {
+    val focusManager = LocalFocusManager.current
+    AccordionSection(
+        title = stringResource(R.string.section_relations),
+        leadingIcon = Icons.Default.Group,
+        initiallyExpanded = lines.any { it.value.isNotBlank() }
+    ) {
+        lines.forEach { line ->
+            var showCustomDialog by remember { mutableStateOf(false) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                TypeDropdown(
+                    types = FieldTypes.RELATION,
+                    selectedKey = line.label,
+                    onSelect = { k ->
+                        onLinesChange(lines.map { if (it.id == line.id) it.copy(label = k) else it })
+                    },
+                    onCustomRequested = { showCustomDialog = true }
+                )
+                RelationValueField(
+                    value = line.value,
+                    linkedPersonId = line.linkedPersonId,
+                    suggestions = suggestions,
+                    onPick = { ref ->
+                        onLinesChange(lines.map {
+                            if (it.id == line.id) it.copy(value = ref.name, linkedPersonId = ref.id) else it
+                        })
+                    },
+                    onTextChange = { nv ->
+                        // Saisie manuelle : la valeur n'identifie plus un contact → on défait le lien.
+                        onLinesChange(lines.map {
+                            if (it.id == line.id) it.copy(value = nv, linkedPersonId = null) else it
+                        })
+                    },
+                    onImeNext = { focusManager.moveFocus(FocusDirection.Down) },
+                    modifier = Modifier.weight(1f)
+                )
+                if (lines.size > 1) {
+                    IconButton(onClick = { onLinesChange(lines.filter { it.id != line.id }) }) {
+                        Icon(Icons.Default.RemoveCircleOutline,
+                            contentDescription = stringResource(R.string.field_remove_cd),
+                            tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+            // « À vérifier » : relation héritée non liée dont le nom désigne PLUSIEURS contacts.
+            val ambiguous = line.linkedPersonId == null && line.value.isNotBlank() &&
+                suggestions.count { it.name.equals(line.value.trim(), ignoreCase = true) } > 1
+            if (ambiguous) {
+                Text(
+                    stringResource(R.string.person_relation_ambiguous),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+                )
+            }
+            if (showCustomDialog) {
+                CustomLabelDialog(
+                    initial = FieldTypes.RELATION.firstOrNull { it.key == line.label }?.let { "" } ?: line.label,
+                    onConfirm = { newLabel ->
+                        onLinesChange(lines.map { if (it.id == line.id) it.copy(label = newLabel) else it })
+                        showCustomDialog = false
+                    },
+                    onDismiss = { showCustomDialog = false }
+                )
+            }
+        }
+        AddLineButton(stringResource(R.string.add_relation)) {
+            onLinesChange(lines + DynamicLine(label = FieldTypes.RELATION.first().key))
+        }
     }
 }
 
@@ -730,7 +811,6 @@ private fun DynamicLineRow(
     onTypeChange: (String) -> Unit,
     onDelete: () -> Unit,
     onImeNext: () -> Unit,
-    suggestions: List<String>? = null,
     notify: Boolean? = null,
     onNotifyToggle: (() -> Unit)? = null
 ) {
@@ -758,7 +838,6 @@ private fun DynamicLineRow(
             keyboardType = keyboardType,
             visualTransformation = visualTransformation,
             onImeNext = onImeNext,
-            suggestions = suggestions,
             modifier = Modifier.weight(1f)
         )
 
@@ -791,7 +870,7 @@ private fun DynamicLineRow(
     }
 }
 
-/** Champ de valeur (carte souple), en autocomplétion si [suggestions] est fourni. */
+/** Champ de valeur simple (carte souple) — téléphones, emails, dates. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun ValueField(
@@ -804,7 +883,6 @@ private fun ValueField(
     keyboardType: KeyboardType,
     visualTransformation: VisualTransformation,
     onImeNext: () -> Unit,
-    suggestions: List<String>?,
     modifier: Modifier = Modifier
 ) {
     // Auto-scroll : à la prise de focus, le champ (téléphone, date numérique, email…)
@@ -824,36 +902,52 @@ private fun ValueField(
     // le libellé du champ (le libellé flottant est supprimé — habillage « carte souple »).
     val hint = placeholder ?: valueLabel
 
-    val field: @Composable (Modifier) -> Unit = { fieldModifier ->
-        TextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = { Text(hint) },
-            singleLine = true,
-            isError = isError,
-            supportingText = if (isError && errorMessage != null) {
-                { Text(errorMessage) }
-            } else null,
-            shape = RoundedCornerShape(16.dp),
-            colors = softFieldColors(),
-            visualTransformation = visualTransformation,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onNext = { onImeNext() }),
-            modifier = fieldModifier
-        )
-    }
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = { Text(hint) },
+        singleLine = true,
+        isError = isError,
+        supportingText = if (isError && errorMessage != null) {
+            { Text(errorMessage) }
+        } else null,
+        shape = RoundedCornerShape(16.dp),
+        colors = softFieldColors(),
+        visualTransformation = visualTransformation,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
+        keyboardActions = KeyboardActions(onNext = { onImeNext() }),
+        modifier = modifier.then(focusScrollModifier)
+    )
+}
 
-    if (suggestions == null) {
-        field(modifier.then(focusScrollModifier))
-        return
-    }
+/**
+ * Champ de valeur d'une RELATION (v7.1.6) : autocomplétion sur les CONTACTS — choisir une
+ * suggestion ([onPick]) stocke l'id stable ; toute saisie manuelle ([onTextChange]) défait
+ * le lien. Une coche discrète indique qu'un contact est bien identifié (linkedPersonId).
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun RelationValueField(
+    value: String,
+    linkedPersonId: String?,
+    suggestions: List<PersonRef>,
+    onPick: (PersonRef) -> Unit,
+    onTextChange: (String) -> Unit,
+    onImeNext: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val bringIntoView = remember { BringIntoViewRequester() }
+    val fieldScope = rememberCoroutineScope()
+    val focusScrollModifier = Modifier
+        .bringIntoViewRequester(bringIntoView)
+        .onFocusEvent { if (it.isFocused) fieldScope.launch { bringIntoView.bringIntoView() } }
 
-    // Autocomplétion : filtre les contacts existants, sans bloquer une saisie libre.
+    val hint = stringResource(R.string.common_name_label)
     var expanded by remember { mutableStateOf(false) }
     val matches = remember(value, suggestions) {
         if (value.isBlank()) emptyList()
         else suggestions.filter {
-            it.contains(value, ignoreCase = true) && !it.equals(value, ignoreCase = true)
+            it.name.contains(value, ignoreCase = true) && !it.name.equals(value, ignoreCase = true)
         }.take(5)
     }
     ExposedDropdownMenuBox(
@@ -863,12 +957,20 @@ private fun ValueField(
     ) {
         TextField(
             value = value,
-            onValueChange = { onValueChange(it); expanded = true },
+            onValueChange = { onTextChange(it); expanded = true },
             placeholder = { Text(hint) },
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
             colors = softFieldColors(),
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
+            trailingIcon = if (linkedPersonId != null) {
+                {
+                    Icon(Icons.Default.CheckCircle,
+                        contentDescription = stringResource(R.string.person_relation_linked_cd),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp))
+                }
+            } else null,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { onImeNext() }),
             modifier = Modifier
                 .fillMaxWidth()
@@ -879,10 +981,10 @@ private fun ValueField(
             expanded = expanded && matches.isNotEmpty(),
             onDismissRequest = { expanded = false }
         ) {
-            matches.forEach { suggestion ->
+            matches.forEach { ref ->
                 DropdownMenuItem(
-                    text = { Text(suggestion) },
-                    onClick = { onValueChange(suggestion); expanded = false },
+                    text = { Text(ref.name) },
+                    onClick = { onPick(ref); expanded = false },
                     leadingIcon = { Icon(Icons.Default.Person, null, Modifier.size(18.dp)) }
                 )
             }
