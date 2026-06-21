@@ -21,6 +21,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -38,7 +39,8 @@ import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.utils.matchesAllTokens
 import com.jtr.app.utils.searchTokens
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.util.Locale
 
 /**
@@ -873,7 +875,7 @@ private fun DynamicLineRow(
 }
 
 /** Champ de valeur simple (carte souple) — téléphones, emails, dates. */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ValueField(
     value: String,
@@ -887,19 +889,6 @@ private fun ValueField(
     onImeNext: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Auto-scroll : à la prise de focus, le champ (téléphone, date numérique, email…)
-    // est ramené dans la zone visible au-dessus du clavier. Sans cela, les champs du
-    // bas du formulaire restaient masqués « une fois sur deux » à l'ouverture de l'IME.
-    val bringIntoView = remember { BringIntoViewRequester() }
-    val fieldScope = rememberCoroutineScope()
-    val focusScrollModifier = Modifier
-        .bringIntoViewRequester(bringIntoView)
-        .onFocusEvent { focusState ->
-            if (focusState.isFocused) {
-                fieldScope.launch { bringIntoView.bringIntoView() }
-            }
-        }
-
     // Placeholder visible quand le champ est vide : masque de date si fourni, sinon
     // le libellé du champ (le libellé flottant est supprimé — habillage « carte souple »).
     val hint = placeholder ?: valueLabel
@@ -918,7 +907,8 @@ private fun ValueField(
         visualTransformation = visualTransformation,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(onNext = { onImeNext() }),
-        modifier = modifier.then(focusScrollModifier)
+        // Auto-scroll IME-synchronisé PARTAGÉ (v7.1.11) — source unique, plus de vide fantôme.
+        modifier = modifier.bringIntoViewOnFocus()
     )
 }
 
@@ -927,7 +917,7 @@ private fun ValueField(
  * suggestion ([onPick]) stocke l'id stable ; toute saisie manuelle ([onTextChange]) défait
  * le lien. Une coche discrète indique qu'un contact est bien identifié (linkedPersonId).
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RelationValueField(
     value: String,
@@ -938,12 +928,6 @@ private fun RelationValueField(
     onImeNext: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val bringIntoView = remember { BringIntoViewRequester() }
-    val fieldScope = rememberCoroutineScope()
-    val focusScrollModifier = Modifier
-        .bringIntoViewRequester(bringIntoView)
-        .onFocusEvent { if (it.isFocused) fieldScope.launch { bringIntoView.bringIntoView() } }
-
     val hint = stringResource(R.string.common_name_label)
     var expanded by remember { mutableStateOf(false) }
     // Autocomplétion via le moteur de recherche CENTRAL (multi-mots, accent/casse-
@@ -980,7 +964,9 @@ private fun RelationValueField(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(MenuAnchorType.PrimaryEditable)
-                .then(focusScrollModifier)
+                // Auto-scroll IME-synchronisé PARTAGÉ (v7.1.11) — même source unique que les
+                // autres champs mono-ligne ; plus de copie locale du bringIntoView one-shot.
+                .bringIntoViewOnFocus()
         )
         ExposedDropdownMenu(
             expanded = expanded && matches.isNotEmpty(),
@@ -1086,12 +1072,27 @@ private fun CustomLabelDialog(
 @Composable
 internal fun Modifier.bringIntoViewOnFocus(): Modifier {
     val requester = remember { BringIntoViewRequester() }
-    val scope = rememberCoroutineScope()
+    val imeInsets = WindowInsets.ime
+    val density = LocalDensity.current
+    var isFocused by remember { mutableStateOf(false) }
+    // SOURCE UNIQUE du recentrage clavier (v7.1.11) — motif IME-SYNCHRONISÉ (généralisé depuis
+    // la note v7.1.3). Tant que le champ est focalisé, on rejoue bringIntoView à CHAQUE palier de
+    // l'inset clavier : l'émission INITIALE de snapshotFlow couvre « clavier déjà ouvert » (focus
+    // déplacé via Suivant), le flux ANIMÉ couvre « clavier qui monte ». collectLatest annule le
+    // bringIntoView animé en cours à chaque nouvelle valeur d'inset → le champ « monte avec » le
+    // clavier et se cale juste au-dessus. Plus de scroll one-shot PÉRIMÉ tiré au focus avant la fin
+    // de l'animation (cause du vide fantôme position-dépendant). Spec ANIMÉ par défaut (jamais snap).
+    // ⚠️ Amène TOUT le champ dans la vue → réservé aux champs MONO-LIGNE ; le contenu multi-ligne
+    // d'une note garde sa spécialisation (bande basse/curseur) dans NoteContentField.
+    LaunchedEffect(isFocused) {
+        if (!isFocused) return@LaunchedEffect
+        snapshotFlow { imeInsets.getBottom(density) }
+            .distinctUntilChanged()
+            .collectLatest { requester.bringIntoView() }
+    }
     return this
         .bringIntoViewRequester(requester)
-        .onFocusEvent { focusState ->
-            if (focusState.isFocused) scope.launch { requester.bringIntoView() }
-        }
+        .onFocusEvent { isFocused = it.isFocused }
 }
 
 /** Affordance d'ajout discrète : « + » + court libellé (v7.0.2). */

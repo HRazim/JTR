@@ -53,6 +53,7 @@ import com.jtr.app.security.SecurityAuthDialog
 import com.jtr.app.security.SecuritySetupDialog
 import com.jtr.app.security.SecurityViewModel
 import com.jtr.app.ui.backup.BackupDialog
+import com.jtr.app.ui.navigation.nestedScreenContentInsets
 import com.jtr.app.ui.theme.ThemePreset
 import com.jtr.app.utils.LocaleManager
 import com.jtr.app.utils.LocationUtils
@@ -315,10 +316,11 @@ fun SettingsScreen(
         // Fond = `background` teinté du thème, IDENTIQUE à la barre de navigation
         // globale → aucune couture/bande grise entre le contenu et la barre.
         containerColor = MaterialTheme.colorScheme.background,
-        // Scaffold IMBRIQUÉ dans JTRMainScaffold : ne pas réappliquer les insets
-        // système (la barre de navigation globale les gère déjà), sinon une bande
-        // grise « fantôme » apparaît et coupe la dernière carte.
-        contentWindowInsets = WindowInsets(0)
+        // Scaffold IMBRIQUÉ dans JTRMainScaffold : haut/bas gérés globalement (sinon bande
+        // grise « fantôme » coupant la dernière carte) ; on n'applique au CONTENU que l'inset
+        // HORIZONTAL (barre de nav latérale en paysage 3 boutons) via la règle centralisée —
+        // sinon le contenu passe sous la barre (v7.1.11).
+        contentWindowInsets = nestedScreenContentInsets
     ) { padding ->
         Column(
             modifier = Modifier

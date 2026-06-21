@@ -47,6 +47,7 @@ import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
+import com.jtr.app.ui.navigation.nestedScreenContentInsets
 import com.jtr.app.ui.share.PersonsSharePreview
 import com.jtr.app.ui.share.ShareFormatSheet
 import com.jtr.app.ui.share.ShareUtils
@@ -116,9 +117,10 @@ fun HomeScreen(
     }
 
     Scaffold(
-        // Les insets bas sont déjà couverts par le Scaffold racine (footer global) :
-        // on les neutralise ici pour supprimer la bande blanche au-dessus du footer.
-        contentWindowInsets = WindowInsets(0),
+        // Bas géré par le Scaffold racine (footer global), haut par la TopAppBar ci-dessous ;
+        // on n'applique au CONTENU que l'inset HORIZONTAL (barre de nav latérale en paysage
+        // 3 boutons) via la règle centralisée — sinon le contenu passe sous la barre (v7.1.11).
+        contentWindowInsets = nestedScreenContentInsets,
         topBar = {
             if (isSelectionMode && searchActive) {
                 // Recherche CONTEXTUELLE pendant la sélection : filtre l'affichage

@@ -8,8 +8,11 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -94,6 +97,21 @@ val bottomNavItems = listOf(
     BottomNavItem(Routes.CATEGORIES, Icons.Default.Folder, R.string.nav_categories),
     BottomNavItem(Routes.SETTINGS, Icons.Default.Settings, R.string.nav_settings),
 )
+
+/**
+ * SOURCE UNIQUE de l'inset des écrans IMBRIQUÉS dans [JTRMainScaffold] (Accueil, Catégories,
+ * Paramètres). Leur `Scaffold` interne doit appliquer à son CONTENU défilant **uniquement
+ * l'inset HORIZONTAL** des barres système : en edge-to-edge **paysage 3 boutons**, la barre de
+ * navigation passe sur le CÔTÉ et sans cet inset le contenu de liste (et l'étoile favorite en
+ * bout de ligne) passerait SOUS elle. Le HAUT est déjà géré par la `TopAppBar` de chaque écran,
+ * le BAS par la `bottomBar` globale de [JTRMainScaffold] (d'où l'ancien `WindowInsets(0)` qui,
+ * lui, oubliait l'horizontal). La `TopAppBar` et la `NavigationBar` s'insèrent déjà seules de
+ * l'horizontal → on ne le ré-applique PAS au niveau parent (sinon double inset des barres).
+ * En navigation gestuelle, l'inset horizontal est ~0 → contenu pleine largeur (comportement
+ * voulu). Règle centralisée ici → cohérente dans toutes les orientations.
+ */
+val nestedScreenContentInsets: WindowInsets
+    @Composable get() = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)
 
 @Composable
 fun JTRMainScaffold(
