@@ -18,8 +18,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -62,6 +64,24 @@ class MainActivity : FragmentActivity() {
             val isDarkMode by themeViewModel.isDarkMode.collectAsState()
             val selectedPreset by themeViewModel.selectedPreset.collectAsState()
             val fontScale by themeViewModel.fontScale.collectAsState()
+
+            // ── System Bars : SOURCE UNIQUE = thème IN-APP (v7.1.12) ─────────────────
+            // enableEdgeToEdge() (SystemBarStyle.auto) déciderait l'apparence des icônes
+            // système (heure, batterie, Wi-Fi…) d'après le mode sombre du SYSTÈME ; or le FOND
+            // de la barre est dessiné par le thème de l'app. En cas de DIVERGENCE (système clair
+            // + app en sombre), on aurait icônes sombres sur fond sombre = illisible. On pilote
+            // donc l'apparence des icônes d'après le isDark IN-APP : thème clair → icônes sombres
+            // (isAppearanceLight* = true), thème sombre → icônes claires (false). La clé
+            // [isDarkMode] rend l'effet réactif → bascule Light↔Dark mise à jour immédiatement.
+            // Les barres restent transparentes (edge-to-edge) : on ne touche QUE l'apparence des
+            // icônes, pas les couleurs/transparence posées par enableEdgeToEdge().
+            val view = LocalView.current
+            DisposableEffect(isDarkMode) {
+                val controller = WindowCompat.getInsetsController(window, view)
+                controller.isAppearanceLightStatusBars = !isDarkMode
+                controller.isAppearanceLightNavigationBars = !isDarkMode
+                onDispose { }
+            }
 
             JTRTheme(darkTheme = isDarkMode, preset = selectedPreset) {
                 // Échelle de police choisie dans l'app appliquée à TOUT le texte
