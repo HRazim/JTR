@@ -79,7 +79,7 @@
     <string name="person_gender_male">Hombre</string>
     <string name="person_gender_female">Mujer</string>
     <string name="person_gender_nonbinary">No binario</string>
-    <string name="person_gender_nonbinary_short">N-bin.</string>
+    <string name="person_gender_nonbinary_short">No bin.</string>
     <string name="person_birthday_label">Cumpleaños</string>
     <string name="person_birthday_select">Seleccionar fecha</string>
     <string name="person_birthday_modify">Cambiar fecha</string>
