@@ -575,10 +575,7 @@ private fun AddExistingCategoriesDialog(
                             Checkbox(checked = checked, onCheckedChange = {
                                 if (checked) selected.remove(category.id) else selected.add(category.id)
                             })
-                            val accent = remember(category.color) {
-                                try { Color(android.graphics.Color.parseColor(category.color)) }
-                                catch (e: Exception) { Color(0xFF2E86C1) }
-                            }
+                            val accent = rememberCategoryColor(category.color)
                             Box(
                                 modifier = Modifier.size(32.dp).clip(CircleShape).background(accent),
                                 contentAlignment = Alignment.Center

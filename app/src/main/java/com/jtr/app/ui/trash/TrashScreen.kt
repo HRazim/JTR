@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.jtr.app.ui.category.rememberCategoryColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -259,10 +260,7 @@ private fun DeletedCategoryGroupCard(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(
-                            try { Color(android.graphics.Color.parseColor(group.category.color)) }
-                            catch (e: Exception) { Color(0xFF2E86C1) }
-                        ),
+                        .background(rememberCategoryColor(group.category.color)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.Folder, contentDescription = null,
