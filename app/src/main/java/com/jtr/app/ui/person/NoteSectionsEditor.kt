@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -56,9 +57,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -145,10 +149,20 @@ class NoteReorderState {
     /** Section supprimée en attente d'annulation (undo). */
     internal var pendingUndo by mutableStateOf<DeletedNoteSection?>(null)
 
+    /**
+     * Section dont la suppression attend CONFIRMATION (v7.1.13) — partagée par les DEUX
+     * chemins de suppression : le bouton « Supprimer » du footer ET le swipe horizontal d'une
+     * carte. Hissée ici (plutôt que locale au footer) pour que le swipe, déclenché dans
+     * l'éditeur, ouvre le MÊME dialogue de confirmation rendu par [NoteReorderFooter] → une
+     * seule infra de confirmation/undo, cohérente.
+     */
+    internal var pendingDeleteId by mutableStateOf<String?>(null)
+
     /** Réinitialise le mode (ex. sortie du mode édition d'une fiche). */
     fun reset() {
         grabbedId = null
         pendingUndo = null
+        pendingDeleteId = null
     }
 }
 
@@ -212,37 +226,74 @@ fun NoteSectionsEditor(
             // 100 % native (aucun gating sur le focus, donc aucune perte de focus/clavier).
             val reorderScope = this
             key(section.id) {
-                NoteSectionCard(
-                    section = section,
-                    isDragging = isDragging,
-                    // Section « active » (saisie via appui long, cible du footer Supprimer/Terminé) :
-                    // reste mise en évidence tant que le footer est visible → cible de suppression
-                    // non ambiguë jusqu'à la confirmation. Nul pendant l'édition (grabbedId remis à
-                    // null au focus d'un champ) → aucune mise en évidence parasite en frappe.
-                    isActive = section.id == reorderState.grabbedId,
-                    reorderScope = reorderScope,
-                    onIconClick = { iconPickerForId = section.id },
-                    onGrabStarted = {
-                        reorderState.grabbedId = section.id
-                        reorderState.pendingUndo = null
-                        focusManager.clearFocus()
+                val haptics = LocalHapticFeedback.current
+                // Champ (titre/contenu) focalisé → on DÉSACTIVE le swipe : aucune suppression par
+                // accident pendant l'écriture/la sélection de texte (frappe 100 % native préservée).
+                var cardFocused by remember { mutableStateOf(false) }
+                // SWIPE HORIZONTAL (gauche OU droite) = suppression, désambiguïsé du DRAG VERTICAL
+                // (appui long sur l'icône) — directions orthogonales. confirmValueChange n'AUTO-
+                // DISMISSE PAS : au franchissement du seuil il ARME la confirmation (pendingDeleteId,
+                // partagée avec le footer) et renvoie false → la carte REVIENT en animé ; c'est le
+                // dialogue (NoteReorderFooter) qui supprime réellement (+ undo). Aucune suppression
+                // instantanée.
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = { value ->
+                        if (value != SwipeToDismissBoxValue.Settled) {
+                            reorderState.pendingDeleteId = section.id
+                        }
+                        false
                     },
-                    onFieldFocused = {
-                        // Éditer un champ masque le footer/undo (rendus au niveau écran).
-                        reorderState.grabbedId = null
-                        reorderState.pendingUndo = null
-                    },
-                    onTitleChange = { newTitle ->
-                        onSectionsChange(sections.map {
-                            if (it.id == section.id) it.copy(title = newTitle) else it
-                        })
-                    },
-                    onContentChange = { newContent ->
-                        onSectionsChange(sections.map {
-                            if (it.id == section.id) it.copy(content = newContent) else it
-                        })
-                    }
+                    // Seuil à 40 % de la largeur (dans la plage 30–50 % demandée).
+                    positionalThreshold = { total -> total * 0.4f }
                 )
+                // Haptique au FRANCHISSEMENT du seuil : targetValue bascule vers StartToEnd/EndToStart
+                // dès que, relâché ici, la carte se supprimerait → signal tactile discret (dégradation
+                // propre si l'appareil ne fournit pas d'haptique).
+                LaunchedEffect(dismissState.targetValue) {
+                    if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                }
+                SwipeToDismissBox(
+                    state = dismissState,
+                    // Swipe coupé pendant un drag de réorg (NON-COLLISION) et pendant l'édition d'un
+                    // champ. Les DEUX directions sont actives ; StartToEnd/EndToStart sont relatives à
+                    // la direction de mise en page → fond/corbeille miroir en RTL automatiquement.
+                    enableDismissFromStartToEnd = !isDragging && !cardFocused,
+                    enableDismissFromEndToStart = !isDragging && !cardFocused,
+                    backgroundContent = { SwipeDeleteBackground(dismissState.dismissDirection) }
+                ) {
+                    NoteSectionCard(
+                        section = section,
+                        isDragging = isDragging,
+                        // Section « active » (cible du footer Supprimer/Terminé) : mise en évidence
+                        // tant que le footer est visible → cible non ambiguë jusqu'à confirmation.
+                        isActive = section.id == reorderState.grabbedId,
+                        reorderScope = reorderScope,
+                        onIconClick = { iconPickerForId = section.id },
+                        onGrabStarted = {
+                            reorderState.grabbedId = section.id
+                            reorderState.pendingUndo = null
+                            focusManager.clearFocus()
+                        },
+                        onFieldFocused = {
+                            // Éditer un champ masque le footer/undo (rendus au niveau écran).
+                            reorderState.grabbedId = null
+                            reorderState.pendingUndo = null
+                        },
+                        onFocusedChange = { cardFocused = it },
+                        onTitleChange = { newTitle ->
+                            onSectionsChange(sections.map {
+                                if (it.id == section.id) it.copy(title = newTitle) else it
+                            })
+                        },
+                        onContentChange = { newContent ->
+                            onSectionsChange(sections.map {
+                                if (it.id == section.id) it.copy(content = newContent) else it
+                            })
+                        }
+                    )
+                }
             }
         }
 
@@ -294,11 +345,12 @@ fun NoteReorderFooter(
     onSectionsChange: (List<NoteSection>) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var pendingDeleteId by remember { mutableStateOf<String?>(null) }
+    // pendingDeleteId est désormais HISSÉ dans [NoteReorderState] (v7.1.13) → le swipe d'une carte
+    // et le bouton « Supprimer » du footer ouvrent le MÊME dialogue de confirmation ci-dessous.
     fun reindex(list: List<NoteSection>) = list.mapIndexed { i, s -> s.copy(order = i) }
 
     // Retour système : referme le mode réordonnancement (la confirmation a son propre retour).
-    BackHandler(enabled = state.grabbedId != null && pendingDeleteId == null) {
+    BackHandler(enabled = state.grabbedId != null && state.pendingDeleteId == null) {
         state.grabbedId = null
     }
 
@@ -328,7 +380,7 @@ fun NoteReorderFooter(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = { pendingDeleteId = state.grabbedId }) {
+                    TextButton(onClick = { state.pendingDeleteId = state.grabbedId }) {
                         Icon(
                             Icons.Default.DeleteOutline,
                             contentDescription = null,
@@ -375,10 +427,10 @@ fun NoteReorderFooter(
         }
     }
 
-    // Confirmation de suppression (anti-perte accidentelle).
-    pendingDeleteId?.let { id ->
+    // Confirmation de suppression (anti-perte accidentelle) — commune au footer ET au swipe.
+    state.pendingDeleteId?.let { id ->
         AlertDialog(
-            onDismissRequest = { pendingDeleteId = null },
+            onDismissRequest = { state.pendingDeleteId = null },
             icon = { Icon(Icons.Default.DeleteOutline, null,
                 tint = MaterialTheme.colorScheme.error) },
             title = { Text(stringResource(R.string.note_section_delete_confirm_title)) },
@@ -391,7 +443,7 @@ fun NoteReorderFooter(
                         state.pendingUndo = DeletedNoteSection(sections[idx], idx)
                         onSectionsChange(reindex(sections.filter { it.id != id }))
                     }
-                    pendingDeleteId = null
+                    state.pendingDeleteId = null
                     if (state.grabbedId == id) state.grabbedId = null
                 }) {
                     Text(stringResource(R.string.common_delete),
@@ -399,7 +451,7 @@ fun NoteReorderFooter(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDeleteId = null }) {
+                TextButton(onClick = { state.pendingDeleteId = null }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             }
@@ -449,6 +501,7 @@ private fun NoteSectionCard(
     onIconClick: () -> Unit,
     onGrabStarted: () -> Unit,
     onFieldFocused: () -> Unit,
+    onFocusedChange: (Boolean) -> Unit,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -460,6 +513,12 @@ private fun NoteSectionCard(
     LaunchedEffect(isDragging) {
         if (isDragging) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
     }
+
+    // Focus COMBINÉ (titre OU contenu) remonté à l'hôte (v7.1.13) → il désactive le swipe-suppression
+    // pendant l'édition (pas de suppression accidentelle ; sélection de texte native préservée).
+    var titleFocused by remember { mutableStateOf(false) }
+    var contentFocused by remember { mutableStateOf(false) }
+    LaunchedEffect(titleFocused, contentFocused) { onFocusedChange(titleFocused || contentFocused) }
 
     val scale by animateFloatAsState(
         targetValue = if (isDragging) 1.03f else 1f,
@@ -527,15 +586,47 @@ private fun NoteSectionCard(
                     leadingIcon = null,
                     modifier = Modifier
                         .weight(1f)
-                        .onFocusChanged { if (it.isFocused) onFieldFocused() }
+                        .onFocusChanged { titleFocused = it.isFocused; if (it.isFocused) onFieldFocused() }
                         .bringIntoViewOnFocus()
                 )
             }
             NoteContentField(
                 value = section.content,
                 onValueChange = onContentChange,
-                onFocused = onFieldFocused,
+                onFocusChange = { focused -> contentFocused = focused; if (focused) onFieldFocused() },
                 modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+/**
+ * Fond révélé sous une carte pendant le SWIPE-SUPPRESSION (v7.1.13) : conteneur d'erreur teinté +
+ * icône corbeille, alignée du CÔTÉ révélé (opposé au sens du glissement). [direction] provient de
+ * [SwipeToDismissBoxState.dismissDirection] : `StartToEnd`/`EndToStart` sont relatifs à la direction
+ * de mise en page → l'alignement `CenterStart`/`CenterEnd` se MIROITE automatiquement en RTL (arabe).
+ * Tokens de thème (errorContainer/onErrorContainer) → lisible clair, sombre et sur les 6 presets.
+ */
+@Composable
+private fun SwipeDeleteBackground(direction: SwipeToDismissBoxValue) {
+    val alignment = when (direction) {
+        SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+        SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+        else -> Alignment.Center
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 24.dp),
+        contentAlignment = alignment
+    ) {
+        if (direction != SwipeToDismissBoxValue.Settled) {
+            Icon(
+                Icons.Default.DeleteOutline,
+                contentDescription = stringResource(R.string.common_delete),
+                tint = MaterialTheme.colorScheme.onErrorContainer
             )
         }
     }
@@ -574,7 +665,7 @@ private fun NoteSectionCard(
 private fun NoteContentField(
     value: String,
     onValueChange: (String) -> Unit,
-    onFocused: () -> Unit,
+    onFocusChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val bring = remember { BringIntoViewRequester() }
@@ -643,7 +734,7 @@ private fun NoteContentField(
                 if (grew && lastEditAtEnd) bringBottomIntoView()
             }
             .bringIntoViewRequester(bring)
-            .onFocusChanged { isFocused = it.isFocused; if (it.isFocused) onFocused() }
+            .onFocusChanged { isFocused = it.isFocused; onFocusChange(it.isFocused) }
     )
 }
 

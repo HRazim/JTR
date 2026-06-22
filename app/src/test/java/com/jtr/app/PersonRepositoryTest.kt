@@ -1,12 +1,17 @@
 package com.jtr.app.data.repository
 
+import android.content.Context
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.data.local.PersonDao
 import com.jtr.app.domain.model.Person
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -41,11 +46,29 @@ class PersonRepositoryTest {
         }
     }
 
+    /**
+     * Délégation RÉELLE (m6) : [PersonRepository.softDelete] doit appeler `dao.softDelete(id)`.
+     * On mocke `AppDatabase.getInstance` pour injecter le DAO simulé ; `syncGeofences()` est un
+     * no-op en test JVM (`JTRApplication.geofenceManager == null`). Remplace l'ancien test
+     * circulaire (`mockDao.softDelete(id)` puis `coVerify` du même appel → ne testait rien).
+     */
     @Test
-    fun `softDelete calls dao with correct id`() = runTest {
-        val testId = "test-123"
-        mockDao.softDelete(testId)
-        coVerify { mockDao.softDelete(testId) }
+    fun `softDelete delegates to dao softDelete`() = runTest {
+        mockkObject(AppDatabase.Companion)
+        try {
+            val db = mockk<AppDatabase>(relaxed = true)
+            every { AppDatabase.getInstance(any()) } returns db
+            every { db.personDao() } returns mockDao
+
+            val repository = PersonRepository(mockk<Context>(relaxed = true))
+            repository.softDelete("test-123")
+
+            // L'id doit être délégué tel quel ; le timestamp est le défaut DAO
+            // (System.currentTimeMillis()) → matché par any() (sa valeur exacte n'importe pas).
+            coVerify(exactly = 1) { mockDao.softDelete("test-123", any()) }
+        } finally {
+            unmockkObject(AppDatabase.Companion)
+        }
     }
 
     @Test

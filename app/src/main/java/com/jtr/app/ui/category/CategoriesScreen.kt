@@ -63,6 +63,7 @@ import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.components.rememberGalleryImagePicker
+import com.jtr.app.ui.navigation.nestedScreenContentInsets
 import com.jtr.app.ui.share.CategoriesSharePreview
 import com.jtr.app.ui.share.ShareCategoryItem
 import com.jtr.app.ui.share.ShareFormatSheet
@@ -487,9 +488,10 @@ fun CategoriesScreen(
                 )
             }
         },
-        // Les insets bas sont couverts par le Scaffold racine (footer global) ou par
-        // la BottomAppBar contextuelle : on les neutralise pour éviter la bande blanche.
-        contentWindowInsets = WindowInsets(0),
+        // Bas couvert par le Scaffold racine (footer global) / la BottomAppBar contextuelle ;
+        // on n'applique au CONTENU que l'inset HORIZONTAL (barre de nav latérale en paysage
+        // 3 boutons) via la règle centralisée — sinon le contenu passe sous la barre (v7.1.11).
+        contentWindowInsets = nestedScreenContentInsets,
         bottomBar = {
             AnimatedVisibility(
                 visible = isSelectionActive,

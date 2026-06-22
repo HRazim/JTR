@@ -102,8 +102,12 @@ private fun Person.buildSearchBlob(relationTypeLabel: (String) -> String?): Stri
     add(company); add(jobTitle); add(department)
     // Lieu
     add(city); add(origin)
-    // Notes (champs hérités — les sections de notes restent dans noteSections)
+    // Notes héritées (colonnes legacy `notes`/`likes`, conservées sans perte).
     add(notes); add(likes)
+    // Sections de notes (v7.0.3) — UI PRINCIPALE des notes : on indexe le titre ET le
+    // contenu de CHAQUE section pour que la recherche unifiée retrouve le texte saisi
+    // (sinon une note écrite dans une section restait introuvable). Liste non-null.
+    noteSections.forEach { add(it.title); add(it.content) }
     // Contacts (scalaires + lignes dynamiques)
     add(phoneNumber); add(email)
     phoneLines?.forEach { add(it.value) }

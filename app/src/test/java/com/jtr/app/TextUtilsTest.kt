@@ -2,6 +2,7 @@ package com.jtr.app.utils
 
 import com.google.common.truth.Truth.assertThat
 import com.jtr.app.domain.model.DynamicLine
+import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.domain.model.Person
 import org.junit.Test
 
@@ -172,6 +173,45 @@ class TextUtilsTest {
         }).isTrue()
     }
 
+    // ── Sections de notes (m1) : titre ET contenu recherchables ────────────────
+
+    @Test
+    fun `matchesSearch covers note section title and content`() {
+        val p = Person(
+            firstName = "Alice",
+            noteSections = listOf(
+                NoteSection(title = "Travaux", content = "appeler le plombier vendredi")
+            )
+        )
+        assertThat(p.find("plombier")).isTrue()       // contenu de la section
+        assertThat(p.find("travaux")).isTrue()        // titre de la section
+        assertThat(p.find("alice plombier")).isTrue() // ET-tokens / OU-champs (nom + note)
+        assertThat(p.find("electricien")).isFalse()   // mot absent → pas de faux positif
+    }
+
+    @Test
+    fun `matchesSearch note sections are accent and case insensitive`() {
+        val p = Person(
+            firstName = "Bob",
+            noteSections = listOf(NoteSection(title = "Réunion", content = "Café à 10h"))
+        )
+        assertThat(p.find("reunion")).isTrue()
+        assertThat(p.find("CAFE")).isTrue()
+    }
+
+    @Test
+    fun `matchesSearch indexes every note section`() {
+        val p = Person(
+            firstName = "Chloé",
+            noteSections = listOf(
+                NoteSection(title = "Santé", content = "allergie aux arachides"),
+                NoteSection(title = "Loisirs", content = "escalade le dimanche")
+            )
+        )
+        assertThat(p.find("arachides")).isTrue() // 1re section
+        assertThat(p.find("escalade")).isTrue()  // 2e section
+    }
+
     // ── i18n / RTL : l'arabe n'est pas dénaturé ────────────────────────────────
 
     @Test
@@ -179,6 +219,12 @@ class TextUtilsTest {
         val p = Person(firstName = "محمد")
         // Les lettres arabes ne sont pas supprimées par la normalisation latine.
         assertThat("محمد".normalizeForSearch()).isEqualTo("محمد")
+        assertThat(p.matchesSearch("محمد".searchTokens())).isTrue()
+    }
+
+    @Test
+    fun `arabic note section content is searchable`() {
+        val p = Person(firstName = "Sara", noteSections = listOf(NoteSection(content = "محمد")))
         assertThat(p.matchesSearch("محمد".searchTokens())).isTrue()
     }
 }
