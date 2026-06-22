@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -175,7 +176,7 @@ fun WelcomeScreen(
                         )
                         Spacer(Modifier.height(12.dp))
                         Text(
-                            text = stringResource(R.string.welcome_importing, s.total),
+                            text = pluralStringResource(R.plurals.welcome_importing, s.total, s.total),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

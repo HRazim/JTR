@@ -205,7 +205,7 @@ object ShareUtils {
             context.getString(R.string.categories_group_counter,
                 item.memberNames.size, item.subGroupCount)
         } else {
-            context.getString(R.string.categories_person_count, item.personCount)
+            context.resources.getQuantityString(R.plurals.categories_person_count, item.personCount, item.personCount)
         }
 
     // ── Génération PDF (PdfDocument natif) ─────────────────────────────────────

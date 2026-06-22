@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -103,8 +104,8 @@ fun BackupDialog(
                     }
                     is BackupUiState.Success -> Text(
                         text = if (s.isExport)
-                            stringResource(R.string.backup_export_success, s.count)
-                        else stringResource(R.string.backup_import_success, s.count),
+                            pluralStringResource(R.plurals.backup_export_success, s.count, s.count)
+                        else pluralStringResource(R.plurals.backup_import_success, s.count, s.count),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary
                     )

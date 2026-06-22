@@ -63,6 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
@@ -91,7 +92,6 @@ import com.jtr.app.domain.model.deriveNoteSections
 import com.jtr.app.domain.model.effectiveNoteSections
 import com.jtr.app.utils.SocialPlatform
 import com.jtr.app.utils.extractSocialLinks
-import com.jtr.app.utils.icon
 import com.jtr.app.utils.openSocialLink
 import com.jtr.app.utils.SocialLink
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -1149,20 +1149,18 @@ internal fun AddSocialLinkDialog(onConfirm: (String) -> Unit, onDismiss: () -> U
                 )
                 AnimatedVisibility(visible = detected != null) {
                     val platform = detected?.platform ?: return@AnimatedVisibility
-                    val bgColor = Color(platform.argbColor)
-                    val contentColor = if (platform == SocialPlatform.Snapchat) Color.Black else Color.White
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        FilledIconButton(
-                            onClick = {},
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = bgColor, contentColor = contentColor),
-                            modifier = Modifier.size(34.dp)
-                        ) {
-                            Icon(platform.icon(), null, modifier = Modifier.size(18.dp))
-                        }
+                        // Icône de marque (couleurs d'origine, non teintée) — même rendu
+                        // que l'Accueil/le profil (source unique getSocialIcon/iconRes).
+                        Icon(
+                            painter = painterResource(platform.iconRes),
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(28.dp)
+                        )
                         Text(platform.displayName,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold)
@@ -1201,25 +1199,19 @@ private fun SocialLinksSection(
             if (editing) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     links.forEach { link ->
-                        val platform = SocialPlatform.all.firstOrNull {
-                            it.displayName == link.platform
-                        }
-                        val bgColor = Color(platform?.argbColor ?: 0xFF607D8BL)
-                        val contentColor = if (platform == SocialPlatform.Snapchat) Color.Black else Color.White
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            FilledIconButton(
-                                onClick = {},
-                                colors = IconButtonDefaults.filledIconButtonColors(
-                                    containerColor = bgColor, contentColor = contentColor),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(platform?.icon() ?: Icons.Default.Link, null,
-                                    modifier = Modifier.size(18.dp))
-                            }
+                            // Icône de marque (source unique, non teintée) — cohérent avec
+                            // l'aperçu du dialogue et l'affichage du profil.
+                            Icon(
+                                painter = painterResource(getSocialIcon(link.url)),
+                                contentDescription = null,
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(28.dp)
+                            )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(link.platform,
                                     style = MaterialTheme.typography.labelMedium,
@@ -1254,9 +1246,10 @@ private fun SocialLinksSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     links.forEach { link ->
-                        val platform = SocialPlatform.all.firstOrNull { it.displayName == link.platform }
+                        // Détection par URL (source unique) → ouvre le bon paquet même pour
+                        // un lien hérité dont le libellé stocké serait erroné (ex. ancien « X »).
                         val socialLink = SocialLink(
-                            platform = platform ?: SocialPlatform.Instagram,
+                            platform = SocialPlatform.detect(link.url) ?: SocialPlatform.Instagram,
                             url = link.url
                         )
                         Icon(
@@ -1361,7 +1354,12 @@ private fun MapLibreMiniMap(lat: Double, lng: Double, cityName: String, modifier
                     MotionEvent.ACTION_DOWN,
                     MotionEvent.ACTION_POINTER_DOWN ->
                         v.parent?.requestDisallowInterceptTouchEvent(true)
-                    MotionEvent.ACTION_UP,
+                    MotionEvent.ACTION_UP -> {
+                        v.parent?.requestDisallowInterceptTouchEvent(false)
+                        // a11y : signale un « clic » au système (TalkBack) sans consommer
+                        // le geste — la carte reçoit toujours l'événement (on renvoie false).
+                        v.performClick()
+                    }
                     MotionEvent.ACTION_CANCEL ->
                         v.parent?.requestDisallowInterceptTouchEvent(false)
                 }
@@ -1393,7 +1391,7 @@ private fun lineTypeLabel(types: List<TypeOption>, key: String): String {
 private fun SeeMoreToggle(hiddenCount: Int, showAll: Boolean, onToggle: () -> Unit) {
     Text(
         text = if (showAll) stringResource(R.string.person_see_less)
-        else stringResource(R.string.person_see_more, hiddenCount),
+        else pluralStringResource(R.plurals.person_see_more, hiddenCount, hiddenCount),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier

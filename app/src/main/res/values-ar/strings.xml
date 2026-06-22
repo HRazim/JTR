@@ -29,7 +29,6 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">جهات اتصال JTR</string>
-    <string name="home_selection_count">تم تحديد %1$d</string>
     <string name="home_fab_add_person">إضافة شخص</string>
     <string name="home_location_warning">فعّل الموقع لتذكيرات القرب</string>
     <string name="home_search_placeholder">ابحث عن جهة اتصال…</string>
@@ -55,7 +54,6 @@
     <string name="categories_delete_title">حذف «%1$s»؟</string>
     <string name="categories_delete_with_contacts">تحتوي هذه الفئة على %1$d جهة اتصال. هل تريد بالتأكيد حذف الفئة و%1$d جهة اتصال بداخلها؟\n\nيمكنك استعادتها من سلة المهملات.</string>
     <string name="categories_delete_empty">ستُنقل الفئة إلى سلة المهملات. يمكنك استعادتها.</string>
-    <string name="categories_person_count">%1$d جهة اتصال</string>
     <string name="categories_edit_dialog_title">تعديل الفئة</string>
     <string name="categories_image_cd">صورة الفئة</string>
     <string name="categories_remove_photo">إزالة الصورة</string>
@@ -141,8 +139,6 @@
     <string name="trash_empty_cd">إفراغ السلة</string>
     <string name="trash_empty_dialog_title">إفراغ سلة المهملات؟</string>
     <string name="trash_empty_dialog_text">هذا الإجراء لا يمكن التراجع عنه.\nسيتم حذف %1$s نهائيًا.</string>
-    <string name="trash_empty_dialog_part_categories">%1$d فئة</string>
-    <string name="trash_empty_dialog_part_contacts">%1$d جهة اتصال</string>
     <string name="trash_empty_confirm">إفراغ نهائي</string>
     <string name="trash_delete_dialog_title">حذف نهائي؟</string>
     <string name="trash_delete_category_with_contacts">ستفقد الفئة «%1$s» و%2$d جهة اتصال بداخلها.</string>
@@ -281,7 +277,6 @@
     <string name="person_job_at">في</string>
     <string name="common_show">عرض</string>
     <string name="common_hide">إخفاء</string>
-    <string name="person_see_more">عرض %1$d أخرى…</string>
     <string name="person_see_less">عرض أقل</string>
     <string name="person_favorite_toggle_cd">تبديل المفضّل</string>
     <string name="person_info_menu">معلومات الملف الشخصي</string>
@@ -290,12 +285,10 @@
     <string name="person_info_updated">آخر تعديل</string>
     <string name="categories_favorite">إضافة إلى المفضّلة</string>
     <string name="categories_unfavorite">إزالة من المفضّلة</string>
-    <string name="categories_selection_count">تم تحديد %1$d</string>
     <string name="categories_create_group">إنشاء مجموعة</string>
     <string name="categories_group_name_hint">اسم المجموعة</string>
     <string name="categories_rename">إعادة تسمية</string>
     <string name="categories_change_image">تغيير الصورة</string>
-    <string name="categories_group_member_count">%1$d فئة</string>
     <string name="categories_delete_selected_title">حذف %1$d فئة؟</string>
     <string name="categories_delete_selected_text">ستُنقل الفئات المحددة وجهات اتصالها إلى سلة المهملات.</string>
     <string name="categories_drag_handle_cd">اسحب لإعادة الترتيب</string>
@@ -350,8 +343,6 @@
     <string name="backup_export">تصدير نسخة احتياطية</string>
     <string name="backup_import">استعادة نسخة احتياطية</string>
     <string name="backup_working">العملية جارية…</string>
-    <string name="backup_export_success">تم تصدير النسخة الاحتياطية (%1$d جهة اتصال)</string>
-    <string name="backup_import_success">تمت استعادة النسخة الاحتياطية (%1$d جهة اتصال)</string>
     <string name="backup_failed">فشلت العملية — الملف غير صالح أو يتعذّر الوصول إليه</string>
     <string name="backup_confirm_title">استعادة هذه النسخة الاحتياطية؟</string>
     <string name="backup_confirm_text">ستُدمج البيانات مع بياناتك الحالية؛ وستُستبدل الإدخالات التي تحمل المعرّف نفسه. لا يمكن التراجع عن هذا الإجراء.</string>
@@ -369,18 +360,15 @@
     <string name="welcome_subtitle">JTR هو دفتر للذكريات.</string>
     <string name="welcome_import_button">استيراد جهات اتصال الهاتف</string>
     <string name="welcome_skip">البدء دون استيراد</string>
-    <string name="welcome_importing">جارٍ استيراد %1$d جهة اتصال…</string>
     <string name="welcome_import_failed">فشل الاستيراد.</string>
     <string name="contacts_permission_denied">تم رفض إذن جهات الاتصال — يتعذّر الاستيراد.</string>
     <string name="move_create_category">فئة جديدة</string>
     <string name="permission_allow">السماح</string>
     <string name="welcome_select_button">اختر جهات الاتصال للاستيراد</string>
     <string name="contact_selection_title">اختر جهات الاتصال</string>
-    <string name="import_selected_count">استيراد %1$d جهة اتصال محددة</string>
     <string name="gallery_picker_title">اختر صورة</string>
     <string name="gallery_album_recents">الأخيرة</string>
     <string name="gallery_album_dropdown_cd">اختر ألبومًا</string>
-    <string name="gallery_photo_count">%1$d صورة</string>
     <string name="gallery_empty">لا توجد صور في هذا الألبوم</string>
     <string name="gallery_permission_rationale">يحتاج JTR إلى الوصول إلى صورك لتتمكن من اختيار صورة دون مغادرة التطبيق.</string>
     <string name="gallery_permission_grant">السماح بالوصول</string>
@@ -476,4 +464,92 @@
     <string name="backup_restore_version">إصدار النسخة الاحتياطية غير متوافق</string>
     <string name="backup_restore_corrupt">ملف النسخة الاحتياطية تالف</string>
     <string name="backup_restore_write_failed">فشل الاستعادة: لم تتغيّر أي بيانات</string>
+    <plurals name="categories_person_count">
+        <item quantity="zero">%1$d جهة اتصال</item>
+        <item quantity="one">جهة اتصال واحدة</item>
+        <item quantity="two">جهتا اتصال</item>
+        <item quantity="few">%1$d جهات اتصال</item>
+        <item quantity="many">%1$d جهة اتصال</item>
+        <item quantity="other">%1$d جهة اتصال</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_contacts">
+        <item quantity="zero">%1$d جهة اتصال</item>
+        <item quantity="one">جهة اتصال واحدة</item>
+        <item quantity="two">جهتا اتصال</item>
+        <item quantity="few">%1$d جهات اتصال</item>
+        <item quantity="many">%1$d جهة اتصال</item>
+        <item quantity="other">%1$d جهة اتصال</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_categories">
+        <item quantity="zero">%1$d فئة</item>
+        <item quantity="one">فئة واحدة</item>
+        <item quantity="two">فئتان</item>
+        <item quantity="few">%1$d فئات</item>
+        <item quantity="many">%1$d فئة</item>
+        <item quantity="other">%1$d فئة</item>
+    </plurals>
+    <plurals name="gallery_photo_count">
+        <item quantity="zero">%1$d صورة</item>
+        <item quantity="one">صورة واحدة</item>
+        <item quantity="two">صورتان</item>
+        <item quantity="few">%1$d صور</item>
+        <item quantity="many">%1$d صورة</item>
+        <item quantity="other">%1$d صورة</item>
+    </plurals>
+    <plurals name="home_selection_count">
+        <item quantity="zero">تم تحديد %1$d</item>
+        <item quantity="one">تم تحديد %1$d</item>
+        <item quantity="two">تم تحديد %1$d</item>
+        <item quantity="few">تم تحديد %1$d</item>
+        <item quantity="many">تم تحديد %1$d</item>
+        <item quantity="other">تم تحديد %1$d</item>
+    </plurals>
+    <plurals name="categories_selection_count">
+        <item quantity="zero">تم تحديد %1$d</item>
+        <item quantity="one">تم تحديد %1$d</item>
+        <item quantity="two">تم تحديد %1$d</item>
+        <item quantity="few">تم تحديد %1$d</item>
+        <item quantity="many">تم تحديد %1$d</item>
+        <item quantity="other">تم تحديد %1$d</item>
+    </plurals>
+    <plurals name="person_see_more">
+        <item quantity="zero">عرض %1$d أخرى…</item>
+        <item quantity="one">عرض %1$d أخرى…</item>
+        <item quantity="two">عرض %1$d أخرى…</item>
+        <item quantity="few">عرض %1$d أخرى…</item>
+        <item quantity="many">عرض %1$d أخرى…</item>
+        <item quantity="other">عرض %1$d أخرى…</item>
+    </plurals>
+    <plurals name="welcome_importing">
+        <item quantity="zero">جارٍ استيراد %1$d جهة اتصال…</item>
+        <item quantity="one">جارٍ استيراد جهة اتصال واحدة…</item>
+        <item quantity="two">جارٍ استيراد جهتي اتصال…</item>
+        <item quantity="few">جارٍ استيراد %1$d جهات اتصال…</item>
+        <item quantity="many">جارٍ استيراد %1$d جهة اتصال…</item>
+        <item quantity="other">جارٍ استيراد %1$d جهة اتصال…</item>
+    </plurals>
+    <plurals name="import_selected_count">
+        <item quantity="zero">استيراد %1$d جهة اتصال محددة</item>
+        <item quantity="one">استيراد جهة اتصال واحدة محددة</item>
+        <item quantity="two">استيراد جهتي اتصال محددتين</item>
+        <item quantity="few">استيراد %1$d جهات اتصال محددة</item>
+        <item quantity="many">استيراد %1$d جهة اتصال محددة</item>
+        <item quantity="other">استيراد %1$d جهة اتصال محددة</item>
+    </plurals>
+    <plurals name="backup_export_success">
+        <item quantity="zero">تم تصدير النسخة الاحتياطية (%1$d جهة اتصال)</item>
+        <item quantity="one">تم تصدير النسخة الاحتياطية (%1$d جهة اتصال)</item>
+        <item quantity="two">تم تصدير النسخة الاحتياطية (%1$d جهة اتصال)</item>
+        <item quantity="few">تم تصدير النسخة الاحتياطية (%1$d جهات اتصال)</item>
+        <item quantity="many">تم تصدير النسخة الاحتياطية (%1$d جهة اتصال)</item>
+        <item quantity="other">تم تصدير النسخة الاحتياطية (%1$d جهة اتصال)</item>
+    </plurals>
+    <plurals name="backup_import_success">
+        <item quantity="zero">تمت استعادة النسخة الاحتياطية (%1$d جهة اتصال)</item>
+        <item quantity="one">تمت استعادة النسخة الاحتياطية (%1$d جهة اتصال)</item>
+        <item quantity="two">تمت استعادة النسخة الاحتياطية (%1$d جهة اتصال)</item>
+        <item quantity="few">تمت استعادة النسخة الاحتياطية (%1$d جهات اتصال)</item>
+        <item quantity="many">تمت استعادة النسخة الاحتياطية (%1$d جهة اتصال)</item>
+        <item quantity="other">تمت استعادة النسخة الاحتياطية (%1$d جهة اتصال)</item>
+    </plurals>
 </resources>

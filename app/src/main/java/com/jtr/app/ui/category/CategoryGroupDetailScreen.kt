@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -310,7 +311,7 @@ fun CategoryGroupDetailScreen(
                     title = {
                         Text(
                             if (totalSelected == 0) stringResource(R.string.categories_selection_none)
-                            else stringResource(R.string.categories_selection_count, totalSelected)
+                            else pluralStringResource(R.plurals.categories_selection_count, totalSelected, totalSelected)
                         )
                     },
                     navigationIcon = {
@@ -575,10 +576,7 @@ private fun AddExistingCategoriesDialog(
                             Checkbox(checked = checked, onCheckedChange = {
                                 if (checked) selected.remove(category.id) else selected.add(category.id)
                             })
-                            val accent = remember(category.color) {
-                                try { Color(android.graphics.Color.parseColor(category.color)) }
-                                catch (e: Exception) { Color(0xFF2E86C1) }
-                            }
+                            val accent = rememberCategoryColor(category.color)
                             Box(
                                 modifier = Modifier.size(32.dp).clip(CircleShape).background(accent),
                                 contentAlignment = Alignment.Center

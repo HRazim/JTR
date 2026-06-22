@@ -29,7 +29,6 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Kontakte</string>
-    <string name="home_selection_count">%1$d ausgewählt</string>
     <string name="home_fab_add_person">Person hinzufügen</string>
     <string name="home_location_warning">Standort für Nähe-Erinnerungen aktivieren</string>
     <string name="home_search_placeholder">Kontakt suchen…</string>
@@ -55,7 +54,6 @@
     <string name="categories_delete_title">„%1$s“ löschen?</string>
     <string name="categories_delete_with_contacts">Diese Kategorie enthält %1$d Kontakt(e). Möchtest du die Kategorie und ihre %1$d Kontakt(e) wirklich löschen?\n\nDu kannst sie im Papierkorb wiederherstellen.</string>
     <string name="categories_delete_empty">Die Kategorie wird in den Papierkorb verschoben. Du kannst sie wiederherstellen.</string>
-    <string name="categories_person_count">%1$d Kontakt(e)</string>
     <string name="categories_edit_dialog_title">Kategorie bearbeiten</string>
     <string name="categories_image_cd">Kategoriebild</string>
     <string name="categories_remove_photo">Foto entfernen</string>
@@ -141,8 +139,6 @@
     <string name="trash_empty_cd">Papierkorb leeren</string>
     <string name="trash_empty_dialog_title">Papierkorb leeren?</string>
     <string name="trash_empty_dialog_text">Diese Aktion ist unwiderruflich.\n%1$s werden endgültig gelöscht.</string>
-    <string name="trash_empty_dialog_part_categories">%1$d Kategorie(n)</string>
-    <string name="trash_empty_dialog_part_contacts">%1$d Kontakt(e)</string>
     <string name="trash_empty_confirm">Endgültig leeren</string>
     <string name="trash_delete_dialog_title">Endgültig löschen?</string>
     <string name="trash_delete_category_with_contacts">Kategorie „%1$s“ und ihre %2$d Kontakt(e) gehen verloren.</string>
@@ -281,7 +277,6 @@
     <string name="person_job_at">bei</string>
     <string name="common_show">Anzeigen</string>
     <string name="common_hide">Ausblenden</string>
-    <string name="person_see_more">%1$d weitere anzeigen…</string>
     <string name="person_see_less">Weniger anzeigen</string>
     <string name="person_favorite_toggle_cd">Favorit umschalten</string>
     <string name="person_info_menu">Profilinformationen</string>
@@ -290,12 +285,10 @@
     <string name="person_info_updated">Zuletzt geändert</string>
     <string name="categories_favorite">Zu Favoriten hinzufügen</string>
     <string name="categories_unfavorite">Aus Favoriten entfernen</string>
-    <string name="categories_selection_count">%1$d ausgewählt</string>
     <string name="categories_create_group">Gruppe erstellen</string>
     <string name="categories_group_name_hint">Gruppenname</string>
     <string name="categories_rename">Umbenennen</string>
     <string name="categories_change_image">Bild ändern</string>
-    <string name="categories_group_member_count">%1$d Kategorien</string>
     <string name="categories_delete_selected_title">%1$d Kategorien löschen?</string>
     <string name="categories_delete_selected_text">Die ausgewählten Kategorien und ihre Kontakte werden in den Papierkorb verschoben.</string>
     <string name="categories_drag_handle_cd">Zum Umsortieren ziehen</string>
@@ -350,8 +343,6 @@
     <string name="backup_export">Sicherung exportieren</string>
     <string name="backup_import">Sicherung wiederherstellen</string>
     <string name="backup_working">Vorgang läuft…</string>
-    <string name="backup_export_success">Sicherung exportiert (%1$d Kontakte)</string>
-    <string name="backup_import_success">Sicherung wiederhergestellt (%1$d Kontakte)</string>
     <string name="backup_failed">Vorgang fehlgeschlagen – Datei ungültig oder nicht zugänglich</string>
     <string name="backup_confirm_title">Diese Sicherung wiederherstellen?</string>
     <string name="backup_confirm_text">Die Daten werden mit deinen aktuellen Daten zusammengeführt; Einträge mit derselben ID werden überschrieben. Dies kann nicht rückgängig gemacht werden.</string>
@@ -369,18 +360,15 @@
     <string name="welcome_subtitle">JTR ist ein Erinnerungsnotizbuch.</string>
     <string name="welcome_import_button">Telefonkontakte importieren</string>
     <string name="welcome_skip">Ohne Import starten</string>
-    <string name="welcome_importing">%1$d Kontakte werden importiert…</string>
     <string name="welcome_import_failed">Import fehlgeschlagen.</string>
     <string name="contacts_permission_denied">Kontaktberechtigung verweigert – Import nicht möglich.</string>
     <string name="move_create_category">Neue Kategorie</string>
     <string name="permission_allow">Erlauben</string>
     <string name="welcome_select_button">Kontakte zum Importieren auswählen</string>
     <string name="contact_selection_title">Kontakte auswählen</string>
-    <string name="import_selected_count">Die %1$d ausgewählten Kontakte importieren</string>
     <string name="gallery_picker_title">Foto auswählen</string>
     <string name="gallery_album_recents">Zuletzt verwendet</string>
     <string name="gallery_album_dropdown_cd">Album auswählen</string>
-    <string name="gallery_photo_count">%1$d Fotos</string>
     <string name="gallery_empty">Keine Fotos in diesem Album</string>
     <string name="gallery_permission_rationale">JTR benötigt Zugriff auf deine Fotos, damit du ein Bild auswählen kannst, ohne die App zu verlassen.</string>
     <string name="gallery_permission_grant">Zugriff erlauben</string>
@@ -476,4 +464,48 @@
     <string name="backup_restore_version">Inkompatible Sicherungsversion</string>
     <string name="backup_restore_corrupt">Sicherungsdatei beschädigt</string>
     <string name="backup_restore_write_failed">Wiederherstellung fehlgeschlagen — keine Daten geändert</string>
+    <plurals name="categories_person_count">
+        <item quantity="one">%1$d Kontakt</item>
+        <item quantity="other">%1$d Kontakte</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_contacts">
+        <item quantity="one">%1$d Kontakt</item>
+        <item quantity="other">%1$d Kontakte</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_categories">
+        <item quantity="one">%1$d Kategorie</item>
+        <item quantity="other">%1$d Kategorien</item>
+    </plurals>
+    <plurals name="gallery_photo_count">
+        <item quantity="one">%1$d Foto</item>
+        <item quantity="other">%1$d Fotos</item>
+    </plurals>
+    <plurals name="home_selection_count">
+        <item quantity="one">%1$d ausgewählt</item>
+        <item quantity="other">%1$d ausgewählt</item>
+    </plurals>
+    <plurals name="categories_selection_count">
+        <item quantity="one">%1$d ausgewählt</item>
+        <item quantity="other">%1$d ausgewählt</item>
+    </plurals>
+    <plurals name="person_see_more">
+        <item quantity="one">%1$d weiteren anzeigen…</item>
+        <item quantity="other">%1$d weitere anzeigen…</item>
+    </plurals>
+    <plurals name="welcome_importing">
+        <item quantity="one">%1$d Kontakt wird importiert…</item>
+        <item quantity="other">%1$d Kontakte werden importiert…</item>
+    </plurals>
+    <plurals name="import_selected_count">
+        <item quantity="one">Den %1$d ausgewählten Kontakt importieren</item>
+        <item quantity="other">Die %1$d ausgewählten Kontakte importieren</item>
+    </plurals>
+    <plurals name="backup_export_success">
+        <item quantity="one">Sicherung exportiert (%1$d Kontakt)</item>
+        <item quantity="other">Sicherung exportiert (%1$d Kontakte)</item>
+    </plurals>
+    <plurals name="backup_import_success">
+        <item quantity="one">Sicherung wiederhergestellt (%1$d Kontakt)</item>
+        <item quantity="other">Sicherung wiederhergestellt (%1$d Kontakte)</item>
+    </plurals>
 </resources>

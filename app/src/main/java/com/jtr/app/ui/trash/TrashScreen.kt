@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.jtr.app.ui.category.rememberCategoryColor
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -259,10 +261,7 @@ private fun DeletedCategoryGroupCard(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(
-                            try { Color(android.graphics.Color.parseColor(group.category.color)) }
-                            catch (e: Exception) { Color(0xFF2E86C1) }
-                        ),
+                        .background(rememberCategoryColor(group.category.color)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.Folder, contentDescription = null,
@@ -440,9 +439,9 @@ private fun EmptyTrashDialog(
         text = {
             val parts = buildList {
                 if (categoryCount > 0)
-                    add(stringResource(R.string.trash_empty_dialog_part_categories, categoryCount))
+                    add(pluralStringResource(R.plurals.trash_empty_dialog_part_categories, categoryCount, categoryCount))
                 if (personCount > 0)
-                    add(stringResource(R.string.trash_empty_dialog_part_contacts, personCount))
+                    add(pluralStringResource(R.plurals.trash_empty_dialog_part_contacts, personCount, personCount))
             }
             Text(stringResource(R.string.trash_empty_dialog_text, parts.joinToString(separatorAnd)))
         },

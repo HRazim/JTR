@@ -29,7 +29,6 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR 联系人</string>
-    <string name="home_selection_count">已选 %1$d 个</string>
     <string name="home_fab_add_person">添加联系人</string>
     <string name="home_location_warning">请开启定位以使用附近提醒功能</string>
     <string name="home_search_placeholder">搜索联系人…</string>
@@ -55,7 +54,6 @@
     <string name="categories_delete_title">删除"%1$s"？</string>
     <string name="categories_delete_with_contacts">该分类包含 %1$d 个联系人。确定要删除该分类及其 %1$d 个联系人吗？\n\n您可以从回收站恢复。</string>
     <string name="categories_delete_empty">该分类将被移入回收站，您可以随时恢复。</string>
-    <string name="categories_person_count">%1$d 个联系人</string>
     <string name="categories_edit_dialog_title">编辑分类</string>
     <string name="categories_image_cd">分类图片</string>
     <string name="categories_remove_photo">删除照片</string>
@@ -136,8 +134,6 @@
     <string name="trash_empty_cd">清空回收站</string>
     <string name="trash_empty_dialog_title">清空回收站？</string>
     <string name="trash_empty_dialog_text">此操作不可撤销。\n%1$s 将被永久删除。</string>
-    <string name="trash_empty_dialog_part_categories">%1$d 个分类</string>
-    <string name="trash_empty_dialog_part_contacts">%1$d 个联系人</string>
     <string name="trash_empty_confirm">永久清空</string>
     <string name="trash_delete_dialog_title">永久删除？</string>
     <string name="trash_delete_category_with_contacts">分类"%1$s"及其 %2$d 个联系人将被删除。</string>
@@ -274,7 +270,6 @@
     <string name="person_job_at">·</string>
     <string name="common_show">显示</string>
     <string name="common_hide">隐藏</string>
-    <string name="person_see_more">查看其他 %1$d 项…</string>
     <string name="person_see_less">收起</string>
     <!-- v4.5 (DB v14) — 收藏、个人资料信息、分类分组 -->
     <string name="person_favorite_toggle_cd">切换收藏</string>
@@ -284,12 +279,10 @@
     <string name="person_info_updated">最后修改</string>
     <string name="categories_favorite">添加到收藏</string>
     <string name="categories_unfavorite">取消收藏</string>
-    <string name="categories_selection_count">已选择 %1$d 个</string>
     <string name="categories_create_group">创建分组</string>
     <string name="categories_group_name_hint">分组名称</string>
     <string name="categories_rename">重命名</string>
     <string name="categories_change_image">更换图片</string>
-    <string name="categories_group_member_count">%1$d 个分类</string>
     <string name="categories_delete_selected_title">删除 %1$d 个分类？</string>
     <string name="categories_delete_selected_text">选中的分类及其联系人将被移至回收站。</string>
     <string name="categories_drag_handle_cd">拖动以重新排序</string>
@@ -347,8 +340,6 @@
     <string name="backup_export">导出备份</string>
     <string name="backup_import">恢复备份</string>
     <string name="backup_working">操作进行中…</string>
-    <string name="backup_export_success">备份已导出（%1$d 位联系人）</string>
-    <string name="backup_import_success">备份已恢复（%1$d 位联系人）</string>
     <string name="backup_failed">操作失败 — 文件无效或无法访问</string>
     <string name="backup_confirm_title">恢复此备份？</string>
     <string name="backup_confirm_text">数据将与当前数据合并；相同标识的条目将被覆盖。此操作不可撤销。</string>
@@ -367,7 +358,6 @@
     <string name="welcome_subtitle">JTR 是一本记忆手册。</string>
     <string name="welcome_import_button">导入手机联系人</string>
     <string name="welcome_skip">不导入，直接开始</string>
-    <string name="welcome_importing">正在导入 %1$d 位联系人…</string>
     <string name="welcome_import_failed">导入失败。</string>
     <string name="contacts_permission_denied">通讯录权限被拒绝 — 无法导入。</string>
     <!-- v5.3.2 — 移动过程中即时新建分类 -->
@@ -376,12 +366,10 @@
     <!-- v5.4.1 — 选择性导入原生联系人 -->
     <string name="welcome_select_button">选择要导入的联系人</string>
     <string name="contact_selection_title">选择联系人</string>
-    <string name="import_selected_count">导入所选的 %1$d 位联系人</string>
     <!-- v5.5 — 应用内相册选择器（Instagram 风格） -->
     <string name="gallery_picker_title">选择照片</string>
     <string name="gallery_album_recents">最近</string>
     <string name="gallery_album_dropdown_cd">选择相册</string>
-    <string name="gallery_photo_count">%1$d 张照片</string>
     <string name="gallery_empty">此相册中没有照片</string>
     <string name="gallery_permission_rationale">JTR 需要访问您的照片，以便您无需离开应用即可选择图片。</string>
     <string name="gallery_permission_grant">允许访问</string>
@@ -487,4 +475,37 @@
     <string name="backup_restore_version">备份版本不兼容</string>
     <string name="backup_restore_corrupt">备份文件已损坏</string>
     <string name="backup_restore_write_failed">恢复失败：未更改任何数据</string>
+    <plurals name="categories_person_count">
+        <item quantity="other">%1$d 个联系人</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_contacts">
+        <item quantity="other">%1$d 个联系人</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_categories">
+        <item quantity="other">%1$d 个分类</item>
+    </plurals>
+    <plurals name="gallery_photo_count">
+        <item quantity="other">%1$d 张照片</item>
+    </plurals>
+    <plurals name="home_selection_count">
+        <item quantity="other">已选 %1$d 个</item>
+    </plurals>
+    <plurals name="categories_selection_count">
+        <item quantity="other">已选择 %1$d 个</item>
+    </plurals>
+    <plurals name="person_see_more">
+        <item quantity="other">查看其他 %1$d 项…</item>
+    </plurals>
+    <plurals name="welcome_importing">
+        <item quantity="other">正在导入 %1$d 位联系人…</item>
+    </plurals>
+    <plurals name="import_selected_count">
+        <item quantity="other">导入所选的 %1$d 位联系人</item>
+    </plurals>
+    <plurals name="backup_export_success">
+        <item quantity="other">备份已导出（%1$d 位联系人）</item>
+    </plurals>
+    <plurals name="backup_import_success">
+        <item quantity="other">备份已恢复（%1$d 位联系人）</item>
+    </plurals>
 </resources>
