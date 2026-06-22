@@ -14,8 +14,8 @@ android {
         applicationId = "com.jtr.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 67
-        versionName = "7.1.13"
+        versionCode = 68
+        versionName = "7.1.14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -41,6 +41,21 @@ android {
             // Stocke les .so non compressés dans l'APK pour préserver
             // l'alignement 16 KB exigé par Android 15 (API 35+).
             useLegacyPackaging = false
+        }
+    }
+
+    // v7.1.14 — LANGUE IN-APP FIABLE SUR AAB (audit M1). Le Play Store impose l'App
+    // Bundle, qui par défaut SCINDE les ressources par langue : seules les langues de
+    // l'appareil sont livrées à l'installation. Or JTR change de langue via
+    // LocaleManager.wrap() (createConfigurationContext, mécanisme maison) et NON via
+    // l'API système — Play ne télécharge donc pas le split d'une langue non installée
+    // → une des 13 langues choisie in-app retombait silencieusement en anglais
+    // (invisible en APK debug, qui embarque tout ; signalé par lint AppBundleLocaleChanges).
+    // enableSplit = false force les 13 langues dans l'APK de base → la bascule in-app
+    // fonctionne quelle que soit la langue de l'appareil.
+    bundle {
+        language {
+            enableSplit = false
         }
     }
 
