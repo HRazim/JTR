@@ -4,49 +4,72 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.annotation.DrawableRes
+import com.jtr.app.R
 
 data class SocialLink(val platform: SocialPlatform, val url: String)
 
+/**
+ * Plateforme sociale reconnue — SOURCE UNIQUE de détection (icône de marque + libellé +
+ * paquet d'ouverture) partagée par le dialogue d'ajout, l'Accueil et le profil.
+ *
+ * [iconRes] est le vector drawable de marque (rendu NON teinté → couleurs d'origine).
+ * [hosts] sont des DOMAINES comparés au host de l'URL avec une frontière de domaine
+ * (cf. [detect]) — jamais une sous-chaîne brute, sinon « snapchat.com » (qui contient
+ * « t.co ») serait pris pour X.
+ */
 sealed class SocialPlatform(
     val displayName: String,
     val packageId: String,
-    val argbColor: Long,
-    val urlPatterns: List<String>
+    @DrawableRes val iconRes: Int,
+    val hosts: List<String>
 ) {
-    object Instagram : SocialPlatform("Instagram", "com.instagram.android",  0xFFE1306CL, listOf("instagram.com", "instagr.am"))
-    object LinkedIn  : SocialPlatform("LinkedIn",  "com.linkedin.android",   0xFF0A66C2L, listOf("linkedin.com", "lnkd.in"))
-    object X         : SocialPlatform("X",          "com.twitter.android",    0xFF1D9BF0L, listOf("twitter.com", "x.com", "t.co"))
-    object Facebook  : SocialPlatform("Facebook",   "com.facebook.katana",    0xFF1877F2L, listOf("facebook.com", "fb.com", "fb.me"))
-    object Snapchat  : SocialPlatform("Snapchat",   "com.snapchat.android",   0xFFFFFC00L, listOf("snapchat.com", "snap.com"))
-    object TikTok    : SocialPlatform("TikTok",     "com.zhiliaoapp.musically", 0xFFFF0050L, listOf("tiktok.com", "vm.tiktok.com"))
+    object Instagram : SocialPlatform("Instagram", "com.instagram.android", R.drawable.ic_instagram, listOf("instagram.com", "instagr.am"))
+    object LinkedIn  : SocialPlatform("LinkedIn", "com.linkedin.android", R.drawable.ic_linkedin, listOf("linkedin.com", "lnkd.in"))
+    object X         : SocialPlatform("X", "com.twitter.android", R.drawable.ic_x, listOf("twitter.com", "x.com", "t.co"))
+    object Facebook  : SocialPlatform("Facebook", "com.facebook.katana", R.drawable.ic_facebook, listOf("facebook.com", "fb.com", "fb.me"))
+    object Snapchat  : SocialPlatform("Snapchat", "com.snapchat.android", R.drawable.ic_snapchat, listOf("snapchat.com", "snap.com"))
+    // TikTok : pas d'icône de marque dédiée → repli ic_link (on n'invente pas de logo).
+    object TikTok    : SocialPlatform("TikTok", "com.zhiliaoapp.musically", R.drawable.ic_link, listOf("tiktok.com", "vm.tiktok.com"))
+    object Discord   : SocialPlatform("Discord", "com.discord", R.drawable.ic_discord, listOf("discord.com", "discord.gg"))
+    object YouTube   : SocialPlatform("YouTube", "com.google.android.youtube", R.drawable.ic_youtube, listOf("youtube.com", "youtu.be"))
 
     companion object {
-        val all: List<SocialPlatform> = listOf(Instagram, LinkedIn, X, Facebook, Snapchat, TikTok)
-    }
-}
+        val all: List<SocialPlatform> =
+            listOf(Instagram, LinkedIn, X, Facebook, Snapchat, TikTok, Discord, YouTube)
 
-fun SocialPlatform.icon(): ImageVector = when (this) {
-    SocialPlatform.Instagram -> Icons.Default.PhotoCamera
-    SocialPlatform.LinkedIn  -> Icons.Default.Work
-    SocialPlatform.X         -> Icons.Default.AlternateEmail
-    SocialPlatform.Facebook  -> Icons.Default.Group
-    SocialPlatform.Snapchat  -> Icons.Default.CameraAlt
-    SocialPlatform.TikTok    -> Icons.Default.MusicNote
+        /**
+         * Détecte la plateforme d'une URL par son HOST, avec FRONTIÈRE DE DOMAINE
+         * (`host == d` ou `host` se termine par `.d`). Indispensable : un `contains` naïf
+         * prendrait « snapchat.com » pour X car il contient la sous-chaîne « t.co ».
+         * Couvre www., chemins (/add/<user>) et sous-domaines (t.snapchat.com).
+         */
+        fun detect(url: String): SocialPlatform? {
+            val host = hostOf(url) ?: return null
+            return all.firstOrNull { p -> p.hosts.any { host == it || host.endsWith(".$it") } }
+        }
+
+        /**
+         * Extrait le host d'une URL en KOTLIN PUR (sans android.net.Uri → testable en JVM) :
+         * retire le schéma, l'éventuel userinfo/port et le préfixe « www. ». Tolère une URL
+         * sans schéma (« snapchat.com/add »). Renvoie `null` si vide.
+         */
+        internal fun hostOf(url: String): String? {
+            val afterScheme = url.substringAfter("://", url)
+            val authority = afterScheme.substringBefore('/').substringBefore('?').substringBefore('#')
+            val host = authority.substringAfterLast('@').substringBefore(':')
+                .lowercase().removePrefix("www.")
+            return host.ifBlank { null }
+        }
+    }
 }
 
 private val urlRegex = Regex("""https?://[^\s,\n"'<>]+""")
 
+/** Liens sociaux trouvés dans un texte libre (détection UNIQUE via [SocialPlatform.detect]). */
 fun extractSocialLinks(text: String): List<SocialLink> =
     urlRegex.findAll(text)
-        .mapNotNull { match ->
-            val url = match.value
-            SocialPlatform.all
-                .firstOrNull { p -> p.urlPatterns.any { url.contains(it, ignoreCase = true) } }
-                ?.let { SocialLink(it, url) }
-        }
+        .mapNotNull { match -> SocialPlatform.detect(match.value)?.let { SocialLink(it, match.value) } }
         .distinctBy { it.url }
         .toList()
 
