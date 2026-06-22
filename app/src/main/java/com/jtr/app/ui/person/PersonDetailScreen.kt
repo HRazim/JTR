@@ -273,8 +273,12 @@ fun PersonDetailScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showBackgroundRationale = false
-                    backgroundPermissionLauncher.launch(
-                        Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                    // R+ : la requête runtime est un no-op → redirection Réglages (logique
+                    // partagée avec le flux Paramètres via LocationUtils, plus de divergence).
+                    LocationUtils.requestBackgroundLocation(context) {
+                        backgroundPermissionLauncher.launch(
+                            Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                    }
                 }) { Text(stringResource(R.string.permission_allow)) }
             },
             dismissButton = {

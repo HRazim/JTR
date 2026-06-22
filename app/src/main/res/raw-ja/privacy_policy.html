@@ -90,7 +90,7 @@
   </div>
 
   <div class="summary">
-    <p><strong>概要：</strong>JTRは100%ローカルアプリです。<span class="ok">お客様の個人データはデバイスの外に出ることはありません</span>（都市のジオコーディング（Nominatim）を除く）。</p>
+    <p><strong>概要：</strong>JTRは<span class="ok">ローカルファースト</span>です。お客様の連絡先の個人データは<span class="ok">デバイスの外に出ることはありません</span>。ネットワーク通信は<strong>場所に関する機能</strong>のみ — ジオコーディング（OpenStreetMap Nominatim）と地図タイル（OpenFreeMap）— に使用され、都市名／座標とIPアドレスを送信しますが、連絡先データは送信しません。アカウント・広告・分析はありません。</p>
   </div>
 
   <h2><span class="num">1</span>収集するデータ</h2>
@@ -110,24 +110,29 @@
     <p style="margin-top:8px;"><span class="ok">✓ 完全削除</span> — アプリをアンインストールすると、関連するすべてのデータが完全に削除されます。</p>
   </div>
 
-  <h2><span class="num">3</span>位置情報の使用</h2>
-  <p>位置情報の許可は<strong>近接リマインダー</strong>機能のためにのみ求められます：</p>
+  <h2><span class="num">3</span>位置情報と近接リマインダー</h2>
+  <p><strong>近接リマインダー</strong>機能は<strong>任意で、既定では無効</strong>です。明示的に有効にした場合、JTRは<strong>バックグラウンド（アプリを閉じている間も）を含めて</strong>位置情報にアクセスし、次のために使用します：</p>
   <ul>
-    <li>現在地と連絡先の居住都市間の距離計算（ハーバーサイン公式）</li>
-    <li>しばらく連絡していない連絡先の近くにいるときにローカル通知を送信</li>
+    <li>現在地と連絡先の都市との距離を計算（デバイス上で）</li>
+    <li>この機能を有効にした連絡先の近くを通ったときにローカル通知を送信（連絡先ごとに48時間に最大1回）</li>
   </ul>
   <div class="card">
-    <p><span class="ok">✓</span> <strong>位置情報データ</strong>は第三者に送信されることも、デバイス外に保存されることもありません。</p>
+    <p><span class="ok">✓</span> お客様の位置情報は<strong>デバイス上でのみ処理</strong>され、発行者や第三者に<strong>送信されることはありません</strong>。この機能はいつでも無効にできます（<strong>設定 → 近接リマインダー</strong>）。位置情報の許可を取り消すと自動的にリセットされます。</p>
+    <p style="margin-top:8px;font-size:12px;">位置の検出とジオフェンシングは<strong>Google Play開発者サービス</strong>に依存しており、JTRとは独立して独自の位置情報の仕組み（Android／Googleのシステムの動作）を利用する場合があります。</p>
   </div>
-  <p>この機能はいつでも無効にできます：<strong>設定 → 近接リマインダー</strong></p>
 
   <h2><span class="num">4</span>サードパーティサービス</h2>
   <div class="card">
     <span class="badge">Nominatim (OpenStreetMap)</span>
-    <p>市区町村を検索または選択する際、市区町村名はジオコーディングのためにNominatim APIに送信されます。<strong>個人データは送信されません。</strong></p>
-    <p style="margin-top:6px;font-size:12px;">利用規約：<a href="https://nominatim.org/release-docs/latest/api/Overview/">nominatim.org</a></p>
+    <p>都市を検索／選択する際（または地図上の地点をタップする際）、<strong>都市名または座標</strong>がジオコーディングのために<code>nominatim.openstreetmap.org</code>に送信されます。送信されるもの：検索語とお客様の<strong>IPアドレス</strong> — <strong>連絡先データ</strong>・識別子・アカウントは送信されません。</p>
+    <p style="margin-top:6px;font-size:12px;">ポリシー：<a href="https://osmfoundation.org/wiki/Privacy_Policy">osmfoundation.org</a></p>
   </div>
-  <p><span class="ok">✓</span> <strong>他のサードパーティサービス</strong>（分析、広告、クラッシュレポート）は一切統合されていません。</p>
+  <div class="card">
+    <span class="badge">OpenFreeMap</span>
+    <p>地図の表示時に<code>tiles.openfreemap.org</code>から<strong>地図タイル</strong>（表示中の領域とIPアドレス）をダウンロードします。連絡先データは送信されません。</p>
+    <p style="margin-top:6px;font-size:12px;">ポリシー：<a href="https://openfreemap.org/">openfreemap.org</a></p>
+  </div>
+  <p><span class="ok">✓</span> <strong>分析・広告・クラッシュレポートのSDKは一切統合されていません</strong>。唯一のGoogleライブラリは、任意の近接機能に使用されるPlay Services Locationです。</p>
 
   <h2><span class="num">5</span>通知</h2>
   <p>JTRの通知は<strong>完全にローカル</strong>で、いかなるサーバーも経由しません：</p>
