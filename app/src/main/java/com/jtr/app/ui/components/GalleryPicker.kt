@@ -64,6 +64,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -515,7 +516,7 @@ private fun AlbumGridTile(album: GalleryAlbum, onClick: () -> Unit) {
             modifier = Modifier.padding(horizontal = 2.dp),
         )
         Text(
-            text = stringResource(R.string.gallery_photo_count, album.imageCount),
+            text = pluralStringResource(R.plurals.gallery_photo_count, album.imageCount, album.imageCount),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 2.dp, vertical = 1.dp),

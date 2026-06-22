@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -310,7 +311,7 @@ fun CategoryGroupDetailScreen(
                     title = {
                         Text(
                             if (totalSelected == 0) stringResource(R.string.categories_selection_none)
-                            else stringResource(R.string.categories_selection_count, totalSelected)
+                            else pluralStringResource(R.plurals.categories_selection_count, totalSelected, totalSelected)
                         )
                     },
                     navigationIcon = {

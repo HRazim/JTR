@@ -29,7 +29,6 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">Contatti JTR</string>
-    <string name="home_selection_count">%1$d selezionati</string>
     <string name="home_fab_add_person">Aggiungi una persona</string>
     <string name="home_location_warning">Attiva la posizione per i promemoria di prossimità</string>
     <string name="home_search_placeholder">Cerca un contatto…</string>
@@ -55,7 +54,6 @@
     <string name="categories_delete_title">Eliminare «%1$s»?</string>
     <string name="categories_delete_with_contacts">Questa categoria contiene %1$d contatto/i. Vuoi davvero eliminare la categoria e i suoi %1$d contatto/i?\n\nPuoi ripristinarli dal Cestino.</string>
     <string name="categories_delete_empty">La categoria verrà spostata nel Cestino. Potrai ripristinarla.</string>
-    <string name="categories_person_count">%1$d contatto/i</string>
     <string name="categories_edit_dialog_title">Modifica categoria</string>
     <string name="categories_image_cd">Immagine della categoria</string>
     <string name="categories_remove_photo">Rimuovi foto</string>
@@ -141,8 +139,6 @@
     <string name="trash_empty_cd">Svuota cestino</string>
     <string name="trash_empty_dialog_title">Svuotare il cestino?</string>
     <string name="trash_empty_dialog_text">Questa azione è irreversibile.\n%1$s verranno eliminati definitivamente.</string>
-    <string name="trash_empty_dialog_part_categories">%1$d categoria/e</string>
-    <string name="trash_empty_dialog_part_contacts">%1$d contatto/i</string>
     <string name="trash_empty_confirm">Svuota definitivamente</string>
     <string name="trash_delete_dialog_title">Eliminare definitivamente?</string>
     <string name="trash_delete_category_with_contacts">La categoria «%1$s» e i suoi %2$d contatto/i andranno persi.</string>
@@ -281,7 +277,6 @@
     <string name="person_job_at">presso</string>
     <string name="common_show">Mostra</string>
     <string name="common_hide">Nascondi</string>
-    <string name="person_see_more">Vedi altri %1$d…</string>
     <string name="person_see_less">Vedi meno</string>
     <string name="person_favorite_toggle_cd">Attiva/disattiva preferito</string>
     <string name="person_info_menu">Informazioni del profilo</string>
@@ -290,12 +285,10 @@
     <string name="person_info_updated">Ultima modifica</string>
     <string name="categories_favorite">Aggiungi ai preferiti</string>
     <string name="categories_unfavorite">Rimuovi dai preferiti</string>
-    <string name="categories_selection_count">%1$d selezionati</string>
     <string name="categories_create_group">Crea gruppo</string>
     <string name="categories_group_name_hint">Nome del gruppo</string>
     <string name="categories_rename">Rinomina</string>
     <string name="categories_change_image">Cambia immagine</string>
-    <string name="categories_group_member_count">%1$d categorie</string>
     <string name="categories_delete_selected_title">Eliminare %1$d categorie?</string>
     <string name="categories_delete_selected_text">Le categorie selezionate e i loro contatti verranno spostati nel cestino.</string>
     <string name="categories_drag_handle_cd">Trascina per riordinare</string>
@@ -350,8 +343,6 @@
     <string name="backup_export">Esporta un backup</string>
     <string name="backup_import">Ripristina un backup</string>
     <string name="backup_working">Operazione in corso…</string>
-    <string name="backup_export_success">Backup esportato (%1$d contatti)</string>
-    <string name="backup_import_success">Backup ripristinato (%1$d contatti)</string>
     <string name="backup_failed">Operazione non riuscita — file non valido o inaccessibile</string>
     <string name="backup_confirm_title">Ripristinare questo backup?</string>
     <string name="backup_confirm_text">I dati verranno uniti a quelli attuali; le voci con lo stesso ID verranno sovrascritte. L\'operazione non può essere annullata.</string>
@@ -369,18 +360,15 @@
     <string name="welcome_subtitle">JTR è un taccuino della memoria.</string>
     <string name="welcome_import_button">Importa i contatti del telefono</string>
     <string name="welcome_skip">Inizia senza importare</string>
-    <string name="welcome_importing">Importazione di %1$d contatti…</string>
     <string name="welcome_import_failed">Importazione non riuscita.</string>
     <string name="contacts_permission_denied">Autorizzazione ai contatti negata — impossibile importare.</string>
     <string name="move_create_category">Nuova categoria</string>
     <string name="permission_allow">Consenti</string>
     <string name="welcome_select_button">Scegli i contatti da importare</string>
     <string name="contact_selection_title">Scegli i contatti</string>
-    <string name="import_selected_count">Importa i %1$d contatti selezionati</string>
     <string name="gallery_picker_title">Seleziona una foto</string>
     <string name="gallery_album_recents">Recenti</string>
     <string name="gallery_album_dropdown_cd">Scegli un album</string>
-    <string name="gallery_photo_count">%1$d foto</string>
     <string name="gallery_empty">Nessuna foto in questo album</string>
     <string name="gallery_permission_rationale">JTR ha bisogno di accedere alle tue foto per scegliere un\'immagine senza uscire dall\'app.</string>
     <string name="gallery_permission_grant">Consenti l\'accesso</string>
@@ -476,4 +464,59 @@
     <string name="backup_restore_version">Versione di backup incompatibile</string>
     <string name="backup_restore_corrupt">File di backup danneggiato</string>
     <string name="backup_restore_write_failed">Ripristino non riuscito: nessun dato modificato</string>
+    <plurals name="categories_person_count">
+        <item quantity="one">%1$d contatto</item>
+        <item quantity="many">%1$d contatti</item>
+        <item quantity="other">%1$d contatti</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_contacts">
+        <item quantity="one">%1$d contatto</item>
+        <item quantity="many">%1$d contatti</item>
+        <item quantity="other">%1$d contatti</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_categories">
+        <item quantity="one">%1$d categoria</item>
+        <item quantity="many">%1$d categorie</item>
+        <item quantity="other">%1$d categorie</item>
+    </plurals>
+    <plurals name="gallery_photo_count">
+        <item quantity="one">%1$d foto</item>
+        <item quantity="many">%1$d foto</item>
+        <item quantity="other">%1$d foto</item>
+    </plurals>
+    <plurals name="home_selection_count">
+        <item quantity="one">%1$d selezionato</item>
+        <item quantity="many">%1$d selezionati</item>
+        <item quantity="other">%1$d selezionati</item>
+    </plurals>
+    <plurals name="categories_selection_count">
+        <item quantity="one">%1$d selezionata</item>
+        <item quantity="many">%1$d selezionate</item>
+        <item quantity="other">%1$d selezionate</item>
+    </plurals>
+    <plurals name="person_see_more">
+        <item quantity="one">Vedi altro %1$d…</item>
+        <item quantity="many">Vedi altri %1$d…</item>
+        <item quantity="other">Vedi altri %1$d…</item>
+    </plurals>
+    <plurals name="welcome_importing">
+        <item quantity="one">Importazione di %1$d contatto…</item>
+        <item quantity="many">Importazione di %1$d contatti…</item>
+        <item quantity="other">Importazione di %1$d contatti…</item>
+    </plurals>
+    <plurals name="import_selected_count">
+        <item quantity="one">Importa il %1$d contatto selezionato</item>
+        <item quantity="many">Importa i %1$d contatti selezionati</item>
+        <item quantity="other">Importa i %1$d contatti selezionati</item>
+    </plurals>
+    <plurals name="backup_export_success">
+        <item quantity="one">Backup esportato (%1$d contatto)</item>
+        <item quantity="many">Backup esportato (%1$d contatti)</item>
+        <item quantity="other">Backup esportato (%1$d contatti)</item>
+    </plurals>
+    <plurals name="backup_import_success">
+        <item quantity="one">Backup ripristinato (%1$d contatto)</item>
+        <item quantity="many">Backup ripristinato (%1$d contatti)</item>
+        <item quantity="other">Backup ripristinato (%1$d contatti)</item>
+    </plurals>
 </resources>

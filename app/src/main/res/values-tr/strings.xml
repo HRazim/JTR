@@ -29,7 +29,6 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Kişiler</string>
-    <string name="home_selection_count">%1$d seçildi</string>
     <string name="home_fab_add_person">Kişi ekle</string>
     <string name="home_location_warning">Yakınlık hatırlatmaları için konumu aç</string>
     <string name="home_search_placeholder">Kişi ara…</string>
@@ -55,7 +54,6 @@
     <string name="categories_delete_title">“%1$s” silinsin mi?</string>
     <string name="categories_delete_with_contacts">Bu kategori %1$d kişi içeriyor. Kategoriyi ve içindeki %1$d kişiyi silmek istediğine emin misin?\n\nBunları Çöp Kutusu\'ndan geri yükleyebilirsin.</string>
     <string name="categories_delete_empty">Kategori Çöp Kutusu\'na taşınacak. Geri yükleyebilirsin.</string>
-    <string name="categories_person_count">%1$d kişi</string>
     <string name="categories_edit_dialog_title">Kategoriyi düzenle</string>
     <string name="categories_image_cd">Kategori görseli</string>
     <string name="categories_remove_photo">Fotoğrafı kaldır</string>
@@ -141,8 +139,6 @@
     <string name="trash_empty_cd">Çöp kutusunu boşalt</string>
     <string name="trash_empty_dialog_title">Çöp kutusu boşaltılsın mı?</string>
     <string name="trash_empty_dialog_text">Bu işlem geri alınamaz.\n%1$s kalıcı olarak silinecek.</string>
-    <string name="trash_empty_dialog_part_categories">%1$d kategori</string>
-    <string name="trash_empty_dialog_part_contacts">%1$d kişi</string>
     <string name="trash_empty_confirm">Kalıcı olarak boşalt</string>
     <string name="trash_delete_dialog_title">Kalıcı olarak silinsin mi?</string>
     <string name="trash_delete_category_with_contacts">“%1$s” kategorisi ve içindeki %2$d kişi kaybolacak.</string>
@@ -281,7 +277,6 @@
     <string name="person_job_at">—</string>
     <string name="common_show">Göster</string>
     <string name="common_hide">Gizle</string>
-    <string name="person_see_more">%1$d tane daha gör…</string>
     <string name="person_see_less">Daha az gör</string>
     <string name="person_favorite_toggle_cd">Favoriyi değiştir</string>
     <string name="person_info_menu">Profil bilgileri</string>
@@ -290,12 +285,10 @@
     <string name="person_info_updated">Son değişiklik</string>
     <string name="categories_favorite">Favorilere ekle</string>
     <string name="categories_unfavorite">Favorilerden çıkar</string>
-    <string name="categories_selection_count">%1$d seçildi</string>
     <string name="categories_create_group">Grup oluştur</string>
     <string name="categories_group_name_hint">Grup adı</string>
     <string name="categories_rename">Yeniden adlandır</string>
     <string name="categories_change_image">Görseli değiştir</string>
-    <string name="categories_group_member_count">%1$d kategori</string>
     <string name="categories_delete_selected_title">%1$d kategori silinsin mi?</string>
     <string name="categories_delete_selected_text">Seçilen kategoriler ve kişileri çöp kutusuna taşınacak.</string>
     <string name="categories_drag_handle_cd">Yeniden sıralamak için sürükle</string>
@@ -350,8 +343,6 @@
     <string name="backup_export">Yedek dışa aktar</string>
     <string name="backup_import">Yedeği geri yükle</string>
     <string name="backup_working">İşlem sürüyor…</string>
-    <string name="backup_export_success">Yedek dışa aktarıldı (%1$d kişi)</string>
-    <string name="backup_import_success">Yedek geri yüklendi (%1$d kişi)</string>
     <string name="backup_failed">İşlem başarısız — geçersiz veya erişilemeyen dosya</string>
     <string name="backup_confirm_title">Bu yedek geri yüklensin mi?</string>
     <string name="backup_confirm_text">Veriler mevcut verilerinle birleştirilecek; aynı kimliğe sahip kayıtların üzerine yazılacak. Bu işlem geri alınamaz.</string>
@@ -369,18 +360,15 @@
     <string name="welcome_subtitle">JTR bir anı defteridir.</string>
     <string name="welcome_import_button">Telefon kişilerini içe aktar</string>
     <string name="welcome_skip">İçe aktarmadan başla</string>
-    <string name="welcome_importing">%1$d kişi içe aktarılıyor…</string>
     <string name="welcome_import_failed">İçe aktarma başarısız.</string>
     <string name="contacts_permission_denied">Kişiler izni reddedildi — içe aktarma mümkün değil.</string>
     <string name="move_create_category">Yeni kategori</string>
     <string name="permission_allow">İzin ver</string>
     <string name="welcome_select_button">İçe aktarılacak kişileri seç</string>
     <string name="contact_selection_title">Kişileri seç</string>
-    <string name="import_selected_count">Seçilen %1$d kişiyi içe aktar</string>
     <string name="gallery_picker_title">Fotoğraf seç</string>
     <string name="gallery_album_recents">Son kullanılanlar</string>
     <string name="gallery_album_dropdown_cd">Albüm seç</string>
-    <string name="gallery_photo_count">%1$d fotoğraf</string>
     <string name="gallery_empty">Bu albümde fotoğraf yok</string>
     <string name="gallery_permission_rationale">JTR, uygulamadan çıkmadan bir görsel seçebilmen için fotoğraflarına erişmek ister.</string>
     <string name="gallery_permission_grant">Erişime izin ver</string>
@@ -476,4 +464,48 @@
     <string name="backup_restore_version">Uyumsuz yedek sürümü</string>
     <string name="backup_restore_corrupt">Yedek dosyası bozuk</string>
     <string name="backup_restore_write_failed">Geri yükleme başarısız: hiçbir veri değişmedi</string>
+    <plurals name="categories_person_count">
+        <item quantity="one">%1$d kişi</item>
+        <item quantity="other">%1$d kişi</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_contacts">
+        <item quantity="one">%1$d kişi</item>
+        <item quantity="other">%1$d kişi</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_categories">
+        <item quantity="one">%1$d kategori</item>
+        <item quantity="other">%1$d kategori</item>
+    </plurals>
+    <plurals name="gallery_photo_count">
+        <item quantity="one">%1$d fotoğraf</item>
+        <item quantity="other">%1$d fotoğraf</item>
+    </plurals>
+    <plurals name="home_selection_count">
+        <item quantity="one">%1$d seçildi</item>
+        <item quantity="other">%1$d seçildi</item>
+    </plurals>
+    <plurals name="categories_selection_count">
+        <item quantity="one">%1$d seçildi</item>
+        <item quantity="other">%1$d seçildi</item>
+    </plurals>
+    <plurals name="person_see_more">
+        <item quantity="one">%1$d tane daha gör…</item>
+        <item quantity="other">%1$d tane daha gör…</item>
+    </plurals>
+    <plurals name="welcome_importing">
+        <item quantity="one">%1$d kişi içe aktarılıyor…</item>
+        <item quantity="other">%1$d kişi içe aktarılıyor…</item>
+    </plurals>
+    <plurals name="import_selected_count">
+        <item quantity="one">Seçilen %1$d kişiyi içe aktar</item>
+        <item quantity="other">Seçilen %1$d kişiyi içe aktar</item>
+    </plurals>
+    <plurals name="backup_export_success">
+        <item quantity="one">Yedek dışa aktarıldı (%1$d kişi)</item>
+        <item quantity="other">Yedek dışa aktarıldı (%1$d kişi)</item>
+    </plurals>
+    <plurals name="backup_import_success">
+        <item quantity="one">Yedek geri yüklendi (%1$d kişi)</item>
+        <item quantity="other">Yedek geri yüklendi (%1$d kişi)</item>
+    </plurals>
 </resources>

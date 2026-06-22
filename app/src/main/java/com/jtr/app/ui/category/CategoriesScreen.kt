@@ -45,6 +45,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -423,7 +424,7 @@ fun CategoriesScreen(
                     title = {
                         Text(
                             if (totalSelected == 0) stringResource(R.string.categories_selection_none)
-                            else stringResource(R.string.categories_selection_count, totalSelected)
+                            else pluralStringResource(R.plurals.categories_selection_count, totalSelected, totalSelected)
                         )
                     },
                     navigationIcon = {
@@ -762,7 +763,7 @@ fun CategoryGridTile(
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Text(
-                text = stringResource(R.string.categories_person_count, personCount),
+                text = pluralStringResource(R.plurals.categories_person_count, personCount, personCount),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.8f),
                 maxLines = 1,
@@ -834,7 +835,7 @@ fun CategoryListRow(
                         fontWeight = FontWeight.SemiBold, maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     Text(
-                        text = stringResource(R.string.categories_person_count, personCount),
+                        text = pluralStringResource(R.plurals.categories_person_count, personCount, personCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
@@ -1016,7 +1017,7 @@ private fun FavoritesGridTile(count: Int, onClick: () -> Unit) {
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Text(
-                text = stringResource(R.string.categories_person_count, count),
+                text = pluralStringResource(R.plurals.categories_person_count, count, count),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.8f),
                 maxLines = 1
@@ -1067,7 +1068,7 @@ private fun FavoritesRow(count: Int, showCount: Boolean, onClick: () -> Unit) {
                 )
                 if (showCount) {
                     Text(
-                        text = stringResource(R.string.categories_person_count, count),
+                        text = pluralStringResource(R.plurals.categories_person_count, count, count),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
@@ -1680,7 +1681,7 @@ internal fun ReorderableTopGrid(
                         isFolder = false,
                         name = entry.category.name,
                         isFavorite = entry.category.isFavorite,
-                        subtitle = stringResource(R.string.categories_person_count, c),
+                        subtitle = pluralStringResource(R.plurals.categories_person_count, c, c),
                         imagePath = entry.category.imagePath,
                         accent = accent,
                         selected = isCategorySelected(entry.category.id),
@@ -1900,8 +1901,8 @@ internal fun ReorderableTopList(
                         isFolder = false,
                         name = entry.category.name,
                         isFavorite = entry.category.isFavorite,
-                        subtitle = stringResource(R.string.categories_person_count,
-                            countOf(entry.category.id)),
+                        subtitle = pluralStringResource(R.plurals.categories_person_count,
+                            countOf(entry.category.id), countOf(entry.category.id)),
                         imagePath = entry.category.imagePath,
                         accent = accent,
                         selected = isCategorySelected(entry.category.id),

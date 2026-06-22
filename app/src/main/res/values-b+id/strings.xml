@@ -32,7 +32,6 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">Kontak JTR</string>
-    <string name="home_selection_count">%1$d dipilih</string>
     <string name="home_fab_add_person">Tambah orang</string>
     <string name="home_location_warning">Aktifkan lokasi untuk pengingat kedekatan</string>
     <string name="home_search_placeholder">Cari kontak…</string>
@@ -58,7 +57,6 @@
     <string name="categories_delete_title">Hapus “%1$s”?</string>
     <string name="categories_delete_with_contacts">Kategori ini berisi %1$d kontak. Yakin ingin menghapus kategori beserta %1$d kontaknya?\n\nKamu bisa memulihkannya dari Sampah.</string>
     <string name="categories_delete_empty">Kategori akan dipindahkan ke Sampah. Kamu bisa memulihkannya.</string>
-    <string name="categories_person_count">%1$d kontak</string>
     <string name="categories_edit_dialog_title">Edit kategori</string>
     <string name="categories_image_cd">Gambar kategori</string>
     <string name="categories_remove_photo">Hapus foto</string>
@@ -144,8 +142,6 @@
     <string name="trash_empty_cd">Kosongkan sampah</string>
     <string name="trash_empty_dialog_title">Kosongkan sampah?</string>
     <string name="trash_empty_dialog_text">Tindakan ini tidak dapat dibatalkan.\n%1$s akan dihapus permanen.</string>
-    <string name="trash_empty_dialog_part_categories">%1$d kategori</string>
-    <string name="trash_empty_dialog_part_contacts">%1$d kontak</string>
     <string name="trash_empty_confirm">Kosongkan permanen</string>
     <string name="trash_delete_dialog_title">Hapus permanen?</string>
     <string name="trash_delete_category_with_contacts">Kategori “%1$s” dan %2$d kontaknya akan hilang.</string>
@@ -284,7 +280,6 @@
     <string name="person_job_at">di</string>
     <string name="common_show">Tampilkan</string>
     <string name="common_hide">Sembunyikan</string>
-    <string name="person_see_more">Lihat %1$d lainnya…</string>
     <string name="person_see_less">Lihat lebih sedikit</string>
     <string name="person_favorite_toggle_cd">Alihkan favorit</string>
     <string name="person_info_menu">Informasi profil</string>
@@ -293,12 +288,10 @@
     <string name="person_info_updated">Terakhir diubah</string>
     <string name="categories_favorite">Tambah ke favorit</string>
     <string name="categories_unfavorite">Hapus dari favorit</string>
-    <string name="categories_selection_count">%1$d dipilih</string>
     <string name="categories_create_group">Buat grup</string>
     <string name="categories_group_name_hint">Nama grup</string>
     <string name="categories_rename">Ganti nama</string>
     <string name="categories_change_image">Ganti gambar</string>
-    <string name="categories_group_member_count">%1$d kategori</string>
     <string name="categories_delete_selected_title">Hapus %1$d kategori?</string>
     <string name="categories_delete_selected_text">Kategori yang dipilih beserta kontaknya akan dipindahkan ke sampah.</string>
     <string name="categories_drag_handle_cd">Seret untuk mengurutkan ulang</string>
@@ -353,8 +346,6 @@
     <string name="backup_export">Ekspor cadangan</string>
     <string name="backup_import">Pulihkan cadangan</string>
     <string name="backup_working">Operasi sedang berjalan…</string>
-    <string name="backup_export_success">Cadangan diekspor (%1$d kontak)</string>
-    <string name="backup_import_success">Cadangan dipulihkan (%1$d kontak)</string>
     <string name="backup_failed">Operasi gagal — file tidak valid atau tidak dapat diakses</string>
     <string name="backup_confirm_title">Pulihkan cadangan ini?</string>
     <string name="backup_confirm_text">Data akan digabungkan dengan data saat ini; entri dengan ID sama akan ditimpa. Ini tidak dapat dibatalkan.</string>
@@ -372,18 +363,15 @@
     <string name="welcome_subtitle">JTR adalah buku catatan kenangan.</string>
     <string name="welcome_import_button">Impor kontak ponsel</string>
     <string name="welcome_skip">Mulai tanpa mengimpor</string>
-    <string name="welcome_importing">Mengimpor %1$d kontak…</string>
     <string name="welcome_import_failed">Impor gagal.</string>
     <string name="contacts_permission_denied">Izin kontak ditolak — impor tidak dapat dilakukan.</string>
     <string name="move_create_category">Kategori baru</string>
     <string name="permission_allow">Izinkan</string>
     <string name="welcome_select_button">Pilih kontak untuk diimpor</string>
     <string name="contact_selection_title">Pilih kontak</string>
-    <string name="import_selected_count">Impor %1$d kontak yang dipilih</string>
     <string name="gallery_picker_title">Pilih foto</string>
     <string name="gallery_album_recents">Terbaru</string>
     <string name="gallery_album_dropdown_cd">Pilih album</string>
-    <string name="gallery_photo_count">%1$d foto</string>
     <string name="gallery_empty">Tidak ada foto di album ini</string>
     <string name="gallery_permission_rationale">JTR perlu mengakses fotomu agar kamu bisa memilih gambar tanpa keluar dari aplikasi.</string>
     <string name="gallery_permission_grant">Izinkan akses</string>
@@ -479,4 +467,37 @@
     <string name="backup_restore_version">Versi cadangan tidak kompatibel</string>
     <string name="backup_restore_corrupt">Berkas cadangan rusak</string>
     <string name="backup_restore_write_failed">Pemulihan gagal: tidak ada data yang berubah</string>
+    <plurals name="categories_person_count">
+        <item quantity="other">%1$d kontak</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_contacts">
+        <item quantity="other">%1$d kontak</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_categories">
+        <item quantity="other">%1$d kategori</item>
+    </plurals>
+    <plurals name="gallery_photo_count">
+        <item quantity="other">%1$d foto</item>
+    </plurals>
+    <plurals name="home_selection_count">
+        <item quantity="other">%1$d dipilih</item>
+    </plurals>
+    <plurals name="categories_selection_count">
+        <item quantity="other">%1$d dipilih</item>
+    </plurals>
+    <plurals name="person_see_more">
+        <item quantity="other">Lihat %1$d lainnya…</item>
+    </plurals>
+    <plurals name="welcome_importing">
+        <item quantity="other">Mengimpor %1$d kontak…</item>
+    </plurals>
+    <plurals name="import_selected_count">
+        <item quantity="other">Impor %1$d kontak yang dipilih</item>
+    </plurals>
+    <plurals name="backup_export_success">
+        <item quantity="other">Cadangan diekspor (%1$d kontak)</item>
+    </plurals>
+    <plurals name="backup_import_success">
+        <item quantity="other">Cadangan dipulihkan (%1$d kontak)</item>
+    </plurals>
 </resources>

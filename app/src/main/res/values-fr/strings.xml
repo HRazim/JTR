@@ -29,7 +29,6 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Contacts</string>
-    <string name="home_selection_count">%1$d sélectionné(s)</string>
     <string name="home_fab_add_person">Ajouter une personne</string>
     <string name="home_location_warning">Activez la localisation pour les rappels de proximité</string>
     <string name="home_search_placeholder">Rechercher un contact…</string>
@@ -55,7 +54,6 @@
     <string name="categories_delete_title">Supprimer « %1$s » ?</string>
     <string name="categories_delete_with_contacts">Cette catégorie contient %1$d contact(s). Êtes-vous sûr de vouloir supprimer la catégorie ainsi que les %1$d contact(s) qu\'elle contient ?\n\nVous pourrez les restaurer depuis la Corbeille.</string>
     <string name="categories_delete_empty">La catégorie sera déplacée dans la corbeille. Vous pourrez la restaurer.</string>
-    <string name="categories_person_count">%1$d contact(s)</string>
     <string name="categories_edit_dialog_title">Modifier la catégorie</string>
     <string name="categories_image_cd">Image de la catégorie</string>
     <string name="categories_remove_photo">Supprimer la photo</string>
@@ -136,8 +134,6 @@
     <string name="trash_empty_cd">Vider la corbeille</string>
     <string name="trash_empty_dialog_title">Vider la corbeille ?</string>
     <string name="trash_empty_dialog_text">Cette action est irréversible.\n%1$s seront définitivement supprimés.</string>
-    <string name="trash_empty_dialog_part_categories">%1$d catégorie(s)</string>
-    <string name="trash_empty_dialog_part_contacts">%1$d contact(s)</string>
     <string name="trash_empty_confirm">Vider définitivement</string>
     <string name="trash_delete_dialog_title">Supprimer définitivement ?</string>
     <string name="trash_delete_category_with_contacts">La catégorie « %1$s » et ses %2$d contact(s) seront perdus.</string>
@@ -274,7 +270,6 @@
     <string name="person_job_at">chez</string>
     <string name="common_show">Afficher</string>
     <string name="common_hide">Masquer</string>
-    <string name="person_see_more">Voir les %1$d autres…</string>
     <string name="person_see_less">Voir moins</string>
     <!-- v4.5 (DB v14) — favoris, infos profil, groupes de catégories -->
     <string name="person_favorite_toggle_cd">Basculer le favori</string>
@@ -284,12 +279,10 @@
     <string name="person_info_updated">Dernière modification</string>
     <string name="categories_favorite">Ajouter aux favoris</string>
     <string name="categories_unfavorite">Retirer des favoris</string>
-    <string name="categories_selection_count">%1$d sélectionnée(s)</string>
     <string name="categories_create_group">Créer un groupe</string>
     <string name="categories_group_name_hint">Nom du groupe</string>
     <string name="categories_rename">Renommer</string>
     <string name="categories_change_image">Changer l\'image</string>
-    <string name="categories_group_member_count">%1$d catégories</string>
     <string name="categories_delete_selected_title">Supprimer %1$d catégories ?</string>
     <string name="categories_delete_selected_text">Les catégories sélectionnées et leurs contacts seront déplacés dans la corbeille.</string>
     <string name="categories_drag_handle_cd">Glisser pour réordonner</string>
@@ -347,8 +340,6 @@
     <string name="backup_export">Exporter une sauvegarde</string>
     <string name="backup_import">Restaurer une sauvegarde</string>
     <string name="backup_working">Opération en cours…</string>
-    <string name="backup_export_success">Sauvegarde exportée (%1$d contacts)</string>
-    <string name="backup_import_success">Sauvegarde restaurée (%1$d contacts)</string>
     <string name="backup_failed">Échec — fichier invalide ou inaccessible</string>
     <string name="backup_confirm_title">Restaurer cette sauvegarde ?</string>
     <string name="backup_confirm_text">Les données seront fusionnées avec vos données actuelles ; les fiches au même identifiant seront écrasées. Action irréversible.</string>
@@ -367,7 +358,6 @@
     <string name="welcome_subtitle">JTR est un cahier de mémoire.</string>
     <string name="welcome_import_button">Importer vos contacts du téléphone</string>
     <string name="welcome_skip">Commencer sans importer</string>
-    <string name="welcome_importing">Importation de %1$d contacts…</string>
     <string name="welcome_import_failed">Échec de l\'importation.</string>
     <string name="contacts_permission_denied">Permission contacts refusée — importation impossible.</string>
     <!-- v5.3.2 — création de catégorie à la volée pendant le déplacement -->
@@ -376,12 +366,10 @@
     <!-- v5.4.1 — importation sélective des contacts natifs -->
     <string name="welcome_select_button">Choisir les contacts à importer</string>
     <string name="contact_selection_title">Choisir les contacts</string>
-    <string name="import_selected_count">Importer les %1$d contacts sélectionnés</string>
     <!-- v5.5 — galerie in-app (style Instagram) -->
     <string name="gallery_picker_title">Sélectionner une photo</string>
     <string name="gallery_album_recents">Récents</string>
     <string name="gallery_album_dropdown_cd">Choisir un album</string>
-    <string name="gallery_photo_count">%1$d photos</string>
     <string name="gallery_empty">Aucune photo dans cet album</string>
     <string name="gallery_permission_rationale">JTR a besoin d\'accéder à vos photos pour vous permettre de choisir une image sans quitter l\'application.</string>
     <string name="gallery_permission_grant">Autoriser l\'accès</string>
@@ -487,4 +475,59 @@
     <string name="backup_restore_version">Version de sauvegarde incompatible</string>
     <string name="backup_restore_corrupt">Fichier de sauvegarde corrompu</string>
     <string name="backup_restore_write_failed">Échec de la restauration — aucune donnée modifiée</string>
+    <plurals name="categories_person_count">
+        <item quantity="one">%1$d contact</item>
+        <item quantity="many">%1$d contacts</item>
+        <item quantity="other">%1$d contacts</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_contacts">
+        <item quantity="one">%1$d contact</item>
+        <item quantity="many">%1$d contacts</item>
+        <item quantity="other">%1$d contacts</item>
+    </plurals>
+    <plurals name="trash_empty_dialog_part_categories">
+        <item quantity="one">%1$d catégorie</item>
+        <item quantity="many">%1$d catégories</item>
+        <item quantity="other">%1$d catégories</item>
+    </plurals>
+    <plurals name="gallery_photo_count">
+        <item quantity="one">%1$d photo</item>
+        <item quantity="many">%1$d photos</item>
+        <item quantity="other">%1$d photos</item>
+    </plurals>
+    <plurals name="home_selection_count">
+        <item quantity="one">%1$d sélectionné</item>
+        <item quantity="many">%1$d sélectionnés</item>
+        <item quantity="other">%1$d sélectionnés</item>
+    </plurals>
+    <plurals name="categories_selection_count">
+        <item quantity="one">%1$d sélectionnée</item>
+        <item quantity="many">%1$d sélectionnées</item>
+        <item quantity="other">%1$d sélectionnées</item>
+    </plurals>
+    <plurals name="person_see_more">
+        <item quantity="one">Voir %1$d autre…</item>
+        <item quantity="many">Voir les %1$d autres…</item>
+        <item quantity="other">Voir les %1$d autres…</item>
+    </plurals>
+    <plurals name="welcome_importing">
+        <item quantity="one">Importation de %1$d contact…</item>
+        <item quantity="many">Importation de %1$d contacts…</item>
+        <item quantity="other">Importation de %1$d contacts…</item>
+    </plurals>
+    <plurals name="import_selected_count">
+        <item quantity="one">Importer le %1$d contact sélectionné</item>
+        <item quantity="many">Importer les %1$d contacts sélectionnés</item>
+        <item quantity="other">Importer les %1$d contacts sélectionnés</item>
+    </plurals>
+    <plurals name="backup_export_success">
+        <item quantity="one">Sauvegarde exportée (%1$d contact)</item>
+        <item quantity="many">Sauvegarde exportée (%1$d contacts)</item>
+        <item quantity="other">Sauvegarde exportée (%1$d contacts)</item>
+    </plurals>
+    <plurals name="backup_import_success">
+        <item quantity="one">Sauvegarde restaurée (%1$d contact)</item>
+        <item quantity="many">Sauvegarde restaurée (%1$d contacts)</item>
+        <item quantity="other">Sauvegarde restaurée (%1$d contacts)</item>
+    </plurals>
 </resources>
