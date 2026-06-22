@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Privacy Policy — JTR</title>
+  <style>
+    :root {
+      --bg:           #FFFFFF;
+      --surface:      #F5F5F5;
+      --border:       #E0E0E0;
+      --text-primary: #1A1A1A;
+      --text-muted:   #555555;
+      --accent:       #1565C0;
+      --chip-bg:      #E3F2FD;
+      --chip-fg:      #0D47A1;
+      --ok:           #2E7D32;
+      --warn:         #E65100;
+    }
+    html.dark {
+      --bg:           #121212;
+      --surface:      #1E1E1E;
+      --border:       #333333;
+      --text-primary: #E0E0E0;
+      --text-muted:   #9E9E9E;
+      --accent:       #90CAF9;
+      --chip-bg:      #1A3A5C;
+      --chip-fg:      #90CAF9;
+      --ok:           #66BB6A;
+      --warn:         #FFA726;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Roboto", "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.65;
+      padding: 20px 16px 32px;
+    }
+    .header { margin-bottom: 20px; }
+    .header h1 { font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
+    .header .date { font-size: 11px; color: var(--text-muted); }
+    .summary {
+      background-color: var(--chip-bg);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+    }
+    .summary p { color: var(--chip-fg); font-size: 13px; }
+    h2 {
+      font-size: 15px; font-weight: 700; color: var(--text-primary);
+      margin-top: 24px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    h2 .num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
+      background-color: var(--accent); color: var(--bg);
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    p { color: var(--text-muted); margin-bottom: 8px; }
+    p:last-child { margin-bottom: 0; }
+    ul { padding-left: 18px; margin-bottom: 8px; }
+    li { color: var(--text-muted); margin-bottom: 4px; }
+    .card {
+      background-color: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px; margin: 8px 0;
+    }
+    .badge {
+      display: inline-block; background-color: var(--chip-bg); color: var(--chip-fg);
+      border-radius: 10px; padding: 2px 10px; font-size: 11px;
+      font-weight: 700; margin-bottom: 8px;
+    }
+    .ok   { color: var(--ok);   font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    strong { color: var(--text-primary); font-weight: 600; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 20px 0 0; }
+    footer { margin-top: 24px; font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.8; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>سياسة الخصوصية</h1>
+    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; آخر تحديث: يونيو 2026</p>
+  </div>
+
+  <div class="summary">
+    <p><strong>باختصار:</strong> يعتمد JTR على مبدأ <span class="ok">المعالجة المحلية أولاً</span>: بياناتك الشخصية لجهات الاتصال <span class="ok">لا تغادر جهازك أبدًا</span>. الاستخدام الوحيد للشبكة هو من أجل <strong>وظائف الأماكن</strong> — الترميز الجغرافي (OpenStreetMap Nominatim) ومربّعات الخريطة (OpenFreeMap) —، التي ترسل اسم مدينة/إحداثيات وعنوان IP الخاص بك، ولا ترسل أبدًا بيانات جهات اتصالك. بلا حساب، بلا إعلانات، بلا تحليلات.</p>
+  </div>
+
+  <h2><span class="num">1</span>البيانات المجمَّعة</h2>
+  <p>يخزّن التطبيق المعلومات التالية <strong>فقط لإدارة جهات اتصالك</strong>:</p>
+  <ul>
+    <li>الاسم الأول واسم العائلة والجنس</li>
+    <li>تاريخ الميلاد</li>
+    <li>مدينة الإقامة وإحداثيات GPS المرتبطة بها</li>
+    <li>روابط ملفات الشبكات الاجتماعية</li>
+    <li>الأصل والاهتمامات والملاحظات الشخصية</li>
+    <li>صورة الملف الشخصي (مخزّنة محليًا)</li>
+  </ul>
+
+  <h2><span class="num">2</span>تخزين البيانات</h2>
+  <div class="card">
+    <p><span class="ok">✓ محلي 100%</span> — تُخزَّن جميع بياناتك حصريًا على جهازك عبر قاعدة بيانات SQLite ‏(Room). <strong>بلا خادم بعيد، بلا حساب، وبلا إعلانات.</strong></p>
+    <p style="margin-top:8px;"><span class="ok">✓ حذف نهائي</span> — يؤدي إلغاء تثبيت التطبيق إلى حذف جميع البيانات المرتبطة نهائيًا.</p>
+  </div>
+
+  <h2><span class="num">3</span>الموقع وتذكيرات القرب</h2>
+  <p>ميزة <em>تذكير القرب</em> <strong>اختيارية ومعطّلة افتراضيًا</strong>. إذا فعّلتها صراحةً، يصل JTR إلى موقعك — <strong>بما في ذلك في الخلفية (حتى عند إغلاق التطبيق)</strong> — من أجل:</p>
+  <ul>
+    <li>حساب المسافة بين موقعك ومدن جهات اتصالك (على الجهاز)</li>
+    <li>إرسال إشعار محلي عندما تمرّ بالقرب من جهة اتصال فعّلت لها هذا التذكير (إشعار واحد كحد أقصى لكل جهة اتصال كل 48 ساعة)</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> تتم <strong>معالجة موقعك على الجهاز فقط</strong> و<strong>لا يُرسَل أبدًا</strong> إلى الناشر أو أي طرف ثالث. يمكنك تعطيل الميزة في أي وقت (<strong>الإعدادات → تذكيرات القرب</strong>)؛ وتُعاد تهيئتها تلقائيًا إذا ألغيت إذن الموقع.</p>
+    <p style="margin-top:8px;font-size:12px;">يعتمد اكتشاف الموقع والسياج الجغرافي على <strong>خدمات Google Play</strong>، التي قد تستخدم آلياتها الخاصة لتحديد الموقع (سلوك نظام Android/Google)، بصرف النظر عن JTR.</p>
+  </div>
+
+  <h2><span class="num">4</span>الوصول إلى الصور</h2>
+  <p>يُطلب الوصول إلى الصور (<em>READ_MEDIA_IMAGES</em> على Android 13+، أو وصول جزئي إلى «الصور المحددة» على Android 14+) <strong>فقط</strong> عند اختيار صورة ملف شخصي أو غلاف:</p>
+  <ul>
+    <li>يقرأ المنتقي داخل التطبيق معرض صورك محليًا لعرض ألبوماتك وصورك</li>
+    <li>تُقتطع الصورة التي تختارها وتُخزَّن <strong>على جهازك فقط</strong></li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> <strong>لا تُرفع أو تُشارَك أي بيانات صور أو معرض</strong>. يمكنك منح الوصول إلى كل الصور، أو إلى المحددة فقط، أو إلى لا شيء.</p>
+  </div>
+
+  <h2><span class="num">5</span>خدمات الجهات الخارجية</h2>
+  <div class="card">
+    <span class="badge">Nominatim (OpenStreetMap)</span>
+    <p>عند البحث عن مدينة أو اختيارها (أو النقر على نقطة في الخريطة)، يُرسَل <strong>اسم المدينة أو الإحداثيات</strong> إلى <code>nominatim.openstreetmap.org</code> للترميز الجغرافي. ما يُرسَل: مصطلح البحث و<strong>عنوان IP الخاص بك</strong> — <strong>بلا بيانات جهات اتصال</strong>، بلا معرّف، بلا حساب.</p>
+    <p style="margin-top:6px;font-size:12px;">السياسة: <a href="https://osmfoundation.org/wiki/Privacy_Policy">osmfoundation.org</a></p>
+  </div>
+  <div class="card">
+    <span class="badge">OpenFreeMap</span>
+    <p>يؤدي عرض الخريطة إلى تنزيل <strong>مربّعات الخريطة</strong> من <code>tiles.openfreemap.org</code> (المنطقة المعروضة وعنوان IP الخاص بك). لا تُرسَل أي بيانات جهات اتصال.</p>
+    <p style="margin-top:6px;font-size:12px;">السياسة: <a href="https://openfreemap.org/">openfreemap.org</a></p>
+  </div>
+  <p><span class="ok">✓</span> <strong>لا تُدمَج أي حزمة SDK للتحليلات أو الإعلانات أو الإبلاغ عن الأعطال</strong>. مكتبة Google الوحيدة هي Play Services Location، المستخدَمة لميزة القرب الاختيارية.</p>
+
+  <h2><span class="num">6</span>الإشعارات</h2>
+  <p>إشعارات JTR <strong>محلية بالكامل</strong> ولا تمرّ عبر أي خادم:</p>
+  <ul>
+    <li><strong>تذكيرات أعياد الميلاد والتواريخ المهمة</strong> — مجدوَلة ومُشغَّلة محليًا، مع مهلة مسبقة قابلة للضبط لكل تاريخ (تنبيهات دقيقة على الجهاز)</li>
+    <li><strong>تذكيرات القرب</strong> — مُشغَّلة محليًا عبر WorkManager أو Geofencing</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> على Android 13+، يُطلب إذن <em>POST_NOTIFICATIONS</em> <strong>فقط</strong> لعرض هذه التذكيرات المحلية. يمكنك إلغاؤه في أي وقت من إعدادات Android.</p>
+  </div>
+
+  <h2><span class="num">7</span>قفل التطبيق (اختياري)</h2>
+  <p>يوفّر JTR <strong>قفلًا محليًا اختياريًا</strong> — نمط فتح مع رمز استرداد، بالإضافة إلى فتح بيومتري اختياري:</p>
+  <div class="card">
+    <p><span class="ok">✓</span> لا يُحتفَظ إلا بـ<strong>بصمات مملَّحة (تجزئات)</strong> للنمط ورمز الاسترداد، <strong>مشفّرة على جهازك</strong> ‏(EncryptedSharedPreferences عبر Android Keystore). أما النمط والرمز نفساهما فـ<strong>لا يُخزَّنان أبدًا كنص واضح ولا يُرسَلان</strong>.</p>
+    <p style="margin-top:8px;"><span class="ok">✓</span> <strong>لا يقرأ التطبيق أو يخزّن أي بيانات بيومترية</strong> — تتولّى مصادقة البيومترية بالكامل نظامُ Android.</p>
+  </div>
+
+  <h2><span class="num">8</span>حقوقك</h2>
+  <ul>
+    <li><strong>الوصول والتعديل</strong> — جميع بياناتك مرئية وقابلة للتعديل في التطبيق</li>
+    <li><strong>الحذف</strong> — يمكن حذف أي جهة اتصال أو فئة (سلة محذوفات لمدة 30 يومًا)</li>
+    <li><strong>الحذف النهائي</strong> — يؤدي إلغاء تثبيت التطبيق إلى محو جميع البيانات</li>
+    <li><strong>التحكم في الأذونات</strong> — يمكن إلغاء الموقع والإشعارات في أي وقت من إعدادات Android</li>
+  </ul>
+
+  <h2><span class="num">9</span>القاصرون</h2>
+  <p>لا يجمع JTR عن قصد بيانات من أشخاص دون سن 13 عامًا ولا يستهدف هذه الفئة.</p>
+
+  <h2><span class="num">10</span>التواصل</h2>
+  <p>لأي سؤال بخصوص هذه السياسة:</p>
+  <p><a href="mailto:justtorememberjtr@gmail.com">justtorememberjtr@gmail.com</a></p>
+
+  <hr>
+
+  <footer>
+    <p>JTR — Just To Remember &nbsp;·&nbsp; Version 7.0.0</p>
+    <p>قد تُحدَّث هذه السياسة. النسخة السارية هي المتوفّرة في التطبيق.</p>
+  </footer>
+</body>
+</html>

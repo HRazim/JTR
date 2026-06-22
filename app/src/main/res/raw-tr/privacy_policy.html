@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Privacy Policy — JTR</title>
+  <style>
+    :root {
+      --bg:           #FFFFFF;
+      --surface:      #F5F5F5;
+      --border:       #E0E0E0;
+      --text-primary: #1A1A1A;
+      --text-muted:   #555555;
+      --accent:       #1565C0;
+      --chip-bg:      #E3F2FD;
+      --chip-fg:      #0D47A1;
+      --ok:           #2E7D32;
+      --warn:         #E65100;
+    }
+    html.dark {
+      --bg:           #121212;
+      --surface:      #1E1E1E;
+      --border:       #333333;
+      --text-primary: #E0E0E0;
+      --text-muted:   #9E9E9E;
+      --accent:       #90CAF9;
+      --chip-bg:      #1A3A5C;
+      --chip-fg:      #90CAF9;
+      --ok:           #66BB6A;
+      --warn:         #FFA726;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Roboto", "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.65;
+      padding: 20px 16px 32px;
+    }
+    .header { margin-bottom: 20px; }
+    .header h1 { font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
+    .header .date { font-size: 11px; color: var(--text-muted); }
+    .summary {
+      background-color: var(--chip-bg);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+    }
+    .summary p { color: var(--chip-fg); font-size: 13px; }
+    h2 {
+      font-size: 15px; font-weight: 700; color: var(--text-primary);
+      margin-top: 24px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    h2 .num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
+      background-color: var(--accent); color: var(--bg);
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    p { color: var(--text-muted); margin-bottom: 8px; }
+    p:last-child { margin-bottom: 0; }
+    ul { padding-left: 18px; margin-bottom: 8px; }
+    li { color: var(--text-muted); margin-bottom: 4px; }
+    .card {
+      background-color: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px; margin: 8px 0;
+    }
+    .badge {
+      display: inline-block; background-color: var(--chip-bg); color: var(--chip-fg);
+      border-radius: 10px; padding: 2px 10px; font-size: 11px;
+      font-weight: 700; margin-bottom: 8px;
+    }
+    .ok   { color: var(--ok);   font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    strong { color: var(--text-primary); font-weight: 600; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 20px 0 0; }
+    footer { margin-top: 24px; font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.8; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Gizlilik Politikası</h1>
+    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; Son güncelleme: Haziran 2026</p>
+  </div>
+
+  <div class="summary">
+    <p><strong>Özet:</strong> JTR <span class="ok">yerel öncelikli</span>dir: kişisel kişi verileriniz <span class="ok">cihazınızdan asla çıkmaz</span>. Tek ağ kullanımı <strong>konum özellikleri</strong> içindir — coğrafi kodlama (OpenStreetMap Nominatim) ve harita döşemeleri (OpenFreeMap) —, bunlar bir şehir adı/koordinat ve IP adresinizi gönderir, asla kişi verilerinizi göndermez. Hesap yok, reklam yok, analiz yok.</p>
+  </div>
+
+  <h2><span class="num">1</span>Toplanan veriler</h2>
+  <p>Uygulama, aşağıdaki bilgileri <strong>yalnızca kişilerinizi yönetmek için</strong> saklar:</p>
+  <ul>
+    <li>Ad, soyad, cinsiyet</li>
+    <li>Doğum günü</li>
+    <li>İkamet şehri ve ilişkili GPS koordinatları</li>
+    <li>Sosyal ağ profillerine bağlantılar</li>
+    <li>Köken, ilgi alanları ve kişisel notlar</li>
+    <li>Profil fotoğrafı (yerel olarak saklanır)</li>
+  </ul>
+
+  <h2><span class="num">2</span>Veri depolama</h2>
+  <div class="card">
+    <p><span class="ok">✓ %100 yerel</span> — Tüm verileriniz yalnızca cihazınızda bir SQLite veritabanı (Room) aracılığıyla saklanır. <strong>Uzak sunucu yok, hesap yok ve reklam yok.</strong></p>
+    <p style="margin-top:8px;"><span class="ok">✓ Kalıcı silme</span> — Uygulamayı kaldırmak, ilişkili tüm verileri kalıcı olarak siler.</p>
+  </div>
+
+  <h2><span class="num">3</span>Konum ve yakınlık hatırlatıcıları</h2>
+  <p><em>Yakınlık Hatırlatıcısı</em> özelliği <strong>isteğe bağlıdır ve varsayılan olarak kapalıdır</strong>. Bunu açıkça etkinleştirirseniz, JTR konumunuza erişir — <strong>arka planda dahil (uygulama kapalıyken bile)</strong> — şunlar için:</p>
+  <ul>
+    <li>Konumunuz ile kişilerinizin şehirleri arasındaki mesafeyi hesaplamak (cihazda)</li>
+    <li>Hatırlatıcıyı açtığınız bir kişinin yakınından geçtiğinizde yerel bir bildirim tetiklemek (her kişi için 48 saatte en fazla bir uyarı)</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> Konumunuz <strong>yalnızca cihazda işlenir</strong> ve yayıncıya veya herhangi bir üçüncü tarafa <strong>asla iletilmez</strong>. Özelliği istediğiniz zaman devre dışı bırakabilirsiniz (<strong>Ayarlar → Yakınlık Hatırlatıcıları</strong>); konum iznini geri alırsanız otomatik olarak sıfırlanır.</p>
+    <p style="margin-top:8px;font-size:12px;">Konum algılama ve geofencing, JTR'den bağımsız olarak kendi konum mekanizmalarını kullanabilen (bir Android/Google sistem davranışı) <strong>Google Play hizmetlerine</strong> dayanır.</p>
+  </div>
+
+  <h2><span class="num">4</span>Fotoğraf erişimi</h2>
+  <p>Fotoğraf erişimi (Android 13+ üzerinde <em>READ_MEDIA_IMAGES</em> veya Android 14+ üzerinde kısmi “seçili fotoğraflar” erişimi) <strong>yalnızca</strong> bir profil veya kapak resmi seçtiğinizde istenir:</p>
+  <ul>
+    <li>Uygulama içi seçici, albümlerinizi ve fotoğraflarınızı göstermek için galerinizi yerel olarak okur</li>
+    <li>Seçtiğiniz görüntü kırpılır ve <strong>yalnızca cihazınızda</strong> saklanır</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> <strong>Hiçbir fotoğraf veya galeri verisi</strong> yüklenmez veya paylaşılmaz. Tüm fotoğraflara, yalnızca seçilenlere veya hiçbirine erişim verebilirsiniz.</p>
+  </div>
+
+  <h2><span class="num">5</span>Üçüncü taraf hizmetleri</h2>
+  <div class="card">
+    <span class="badge">Nominatim (OpenStreetMap)</span>
+    <p>Bir şehir aradığınızda/seçtiğinizde (veya haritada bir noktaya dokunduğunuzda), <strong>şehir adı veya koordinatlar</strong> coğrafi kodlama için <code>nominatim.openstreetmap.org</code> adresine gönderilir. İletilenler: arama terimi ve <strong>IP adresiniz</strong> — <strong>kişi verisi yok</strong>, tanımlayıcı yok, hesap yok.</p>
+    <p style="margin-top:6px;font-size:12px;">Politika: <a href="https://osmfoundation.org/wiki/Privacy_Policy">osmfoundation.org</a></p>
+  </div>
+  <div class="card">
+    <span class="badge">OpenFreeMap</span>
+    <p>Haritanın görüntülenmesi, <code>tiles.openfreemap.org</code> adresinden <strong>harita döşemeleri</strong> indirir (görüntülenen alan ve IP adresiniz). Hiçbir kişi verisi gönderilmez.</p>
+    <p style="margin-top:6px;font-size:12px;">Politika: <a href="https://openfreemap.org/">openfreemap.org</a></p>
+  </div>
+  <p><span class="ok">✓</span> <strong>Hiçbir analiz, reklam veya çökme raporlama SDK'sı</strong> entegre edilmemiştir. Tek Google kitaplığı, isteğe bağlı yakınlık özelliği için kullanılan Play Services Location'dır.</p>
+
+  <h2><span class="num">6</span>Bildirimler</h2>
+  <p>JTR bildirimleri <strong>tamamen yereldir</strong> ve hiçbir sunucudan geçmez:</p>
+  <ul>
+    <li><strong>Doğum günü ve önemli tarih hatırlatıcıları</strong> — yerel olarak planlanır ve tetiklenir, tarih başına yapılandırılabilir bir ön süreyle (cihazda tam alarmlar)</li>
+    <li><strong>Yakınlık hatırlatıcıları</strong> — WorkManager veya Geofencing aracılığıyla yerel olarak tetiklenir</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> Android 13+ üzerinde <em>POST_NOTIFICATIONS</em> izni <strong>yalnızca</strong> bu yerel hatırlatıcıları göstermek için istenir. Android ayarlarından istediğiniz zaman geri alabilirsiniz.</p>
+  </div>
+
+  <h2><span class="num">7</span>Uygulama kilidi (isteğe bağlı)</h2>
+  <p>JTR, <strong>isteğe bağlı bir yerel kilit</strong> sunar — kurtarma kodlu bir kilit açma deseni ve isteğe bağlı biyometrik kilit açma:</p>
+  <div class="card">
+    <p><span class="ok">✓</span> Yalnızca deseninizin ve kurtarma kodunuzun <strong>tuzlanmış özetleri (hash'leri)</strong> saklanır, <strong>cihazınızda şifrelenmiş</strong> olarak (Android Keystore üzerinden EncryptedSharedPreferences). Desenin ve kodun kendisi <strong>asla düz metin olarak saklanmaz ve asla iletilmez</strong>.</p>
+    <p style="margin-top:8px;"><span class="ok">✓</span> Uygulama tarafından <strong>hiçbir biyometrik veri</strong> okunmaz veya saklanmaz — biyometrik kimlik doğrulama tamamen Android sistemi tarafından yönetilir.</p>
+  </div>
+
+  <h2><span class="num">8</span>Haklarınız</h2>
+  <ul>
+    <li><strong>Erişim ve değiştirme</strong> — tüm verileriniz uygulamada görünür ve düzenlenebilir</li>
+    <li><strong>Silme</strong> — herhangi bir kişi veya kategori silinebilir (30 günlük çöp kutusu)</li>
+    <li><strong>Kalıcı silme</strong> — uygulamayı kaldırmak tüm verileri siler</li>
+    <li><strong>İzin kontrolü</strong> — konum ve bildirimler Android ayarlarından istediğiniz zaman geri alınabilir</li>
+  </ul>
+
+  <h2><span class="num">9</span>Reşit olmayanlar</h2>
+  <p>JTR, 13 yaşından küçük kişilerden bilerek veri toplamaz ve bu kitleyi hedeflemez.</p>
+
+  <h2><span class="num">10</span>İletişim</h2>
+  <p>Bu politikayla ilgili her türlü soru için:</p>
+  <p><a href="mailto:justtorememberjtr@gmail.com">justtorememberjtr@gmail.com</a></p>
+
+  <hr>
+
+  <footer>
+    <p>JTR — Just To Remember &nbsp;·&nbsp; Version 7.0.0</p>
+    <p>Bu politika güncellenebilir. Geçerli sürüm, uygulamada mevcut olan sürümdür.</p>
+  </footer>
+</body>
+</html>
