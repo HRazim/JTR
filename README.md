@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> Un carnet de contacts Android **100 % local** qui se souvient du contexte humain de vos relations. · Version **7.1.15**
+> Un carnet de contacts Android **100 % local** qui se souvient du contexte humain de vos relations. · Version **7.1.24**
 
 JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde une **mémoire sociale** de chaque personne (goûts, anniversaires, ville, notes, réseaux sociaux, relations) et vous rappelle proactivement les dates importantes ainsi que les contacts dont vous êtes physiquement proche.
 
@@ -24,7 +24,7 @@ JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde un
 - **100 % local, privé par conception** : aucune donnée n'est envoyée à un serveur, **aucun compte**, **aucune publicité**, aucun traceur. Tout vit sur l'appareil (base SQLite via Room, photos dans le stockage interne).
 - **Seules sorties réseau, sans clé API et sans donnée personnelle** : le **géocodage Nominatim** (nom de ville → coordonnées) et l'affichage des fonds de carte **OpenFreeMap** (OpenStreetMap).
 - **Internationalisé** : 13 langues, dont l'**arabe en RTL complet** — toutes **embarquées dans l'APK de base** (`bundle { language { enableSplit = false } }`) pour une **bascule de langue in-app fiable sur App Bundle**.
-- **`minSdk 26` (Android 8.0+)**, cible Android 15 (`targetSdk 35`).
+- **`minSdk 26` (Android 8.0+)**, cible Android 16 (`targetSdk 36`, conformité Google Play).
 
 ---
 
@@ -74,7 +74,7 @@ UI (Jetpack Compose) ─► ViewModel (StateFlow) ─► Repository ─► Room 
 
 | Domaine | Technologies |
 |--------|--------------|
-| Langage / SDK | Kotlin 2.1.0 · JVM 17 · `minSdk 26` · `compile/targetSdk 35` · `versionName 7.1.15` / `versionCode 69` |
+| Langage / SDK | Kotlin 2.1.0 · JVM 17 · AGP 8.13.2 · `minSdk 26` · `compile/targetSdk 36` · `versionName 7.1.24` / `versionCode 78` |
 | UI | Jetpack Compose (BOM 2024.12.01) · Material 3 · Navigation Compose · listes réordonnables (`sh.calvin.reorderable` 2.4.3) |
 | Persistance | Room 2.6.1 (via **KSP**) — base **v21** · DataStore · EncryptedSharedPreferences |
 | Tâches de fond | WorkManager · `AlarmManager` (alarmes exactes) · `ProcessLifecycleOwner` |
@@ -90,7 +90,7 @@ UI (Jetpack Compose) ─► ViewModel (StateFlow) ─► Repository ─► Room 
 
 ## Installation & build
 
-**Prérequis** : Android Studio (récent), **JDK 17**, SDK Android 35.
+**Prérequis** : Android Studio (récent), **JDK 17**, SDK Android 36.
 
 ```bash
 git clone <repo>
@@ -129,7 +129,7 @@ app/src/main/java/com/jtr/app/
 
 ## Historique des versions
 
-> Faits marquants par cycle. Versions taguées : `v5.5.1`, `v6.3.1`, `v7.0.7`, `v7.1.4`, `v7.1.8`, `v7.1.10`, `v7.1.15`. Jalon courant : **`versionName 7.1.15` · `versionCode 69` · Room v21**.
+> Faits marquants par cycle. Versions taguées : `v5.5.1`, `v6.3.1`, `v7.0.7`, `v7.1.4`, `v7.1.8`, `v7.1.10`, `v7.1.15`, `v7.1.20`, `v7.1.24`. Jalon courant : **`versionName 7.1.24` · `versionCode 78` · `targetSdk 36` · Room v21**.
 
 ### Cycle v7.1.x — Robustesse de la saisie, intégrité & sécurité des données, polish UX & packaging
 
@@ -149,6 +149,15 @@ app/src/main/java/com/jtr/app/
 - **v7.1.13 — Suppression d'une section de notes par glissement (*swipe-to-delete*).** Geste **horizontal** (seuil 40 %) → **dialogue de confirmation + annulation (*undo*)** réutilisés du footer ; **coexistence sans conflit** avec le glisser-déposer vertical (gating `!isDragging && !cardFocused`), fond `errorContainer` et corbeille **en miroir RTL**.
 - **v7.1.14 — Fiabilité multilingue sur App Bundle.** `bundle { language { enableSplit = false } }` → les **13 langues** sont livrées dans l'**APK de base** ; la bascule de langue in-app **ne retombe plus en anglais** sur une distribution App Bundle (où les ressources de langue sont sinon scindées et téléchargées à la demande).
 - **v7.1.15 — Recherche des notes & tests verts.** Le **titre et le contenu** des sections de notes sont désormais **indexés** par le moteur de recherche unifié → **trouvables partout** (accueil, catégories, sous-groupes, relations, sélecteurs). **Suite de tests unitaires 100 % verte** : le test `softDelete` est réécrit en **test de délégation réelle** (vérifie que le `Repository` délègue bien au DAO).
+- **v7.1.16 — Accessibilité.** Cibles tactiles **≥ 48 dp** (pastilles de couleur en `FlowRow`), `contentDescription` localisé sur les boutons-icônes isolés, `performClick()` sur les zones gestuelles interop (carte MapLibre, WebView de la politique) → avertissement lint `ClickableViewAccessibility` ramené à **zéro**.
+- **v7.1.17 — Icône de marque Snapchat.** Vector drawable **Snapchat** (fantôme jaune, couleurs de marque) ajouté au mécanisme de détection des liens sociaux.
+- **v7.1.18 — Détection sociale unifiée (collision « t.co »).** La détection par sous-chaîne prenait toute URL `snapchat.com` pour X (« snapcha**t.co**m »). Corrigé **à la source** : détection par **host avec frontière de domaine** (`SocialPlatform.detect`), **source unique** pour l'icône **et** le libellé ; l'aperçu du dialogue d'ajout affiche enfin l'icône + « Snapchat ».
+- **v7.1.19 — Tokens de couleur.** Deux couleurs de repli bleues codées en dur remplacées par `rememberCategoryColor` (repli `colorScheme.primary`) → adaptatif clair/sombre et cohérent sur les 6 presets.
+- **v7.1.20 — Pluralisation CLDR.** 12 chaînes de comptage converties en `<plurals>` dans les **13 langues**, avec les catégories CLDR requises par langue (arabe : 6 formes ; russe : 4 ; etc.) ; lecture via `pluralStringResource` / `getQuantityString`.
+- **v7.1.21 — Titre d'accueil non traduit (es).** « JTR Contacts » → « JTR Contactos » ; **audit** des chaînes identiques à l'anglais (présentes mais non traduites) sur les 13 locales — que `MissingTranslation` ne détecte pas.
+- **v7.1.22 — i18n : compte à rebours & genre.** Compte à rebours d'événement conforme aux conventions locales (fr « J-%d », es/ko « D-%d »…) ; abréviation « non-binaire » localisée (es « No bin. »), les langues sans forme courte évidente étant signalées plutôt que devinées.
+- **v7.1.23 — Conformité Google Play : API 36.** `compileSdk` / `targetSdk` portés à **36 (Android 16)** ; l'edge-to-edge étant déjà en place depuis la cible 35, **aucune régression** (insets clavier/paysage, barres système). `minSdk 26` inchangé.
+- **v7.1.24 — Visionneuse photo : coins arrondis dynamiques.** Pendant le glissement de fermeture, les coins de la photo s'**arrondissent progressivement** (0 → 24 dp) avec un léger **rétrécissement**, **synchronisés** avec le fondu du fond car **dérivés de la même progression de drag** (lus en phase de dessin → fluide, sans recomposition ; aucun coin parasite quand la photo est zoomée).
 
 > 🛡️ **Intégrité des données** — l'incident de perte de données est clos : la base est désormais à la fois **protégée de tout écrasement par l'OS** (v7.1.7) **et** ses sauvegardes `.jtr` sont de nouveau **réellement restaurables** (v7.1.8).
 
@@ -176,6 +185,15 @@ app/src/main/java/com/jtr/app/
 | v7.1.13 | **Swipe-to-delete** des sections de notes (confirmation + undo, gating anti-conflit, RTL). |
 | v7.1.14 | **Fiabilité multilingue sur App Bundle** : 13 langues dans l'APK de base (`enableSplit = false`). |
 | v7.1.15 | **Recherche des sections de notes** (titre + contenu indexés) + suite de tests 100 % verte. |
+| v7.1.16 | **Accessibilité** : cibles tactiles 48 dp, `contentDescription`, `performClick` (zones gestuelles). |
+| v7.1.17 | Icône de marque **Snapchat** (vector drawable). |
+| v7.1.18 | Détection **Snapchat** unifiée par domaine (fix collision « t.co »). |
+| v7.1.19 | Thème : couleurs codées en dur → **tokens** (`rememberCategoryColor`). |
+| v7.1.20 | **Pluralisation CLDR** des compteurs (13 langues). |
+| v7.1.21 | i18n : titre d'accueil corrigé (es) + audit des chaînes traduites. |
+| v7.1.22 | i18n : compte à rebours local (J-/D-) + abréviation « non-binaire » (es). |
+| v7.1.23 | Conformité Play : cible **API 36** (Android 16). |
+| v7.1.24 | Visionneuse photo : **coins arrondis dynamiques** au glissement de fermeture. |
 
 ---
 
@@ -193,4 +211,4 @@ Données cartographiques © [OpenStreetMap contributors](https://www.openstreetm
 
 ---
 
-<sub>**JTR v7.1.15** · Room v21 · `versionCode 69` — carnet de contacts 100 % local.</sub>
+<sub>**JTR v7.1.24** · Room v21 · `targetSdk 36` · `versionCode 78` — carnet de contacts 100 % local.</sub>
