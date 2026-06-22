@@ -51,6 +51,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import coil.request.ImageRequest
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -848,6 +849,9 @@ private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
     // Taille intrinsèque de l'image chargée → dimensions réellement affichées (Fit).
     var intrinsicSize by remember { mutableStateOf<Size?>(null) }
     val density = LocalDensity.current
+    // Rayon MAX des coins arrondis au plein glissement de fermeture (« carte flottante »),
+    // converti en px UNE fois (pas de dp.toPx() par frame dans le graphicsLayer).
+    val dismissCornerPx = with(density) { 24.dp.toPx() }
 
     // Rectangle réellement occupé par la photo (mode Fit, à l'échelle 1) — base du
     // dimensionnement de la zone tactile « photo » (le reste = noir/letterbox).
@@ -969,13 +973,26 @@ private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
                 modifier = photoModifier
                     .align(Alignment.Center)
                     .graphicsLayer {
-                        // Échelle = zoom × léger rétrécissement de fermeture (jusqu'à
-                        // ~0.85) ; translation = pan de zoom + suivi du doigt.
-                        val ds = 1f - 0.15f * dismissFraction()
+                        // TOUT dérive de la MÊME progression de glissement p (source unique
+                        // que l'alpha du fond) → fond, échelle et coins restent synchronisés ;
+                        // p=0 au repos ET quand l'image est zoomée (dismissY reste 0 en mode
+                        // pan/zoom) → aucun coin ni rétrécissement parasite. Lu en phase de
+                        // DESSIN (pas de recomposition, pas de retard derrière le doigt).
+                        val p = dismissFraction()
+                        // Échelle = zoom × léger rétrécissement de fermeture (jusqu'à ~0.85) ;
+                        // translation = pan de zoom + suivi du doigt.
+                        val ds = 1f - 0.15f * p
                         scaleX = scale.value * ds
                         scaleY = scale.value * ds
                         translationX = offsetX.value + dismissX.value
                         translationY = offsetY.value + dismissY.value
+                        // Coins arrondis progressifs « carte flottante » : 0 → 24dp pilotés
+                        // par p. Clip sur le render node (GPU). Au repos/zoom (p=0) : clip
+                        // désactivé + RectangleShape (singleton, zéro allocation) → rendu et
+                        // gestes inchangés. Au retour (drag annulé), p suit le ressort de
+                        // dismissY → les coins reviennent à 0 EN SYNCHRO avec échelle/fond.
+                        clip = p > 0f
+                        shape = if (p > 0f) RoundedCornerShape(dismissCornerPx * p) else RectangleShape
                     }
                     // Geste unifié : pinch/pan quand la photo est zoomée (>1×), sinon
                     // glisser-pour-fermer à l'échelle de base. Les taps restent gérés
