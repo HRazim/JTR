@@ -8,14 +8,14 @@ plugins {
 
 android {
     namespace = "com.jtr.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.jtr.app"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 74
-        versionName = "7.1.20"
+        targetSdk = 36
+        versionCode = 78
+        versionName = "7.1.24"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
