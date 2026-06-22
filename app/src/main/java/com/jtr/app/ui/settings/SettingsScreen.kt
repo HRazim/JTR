@@ -1075,7 +1075,12 @@ private fun PrivacyPolicySheet(isDarkMode: Boolean, onDismiss: () -> Unit) {
                         when (event.action) {
                             android.view.MotionEvent.ACTION_DOWN ->
                                 v.parent?.requestDisallowInterceptTouchEvent(true)
-                            android.view.MotionEvent.ACTION_UP,
+                            android.view.MotionEvent.ACTION_UP -> {
+                                v.parent?.requestDisallowInterceptTouchEvent(false)
+                                // a11y : annonce un « clic » pour TalkBack ; le défilement de
+                                // la WebView n'est pas consommé (on renvoie false).
+                                v.performClick()
+                            }
                             android.view.MotionEvent.ACTION_CANCEL ->
                                 v.parent?.requestDisallowInterceptTouchEvent(false)
                         }

@@ -435,7 +435,11 @@ fun ImageCropDialog(
                     .padding(top = topInset)
                     .padding(12.dp)
             ) {
-                Icon(Icons.Default.Close, contentDescription = null, tint = Color.White)
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = stringResource(R.string.common_close),
+                    tint = Color.White
+                )
             }
 
             // ── Instruction ───────────────────────────────────────────────────

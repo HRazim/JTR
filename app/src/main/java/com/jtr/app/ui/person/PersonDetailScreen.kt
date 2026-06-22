@@ -1361,7 +1361,12 @@ private fun MapLibreMiniMap(lat: Double, lng: Double, cityName: String, modifier
                     MotionEvent.ACTION_DOWN,
                     MotionEvent.ACTION_POINTER_DOWN ->
                         v.parent?.requestDisallowInterceptTouchEvent(true)
-                    MotionEvent.ACTION_UP,
+                    MotionEvent.ACTION_UP -> {
+                        v.parent?.requestDisallowInterceptTouchEvent(false)
+                        // a11y : signale un « clic » au système (TalkBack) sans consommer
+                        // le geste — la carte reçoit toujours l'événement (on renvoie false).
+                        v.performClick()
+                    }
                     MotionEvent.ACTION_CANCEL ->
                         v.parent?.requestDisallowInterceptTouchEvent(false)
                 }

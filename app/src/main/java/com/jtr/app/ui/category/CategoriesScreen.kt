@@ -2151,6 +2151,7 @@ fun AddCategoryDialog(
 )
 
 /** Formulaire de catégorie UNIFIÉ (création ET édition) : nom + couleur + image. */
+@OptIn(ExperimentalLayoutApi::class) // FlowRow (pastilles de couleur, cibles tactiles 48 dp)
 @Composable
 private fun CategoryFormDialog(
     title: String,
@@ -2256,19 +2257,30 @@ private fun CategoryFormDialog(
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.align(Alignment.Start))
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // FlowRow : se replie sur une 2e ligne si l'espace manque (écrans étroits /
+                // grande police) au lieu de rogner la dernière pastille.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     presetColors.forEach { color ->
+                        // Cible tactile ≥ 48 dp (a11y) : pastille VISIBLE de 36 dp centrée
+                        // dans une zone CLIQUABLE de 48 dp (le visuel est inchangé).
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
+                                .size(48.dp)
                                 .clip(CircleShape)
-                                .background(Color(android.graphics.Color.parseColor(color)))
                                 .clickable { selectedColor = color },
                             contentAlignment = Alignment.Center
                         ) {
-                            if (selectedColor == color) {
-                                Icon(Icons.Default.Check, contentDescription = null,
-                                    tint = Color.White, modifier = Modifier.size(20.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(android.graphics.Color.parseColor(color))),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (selectedColor == color) {
+                                    Icon(Icons.Default.Check, contentDescription = null,
+                                        tint = Color.White, modifier = Modifier.size(20.dp))
+                                }
                             }
                         }
                     }
