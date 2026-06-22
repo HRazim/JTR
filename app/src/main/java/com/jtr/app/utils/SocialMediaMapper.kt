@@ -12,6 +12,7 @@ fun getSocialIcon(url: String): Int = try {
         host.contains("facebook.com") || host.contains("fb.com") || host.contains("fb.me") -> R.drawable.ic_facebook
         host.contains("linkedin.com") || host.contains("lnkd.in") -> R.drawable.ic_linkedin
         host.contains("twitter.com") || host.contains("x.com") || host.contains("t.co") -> R.drawable.ic_x
+        host.contains("snapchat.com") || host.contains("snap.com") -> R.drawable.ic_snapchat
         host.contains("discord.com") || host.contains("discord.gg") -> R.drawable.ic_discord
         host.contains("youtube.com") || host.contains("youtu.be") -> R.drawable.ic_youtube
         else -> R.drawable.ic_link
