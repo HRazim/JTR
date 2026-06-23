@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> Un carnet de contacts Android **100 % local** qui se souvient du contexte humain de vos relations. · Version **7.1.24**
+> Un carnet de contacts Android **100 % local** qui se souvient du contexte humain de vos relations. · Version **7.1.26**
 
 JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde une **mémoire sociale** de chaque personne (goûts, anniversaires, ville, notes, réseaux sociaux, relations) et vous rappelle proactivement les dates importantes ainsi que les contacts dont vous êtes physiquement proche.
 
@@ -74,7 +74,7 @@ UI (Jetpack Compose) ─► ViewModel (StateFlow) ─► Repository ─► Room 
 
 | Domaine | Technologies |
 |--------|--------------|
-| Langage / SDK | Kotlin 2.1.0 · JVM 17 · AGP 8.13.2 · `minSdk 26` · `compile/targetSdk 36` · `versionName 7.1.24` / `versionCode 78` |
+| Langage / SDK | Kotlin 2.1.0 · JVM 17 · AGP 8.13.2 · `minSdk 26` · `compile/targetSdk 36` · `versionName 7.1.26` / `versionCode 80` |
 | UI | Jetpack Compose (BOM 2024.12.01) · Material 3 · Navigation Compose · listes réordonnables (`sh.calvin.reorderable` 2.4.3) |
 | Persistance | Room 2.6.1 (via **KSP**) — base **v21** · DataStore · EncryptedSharedPreferences |
 | Tâches de fond | WorkManager · `AlarmManager` (alarmes exactes) · `ProcessLifecycleOwner` |
@@ -129,7 +129,7 @@ app/src/main/java/com/jtr/app/
 
 ## Historique des versions
 
-> Faits marquants par cycle. Versions taguées : `v5.5.1`, `v6.3.1`, `v7.0.7`, `v7.1.4`, `v7.1.8`, `v7.1.10`, `v7.1.15`, `v7.1.20`, `v7.1.24`. Jalon courant : **`versionName 7.1.24` · `versionCode 78` · `targetSdk 36` · Room v21**.
+> Faits marquants par cycle. Versions taguées : `v5.5.1`, `v6.3.1`, `v7.0.7`, `v7.1.4`, `v7.1.8`, `v7.1.10`, `v7.1.15`, `v7.1.20`, `v7.1.24`, `v7.1.26`. Jalon courant : **`versionName 7.1.26` · `versionCode 80` · `targetSdk 36` · Room v21**.
 
 ### Cycle v7.1.x — Robustesse de la saisie, intégrité & sécurité des données, polish UX & packaging
 
@@ -158,6 +158,8 @@ app/src/main/java/com/jtr/app/
 - **v7.1.22 — i18n : compte à rebours & genre.** Compte à rebours d'événement conforme aux conventions locales (fr « J-%d », es/ko « D-%d »…) ; abréviation « non-binaire » localisée (es « No bin. »), les langues sans forme courte évidente étant signalées plutôt que devinées.
 - **v7.1.23 — Conformité Google Play : API 36.** `compileSdk` / `targetSdk` portés à **36 (Android 16)** ; l'edge-to-edge étant déjà en place depuis la cible 35, **aucune régression** (insets clavier/paysage, barres système). `minSdk 26` inchangé.
 - **v7.1.24 — Visionneuse photo : coins arrondis dynamiques.** Pendant le glissement de fermeture, les coins de la photo s'**arrondissent progressivement** (0 → 24 dp) avec un léger **rétrécissement**, **synchronisés** avec le fondu du fond car **dérivés de la même progression de drag** (lus en phase de dessin → fluide, sans recomposition ; aucun coin parasite quand la photo est zoomée).
+- **v7.1.25 — Rappels de proximité : flux *par contact* aligné sur Android 11+.** Activer un rappel de proximité depuis une fiche redirige désormais vers les **Réglages système** (où « Toujours autoriser » s'accorde) au lieu d'une demande runtime ignorée (no-op) ; la logique d'octroi en arrière-plan est factorisée dans un **helper partagé** (`LocationUtils.requestBackgroundLocation`), commun au flux par contact et au flux global → plus de divergence possible. **Politique de confidentialité in-app corrigée** (mention des sorties réseau Nominatim / OpenFreeMap et de la localisation en arrière-plan) et ajout de **`docs/privacy.html`** (politique hébergeable, p. ex. GitHub Pages).
+- **v7.1.26 — Politique de confidentialité dans les 13 langues.** La politique de confidentialité est désormais disponible dans les **13 langues** de l'app (**RTL complet** en arabe), avec **repli en anglais** pour toute locale sans traduction dédiée.
 
 > 🛡️ **Intégrité des données** — l'incident de perte de données est clos : la base est désormais à la fois **protégée de tout écrasement par l'OS** (v7.1.7) **et** ses sauvegardes `.jtr` sont de nouveau **réellement restaurables** (v7.1.8).
 
@@ -194,6 +196,8 @@ app/src/main/java/com/jtr/app/
 | v7.1.22 | i18n : compte à rebours local (J-/D-) + abréviation « non-binaire » (es). |
 | v7.1.23 | Conformité Play : cible **API 36** (Android 16). |
 | v7.1.24 | Visionneuse photo : **coins arrondis dynamiques** au glissement de fermeture. |
+| v7.1.25 | Proximité **par contact** : redirection Réglages (Android 11+) via **helper partagé** ; politique in-app corrigée + `docs/privacy.html` hébergeable. |
+| v7.1.26 | **Politique de confidentialité dans les 13 langues** (RTL arabe, repli anglais). |
 
 ---
 
@@ -211,4 +215,4 @@ Données cartographiques © [OpenStreetMap contributors](https://www.openstreetm
 
 ---
 
-<sub>**JTR v7.1.24** · Room v21 · `targetSdk 36` · `versionCode 78` — carnet de contacts 100 % local.</sub>
+<sub>**JTR v7.1.26** · Room v21 · `targetSdk 36` · `versionCode 80` — carnet de contacts 100 % local.</sub>
