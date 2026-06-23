@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Privacy Policy — JTR</title>
+  <style>
+    :root {
+      --bg:           #FFFFFF;
+      --surface:      #F5F5F5;
+      --border:       #E0E0E0;
+      --text-primary: #1A1A1A;
+      --text-muted:   #555555;
+      --accent:       #1565C0;
+      --chip-bg:      #E3F2FD;
+      --chip-fg:      #0D47A1;
+      --ok:           #2E7D32;
+      --warn:         #E65100;
+    }
+    html.dark {
+      --bg:           #121212;
+      --surface:      #1E1E1E;
+      --border:       #333333;
+      --text-primary: #E0E0E0;
+      --text-muted:   #9E9E9E;
+      --accent:       #90CAF9;
+      --chip-bg:      #1A3A5C;
+      --chip-fg:      #90CAF9;
+      --ok:           #66BB6A;
+      --warn:         #FFA726;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Roboto", "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.65;
+      padding: 20px 16px 32px;
+    }
+    .header { margin-bottom: 20px; }
+    .header h1 { font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
+    .header .date { font-size: 11px; color: var(--text-muted); }
+    .summary {
+      background-color: var(--chip-bg);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+    }
+    .summary p { color: var(--chip-fg); font-size: 13px; }
+    h2 {
+      font-size: 15px; font-weight: 700; color: var(--text-primary);
+      margin-top: 24px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    h2 .num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
+      background-color: var(--accent); color: var(--bg);
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    p { color: var(--text-muted); margin-bottom: 8px; }
+    p:last-child { margin-bottom: 0; }
+    ul { padding-left: 18px; margin-bottom: 8px; }
+    li { color: var(--text-muted); margin-bottom: 4px; }
+    .card {
+      background-color: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px; margin: 8px 0;
+    }
+    .badge {
+      display: inline-block; background-color: var(--chip-bg); color: var(--chip-fg);
+      border-radius: 10px; padding: 2px 10px; font-size: 11px;
+      font-weight: 700; margin-bottom: 8px;
+    }
+    .ok   { color: var(--ok);   font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    strong { color: var(--text-primary); font-weight: 600; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 20px 0 0; }
+    footer { margin-top: 24px; font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.8; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>개인정보 처리방침</h1>
+    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; 최종 업데이트: 2026년 6월</p>
+  </div>
+
+  <div class="summary">
+    <p><strong>요약:</strong> JTR은 <span class="ok">로컬 우선</span> 방식입니다. 귀하의 개인 연락처 데이터는 <span class="ok">절대 기기를 벗어나지 않습니다</span>. 네트워크는 <strong>장소 기능</strong>에만 사용됩니다 — 지오코딩(OpenStreetMap Nominatim) 및 지도 타일(OpenFreeMap) —. 이때 도시 이름/좌표와 IP 주소가 전송되며, 연락처 데이터는 결코 전송되지 않습니다. 계정 없음, 광고 없음, 분석 없음.</p>
+  </div>
+
+  <h2><span class="num">1</span>수집하는 데이터</h2>
+  <p>앱은 <strong>연락처 관리만을 위해</strong> 다음 정보를 저장합니다:</p>
+  <ul>
+    <li>이름, 성, 성별</li>
+    <li>생일</li>
+    <li>거주 도시 및 관련 GPS 좌표</li>
+    <li>소셜 네트워크 프로필 링크</li>
+    <li>출신, 관심사 및 개인 메모</li>
+    <li>프로필 사진(로컬에 저장)</li>
+  </ul>
+
+  <h2><span class="num">2</span>데이터 저장</h2>
+  <div class="card">
+    <p><span class="ok">✓ 100% 로컬</span> — 모든 데이터는 SQLite 데이터베이스(Room)를 통해 귀하의 기기에만 저장됩니다. <strong>원격 서버 없음, 계정 없음, 광고 없음.</strong></p>
+    <p style="margin-top:8px;"><span class="ok">✓ 영구 삭제</span> — 앱을 제거하면 관련된 모든 데이터가 영구적으로 삭제됩니다.</p>
+  </div>
+
+  <h2><span class="num">3</span>위치 및 근접 알림</h2>
+  <p><em>근접 알림</em> 기능은 <strong>선택 사항이며 기본적으로 꺼져 있습니다</strong>. 명시적으로 활성화하면 JTR은 <strong>백그라운드(앱이 닫혀 있을 때 포함)</strong>에서도 위치에 접근하여 다음을 수행합니다:</p>
+  <ul>
+    <li>귀하의 위치와 연락처 도시 사이의 거리 계산(기기에서)</li>
+    <li>알림을 켠 연락처 근처를 지날 때 로컬 알림 전송(연락처당 48시간에 최대 1회)</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> 귀하의 위치는 <strong>기기에서만 처리</strong>되며 게시자나 제3자에게 <strong>절대 전송되지 않습니다</strong>. 언제든지 기능을 끌 수 있으며(<strong>설정 → 근접 알림</strong>), 위치 권한을 취소하면 자동으로 재설정됩니다.</p>
+    <p style="margin-top:8px;font-size:12px;">위치 감지 및 지오펜싱은 <strong>Google Play 서비스</strong>에 의존하며, JTR과 독립적으로 자체 위치 메커니즘(Android/Google 시스템 동작)을 사용할 수 있습니다.</p>
+  </div>
+
+  <h2><span class="num">4</span>사진 접근</h2>
+  <p>사진 접근(Android 13+의 <em>READ_MEDIA_IMAGES</em> 또는 Android 14+의 부분 “선택한 사진” 접근)은 프로필 또는 표지 이미지를 선택할 때<strong>만</strong> 요청됩니다:</p>
+  <ul>
+    <li>앱 내 선택 도구가 앨범과 사진을 표시하기 위해 갤러리를 로컬에서 읽습니다</li>
+    <li>선택한 이미지는 자르기 후 <strong>귀하의 기기에만</strong> 저장됩니다</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> <strong>사진이나 갤러리 데이터</strong>는 업로드되거나 공유되지 않습니다. 모든 사진, 선택한 사진만, 또는 전혀 접근을 허용하지 않을 수 있습니다.</p>
+  </div>
+
+  <h2><span class="num">5</span>제3자 서비스</h2>
+  <div class="card">
+    <span class="badge">Nominatim (OpenStreetMap)</span>
+    <p>도시를 검색/선택하거나 지도의 한 지점을 탭하면, 지오코딩을 위해 <strong>도시 이름 또는 좌표</strong>가 <code>nominatim.openstreetmap.org</code>로 전송됩니다. 전송되는 것: 검색어와 귀하의 <strong>IP 주소</strong> — <strong>연락처 데이터 없음</strong>, 식별자 없음, 계정 없음.</p>
+    <p style="margin-top:6px;font-size:12px;">정책: <a href="https://osmfoundation.org/wiki/Privacy_Policy">osmfoundation.org</a></p>
+  </div>
+  <div class="card">
+    <span class="badge">OpenFreeMap</span>
+    <p>지도를 표시하면 <code>tiles.openfreemap.org</code>에서 <strong>지도 타일</strong>(표시 영역 및 IP 주소)을 다운로드합니다. 연락처 데이터는 전송되지 않습니다.</p>
+    <p style="margin-top:6px;font-size:12px;">정책: <a href="https://openfreemap.org/">openfreemap.org</a></p>
+  </div>
+  <p><span class="ok">✓</span> <strong>분석, 광고 또는 충돌 보고 SDK</strong>가 통합되어 있지 않습니다. 유일한 Google 라이브러리는 선택적 근접 기능에 사용되는 Play Services Location입니다.</p>
+
+  <h2><span class="num">6</span>알림</h2>
+  <p>JTR 알림은 <strong>완전히 로컬</strong>이며 어떤 서버도 거치지 않습니다:</p>
+  <ul>
+    <li><strong>생일 및 중요한 날짜 알림</strong> — 날짜별로 구성 가능한 사전 시간과 함께 로컬에서 예약 및 실행됩니다(기기의 정확한 알람)</li>
+    <li><strong>근접 알림</strong> — WorkManager 또는 Geofencing을 통해 로컬에서 실행됩니다</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> Android 13+에서는 이러한 로컬 알림을 표시하기 위해<strong>서만</strong> <em>POST_NOTIFICATIONS</em> 권한을 요청합니다. Android 설정에서 언제든지 취소할 수 있습니다.</p>
+  </div>
+
+  <h2><span class="num">7</span>앱 잠금(선택 사항)</h2>
+  <p>JTR은 <strong>선택적 로컬 잠금</strong>을 제공합니다 — 복구 코드가 있는 잠금 해제 패턴과 선택적 생체 인식 잠금 해제:</p>
+  <div class="card">
+    <p><span class="ok">✓</span> 패턴과 복구 코드의 <strong>솔트가 적용된 해시</strong>만 <strong>기기에 암호화되어</strong> 저장됩니다(Android Keystore를 통한 EncryptedSharedPreferences). 패턴과 코드 자체는 <strong>절대 평문으로 저장되거나 전송되지 않습니다</strong>.</p>
+    <p style="margin-top:8px;"><span class="ok">✓</span> 앱은 <strong>생체 인식 데이터</strong>를 읽거나 저장하지 않습니다 — 생체 인증은 전적으로 Android 시스템이 처리합니다.</p>
+  </div>
+
+  <h2><span class="num">8</span>귀하의 권리</h2>
+  <ul>
+    <li><strong>접근 및 수정</strong> — 모든 데이터는 앱에서 보고 편집할 수 있습니다</li>
+    <li><strong>삭제</strong> — 모든 연락처나 카테고리를 삭제할 수 있습니다(30일 휴지통)</li>
+    <li><strong>영구 삭제</strong> — 앱을 제거하면 모든 데이터가 삭제됩니다</li>
+    <li><strong>권한 제어</strong> — 위치와 알림은 Android 설정에서 언제든지 취소할 수 있습니다</li>
+  </ul>
+
+  <h2><span class="num">9</span>미성년자</h2>
+  <p>JTR은 만 13세 미만의 데이터를 고의로 수집하지 않으며 이 대상을 겨냥하지 않습니다.</p>
+
+  <h2><span class="num">10</span>연락처</h2>
+  <p>이 방침에 관한 문의:</p>
+  <p><a href="mailto:justtorememberjtr@gmail.com">justtorememberjtr@gmail.com</a></p>
+
+  <hr>
+
+  <footer>
+    <p>JTR — Just To Remember &nbsp;·&nbsp; Version 7.0.0</p>
+    <p>이 방침은 업데이트될 수 있습니다. 적용되는 버전은 앱에서 제공되는 버전입니다.</p>
+  </footer>
+</body>
+</html>

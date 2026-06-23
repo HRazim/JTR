@@ -90,7 +90,7 @@
   </div>
 
   <div class="summary">
-    <p><strong>摘要：</strong>JTR 是一款 100% 本地化应用。<span class="ok">您的个人数据永远不会离开您的设备</span>，城市地理编码（Nominatim）除外。</p>
+    <p><strong>摘要：</strong>JTR 采用<span class="ok">本地优先</span>设计：您的个人联系人数据<span class="ok">永远不会离开您的设备</span>。唯一的网络连接用于<strong>地点相关功能</strong> — 地理编码（OpenStreetMap Nominatim）和地图瓦片（OpenFreeMap）—，会发送城市名称/坐标和您的 IP 地址，但绝不发送您的联系人数据。无账户、无广告、无分析。</p>
   </div>
 
   <h2><span class="num">1</span>收集的数据</h2>
@@ -110,24 +110,29 @@
     <p style="margin-top:8px;"><span class="ok">✓ 永久删除</span> — 卸载应用程序将永久删除所有关联数据。</p>
   </div>
 
-  <h2><span class="num">3</span>位置使用</h2>
-  <p>位置权限<strong>仅</strong>用于<em>邻近提醒</em>功能：</p>
+  <h2><span class="num">3</span>位置与邻近提醒</h2>
+  <p><em>邻近提醒</em>功能为<strong>可选，且默认关闭</strong>。如果您明确启用，JTR 会访问您的位置 — <strong>包括在后台（即使应用已关闭）</strong> — 以：</p>
   <ul>
-    <li>计算您的位置与联系人城市之间的距离（Haversine 公式）</li>
-    <li>当您靠近一个长时间未联系的联系人时，触发本地通知</li>
+    <li>计算您的位置与联系人城市之间的距离（在设备上进行）</li>
+    <li>当您经过已为其启用此提醒的联系人附近时，触发本地通知（每个联系人每 48 小时最多一次提醒）</li>
   </ul>
   <div class="card">
-    <p><span class="ok">✓</span> <strong>不会将任何位置数据</strong>传输给第三方，也不会存储在您设备以外的地方。</p>
+    <p><span class="ok">✓</span> 您的位置<strong>仅在设备上处理</strong>，<strong>绝不会传输</strong>给发布者或任何第三方。您可以随时禁用此功能（<strong>设置 → 邻近提醒</strong>）；若您撤销位置权限，它会自动重置。</p>
+    <p style="margin-top:8px;font-size:12px;">位置检测和地理围栏依赖于<strong>Google Play 服务</strong>，其可能使用自身的位置机制（Android/Google 系统行为），与 JTR 无关。</p>
   </div>
-  <p>您可以随时禁用此功能：<strong>设置 → 邻近提醒</strong>。</p>
 
   <h2><span class="num">4</span>第三方服务</h2>
   <div class="card">
     <span class="badge">Nominatim（OpenStreetMap）</span>
-    <p>搜索或选择城市时，城市名称会发送至 Nominatim API 进行地理编码。<strong>不会传输任何个人数据</strong>。</p>
-    <p style="margin-top:6px;font-size:12px;">使用政策：<a href="https://nominatim.org/release-docs/latest/api/Overview/">nominatim.org</a></p>
+    <p>搜索/选择城市（或点按地图上的某点）时，<strong>城市名称或坐标</strong>会发送至 <code>nominatim.openstreetmap.org</code> 进行地理编码。传输内容：搜索词和您的 <strong>IP 地址</strong> — <strong>不含联系人数据</strong>、无标识符、无账户。</p>
+    <p style="margin-top:6px;font-size:12px;">政策：<a href="https://osmfoundation.org/wiki/Privacy_Policy">osmfoundation.org</a></p>
   </div>
-  <p><span class="ok">✓</span> 应用程序中未集成<strong>任何其他第三方服务</strong>（分析、广告、崩溃报告）。</p>
+  <div class="card">
+    <span class="badge">OpenFreeMap</span>
+    <p>显示地图时会从 <code>tiles.openfreemap.org</code> 下载<strong>地图瓦片</strong>（所显示的区域和您的 IP 地址）。不会发送任何联系人数据。</p>
+    <p style="margin-top:6px;font-size:12px;">政策：<a href="https://openfreemap.org/">openfreemap.org</a></p>
+  </div>
+  <p><span class="ok">✓</span> 未集成<strong>任何分析、广告或崩溃报告 SDK</strong>。唯一的 Google 库是 Play Services Location，用于可选的邻近功能。</p>
 
   <h2><span class="num">5</span>通知</h2>
   <p>JTR 的通知<strong>完全在本地产生</strong>，不经过任何服务器：</p>

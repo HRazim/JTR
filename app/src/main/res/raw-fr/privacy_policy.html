@@ -90,7 +90,7 @@
   </div>
 
   <div class="summary">
-    <p><strong>En résumé :</strong> JTR est une application 100 % locale. <span class="ok">Vos données personnelles ne quittent jamais votre appareil</span>, sauf pour le géocodage des villes (Nominatim).</p>
+    <p><strong>En résumé :</strong> JTR est <span class="ok">local-first</span> : vos données personnelles de contact <span class="ok">ne quittent jamais votre appareil</span>. Les seules connexions réseau servent aux <strong>fonctions de lieu</strong> — géocodage (OpenStreetMap Nominatim) et fonds de carte (OpenFreeMap) — qui envoient un nom de ville/des coordonnées et votre adresse IP, jamais vos données de contact. Aucun compte, aucune publicité, aucun outil d'analyse.</p>
   </div>
 
   <h2><span class="num">1</span>Données collectées</h2>
@@ -110,24 +110,29 @@
     <p style="margin-top:8px;"><span class="ok">✓ Suppression définitive</span> — La désinstallation de l'application supprime définitivement toutes les données associées.</p>
   </div>
 
-  <h2><span class="num">3</span>Utilisation de la localisation</h2>
-  <p>La permission de localisation est demandée <strong>uniquement</strong> pour la fonctionnalité <em>Rappel de proximité</em> :</p>
+  <h2><span class="num">3</span>Localisation et rappels de proximité</h2>
+  <p>La fonctionnalité <em>Rappel de proximité</em> est <strong>optionnelle et désactivée par défaut</strong>. Si vous l'activez explicitement, JTR accède à votre position — <strong>y compris en arrière-plan (même application fermée)</strong> — pour :</p>
   <ul>
-    <li>Calcul de la distance entre votre position et celle de vos contacts (formule de Haversine)</li>
-    <li>Déclenchement d'une notification locale si vous êtes proche d'un contact que vous n'avez pas contacté depuis longtemps</li>
+    <li>Calculer la distance entre votre position et la ville de vos contacts (sur l'appareil)</li>
+    <li>Déclencher une notification locale lorsque vous passez près d'un contact pour lequel vous avez activé ce rappel (une alerte au maximum par contact toutes les 48 h)</li>
   </ul>
   <div class="card">
-    <p><span class="ok">✓</span> <strong>Aucune donnée de localisation</strong> n'est transmise à des tiers ni stockée en dehors de votre appareil.</p>
+    <p><span class="ok">✓</span> Votre position est <strong>traitée uniquement sur l'appareil</strong> et <strong>n'est jamais transmise</strong> à l'éditeur ou à un tiers. Vous pouvez désactiver la fonction à tout moment (<strong>Paramètres → Rappels de proximité</strong>) ; elle se réinitialise automatiquement si vous révoquez l'autorisation de localisation.</p>
+    <p style="margin-top:8px;font-size:12px;">La détection de position et le geofencing s'appuient sur les <strong>services Google Play</strong>, qui peuvent recourir à leurs propres mécanismes de localisation (comportement du système Android/Google), indépendamment de JTR.</p>
   </div>
-  <p>Vous pouvez désactiver cette fonctionnalité à tout moment : <strong>Paramètres → Rappels de proximité</strong>.</p>
 
   <h2><span class="num">4</span>Services tiers</h2>
   <div class="card">
     <span class="badge">Nominatim (OpenStreetMap)</span>
-    <p>Lors de la recherche ou de la sélection d'une ville, le nom de la ville est envoyé à l'API Nominatim pour le géocodage. <strong>Aucune donnée personnelle</strong> n'est transmise.</p>
-    <p style="margin-top:6px;font-size:12px;">Politique d'utilisation : <a href="https://nominatim.org/release-docs/latest/api/Overview/">nominatim.org</a></p>
+    <p>Lors de la recherche/sélection d'une ville (ou d'un appui sur la carte), le <strong>nom de ville ou des coordonnées</strong> sont envoyés à <code>nominatim.openstreetmap.org</code> pour le géocodage. Sont transmis : le terme de recherche et votre <strong>adresse IP</strong> — <strong>aucune donnée de contact</strong>, aucun identifiant, aucun compte.</p>
+    <p style="margin-top:6px;font-size:12px;">Politique : <a href="https://osmfoundation.org/wiki/Privacy_Policy">osmfoundation.org</a></p>
   </div>
-  <p><span class="ok">✓</span> <strong>Aucun autre service tiers</strong> (analytics, publicité, crash reporting) n'est intégré dans l'application.</p>
+  <div class="card">
+    <span class="badge">OpenFreeMap</span>
+    <p>L'affichage de la carte télécharge des <strong>tuiles cartographiques</strong> depuis <code>tiles.openfreemap.org</code> (la zone affichée et votre adresse IP). Aucune donnée de contact n'est envoyée.</p>
+    <p style="margin-top:6px;font-size:12px;">Politique : <a href="https://openfreemap.org/">openfreemap.org</a></p>
+  </div>
+  <p><span class="ok">✓</span> <strong>Aucun SDK d'analyse, de publicité ou de rapport de plantage</strong> n'est intégré. La seule bibliothèque Google est Play Services Location, utilisée pour la fonction de proximité optionnelle.</p>
 
   <h2><span class="num">5</span>Notifications</h2>
   <p>Les notifications envoyées par JTR sont <strong>entièrement locales</strong> et ne transitent par aucun serveur :</p>

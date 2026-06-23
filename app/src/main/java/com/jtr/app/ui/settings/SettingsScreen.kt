@@ -606,10 +606,10 @@ fun SettingsScreen(
             message = stringResource(R.string.settings_location_bg_message),
             onOpen = {
                 showBackgroundRationale = false
-                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                // Logique Q-runtime vs R+-Réglages factorisée (LocationUtils) → identique au
+                // flux par contact, plus de divergence possible.
+                LocationUtils.requestBackgroundLocation(context) {
                     backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                } else {
-                    openSettings(appDetailsIntent())
                 }
             },
             onDismiss = { showBackgroundRationale = false }

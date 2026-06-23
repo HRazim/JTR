@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Privacy Policy — JTR</title>
+  <style>
+    :root {
+      --bg:           #FFFFFF;
+      --surface:      #F5F5F5;
+      --border:       #E0E0E0;
+      --text-primary: #1A1A1A;
+      --text-muted:   #555555;
+      --accent:       #1565C0;
+      --chip-bg:      #E3F2FD;
+      --chip-fg:      #0D47A1;
+      --ok:           #2E7D32;
+      --warn:         #E65100;
+    }
+    html.dark {
+      --bg:           #121212;
+      --surface:      #1E1E1E;
+      --border:       #333333;
+      --text-primary: #E0E0E0;
+      --text-muted:   #9E9E9E;
+      --accent:       #90CAF9;
+      --chip-bg:      #1A3A5C;
+      --chip-fg:      #90CAF9;
+      --ok:           #66BB6A;
+      --warn:         #FFA726;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Roboto", "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.65;
+      padding: 20px 16px 32px;
+    }
+    .header { margin-bottom: 20px; }
+    .header h1 { font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
+    .header .date { font-size: 11px; color: var(--text-muted); }
+    .summary {
+      background-color: var(--chip-bg);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+    }
+    .summary p { color: var(--chip-fg); font-size: 13px; }
+    h2 {
+      font-size: 15px; font-weight: 700; color: var(--text-primary);
+      margin-top: 24px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    h2 .num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
+      background-color: var(--accent); color: var(--bg);
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    p { color: var(--text-muted); margin-bottom: 8px; }
+    p:last-child { margin-bottom: 0; }
+    ul { padding-left: 18px; margin-bottom: 8px; }
+    li { color: var(--text-muted); margin-bottom: 4px; }
+    .card {
+      background-color: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px; margin: 8px 0;
+    }
+    .badge {
+      display: inline-block; background-color: var(--chip-bg); color: var(--chip-fg);
+      border-radius: 10px; padding: 2px 10px; font-size: 11px;
+      font-weight: 700; margin-bottom: 8px;
+    }
+    .ok   { color: var(--ok);   font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    strong { color: var(--text-primary); font-weight: 600; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 20px 0 0; }
+    footer { margin-top: 24px; font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.8; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Datenschutzerklärung</h1>
+    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; Zuletzt aktualisiert: Juni 2026</p>
+  </div>
+
+  <div class="summary">
+    <p><strong>Zusammenfassung:</strong> JTR ist <span class="ok">local-first</span>: Ihre persönlichen Kontaktdaten <span class="ok">verlassen niemals Ihr Gerät</span>. Netzwerkverbindungen werden ausschließlich für <strong>Ortsfunktionen</strong> genutzt – Geocoding (OpenStreetMap Nominatim) und Kartenkacheln (OpenFreeMap) –, die einen Städtenamen/Koordinaten und Ihre IP-Adresse senden, niemals Ihre Kontaktdaten. Kein Konto, keine Werbung, keine Analyse.</p>
+  </div>
+
+  <h2><span class="num">1</span>Erfasste Daten</h2>
+  <p>Die App speichert die folgenden Informationen <strong>ausschließlich zur Verwaltung Ihrer Kontakte</strong>:</p>
+  <ul>
+    <li>Vorname, Nachname, Geschlecht</li>
+    <li>Geburtstag</li>
+    <li>Wohnort und zugehörige GPS-Koordinaten</li>
+    <li>Links zu Profilen sozialer Netzwerke</li>
+    <li>Herkunft, Interessen und persönliche Notizen</li>
+    <li>Profilfoto (lokal gespeichert)</li>
+  </ul>
+
+  <h2><span class="num">2</span>Datenspeicherung</h2>
+  <div class="card">
+    <p><span class="ok">✓ 100 % lokal</span> — Alle Ihre Daten werden ausschließlich auf Ihrem Gerät in einer SQLite-Datenbank (Room) gespeichert. <strong>Kein Remote-Server, kein Konto und keine Werbung.</strong></p>
+    <p style="margin-top:8px;"><span class="ok">✓ Endgültige Löschung</span> — Durch Deinstallation der App werden alle zugehörigen Daten dauerhaft gelöscht.</p>
+  </div>
+
+  <h2><span class="num">3</span>Standort &amp; Näherungserinnerungen</h2>
+  <p>Die Funktion <em>Näherungserinnerung</em> ist <strong>optional und standardmäßig deaktiviert</strong>. Wenn Sie sie ausdrücklich aktivieren, greift JTR auf Ihren Standort zu – <strong>auch im Hintergrund (selbst wenn die App geschlossen ist)</strong> – um:</p>
+  <ul>
+    <li>Die Entfernung zwischen Ihrer Position und den Städten Ihrer Kontakte zu berechnen (auf dem Gerät)</li>
+    <li>Eine lokale Benachrichtigung auszulösen, wenn Sie an einem Kontakt vorbeikommen, für den Sie die Erinnerung aktiviert haben (höchstens eine Benachrichtigung pro Kontakt alle 48 Std.)</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> Ihr Standort wird <strong>nur auf dem Gerät verarbeitet</strong> und <strong>niemals übermittelt</strong> – weder an den Herausgeber noch an Dritte. Sie können die Funktion jederzeit deaktivieren (<strong>Einstellungen → Näherungserinnerungen</strong>); sie wird automatisch zurückgesetzt, wenn Sie die Standortberechtigung widerrufen.</p>
+    <p style="margin-top:8px;font-size:12px;">Standorterkennung und Geofencing nutzen die <strong>Google-Play-Dienste</strong>, die eigene Standortmechanismen verwenden können (ein Android-/Google-Systemverhalten), unabhängig von JTR.</p>
+  </div>
+
+  <h2><span class="num">4</span>Fotozugriff</h2>
+  <p>Der Fotozugriff (<em>READ_MEDIA_IMAGES</em> auf Android 13+ oder partieller Zugriff auf „ausgewählte Fotos“ auf Android 14+) wird <strong>nur</strong> angefordert, wenn Sie ein Profil- oder Titelbild auswählen:</p>
+  <ul>
+    <li>Die integrierte Auswahl liest Ihre Galerie lokal, um Ihre Alben und Fotos anzuzeigen</li>
+    <li>Das ausgewählte Bild wird zugeschnitten und <strong>nur auf Ihrem Gerät</strong> gespeichert</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> <strong>Keine Foto- oder Galeriedaten</strong> werden hochgeladen oder geteilt. Sie können Zugriff auf alle Fotos, nur ausgewählte oder keine gewähren.</p>
+  </div>
+
+  <h2><span class="num">5</span>Drittanbieterdienste</h2>
+  <div class="card">
+    <span class="badge">Nominatim (OpenStreetMap)</span>
+    <p>Wenn Sie eine Stadt suchen/auswählen (oder einen Punkt auf der Karte antippen), werden der <strong>Städtename oder die Koordinaten</strong> zur Geokodierung an <code>nominatim.openstreetmap.org</code> gesendet. Übermittelt werden: der Suchbegriff und Ihre <strong>IP-Adresse</strong> — <strong>keine Kontaktdaten</strong>, keine Kennung, kein Konto.</p>
+    <p style="margin-top:6px;font-size:12px;">Richtlinie: <a href="https://osmfoundation.org/wiki/Privacy_Policy">osmfoundation.org</a></p>
+  </div>
+  <div class="card">
+    <span class="badge">OpenFreeMap</span>
+    <p>Die Anzeige der Karte lädt <strong>Kartenkacheln</strong> von <code>tiles.openfreemap.org</code> herunter (der angezeigte Bereich und Ihre IP-Adresse). Es werden keine Kontaktdaten gesendet.</p>
+    <p style="margin-top:6px;font-size:12px;">Richtlinie: <a href="https://openfreemap.org/">openfreemap.org</a></p>
+  </div>
+  <p><span class="ok">✓</span> Es ist <strong>kein Analyse-, Werbe- oder Absturzbericht-SDK</strong> integriert. Die einzige Google-Bibliothek ist Play Services Location, die für die optionale Näherungsfunktion verwendet wird.</p>
+
+  <h2><span class="num">6</span>Benachrichtigungen</h2>
+  <p>JTR-Benachrichtigungen sind <strong>vollständig lokal</strong> und laufen über keinen Server:</p>
+  <ul>
+    <li><strong>Geburtstags- &amp; Termin-Erinnerungen</strong> — lokal geplant und ausgelöst, mit konfigurierbarer Vorlaufzeit pro Datum (exakte Alarme auf dem Gerät)</li>
+    <li><strong>Näherungserinnerungen</strong> — lokal über WorkManager oder Geofencing ausgelöst</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> Unter Android 13+ wird die Berechtigung <em>POST_NOTIFICATIONS</em> <strong>nur</strong> angefordert, um diese lokalen Erinnerungen anzuzeigen. Sie können sie jederzeit in den Android-Einstellungen widerrufen.</p>
+  </div>
+
+  <h2><span class="num">7</span>App-Sperre (optional)</h2>
+  <p>JTR bietet eine <strong>optionale lokale Sperre</strong> — ein Entsperrmuster mit Wiederherstellungscode sowie optionale biometrische Entsperrung:</p>
+  <div class="card">
+    <p><span class="ok">✓</span> Es werden nur <strong>gesalzene Prüfsummen (Hashes)</strong> Ihres Musters und Wiederherstellungscodes gespeichert, <strong>verschlüsselt auf Ihrem Gerät</strong> (EncryptedSharedPreferences über den Android Keystore). Das Muster und der Code selbst werden <strong>niemals im Klartext gespeichert und niemals übermittelt</strong>.</p>
+    <p style="margin-top:8px;"><span class="ok">✓</span> Es werden <strong>keine biometrischen Daten</strong> von der App gelesen oder gespeichert — die biometrische Authentifizierung übernimmt vollständig das Android-System.</p>
+  </div>
+
+  <h2><span class="num">8</span>Ihre Rechte</h2>
+  <ul>
+    <li><strong>Zugriff und Änderung</strong> — alle Ihre Daten sind in der App sichtbar und bearbeitbar</li>
+    <li><strong>Löschung</strong> — jeder Kontakt oder jede Kategorie kann gelöscht werden (30-Tage-Papierkorb)</li>
+    <li><strong>Endgültige Löschung</strong> — durch Deinstallation der App werden alle Daten gelöscht</li>
+    <li><strong>Berechtigungskontrolle</strong> — Standort und Benachrichtigungen können jederzeit in den Android-Einstellungen widerrufen werden</li>
+  </ul>
+
+  <h2><span class="num">9</span>Minderjährige</h2>
+  <p>JTR erhebt wissentlich keine Daten von Personen unter 13 Jahren und richtet sich nicht an diese Zielgruppe.</p>
+
+  <h2><span class="num">10</span>Kontakt</h2>
+  <p>Bei Fragen zu dieser Erklärung:</p>
+  <p><a href="mailto:justtorememberjtr@gmail.com">justtorememberjtr@gmail.com</a></p>
+
+  <hr>
+
+  <footer>
+    <p>JTR — Just To Remember &nbsp;·&nbsp; Version 7.0.0</p>
+    <p>Diese Erklärung kann aktualisiert werden. Maßgeblich ist die in der App verfügbare Fassung.</p>
+  </footer>
+</body>
+</html>

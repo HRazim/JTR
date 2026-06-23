@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Privacy Policy — JTR</title>
+  <style>
+    :root {
+      --bg:           #FFFFFF;
+      --surface:      #F5F5F5;
+      --border:       #E0E0E0;
+      --text-primary: #1A1A1A;
+      --text-muted:   #555555;
+      --accent:       #1565C0;
+      --chip-bg:      #E3F2FD;
+      --chip-fg:      #0D47A1;
+      --ok:           #2E7D32;
+      --warn:         #E65100;
+    }
+    html.dark {
+      --bg:           #121212;
+      --surface:      #1E1E1E;
+      --border:       #333333;
+      --text-primary: #E0E0E0;
+      --text-muted:   #9E9E9E;
+      --accent:       #90CAF9;
+      --chip-bg:      #1A3A5C;
+      --chip-fg:      #90CAF9;
+      --ok:           #66BB6A;
+      --warn:         #FFA726;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Roboto", "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.65;
+      padding: 20px 16px 32px;
+    }
+    .header { margin-bottom: 20px; }
+    .header h1 { font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
+    .header .date { font-size: 11px; color: var(--text-muted); }
+    .summary {
+      background-color: var(--chip-bg);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+    }
+    .summary p { color: var(--chip-fg); font-size: 13px; }
+    h2 {
+      font-size: 15px; font-weight: 700; color: var(--text-primary);
+      margin-top: 24px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    h2 .num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
+      background-color: var(--accent); color: var(--bg);
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    p { color: var(--text-muted); margin-bottom: 8px; }
+    p:last-child { margin-bottom: 0; }
+    ul { padding-left: 18px; margin-bottom: 8px; }
+    li { color: var(--text-muted); margin-bottom: 4px; }
+    .card {
+      background-color: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px; margin: 8px 0;
+    }
+    .badge {
+      display: inline-block; background-color: var(--chip-bg); color: var(--chip-fg);
+      border-radius: 10px; padding: 2px 10px; font-size: 11px;
+      font-weight: 700; margin-bottom: 8px;
+    }
+    .ok   { color: var(--ok);   font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    strong { color: var(--text-primary); font-weight: 600; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 20px 0 0; }
+    footer { margin-top: 24px; font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.8; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Kebijakan Privasi</h1>
+    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; Terakhir diperbarui: Juni 2026</p>
+  </div>
+
+  <div class="summary">
+    <p><strong>Ringkasan:</strong> JTR bersifat <span class="ok">local-first</span>: data kontak pribadi Anda <span class="ok">tidak pernah meninggalkan perangkat Anda</span>. Satu-satunya penggunaan jaringan adalah untuk <strong>fitur lokasi tempat</strong> — geocoding (OpenStreetMap Nominatim) dan ubin peta (OpenFreeMap) —, yang mengirim nama kota/koordinat dan alamat IP Anda, tidak pernah data kontak Anda. Tanpa akun, tanpa iklan, tanpa analitik.</p>
+  </div>
+
+  <h2><span class="num">1</span>Data yang dikumpulkan</h2>
+  <p>Aplikasi menyimpan informasi berikut <strong>hanya untuk mengelola kontak Anda</strong>:</p>
+  <ul>
+    <li>Nama depan, nama belakang, jenis kelamin</li>
+    <li>Ulang tahun</li>
+    <li>Kota tempat tinggal dan koordinat GPS terkait</li>
+    <li>Tautan ke profil jejaring sosial</li>
+    <li>Asal, minat, dan catatan pribadi</li>
+    <li>Foto profil (disimpan secara lokal)</li>
+  </ul>
+
+  <h2><span class="num">2</span>Penyimpanan data</h2>
+  <div class="card">
+    <p><span class="ok">✓ 100% lokal</span> — Semua data Anda disimpan secara eksklusif di perangkat Anda melalui basis data SQLite (Room). <strong>Tanpa server jarak jauh, tanpa akun, dan tanpa iklan.</strong></p>
+    <p style="margin-top:8px;"><span class="ok">✓ Penghapusan permanen</span> — Menghapus instalasi aplikasi akan menghapus permanen semua data terkait.</p>
+  </div>
+
+  <h2><span class="num">3</span>Lokasi &amp; pengingat kedekatan</h2>
+  <p>Fitur <em>Pengingat Kedekatan</em> bersifat <strong>opsional dan nonaktif secara default</strong>. Jika Anda mengaktifkannya secara eksplisit, JTR mengakses lokasi Anda — <strong>termasuk di latar belakang (bahkan saat aplikasi ditutup)</strong> — untuk:</p>
+  <ul>
+    <li>Menghitung jarak antara posisi Anda dan kota kontak Anda (di perangkat)</li>
+    <li>Memicu notifikasi lokal saat Anda melewati kontak yang pengingatnya Anda aktifkan (maksimal satu peringatan per kontak setiap 48 jam)</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> Lokasi Anda <strong>diproses hanya di perangkat</strong> dan <strong>tidak pernah dikirimkan</strong> ke penerbit atau pihak ketiga mana pun. Anda dapat menonaktifkan fitur ini kapan saja (<strong>Pengaturan → Pengingat Kedekatan</strong>); fitur ini diatur ulang secara otomatis jika Anda mencabut izin lokasi.</p>
+    <p style="margin-top:8px;font-size:12px;">Deteksi lokasi dan geofencing mengandalkan <strong>layanan Google Play</strong>, yang dapat menggunakan mekanisme lokasinya sendiri (perilaku sistem Android/Google), terlepas dari JTR.</p>
+  </div>
+
+  <h2><span class="num">4</span>Akses foto</h2>
+  <p>Akses foto (<em>READ_MEDIA_IMAGES</em> di Android 13+, atau akses parsial “foto terpilih” di Android 14+) diminta <strong>hanya</strong> saat Anda memilih gambar profil atau sampul:</p>
+  <ul>
+    <li>Pemilih dalam aplikasi membaca galeri Anda secara lokal untuk menampilkan album dan foto Anda</li>
+    <li>Gambar yang Anda pilih dipangkas dan disimpan <strong>hanya di perangkat Anda</strong></li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> <strong>Tidak ada data foto atau galeri</strong> yang diunggah atau dibagikan. Anda dapat memberikan akses ke semua foto, hanya yang terpilih, atau tidak sama sekali.</p>
+  </div>
+
+  <h2><span class="num">5</span>Layanan pihak ketiga</h2>
+  <div class="card">
+    <span class="badge">Nominatim (OpenStreetMap)</span>
+    <p>Saat Anda mencari/memilih kota (atau mengetuk titik pada peta), <strong>nama kota atau koordinat</strong> dikirim ke <code>nominatim.openstreetmap.org</code> untuk geocoding. Yang dikirim: istilah pencarian dan <strong>alamat IP</strong> Anda — <strong>tanpa data kontak</strong>, tanpa pengidentifikasi, tanpa akun.</p>
+    <p style="margin-top:6px;font-size:12px;">Kebijakan: <a href="https://osmfoundation.org/wiki/Privacy_Policy">osmfoundation.org</a></p>
+  </div>
+  <div class="card">
+    <span class="badge">OpenFreeMap</span>
+    <p>Menampilkan peta akan mengunduh <strong>ubin peta</strong> dari <code>tiles.openfreemap.org</code> (area yang ditampilkan dan alamat IP Anda). Tidak ada data kontak yang dikirim.</p>
+    <p style="margin-top:6px;font-size:12px;">Kebijakan: <a href="https://openfreemap.org/">openfreemap.org</a></p>
+  </div>
+  <p><span class="ok">✓</span> <strong>Tidak ada SDK analitik, iklan, atau pelaporan kerusakan</strong> yang terintegrasi. Satu-satunya pustaka Google adalah Play Services Location, yang digunakan untuk fitur kedekatan opsional.</p>
+
+  <h2><span class="num">6</span>Notifikasi</h2>
+  <p>Notifikasi JTR <strong>sepenuhnya lokal</strong> dan tidak melewati server mana pun:</p>
+  <ul>
+    <li><strong>Pengingat ulang tahun &amp; tanggal penting</strong> — dijadwalkan dan dipicu secara lokal, dengan waktu pemberitahuan yang dapat dikonfigurasi per tanggal (alarm tepat di perangkat)</li>
+    <li><strong>Pengingat kedekatan</strong> — dipicu secara lokal melalui WorkManager atau Geofencing</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> Di Android 13+, izin <em>POST_NOTIFICATIONS</em> diminta <strong>hanya</strong> untuk menampilkan pengingat lokal ini. Anda dapat mencabutnya kapan saja di pengaturan Android.</p>
+  </div>
+
+  <h2><span class="num">7</span>Kunci aplikasi (opsional)</h2>
+  <p>JTR menawarkan <strong>kunci lokal opsional</strong> — pola buka kunci dengan kode pemulihan, ditambah buka kunci biometrik opsional:</p>
+  <div class="card">
+    <p><span class="ok">✓</span> Hanya <strong>sidik dengan salt (hash)</strong> dari pola dan kode pemulihan Anda yang disimpan, <strong>terenkripsi di perangkat Anda</strong> (EncryptedSharedPreferences melalui Android Keystore). Pola dan kode itu sendiri <strong>tidak pernah disimpan dalam teks biasa dan tidak pernah dikirimkan</strong>.</p>
+    <p style="margin-top:8px;"><span class="ok">✓</span> <strong>Tidak ada data biometrik</strong> yang dibaca atau disimpan oleh aplikasi — autentikasi biometrik sepenuhnya ditangani oleh sistem Android.</p>
+  </div>
+
+  <h2><span class="num">8</span>Hak Anda</h2>
+  <ul>
+    <li><strong>Akses dan modifikasi</strong> — semua data Anda terlihat dan dapat diedit di aplikasi</li>
+    <li><strong>Penghapusan</strong> — kontak atau kategori apa pun dapat dihapus (tempat sampah 30 hari)</li>
+    <li><strong>Penghapusan permanen</strong> — menghapus instalasi aplikasi akan menghapus semua data</li>
+    <li><strong>Kontrol izin</strong> — lokasi dan notifikasi dapat dicabut kapan saja di pengaturan Android</li>
+  </ul>
+
+  <h2><span class="num">9</span>Anak di bawah umur</h2>
+  <p>JTR tidak secara sengaja mengumpulkan data dari orang di bawah usia 13 tahun dan tidak menargetkan audiens ini.</p>
+
+  <h2><span class="num">10</span>Kontak</h2>
+  <p>Untuk pertanyaan apa pun mengenai kebijakan ini:</p>
+  <p><a href="mailto:justtorememberjtr@gmail.com">justtorememberjtr@gmail.com</a></p>
+
+  <hr>
+
+  <footer>
+    <p>JTR — Just To Remember &nbsp;·&nbsp; Version 7.0.0</p>
+    <p>Kebijakan ini dapat diperbarui. Versi yang berlaku adalah yang tersedia di aplikasi.</p>
+  </footer>
+</body>
+</html>
