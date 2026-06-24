@@ -25,6 +25,7 @@ build/
 *.jks
 *.keystore
 keystore.properties
+keystore/
 signing.properties
 secrets.properties
 google-services.json
