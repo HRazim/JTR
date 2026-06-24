@@ -339,6 +339,7 @@
     <string name="event_today">Bugün</string>
     <string name="event_countdown">-%1$d g</string>
     <string name="backup_menu">Yedekle &amp; geri yükle</string>
+    <string name="import_jtr_file">JTR dosyasını içe aktar</string>
     <string name="backup_dialog_text">Tüm verilerini tek bir .jtr dosyasına aktar (profiller, kategoriler, fotoğraflar) ya da önceki bir yedeği geri yükle.</string>
     <string name="backup_export">Yedek dışa aktar</string>
     <string name="backup_import">Yedeği geri yükle</string>

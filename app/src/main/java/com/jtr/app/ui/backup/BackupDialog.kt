@@ -25,6 +25,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,10 +51,21 @@ import com.jtr.app.data.backup.BackupManager
 @Composable
 fun BackupDialog(
     onDismiss: () -> Unit,
-    viewModel: BackupViewModel = viewModel()
+    viewModel: BackupViewModel = viewModel(),
+    /**
+     * URI d'un `.jtr` ouvert depuis un gestionnaire de fichiers (v7.1.27). Quand
+     * non-null, la CONFIRMATION de restauration est armée d'emblée — l'écriture
+     * n'a lieu qu'après accord explicite, comme pour un import lancé in-app.
+     */
+    initialImportUri: Uri? = null
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Ouverture externe : pré-arme le dialogue de confirmation sur l'URI entrante.
+    LaunchedEffect(initialImportUri) {
+        if (initialImportUri != null) pendingImportUri = initialImportUri
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")

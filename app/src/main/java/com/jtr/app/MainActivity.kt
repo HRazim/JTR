@@ -2,7 +2,9 @@ package com.jtr.app
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -59,6 +61,12 @@ class MainActivity : FragmentActivity() {
         // Deep link du Moteur de Proximité (v5.4) : le tap sur la notification
         // transporte l'id du contact → ouverture directe de sa fiche.
         val notificationPersonId = intent.getStringExtra(JtrNotificationManager.EXTRA_PERSON_ID)
+
+        // Association de fichier `.jtr` (v7.1.27) : ouverture d'une archive depuis un
+        // gestionnaire de fichiers (ACTION_VIEW). L'URI est routée vers le dialogue
+        // d'import AVEC CONFIRMATION (jamais d'écriture directe) et n'est traitée
+        // qu'APRÈS déverrouillage (le scaffold n'est composé que déverrouillé).
+        val importUri: Uri? = if (intent?.action == Intent.ACTION_VIEW) intent.data else null
 
         setContent {
             val isDarkMode by themeViewModel.isDarkMode.collectAsState()
@@ -136,7 +144,8 @@ class MainActivity : FragmentActivity() {
                                 onPresetSelected = { themeViewModel.setPreset(it) },
                                 fontScale = fontScale,
                                 onFontScaleChange = { themeViewModel.setFontScale(it) },
-                                notificationPersonId = notificationPersonId
+                                notificationPersonId = notificationPersonId,
+                                importUri = importUri
                             )
                         }
                     }

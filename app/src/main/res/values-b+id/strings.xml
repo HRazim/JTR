@@ -342,6 +342,7 @@
     <string name="event_today">Hari ini</string>
     <string name="event_countdown">-%1$d h</string>
     <string name="backup_menu">Cadangkan &amp; pulihkan</string>
+    <string name="import_jtr_file">Impor berkas JTR</string>
     <string name="backup_dialog_text">Ekspor semua datamu ke satu file .jtr (profil, kategori, foto), atau pulihkan cadangan sebelumnya.</string>
     <string name="backup_export">Ekspor cadangan</string>
     <string name="backup_import">Pulihkan cadangan</string>

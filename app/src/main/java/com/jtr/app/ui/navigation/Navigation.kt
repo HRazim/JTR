@@ -36,8 +36,10 @@ import androidx.annotation.StringRes
 import com.jtr.app.R
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import android.net.Uri
 import com.jtr.app.data.repository.CategoryRepository
 import com.jtr.app.data.repository.PersonRepository
+import com.jtr.app.ui.backup.BackupDialog
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
 import com.jtr.app.ui.category.CategoriesScreen
@@ -125,6 +127,8 @@ fun JTRMainScaffold(
     onFontScaleChange: (Float) -> Unit,
     /** Id transporté par une notification de proximité → ouverture de la fiche. */
     notificationPersonId: String? = null,
+    /** URI d'un `.jtr` ouvert depuis un gestionnaire de fichiers (v7.1.27). */
+    importUri: Uri? = null,
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -177,6 +181,18 @@ fun JTRMainScaffold(
         notificationPersonId?.let { id ->
             navController.navigate(Routes.personDetail(id)) { launchSingleTop = true }
         }
+    }
+
+    // Ouverture d'un `.jtr` depuis un gestionnaire (v7.1.27) : on présente le MÊME
+    // dialogue Sauvegarde/restauration, pré-armé sur l'URI entrante → confirmation
+    // explicite + validation par contenu avant toute écriture (réutilise BackupDialog,
+    // BackupViewModel et les erreurs typées). Affiché uniquement déverrouillé.
+    var externalImportUri by remember(importUri) { mutableStateOf(importUri) }
+    externalImportUri?.let { uri ->
+        BackupDialog(
+            onDismiss = { externalImportUri = null },
+            initialImportUri = uri
+        )
     }
 
     LaunchedEffect(currentRoute) {

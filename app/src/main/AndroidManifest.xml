@@ -70,6 +70,28 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Association de fichier `.jtr` (v7.1.27) — best-effort, SCOPÉE `.jtr`.
+                 Permet « Ouvrir avec JTR » depuis un gestionnaire de fichiers. Le
+                 mimeType est TOUJOURS couplé au pathPattern `.jtr` : jamais de
+                 catch-all `application/octet-stream` nu (qui proposerait JTR pour TOUS
+                 les fichiers inconnus). Limite Android assumée : un `content://` masque
+                 l'extension → le pathPattern ne matche pas toujours ⇒ certains
+                 gestionnaires ne proposeront pas JTR. L'import fiable reste le
+                 sélecteur intégré (SAF). L'URI entrante est revalidée par le CONTENU
+                 (magic header) avant toute écriture. -->
+            <intent-filter android:label="@string/import_jtr_file">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:pathPattern=".*\\.jtr" />
+                <data android:pathPattern=".*\\..*\\.jtr" />
+                <data android:pathPattern=".*\\..*\\..*\\.jtr" />
+            </intent-filter>
         </activity>
 
         <!-- Receiver pour les événements de géofencing -->
