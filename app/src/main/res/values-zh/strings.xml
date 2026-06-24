@@ -336,6 +336,7 @@
     <string name="event_today">今天</string>
     <string name="event_countdown">%1$d天后</string>
     <string name="backup_menu">备份与恢复</string>
+    <string name="import_jtr_file">导入 JTR 文件</string>
     <string name="backup_dialog_text">将所有数据导出为单个 .jtr 文件（联系人、分类、照片），或恢复之前的备份。</string>
     <string name="backup_export">导出备份</string>
     <string name="backup_import">恢复备份</string>

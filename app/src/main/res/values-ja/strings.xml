@@ -336,6 +336,7 @@
     <string name="event_today">今日</string>
     <string name="event_countdown">あと%1$d日</string>
     <string name="backup_menu">バックアップと復元</string>
+    <string name="import_jtr_file">JTRファイルをインポート</string>
     <string name="backup_dialog_text">すべてのデータを 1 つの .jtr ファイル（連絡先・カテゴリ・写真）にエクスポート、または以前のバックアップから復元します。</string>
     <string name="backup_export">バックアップをエクスポート</string>
     <string name="backup_import">バックアップを復元</string>

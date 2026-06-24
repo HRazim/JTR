@@ -339,6 +339,7 @@
     <string name="event_today">اليوم</string>
     <string name="event_countdown">-%1$d ي</string>
     <string name="backup_menu">نسخ احتياطي &amp; استعادة</string>
+    <string name="import_jtr_file">استيراد ملف JTR</string>
     <string name="backup_dialog_text">صدّر جميع بياناتك إلى ملف .jtr واحد (الملفات الشخصية والفئات والصور)، أو استعد نسخة احتياطية سابقة.</string>
     <string name="backup_export">تصدير نسخة احتياطية</string>
     <string name="backup_import">استعادة نسخة احتياطية</string>

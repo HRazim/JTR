@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.room.withTransaction
 import com.google.gson.Gson
 import com.google.gson.JsonParseException
+import com.google.gson.annotations.SerializedName
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
@@ -18,8 +19,9 @@ import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.InputStream
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
 import java.util.zip.ZipEntry
@@ -40,6 +42,30 @@ data class BackupPayload(
     val groups: List<CategoryGroup>? = null,
     val joins: List<PersonCategoryJoin>? = null,
     val socialLinks: List<SocialLinkEntity>? = null
+)
+
+/**
+ * En-tête de MARQUE (v7.1.27) écrit en clair à la racine de l'archive `.jtr`
+ * (entrée `manifest.json`). Double rôle : (a) signature de marque « JTR-EXPORT »,
+ * (b) détection « est-ce un export JTR ? » par le CONTENU — jamais par l'extension,
+ * qu'un `content://` masque. N'altère EN RIEN le payload `data` (= `backup.json`) :
+ * c'est une ENVELOPPE additive, donc les archives ANTÉRIEURES (sans manifeste)
+ * restent parfaitement importables (champ nullable → null → chemin legacy).
+ *
+ * `formatVersion` ici = version de l'ENVELOPPE de marque (2), distincte du
+ * [BackupPayload.formatVersion] (= version du SCHÉMA DE DONNÉES, toujours 1).
+ */
+data class BackupManifest(
+    @SerializedName("_jtr") val brand: BackupBrand? = null
+)
+
+/** Champs de marque sérialisés en snake_case (cf. spec d'enveloppe). */
+data class BackupBrand(
+    @SerializedName("magic") val magic: String = "",
+    @SerializedName("app") val app: String = "",
+    @SerializedName("created_by") val createdBy: String = "",
+    @SerializedName("format_version") val formatVersion: Int = 0,
+    @SerializedName("exported_at") val exportedAt: String = ""
 )
 
 /**
@@ -128,6 +154,12 @@ class BackupManager(context: Context) {
             val output = appContext.contentResolver.openOutputStream(uri)
                 ?: error("Flux d'écriture indisponible")
             ZipOutputStream(BufferedOutputStream(output)).use { zip ->
+                // MARQUE (v7.1.27) : manifeste de tête, AVANT la charge utile, à la
+                // racine de l'archive. Signature « JTR-EXPORT » + horodatage ISO-UTC.
+                // Additif : ne modifie pas `backup.json`, donc rétrocompat préservée.
+                zip.putNextEntry(ZipEntry(MANIFEST_ENTRY))
+                zip.write(gson.toJson(buildManifest()).toByteArray(Charsets.UTF_8))
+                zip.closeEntry()
                 zip.putNextEntry(ZipEntry(JSON_ENTRY))
                 zip.write(gson.toJson(payload).toByteArray(Charsets.UTF_8))
                 zip.closeEntry()
@@ -150,6 +182,7 @@ class BackupManager(context: Context) {
     suspend fun importFrom(uri: Uri): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
             var json: String? = null
+            var manifestJson: String? = null // marque v7.1.27 (peut être absente = legacy)
             val extracted = HashMap<String, String>() // entrée zip → chemin restauré
 
             // 1) LECTURE via le FLUX SAF (content://) — jamais un chemin File brut. Toute
@@ -168,6 +201,8 @@ class BackupManager(context: Context) {
                     var entry = zip.nextEntry
                     while (entry != null) {
                         when {
+                            entry.name == MANIFEST_ENTRY ->
+                                manifestJson = zip.readBytes().toString(Charsets.UTF_8)
                             entry.name == JSON_ENTRY ->
                                 json = zip.readBytes().toString(Charsets.UTF_8)
                             entry.name.startsWith(MEDIA_PREFIX) && !entry.isDirectory -> {
@@ -191,7 +226,22 @@ class BackupManager(context: Context) {
             // À partir d'ici, tout échec doit NETTOYER les médias déjà extraits :
             // aucun fichier orphelin dans filesDir/photos après un import raté.
             try {
-                // 3) PARSE + VALIDATION de structure AVANT toute écriture Room.
+                // 3a) MARQUE v7.1.27 — VALIDATION PAR LE CONTENU. Si un manifeste est
+                //     présent, sa signature DOIT être « JTR-EXPORT » (on ne se fie jamais
+                //     à l'extension, qu'un content:// masque). ABSENT → archive ANTÉRIEURE
+                //     à la marque : on bascule sur le parsing legacy de backup.json
+                //     (rétrocompat absolue — un ancien export n'est JAMAIS rejeté ici).
+                manifestJson?.let { mj ->
+                    val brand = try {
+                        gson.fromJson(mj, BackupManifest::class.java)?.brand
+                    } catch (e: JsonParseException) {
+                        throw RestoreException(RestoreError.NOT_ARCHIVE, e)
+                    }
+                    if (brand?.magic != BRAND_MAGIC)
+                        throw RestoreException(RestoreError.NOT_ARCHIVE)
+                }
+
+                // 3b) PARSE + VALIDATION de structure AVANT toute écriture Room.
                 val payload = try {
                     gson.fromJson(
                         json ?: throw RestoreException(RestoreError.NOT_ARCHIVE),
@@ -329,14 +379,42 @@ class BackupManager(context: Context) {
         return raw.replace(Regex("[^A-Za-z0-9._-]"), "_").take(64).ifBlank { "img" }
     }
 
+    /**
+     * Construit l'en-tête de marque écrit dans `manifest.json` (v7.1.27).
+     * `exported_at` en ISO-8601 UTC (`Instant.now()`), locale-indépendant.
+     */
+    private fun buildManifest() = BackupManifest(
+        brand = BackupBrand(
+            magic = BRAND_MAGIC,
+            app = "Just To Remember",
+            createdBy = "JTR",
+            formatVersion = ENVELOPE_VERSION,
+            exportedAt = Instant.now().toString()
+        )
+    )
+
     companion object {
+        /** Version du SCHÉMA DE DONNÉES (payload `backup.json`). Inchangée. */
         const val FORMAT_VERSION = 1
+
+        /** Signature de marque écrite/lue dans `manifest.json`. */
+        const val BRAND_MAGIC = "JTR-EXPORT"
+        /** Version de l'ENVELOPPE de marque (distincte du schéma de données). */
+        const val ENVELOPE_VERSION = 2
+
         private const val JSON_ENTRY = "backup.json"
+        private const val MANIFEST_ENTRY = "manifest.json"
         private const val MEDIA_PREFIX = "media/"
         private const val MEDIA_TOKEN = "jtr-media://"
 
+        // Nommage de marque (v7.1.27) : « JTR_Backup_<date>_<heure>.jtr ». Date
+        // locale-indépendante (pattern fixe + Locale.US), suffixe HHmmss anti-collision
+        // pour deux exports le même jour.
+        private val FILE_STAMP =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmmss", Locale.US)
+
         /** Nom de fichier proposé au sélecteur CreateDocument (extension .jtr). */
         fun suggestedFileName(): String =
-            "jtr_backup_${SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(Date())}.jtr"
+            "JTR_Backup_${LocalDateTime.now().format(FILE_STAMP)}.jtr"
     }
 }

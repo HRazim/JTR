@@ -336,6 +336,7 @@
     <string name="event_today">Aujourd\'hui</string>
     <string name="event_countdown">J-%1$d</string>
     <string name="backup_menu">Sauvegarde &amp; restauration</string>
+    <string name="import_jtr_file">Importer un fichier JTR</string>
     <string name="backup_dialog_text">Exportez toutes vos données dans un fichier .jtr unique (profils, catégories, photos), ou restaurez une sauvegarde précédente.</string>
     <string name="backup_export">Exporter une sauvegarde</string>
     <string name="backup_import">Restaurer une sauvegarde</string>

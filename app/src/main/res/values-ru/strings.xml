@@ -339,6 +339,7 @@
     <string name="event_today">Сегодня</string>
     <string name="event_countdown">-%1$d дн.</string>
     <string name="backup_menu">Резервное копирование &amp; восстановление</string>
+    <string name="import_jtr_file">Импорт файла JTR</string>
     <string name="backup_dialog_text">Экспортируйте все свои данные в один файл .jtr (профили, категории, фото) или восстановите предыдущую копию.</string>
     <string name="backup_export">Экспортировать копию</string>
     <string name="backup_import">Восстановить копию</string>
