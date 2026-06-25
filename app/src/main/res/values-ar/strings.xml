@@ -563,4 +563,6 @@
     <string name="settings_contacts_blocked_message">إذن جهات الاتصال معطَّل. افتح الإعدادات للسماح لـ JTR باستيراد جهات اتصالك.</string>
     <string name="import_contacts_done_title">اكتمل الاستيراد</string>
     <string name="import_contacts_done_message">%1$d مستورد · %2$d متجاوَز (موجود بالفعل في JTR)</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">لا يمكن أن يكون تاريخ الميلاد في المستقبل</string>
 </resources>

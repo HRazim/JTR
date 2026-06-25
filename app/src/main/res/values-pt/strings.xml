@@ -530,4 +530,6 @@
     <string name="settings_contacts_blocked_message">A permissão de Contactos está desativada. Abre as definições para permitir que o JTR importe os teus contactos.</string>
     <string name="import_contacts_done_title">Importação concluída</string>
     <string name="import_contacts_done_message">%1$d importados · %2$d ignorados (já no JTR)</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">Uma data de nascimento não pode estar no futuro</string>
 </resources>

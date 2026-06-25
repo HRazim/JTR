@@ -732,6 +732,7 @@ private fun DateLinesSection(
     }
     val invalidMsg = stringResource(R.string.person_birthday_invalid)
     val yearInvalidMsg = stringResource(R.string.person_date_year_invalid)
+    val birthdayFutureMsg = stringResource(R.string.person_birthday_future)
 
     AccordionSection(
         title = stringResource(R.string.section_dates),
@@ -742,9 +743,14 @@ private fun DateLinesSection(
             val complete = line.value.length == maxLen
             // v7.0.5 — la date est validée DÈS qu'elle est non vide : une année incomplète
             // (ex. 3 chiffres) ou hors plage raisonnable est refusée, avec retour clair.
-            val isError = line.value.isNotBlank() && !isDateLineValid(line.value, spec)
-            // Incomplet → guide vers une année à 4 chiffres ; complet mais invalide → date invalide.
-            val errorMessage = if (!complete) yearInvalidMsg else invalidMsg
+            val isError = line.value.isNotBlank() && !isDateLineValid(line.value, spec, line.label)
+            // Incomplet → guide vers une année à 4 chiffres ; anniversaire complet mais invalide
+            // = forcément dans le futur (v7.1.29) ; sinon date réellement invalide.
+            val errorMessage = when {
+                !complete -> yearInvalidMsg
+                line.label == FieldTypes.DATE_BIRTHDAY -> birthdayFutureMsg
+                else -> invalidMsg
+            }
             DynamicLineRow(
                 line = line,
                 types = FieldTypes.DATE,

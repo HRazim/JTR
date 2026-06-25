@@ -519,4 +519,6 @@
     <string name="settings_contacts_blocked_message">連絡先の権限が無効です。設定を開いて、JTRが連絡先をインポートできるようにしてください。</string>
     <string name="import_contacts_done_title">インポート完了</string>
     <string name="import_contacts_done_message">%1$d 件をインポート · %2$d 件をスキップ（すでにJTRにあります）</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">誕生日を未来の日付にはできません</string>
 </resources>

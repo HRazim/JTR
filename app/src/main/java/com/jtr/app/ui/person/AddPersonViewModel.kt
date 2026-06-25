@@ -283,7 +283,7 @@ class AddPersonViewModel(
         // v7.0.5 — refuse la sauvegarde si une date importante est incomplète/invalide
         // (ex. année à 3 chiffres) ; le champ affiche déjà l'erreur côté formulaire.
         val spec = resolveDateFormatSpec(Locale.getDefault())
-        if (_dateLines.value.any { !isDateLineValid(it.value, spec) }) return
+        if (_dateLines.value.any { !isDateLineValid(it.value, spec, it.label) }) return
         viewModelScope.launch {
             // Réutilise l'id du brouillon si déjà créé (sinon en crée un) → jamais de doublon.
             val person = buildPerson(draftId ?: newDraftId())

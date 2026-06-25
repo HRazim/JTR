@@ -65,7 +65,7 @@ object ReminderScheduler {
         val firstName: String,
         val lineId: String,
         val label: String,
-        val isBirthday: Boolean,
+        val isBirthday: Boolean,     // v7.1.29 : SEUL l'anniversaire est récurrent (annuel)
         val dateMillis: Long,        // date stockée (avec son année historique)
         val offsetMinutes: Int
     ) {
@@ -99,27 +99,37 @@ object ReminderScheduler {
         }
 
         val now = System.currentTimeMillis()
+        val today0 = startOfDay(now)
         val events = collectEvents(app)
         val active = HashSet<String>()
 
         events.forEach { ev ->
-            val occurrence = nextEventMidnight(ev.dateMillis, now)
+            // v7.1.29 — critère PASSÉ/FUTUR (indépendant du type) : une date dont le jour est
+            // déjà RÉVOLU refête chaque année (prochaine occurrence jour/mois) ; une date À VENIR
+            // est un rappel UNIQUE sur sa vraie date (année incluse). `isBirthday` ne sert plus
+            // qu'au libellé de la notification. Une date future, une fois passée, redevient
+            // annuelle au prochain recalcul (comportement accepté). Aucune date n'est ignorée.
+            val recurring = startOfDay(ev.dateMillis) < today0
+            val occurrence = if (recurring) nextEventMidnight(ev.dateMillis, now)
+                             else startOfDay(ev.dateMillis)
             val trigger = occurrence - ev.offsetMinutes * 60_000L
             if (trigger > now) {
-                // Cas nominal : la fenêtre de rappel est à venir → alarme exacte.
+                // Fenêtre à venir → alarme exacte (recalculée depuis Room chaque jour, même à +ans).
                 scheduleExact(am, app, ev.key, trigger)
                 active += ev.key
             } else {
-                // La fenêtre de rappel est déjà ouverte pour l'occurrence courante
-                // (ajout tardif, appareil éteint au moment prévu…) : rattrapage immédiat,
-                // une seule fois par occurrence, puis on arme l'occurrence suivante.
+                // Fenêtre déjà ouverte (ajout tardif, appareil éteint au moment prévu…) :
+                // rattrapage immédiat, une seule fois par occurrence.
                 val lastKey = LAST_PREFIX + ev.key
                 if (prefs.getLong(lastKey, -1L) != occurrence && postReminder(app, ev)) {
                     prefs.edit().putLong(lastKey, occurrence).apply()
                 }
-                val nextOccurrence = nextEventMidnight(ev.dateMillis, occurrence + DAY_MS)
-                scheduleExact(am, app, ev.key, nextOccurrence - ev.offsetMinutes * 60_000L)
-                active += ev.key
+                // Date passée (annuelle) : on arme l'occurrence suivante. Date future unique : terminé.
+                if (recurring) {
+                    val nextOccurrence = nextEventMidnight(ev.dateMillis, occurrence + DAY_MS)
+                    scheduleExact(am, app, ev.key, nextOccurrence - ev.offsetMinutes * 60_000L)
+                    active += ev.key
+                }
             }
         }
         prefs.edit().putStringSet(KEY_ACTIVE, active).apply()

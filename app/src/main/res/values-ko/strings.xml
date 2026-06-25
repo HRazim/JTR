@@ -508,4 +508,6 @@
     <string name="settings_contacts_blocked_message">연락처 권한이 꺼져 있습니다. 설정을 열어 JTR이 연락처를 가져올 수 있도록 허용하세요.</string>
     <string name="import_contacts_done_title">가져오기 완료</string>
     <string name="import_contacts_done_message">%1$d개 가져옴 · %2$d개 건너뜀 (이미 JTR에 있음)</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">생일은 미래일 수 없습니다</string>
 </resources>

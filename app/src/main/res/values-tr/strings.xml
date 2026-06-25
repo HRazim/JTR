@@ -519,4 +519,6 @@
     <string name="settings_contacts_blocked_message">Kişiler izni kapalı. JTR\'nin kişilerini içe aktarmasına izin vermek için ayarları aç.</string>
     <string name="import_contacts_done_title">İçe aktarma tamamlandı</string>
     <string name="import_contacts_done_message">%1$d içe aktarıldı · %2$d atlandı (zaten JTR\'de)</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">Doğum tarihi gelecekte olamaz</string>
 </resources>

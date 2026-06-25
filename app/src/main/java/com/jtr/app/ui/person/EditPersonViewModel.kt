@@ -379,7 +379,7 @@ class EditPersonViewModel(
         if (_firstName.value.isBlank()) { _firstNameError.value = true; return }
         // v7.0.5 — refuse une date importante incomplète/invalide (ex. année à 3 chiffres).
         val dateSpec = resolveDateFormatSpec(Locale.getDefault())
-        if (_dateLines.value.any { !isDateLineValid(it.value, dateSpec) }) return
+        if (_dateLines.value.any { !isDateLineValid(it.value, dateSpec, it.label) }) return
         collapseDynamicLines()
         viewModelScope.launch {
             // Photo en attente persistée ici aussi (le bouton « Enregistrer » = flush immédiat).
@@ -465,7 +465,7 @@ class EditPersonViewModel(
         if (_firstName.value.isBlank()) { _firstNameError.value = true; return }
         // v7.0.5 — refuse une date importante incomplète/invalide (ex. année à 3 chiffres).
         val dateSpec = resolveDateFormatSpec(Locale.getDefault())
-        if (_dateLines.value.any { !isDateLineValid(it.value, dateSpec) }) return
+        if (_dateLines.value.any { !isDateLineValid(it.value, dateSpec, it.label) }) return
         viewModelScope.launch {
             val updated = buildUpdatedPerson(p)
             if (_city.value.trim() != (p.city ?: "") && _cityLat.value == null) {

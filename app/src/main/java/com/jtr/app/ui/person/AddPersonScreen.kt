@@ -216,7 +216,7 @@ fun AddPersonScreen(
                         when {
                             firstName.isBlank() ->
                                 scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
-                            dateLines.any { !isDateLineValid(it.value, dateSpec) } ->
+                            dateLines.any { !isDateLineValid(it.value, dateSpec, it.label) } ->
                                 scope.launch { snackbarHostState.showSnackbar(dateInvalidMsg) }
                         }
                         viewModel.savePerson(onSuccess = onNavigateBack)

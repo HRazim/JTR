@@ -321,7 +321,7 @@ fun PersonDetailScreen(
                             when {
                                 vmFirstName.isBlank() ->
                                     scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
-                                vmDateLines.any { !isDateLineValid(it.value, dateSpec) } ->
+                                vmDateLines.any { !isDateLineValid(it.value, dateSpec, it.label) } ->
                                     scope.launch { snackbarHostState.showSnackbar(dateInvalidMsg) }
                             }
                             editVm.commitAllEdits()

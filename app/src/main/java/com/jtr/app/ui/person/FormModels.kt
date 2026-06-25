@@ -186,21 +186,31 @@ fun millisToRawDigits(millis: Long, order: List<DateField>): String {
 /** Année plancher (impose 4 chiffres) pour une date importante saisie. */
 private const val MIN_DATE_YEAR = 1000
 
+/** Année plafond (borne haute saine) — autorise les événements ponctuels futurs (v7.1.29). */
+private const val MAX_DATE_YEAR = 9999
+
 /**
- * Valide une date saisie (chiffres bruts) pour l'UI ET la sauvegarde (v7.0.5).
+ * Valide une date saisie (chiffres bruts) pour l'UI ET la sauvegarde.
  *
  * Une valeur vide est acceptée (date optionnelle) ; sinon la date doit être COMPLÈTE et
- * parseable, avec une **année cohérente à 4 chiffres** dans une plage raisonnable
- * (≥ [MIN_DATE_YEAR], ≤ année courante). Rejette notamment une année incomplète à 3 chiffres
- * (la date n'atteint pas la longueur attendue → [rawDigitsToMillis] renvoie `null`).
+ * parseable, avec une **année cohérente à 4 chiffres** entre MIN_DATE_YEAR et MAX_DATE_YEAR.
+ * Rejette une année incomplète à 3 chiffres (la longueur attendue n'est pas atteinte →
+ * [rawDigitsToMillis] renvoie `null`).
+ *
+ * v7.1.29 — les **années FUTURES sont désormais autorisées** (événement ponctuel daté, ex.
+ * « avril 2027 »). Le futur n'est REFUSÉ que pour [FieldTypes.DATE_BIRTHDAY] (« on ne naît pas
+ * dans le futur ») : un anniversaire avec une année > année courante est invalide. Les autres
+ * types (anniversaire de mariage, autre, personnalisé) acceptent le futur.
  */
-fun isDateLineValid(raw: String, spec: DateFormatSpec): Boolean {
+fun isDateLineValid(raw: String, spec: DateFormatSpec, label: String = ""): Boolean {
     if (raw.isBlank()) return true
     val millis = rawDigitsToMillis(raw, spec) ?: return false
-    val cal = Calendar.getInstance()
-    val maxYear = cal.get(Calendar.YEAR)
-    cal.timeInMillis = millis
-    return cal.get(Calendar.YEAR) in MIN_DATE_YEAR..maxYear
+    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+    val year = Calendar.getInstance().apply { timeInMillis = millis }.get(Calendar.YEAR)
+    if (year !in MIN_DATE_YEAR..MAX_DATE_YEAR) return false
+    // Seul l'anniversaire interdit le futur (année > année courante).
+    if (label == FieldTypes.DATE_BIRTHDAY && year > currentYear) return false
+    return true
 }
 
 /**
