@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.data.remote.ApiClient
 import com.jtr.app.data.remote.GeocodingResult
+import com.jtr.app.utils.normalizeForSearch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -49,12 +50,20 @@ class MapViewModel : ViewModel() {
                     ApiClient.nominatimApi.searchCity(
                         cityName = query,
                         format = "json",
-                        limit = 6
+                        // v7.1.31 — on demande plus large (~10) car la dédup ci-dessous peut
+                        // retirer des homonymes (mêmes display_name) → on garde ~6 entrées utiles.
+                        limit = 10
                     )
                 }
-                _searchResults.value = results.filter {
-                    it.latitude != null && it.longitude != null
-                }
+                _searchResults.value = results
+                    .filter { it.latitude != null && it.longitude != null }
+                    // v7.1.31 — DÉDUP : des relations administratives HOMONYMES (osm_id différents
+                    // mais display_name IDENTIQUE, ex. « Angers, …, France » ×2) doivent apparaître
+                    // UNE seule fois. Clé = display_name normalisé (accents/casse) → 0 faux positif
+                    // (Paris FR ≠ Paris TX : display_name distincts, conservés). On garde la 1ʳᵉ
+                    // occurrence (Nominatim trie par importance → la plus pertinente).
+                    .distinctBy { it.displayName.normalizeForSearch() }
+                    .take(6)
             } catch (_: Exception) {
                 _searchResults.value = emptyList()
             }
