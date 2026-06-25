@@ -2,6 +2,7 @@ package com.jtr.app.utils
 
 import android.content.Context
 import android.content.res.Configuration
+import android.content.res.Resources
 import java.util.Locale
 
 /**
@@ -40,7 +41,18 @@ object LocaleManager {
      * l'arabe). Renvoie [base] tel quel si « langue du système ».
      */
     fun wrap(base: Context): Context {
-        val tag = currentTag(base) ?: return base
+        val tag = currentTag(base)
+        if (tag == null) {
+            // « Langue du système » (v7.1.30) : on RÉALIGNE le défaut JVM sur la locale de
+            // l'APPAREIL avant de retourner. [Locale.setDefault] est un état GLOBAL du process :
+            // sans ce reset, après une langue explicite (ar/ja/zh…) il resterait figé dessus, et
+            // TOUS les formateurs de dates (qui lisent [Locale.getDefault]) afficheraient encore
+            // l'ancienne langue tant que le process n'est pas relancé — alors que les ressources
+            // UI suivent déjà le système. [Resources.getSystem] reflète la config réelle de
+            // l'appareil (jamais affectée par setDefault). Display-only, dans les deux sens.
+            Locale.setDefault(Resources.getSystem().configuration.locales[0])
+            return base
+        }
         val locale = Locale.forLanguageTag(tag)
         Locale.setDefault(locale)
         val config = Configuration(base.resources.configuration)

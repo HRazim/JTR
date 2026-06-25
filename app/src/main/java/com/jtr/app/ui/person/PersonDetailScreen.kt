@@ -785,7 +785,9 @@ fun PersonDetailScreen(
     }
 
     if (showInfoDialog && person != null) {
-        val df = remember { SimpleDateFormat("d MMMM yyyy, HH:mm", Locale.getDefault()) }
+        // v7.1.30 — keyé sur la locale courante (cf. DatesBlock) : jamais de format périmé.
+        val infoLocale = Locale.getDefault()
+        val df = remember(infoLocale) { SimpleDateFormat("d MMMM yyyy, HH:mm", infoLocale) }
         AlertDialog(
             onDismissRequest = { showInfoDialog = false },
             icon = { Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary) },
@@ -1483,8 +1485,11 @@ private fun ContactLinesBlock(
 @Composable
 private fun DatesBlock(lines: List<DynamicLine>) {
     // Affichage localisé (d MMMM yyyy) à partir d'une valeur STOCKÉE locale-libre (ISO).
-    val formatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.getDefault()) }
-    val rendered = remember(lines) {
+    // v7.1.30 — formateur ET rendu keyés sur la locale courante : un changement de langue
+    // sans recreate() ne laisse jamais un formateur/texte périmé en cache.
+    val locale = Locale.getDefault()
+    val formatter = remember(locale) { SimpleDateFormat("d MMMM yyyy", locale) }
+    val rendered = remember(lines, locale) {
         lines.mapNotNull { line ->
             val millis = storedDateToMillis(line.value) ?: return@mapNotNull null
             Triple(line.label, formatter.format(Date(millis)), line.notify)
