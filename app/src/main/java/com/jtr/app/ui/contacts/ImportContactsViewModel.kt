@@ -1,7 +1,6 @@
-package com.jtr.app.ui.welcome
+package com.jtr.app.ui.contacts
 
 import android.app.Application
-import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.data.contacts.ContactsImporter
@@ -22,40 +21,47 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** États d'UI réactifs de l'onboarding (UDF strict). */
-sealed interface WelcomeUiState {
-    data object Idle : WelcomeUiState
-
-    /** Importation en cours : [done] insérés sur [total] détectés. */
-    data class Importing(val done: Int, val total: Int) : WelcomeUiState
-
-    data class Done(val count: Int) : WelcomeUiState
-    data object Error : WelcomeUiState
-}
-
-class WelcomeViewModel(application: Application) : AndroidViewModel(application) {
+/**
+ * Import de contacts depuis les PARAMÈTRES (v7.1.28) — point d'entrée RÉ-IMPORTABLE,
+ * distinct de l'onboarding (`WelcomeViewModel`) mais s'appuyant sur le MÊME et UNIQUE
+ * importateur [ContactsImporter] (zéro duplication de la logique d'import / dédup).
+ *
+ * Contrairement à l'onboarding, ce flux ne touche PAS le flag de première ouverture et
+ * expose le bilan complet (`imported` + `skipped`) pour le récap. Le dédoublonnage SKIP
+ * vit dans [ContactsImporter.import] → identique aux deux chemins.
+ */
+class ImportContactsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val importer = ContactsImporter(application.applicationContext)
-    private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
 
-    private val _state = MutableStateFlow<WelcomeUiState>(WelcomeUiState.Idle)
-    val state: StateFlow<WelcomeUiState> = _state.asStateFlow()
+    /** États d'UI réactifs (UDF strict), miroir léger de l'onboarding sans sa sémantique. */
+    sealed interface UiState {
+        /** Sélection en cours (liste cochable). */
+        data object Selecting : UiState
 
-    // ── Importation SÉLECTIVE (v5.4.1) — état autonome du ViewModel (UDF) ─────
+        /** Importation en cours : [done] traités sur [total]. */
+        data class Importing(val done: Int, val total: Int) : UiState
+
+        /** Terminé : [imported] insérés, [skipped] ignorés (déjà dans JTR). */
+        data class Done(val imported: Int, val skipped: Int) : UiState
+
+        data object Error : UiState
+    }
+
+    private val _state = MutableStateFlow<UiState>(UiState.Selecting)
+    val state: StateFlow<UiState> = _state.asStateFlow()
 
     private val _deviceContacts = MutableStateFlow<List<DeviceContact>>(emptyList())
 
     private val _contactSearch = MutableStateFlow("")
     val contactSearch: StateFlow<String> = _contactSearch.asStateFlow()
 
-    /** Requête débouncée alimentant le filtre (cf. HomeViewModel) — vide = sans délai. */
     @OptIn(FlowPreview::class)
     private val debouncedSearch: Flow<String> =
         _contactSearch.debounce { if (it.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
 
     fun setContactSearch(query: String) { _contactSearch.value = query }
 
-    /** Coches de l'écran de sélection — survivent à la recherche et au scroll. */
     private val _selectedContactIds = MutableStateFlow<Set<Long>>(emptySet())
     val selectedContactIds: StateFlow<Set<Long>> = _selectedContactIds.asStateFlow()
 
@@ -73,44 +79,33 @@ class WelcomeViewModel(application: Application) : AndroidViewModel(application)
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** Charge (une fois) la liste légère du répertoire natif pour la sélection. */
+    private var loaded = false
+
+    /** Charge (une seule fois) la liste légère du répertoire natif. Permission déjà accordée. */
     fun loadDeviceContacts() {
-        if (_deviceContacts.value.isNotEmpty()) return
+        if (loaded) return
+        loaded = true
         viewModelScope.launch {
             _deviceContacts.value = importer.listDeviceContacts()
         }
     }
 
-    /**
-     * Lance l'importation native (permission READ_CONTACTS déjà accordée).
-     * @param selectedIds restreint l'import aux contacts cochés ; null = tout.
-     */
-    fun startImport(selectedIds: Set<Long>? = null) {
-        if (_state.value is WelcomeUiState.Importing) return
-        _state.value = WelcomeUiState.Importing(0, 0)
+    /** Lance l'import des contacts cochés (dédoublonnage SKIP appliqué par l'importateur). */
+    fun startImport() {
+        if (_state.value is UiState.Importing) return
+        _state.value = UiState.Importing(0, 0)
         viewModelScope.launch {
-            importer.import(selectedIds) { done, total ->
-                _state.value = WelcomeUiState.Importing(done, total)
+            importer.import(_selectedContactIds.value) { done, total ->
+                _state.value = UiState.Importing(done, total)
             }.onSuccess { result ->
-                markOnboardingComplete()
-                // Onboarding : la base est vierge au premier lancement → `skipped` vaut 0 ;
-                // on n'expose que le nombre importé (UX d'accueil inchangée).
-                _state.value = WelcomeUiState.Done(result.imported)
+                _state.value = UiState.Done(result.imported, result.skipped)
             }.onFailure {
-                _state.value = WelcomeUiState.Error
+                _state.value = UiState.Error
             }
         }
     }
 
-    /** Marque la première ouverture comme consommée (flag persistant). */
-    fun markOnboardingComplete() {
-        prefs.edit().putBoolean(FIRST_LAUNCH_KEY, false).apply()
-    }
-
     companion object {
-        const val FIRST_LAUNCH_KEY = "is_first_launch"
-
-        /** Délai d'inactivité avant de relancer le filtre de recherche (ms). */
         private const val SEARCH_DEBOUNCE_MS = 250L
     }
 }

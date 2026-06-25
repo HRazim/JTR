@@ -531,4 +531,14 @@
         <item quantity="many">Копия восстановлена (контактов: %1$d)</item>
         <item quantity="other">Копия восстановлена (контактов: %1$d)</item>
     </plurals>
+    <!-- v7.1.28 — импорт контактов из настроек -->
+    <string name="settings_section_contacts">Контакты</string>
+    <string name="settings_import_contacts_title">Импорт с телефона</string>
+    <string name="settings_import_contacts_subtitle">Добавьте контакты телефона в JTR</string>
+    <string name="settings_contacts_rationale_title">Импорт контактов</string>
+    <string name="settings_contacts_rationale_message">JTR прочитает контакты вашего телефона, чтобы вы могли выбрать, какие импортировать. Они хранятся на вашем устройстве и никогда не загружаются в облако.</string>
+    <string name="settings_contacts_blocked_title">Доступ к контактам заблокирован</string>
+    <string name="settings_contacts_blocked_message">Разрешение на контакты отключено. Откройте настройки, чтобы разрешить JTR импортировать ваши контакты.</string>
+    <string name="import_contacts_done_title">Импорт завершён</string>
+    <string name="import_contacts_done_message">%1$d импортировано · %2$d пропущено (уже в JTR)</string>
 </resources>

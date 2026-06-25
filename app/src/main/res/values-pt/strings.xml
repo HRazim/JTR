@@ -520,4 +520,14 @@
         <item quantity="many">Cópia restaurada (%1$d contactos)</item>
         <item quantity="other">Cópia restaurada (%1$d contactos)</item>
     </plurals>
+    <!-- v7.1.28 — importar contactos a partir das Definições -->
+    <string name="settings_section_contacts">Contactos</string>
+    <string name="settings_import_contacts_title">Importar do telemóvel</string>
+    <string name="settings_import_contacts_subtitle">Adiciona os contactos do teu telemóvel ao JTR</string>
+    <string name="settings_contacts_rationale_title">Importar os teus contactos</string>
+    <string name="settings_contacts_rationale_message">O JTR vai ler os contactos do teu telemóvel para escolheres quais importar. Ficam no teu dispositivo e nunca são enviados.</string>
+    <string name="settings_contacts_blocked_title">Acesso aos contactos bloqueado</string>
+    <string name="settings_contacts_blocked_message">A permissão de Contactos está desativada. Abre as definições para permitir que o JTR importe os teus contactos.</string>
+    <string name="import_contacts_done_title">Importação concluída</string>
+    <string name="import_contacts_done_message">%1$d importados · %2$d ignorados (já no JTR)</string>
 </resources>

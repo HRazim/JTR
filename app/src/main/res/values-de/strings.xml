@@ -509,4 +509,14 @@
         <item quantity="one">Sicherung wiederhergestellt (%1$d Kontakt)</item>
         <item quantity="other">Sicherung wiederhergestellt (%1$d Kontakte)</item>
     </plurals>
+    <!-- v7.1.28 — Kontakte aus den Einstellungen importieren -->
+    <string name="settings_section_contacts">Kontakte</string>
+    <string name="settings_import_contacts_title">Vom Telefon importieren</string>
+    <string name="settings_import_contacts_subtitle">Telefonkontakte zu JTR hinzufügen</string>
+    <string name="settings_contacts_rationale_title">Kontakte importieren</string>
+    <string name="settings_contacts_rationale_message">JTR liest deine Telefonkontakte, damit du auswählen kannst, welche importiert werden. Sie werden auf deinem Gerät gespeichert und nie hochgeladen.</string>
+    <string name="settings_contacts_blocked_title">Kontaktzugriff blockiert</string>
+    <string name="settings_contacts_blocked_message">Die Kontaktberechtigung ist deaktiviert. Öffne die Einstellungen, damit JTR deine Kontakte importieren kann.</string>
+    <string name="import_contacts_done_title">Import abgeschlossen</string>
+    <string name="import_contacts_done_message">%1$d importiert · %2$d übersprungen (bereits in JTR)</string>
 </resources>

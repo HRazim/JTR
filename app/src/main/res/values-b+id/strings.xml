@@ -501,4 +501,14 @@
     <plurals name="backup_import_success">
         <item quantity="other">Cadangan dipulihkan (%1$d kontak)</item>
     </plurals>
+    <!-- v7.1.28 — impor kontak dari Pengaturan -->
+    <string name="settings_section_contacts">Kontak</string>
+    <string name="settings_import_contacts_title">Impor dari ponsel</string>
+    <string name="settings_import_contacts_subtitle">Tambahkan kontak ponselmu ke JTR</string>
+    <string name="settings_contacts_rationale_title">Impor kontakmu</string>
+    <string name="settings_contacts_rationale_message">JTR akan membaca kontak ponselmu agar kamu bisa memilih yang akan diimpor. Kontak disimpan di perangkatmu dan tidak pernah diunggah.</string>
+    <string name="settings_contacts_blocked_title">Akses kontak diblokir</string>
+    <string name="settings_contacts_blocked_message">Izin Kontak dinonaktifkan. Buka pengaturan agar JTR bisa mengimpor kontakmu.</string>
+    <string name="import_contacts_done_title">Impor selesai</string>
+    <string name="import_contacts_done_message">%1$d diimpor · %2$d dilewati (sudah ada di JTR)</string>
 </resources>

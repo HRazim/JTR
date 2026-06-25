@@ -509,4 +509,14 @@
     <plurals name="backup_import_success">
         <item quantity="other">备份已恢复（%1$d 位联系人）</item>
     </plurals>
+    <!-- v7.1.28 — 从设置导入联系人 -->
+    <string name="settings_section_contacts">联系人</string>
+    <string name="settings_import_contacts_title">从手机导入</string>
+    <string name="settings_import_contacts_subtitle">将手机联系人添加到 JTR</string>
+    <string name="settings_contacts_rationale_title">导入您的联系人</string>
+    <string name="settings_contacts_rationale_message">JTR 将读取您的手机联系人，以便您选择要导入的联系人。它们存储在您的设备上，绝不会上传。</string>
+    <string name="settings_contacts_blocked_title">联系人访问被阻止</string>
+    <string name="settings_contacts_blocked_message">联系人权限已关闭。请打开设置以允许 JTR 导入您的联系人。</string>
+    <string name="import_contacts_done_title">导入完成</string>
+    <string name="import_contacts_done_message">%1$d 已导入 · %2$d 已跳过（已在 JTR 中）</string>
 </resources>

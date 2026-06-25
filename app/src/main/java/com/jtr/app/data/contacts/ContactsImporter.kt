@@ -41,6 +41,14 @@ data class DeviceContact(
     val photoUri: String?
 )
 
+/**
+ * Bilan d'une importation (v7.1.28) : [imported] = contacts effectivement insérés,
+ * [skipped] = contacts IGNORÉS car déjà présents dans JTR (dédoublonnage minimal,
+ * cf. [ContactsImporter.import]). Permet à l'UI d'afficher un récap « X importés ·
+ * Y ignorés (déjà dans JTR) » et garantit l'invariant « ré-importer ne duplique pas ».
+ */
+data class ImportResult(val imported: Int, val skipped: Int)
+
 class ContactsImporter(context: Context) {
 
     private val appContext = context.applicationContext
@@ -93,33 +101,87 @@ class ContactsImporter(context: Context) {
     /**
      * Lit la base native, convertit en [Person] et insère par LOTS de
      * [BATCH_SIZE] dans Room (REPLACE). [onProgress] est rappelé après chaque
-     * lot avec (insérés, total) pour piloter la barre de progression de l'UI.
+     * lot avec (traités, total) pour piloter la barre de progression de l'UI.
+     *
+     * DÉDOUBLONNAGE MINIMAL (v7.1.28) — SKIP uniquement, jamais d'écrasement ni de
+     * mise à jour : on construit UNE FOIS un index des contacts JTR ACTIFS
+     * (`deletedAt == null`) par téléphone normalisé ([phoneKey]) et email minuscule,
+     * puis tout contact natif partageant un téléphone OU un email avec un contact
+     * existant est IGNORÉ. L'index est aussi alimenté au fil des insertions → deux
+     * contacts natifs identiques dans le MÊME import ne se dupliquent pas non plus.
+     * Conséquence voulue : ré-importer les mêmes contacts n'ajoute aucun doublon.
      *
      * @param selectedIds importation SÉLECTIVE (v5.4.1) : seuls ces contacts
      *   natifs sont agrégés (les autres lignes sont ignorées dès le curseur —
      *   aucune allocation pour les non-cochés). `null` = tout importer.
-     *   La déduplication v5.3.3 (téléphones normalisés, emails) reste active.
-     * @return le nombre de contacts importés.
+     *   La déduplication INTRA-contact v5.3.3 (téléphones/emails d'un même contact)
+     *   reste active dans [toPerson].
+     * @return [ImportResult] = (insérés, ignorés car déjà présents).
      */
     suspend fun import(
         selectedIds: Set<Long>? = null,
         onProgress: (done: Int, total: Int) -> Unit
-    ): Result<Int> =
+    ): Result<ImportResult> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val drafts = readDeviceContacts(selectedIds)
                 val total = drafts.size
+
+                // Index des contacts JTR ACTIFS (clés de dédoublonnage). `getAllSync()`
+                // renvoie TOUTES les lignes (corbeille incluse) → on exclut les supprimés :
+                // un contact mis à la corbeille ne bloque pas un ré-import volontaire.
+                val existingPhones = HashSet<String>()
+                val existingEmails = HashSet<String>()
+                personDao.getAllSync().forEach { p ->
+                    if (p.deletedAt != null) return@forEach
+                    indexKeys(p, existingPhones, existingEmails)
+                }
+
                 var done = 0
+                var imported = 0
+                var skipped = 0
                 onProgress(0, total)
                 drafts.chunked(BATCH_SIZE).forEach { batch ->
-                    val persons = batch.mapNotNull { it.toPerson() }
-                    if (persons.isNotEmpty()) personDao.insertAll(persons)
+                    val toInsert = ArrayList<Person>(batch.size)
+                    batch.forEach { draft ->
+                        val person = draft.toPerson() ?: return@forEach
+                        if (isDuplicate(person, existingPhones, existingEmails)) {
+                            skipped++
+                        } else {
+                            // Alimente l'index AVANT le prochain contact → anti-doublon
+                            // intra-import (deux entrées natives au même numéro/email).
+                            indexKeys(person, existingPhones, existingEmails)
+                            toInsert.add(person)
+                            imported++
+                        }
+                    }
+                    if (toInsert.isNotEmpty()) personDao.insertAll(toInsert)
                     done += batch.size
                     onProgress(done, total)
                 }
-                total
+                ImportResult(imported = imported, skipped = skipped)
             }
         }
+
+    /** Ajoute les clés de dédoublonnage (téléphones normalisés, emails minuscules) de [p] aux index. */
+    private fun indexKeys(p: Person, phones: HashSet<String>, emails: HashSet<String>) {
+        (listOfNotNull(p.phoneNumber) + (p.phoneLines?.map { it.value } ?: emptyList()))
+            .map { phoneKey(it) }.filter { it.isNotBlank() }
+            .forEach { phones.add(it) }
+        (listOfNotNull(p.email) + (p.emailLines?.map { it.value } ?: emptyList()))
+            .map { it.trim().lowercase() }.filter { it.isNotBlank() }
+            .forEach { emails.add(it) }
+    }
+
+    /** Vrai si [person] partage un téléphone normalisé OU un email avec l'index existant. */
+    private fun isDuplicate(person: Person, phones: Set<String>, emails: Set<String>): Boolean {
+        val pk = (listOfNotNull(person.phoneNumber) + (person.phoneLines?.map { it.value } ?: emptyList()))
+            .map { phoneKey(it) }.filter { it.isNotBlank() }
+        if (pk.any { it in phones }) return true
+        val ek = (listOfNotNull(person.email) + (person.emailLines?.map { it.value } ?: emptyList()))
+            .map { it.trim().lowercase() }.filter { it.isNotBlank() }
+        return ek.any { it in emails }
+    }
 
     /** Requête unique sur Data + agrégation par contact (filtrée si [selectedIds]). */
     private fun readDeviceContacts(selectedIds: Set<Long>? = null): List<ContactDraft> {

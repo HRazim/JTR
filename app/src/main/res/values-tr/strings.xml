@@ -509,4 +509,14 @@
         <item quantity="one">Yedek geri yüklendi (%1$d kişi)</item>
         <item quantity="other">Yedek geri yüklendi (%1$d kişi)</item>
     </plurals>
+    <!-- v7.1.28 — Ayarlar'dan kişileri içe aktarma -->
+    <string name="settings_section_contacts">Kişiler</string>
+    <string name="settings_import_contacts_title">Telefondan içe aktar</string>
+    <string name="settings_import_contacts_subtitle">Telefon kişilerini JTR\'ye ekle</string>
+    <string name="settings_contacts_rationale_title">Kişilerini içe aktar</string>
+    <string name="settings_contacts_rationale_message">JTR, hangilerini içe aktaracağını seçebilmen için telefon kişilerini okur. Kişiler cihazında saklanır ve asla yüklenmez.</string>
+    <string name="settings_contacts_blocked_title">Kişi erişimi engellendi</string>
+    <string name="settings_contacts_blocked_message">Kişiler izni kapalı. JTR\'nin kişilerini içe aktarmasına izin vermek için ayarları aç.</string>
+    <string name="import_contacts_done_title">İçe aktarma tamamlandı</string>
+    <string name="import_contacts_done_message">%1$d içe aktarıldı · %2$d atlandı (zaten JTR\'de)</string>
 </resources>

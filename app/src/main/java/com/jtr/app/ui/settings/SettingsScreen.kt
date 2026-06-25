@@ -99,6 +99,7 @@ fun SettingsScreen(
     fontScale: Float = 1f,
     onFontScaleChange: (Float) -> Unit = {},
     onNavigateToTrash: () -> Unit = {},
+    onNavigateToImportContacts: () -> Unit = {},
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
     var showPrivacySheet by remember { mutableStateOf(false) }
@@ -143,6 +144,9 @@ fun SettingsScreen(
     var showLocationRationale by remember { mutableStateOf(false) }
     var showLocationSettings by remember { mutableStateOf(false) }
     var showBackgroundRationale by remember { mutableStateOf(false) }
+    // Import contacts (v7.1.28) : divulgation (rationale) + redirection Réglages si bloqué.
+    var showContactsRationale by remember { mutableStateOf(false) }
+    var showContactsSettings by remember { mutableStateOf(false) }
 
     fun hasForegroundLocation(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -205,6 +209,34 @@ fun SettingsScreen(
             // < 33, ou permission accordée mais notifications bloquées au niveau
             // app/canal : seuls les Réglages système peuvent réactiver.
             else -> showNotifSettings = true
+        }
+    }
+
+    // ── CONTACTS : import depuis le téléphone (READ_CONTACTS) ───────────────────
+    // Divulgation AVANT toute demande (bonne pratique Play pour une permission
+    // sensible) : la VRAIE boîte système n'est lancée qu'après le dialogue
+    // d'explication. Permission accordée → on ouvre l'écran de sélection.
+    fun hasContactsPermission(): Boolean =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) ==
+            PackageManager.PERMISSION_GRANTED
+
+    val contactsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) onNavigateToImportContacts()
+        // Refus définitif → le système ne montrera plus sa boîte : Réglages de l'app.
+        else if (!shouldShowRationale(Manifest.permission.READ_CONTACTS)) showContactsSettings = true
+    }
+
+    fun importContactsFlow() {
+        val perm = Manifest.permission.READ_CONTACTS
+        when {
+            hasContactsPermission() -> onNavigateToImportContacts()
+            // Jamais demandé OU refus simple → on montre la divulgation, puis la boîte système.
+            !settingsViewModel.wasPermissionAsked(perm) || shouldShowRationale(perm) ->
+                showContactsRationale = true
+            // Refus définitif (jamais re-proposé par l'OS) → redirection Réglages.
+            else -> showContactsSettings = true
         }
     }
 
@@ -358,6 +390,16 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_font_size_title),
                     value = currentFontLabel,
                     onClick = { showFontPicker = true }
+                )
+            }
+
+            // ── Carte « Contacts » (v7.1.28) : import depuis le téléphone ──────
+            SettingsCard(title = stringResource(R.string.settings_section_contacts)) {
+                SettingsNavRow(
+                    icon = Icons.Default.Contacts,
+                    title = stringResource(R.string.settings_import_contacts_title),
+                    subtitle = stringResource(R.string.settings_import_contacts_subtitle),
+                    onClick = { importContactsFlow() }
                 )
             }
 
@@ -567,6 +609,30 @@ fun SettingsScreen(
             message = stringResource(R.string.settings_notif_blocked_message),
             onOpen = { showNotifSettings = false; openSettings(notificationSettingsIntent()) },
             onDismiss = { showNotifSettings = false }
+        )
+    }
+    // Contacts — divulgation AVANT la demande système (Play : permission sensible).
+    if (showContactsRationale) {
+        PermissionRationaleDialog(
+            icon = Icons.Default.Contacts,
+            title = stringResource(R.string.settings_contacts_rationale_title),
+            message = stringResource(R.string.settings_contacts_rationale_message),
+            onContinue = {
+                showContactsRationale = false
+                settingsViewModel.markPermissionAsked(Manifest.permission.READ_CONTACTS)
+                contactsLauncher.launch(Manifest.permission.READ_CONTACTS)
+            },
+            onDismiss = { showContactsRationale = false }
+        )
+    }
+    // Contacts — refus définitif / bloqué : redirection Réglages de l'app.
+    if (showContactsSettings) {
+        PermissionSettingsDialog(
+            icon = Icons.Default.Contacts,
+            title = stringResource(R.string.settings_contacts_blocked_title),
+            message = stringResource(R.string.settings_contacts_blocked_message),
+            onOpen = { showContactsSettings = false; openSettings(appDetailsIntent()) },
+            onDismiss = { showContactsSettings = false }
         )
     }
     // Localisation — refusée une fois : explication puis VRAIE boîte système.

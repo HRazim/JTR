@@ -498,4 +498,14 @@
     <plurals name="backup_import_success">
         <item quantity="other">백업 복원됨 (연락처 %1$d명)</item>
     </plurals>
+    <!-- v7.1.28 — 설정에서 연락처 가져오기 -->
+    <string name="settings_section_contacts">연락처</string>
+    <string name="settings_import_contacts_title">휴대폰에서 가져오기</string>
+    <string name="settings_import_contacts_subtitle">휴대폰 연락처를 JTR에 추가</string>
+    <string name="settings_contacts_rationale_title">연락처 가져오기</string>
+    <string name="settings_contacts_rationale_message">JTR이 휴대폰 연락처를 읽어 가져올 항목을 선택할 수 있도록 합니다. 연락처는 기기에 저장되며 업로드되지 않습니다.</string>
+    <string name="settings_contacts_blocked_title">연락처 접근 차단됨</string>
+    <string name="settings_contacts_blocked_message">연락처 권한이 꺼져 있습니다. 설정을 열어 JTR이 연락처를 가져올 수 있도록 허용하세요.</string>
+    <string name="import_contacts_done_title">가져오기 완료</string>
+    <string name="import_contacts_done_message">%1$d개 가져옴 · %2$d개 건너뜀 (이미 JTR에 있음)</string>
 </resources>

@@ -535,4 +535,14 @@
         <item quantity="one">Backup restored (%1$d contact)</item>
         <item quantity="other">Backup restored (%1$d contacts)</item>
     </plurals>
+    <!-- v7.1.28 — import contacts depuis les Paramètres -->
+    <string name="settings_section_contacts">Contacts</string>
+    <string name="settings_import_contacts_title">Import from phone</string>
+    <string name="settings_import_contacts_subtitle">Add your phone contacts to JTR</string>
+    <string name="settings_contacts_rationale_title">Import your contacts</string>
+    <string name="settings_contacts_rationale_message">JTR will read your phone contacts so you can choose which ones to import. They are stored on your device and never uploaded.</string>
+    <string name="settings_contacts_blocked_title">Contacts access blocked</string>
+    <string name="settings_contacts_blocked_message">Contacts permission is turned off. Open settings to allow JTR to import your contacts.</string>
+    <string name="import_contacts_done_title">Import complete</string>
+    <string name="import_contacts_done_message">%1$d imported · %2$d skipped (already in JTR)</string>
 </resources>
