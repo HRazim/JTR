@@ -1561,9 +1561,14 @@ fun DetailTextBlock(icon: ImageVector, label: String, value: String) {
             tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(16.dp))
         Column {
-            Text(label, style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(4.dp))
+            // Titre VIDE possible depuis v7.1.33 (section laissée sans titre) : on MASQUE la ligne
+            // de libellé plutôt que d'afficher un vide ou de réinjecter « Notes » → bloc cohérent
+            // (icône + contenu). Sans effet sur les sections titrées (label non vide → inchangé).
+            if (label.isNotBlank()) {
+                Text(label, style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(4.dp))
+            }
             Text(value, style = MaterialTheme.typography.bodyLarge)
         }
     }

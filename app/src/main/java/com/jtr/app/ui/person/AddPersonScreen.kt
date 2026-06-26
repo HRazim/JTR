@@ -179,13 +179,15 @@ fun AddPersonScreen(
         onMapResultConsumed()
     }
 
-    // Nouveau contact : démarre avec UNE section « Notes » par défaut (titre localisé,
-    // semé ici pour respecter la langue in-app). Idempotent (ne re-sème pas si non vide).
-    val defaultNotesTitle = stringResource(R.string.note_section_default_notes)
+    // Nouveau contact : démarre avec UNE section vide prête à remplir — titre VIDE (v7.1.33)
+    // → le champ affiche le placeholder Material 3 « Titre de la section » (note_section_title_hint)
+    // au lieu de préremplir la VRAIE valeur « Notes » que l'utilisateur devait effacer. Idempotent
+    // (ne re-sème pas si la liste n'est pas vide). Le titre reste vide tant que l'utilisateur n'écrit
+    // rien ; il n'est jamais persisté tel quel (placeholder natif M3).
     LaunchedEffect(Unit) {
         if (viewModel.noteSections.value.isEmpty()) {
             viewModel.onNoteSectionsChanged(
-                listOf(NoteSection(title = defaultNotesTitle, iconKey = NOTE_ICON_NOTES, order = 0))
+                listOf(NoteSection(title = "", iconKey = NOTE_ICON_NOTES, order = 0))
             )
         }
     }
