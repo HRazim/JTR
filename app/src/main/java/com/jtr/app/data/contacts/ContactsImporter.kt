@@ -24,7 +24,8 @@ import java.util.UUID
  *  - StructuredName : DATA2 = prénom, DATA3 = nom, DATA4 = préfixe (Dr…),
  *    DATA5 = 2ᵉ prénom, DATA6 = suffixe (Jr…), DATA7/8/9 = phonétiques ;
  *  - Organization : DATA1 = société, DATA4 = poste, DATA5 = département ;
- *  - Nickname / Phone / Email / Note : DATA1 = valeur principale.
+ *  - Phone / Email : DATA1 = valeur, DATA2 = TYPE, DATA3 = libellé perso (B2) ;
+ *  - Nickname / Note : DATA1 = valeur principale.
  * `PHOTO_URI` (photo d'affichage pleine résolution, repli sur la vignette si
  * absente) et `PHOTO_THUMBNAIL_URI` sont des colonnes jointes du contact,
  * disponibles sur chaque ligne.
@@ -108,8 +109,11 @@ class ContactsImporter(context: Context) {
         var jobTitle: String? = null
         var department: String? = null
         var note: String? = null
-        val phones = LinkedHashSet<String>()
-        val emails = LinkedHashSet<String>()
+        // v7.1.35 (B2) — valeur → clé de type JTR ([FieldTypes.PHONE]/[FieldTypes.EMAIL]
+        // ou libellé personnalisé). LinkedHashMap = ordre natif préservé ; la 1ʳᵉ
+        // occurrence d'une valeur garde son type (putIfAbsent).
+        val phones = LinkedHashMap<String, String>()
+        val emails = LinkedHashMap<String, String>()
     }
 
     /**
@@ -289,11 +293,20 @@ class ContactsImporter(context: Context) {
                         cursor.getString(data1Idx)?.takeIf { it.isNotBlank() }
                             ?.let { draft.nickname = it.trim() }
                     ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE ->
-                        cursor.getString(data1Idx)?.takeIf { it.isNotBlank() }
-                            ?.let { draft.phones.add(it.trim()) }
+                        cursor.getString(data1Idx)?.takeIf { it.isNotBlank() }?.let {
+                            // v7.1.35 (B2) : TYPE (DATA2) + LABEL perso (DATA3) → type JTR.
+                            draft.phones.putIfAbsent(
+                                it.trim(),
+                                phoneLabel(cursor.getInt(data2Idx), cursor.getString(data3Idx))
+                            )
+                        }
                     ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE ->
-                        cursor.getString(data1Idx)?.takeIf { it.isNotBlank() }
-                            ?.let { draft.emails.add(it.trim()) }
+                        cursor.getString(data1Idx)?.takeIf { it.isNotBlank() }?.let {
+                            draft.emails.putIfAbsent(
+                                it.trim(),
+                                emailLabel(cursor.getInt(data2Idx), cursor.getString(data3Idx))
+                            )
+                        }
                     ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> {
                         cursor.getString(data1Idx)?.takeIf { it.isNotBlank() }
                             ?.let { draft.company = it }
@@ -319,6 +332,38 @@ class ContactsImporter(context: Context) {
     private fun phoneKey(raw: String): String = raw.filter { it.isDigit() || it == '+' }
 
     /**
+     * v7.1.35 (B2) — Mappe [ContactsContract.CommonDataKinds.Phone] TYPE (+ LABEL
+     * natif pour le type personnalisé) vers une clé de type JTR (cf.
+     * [FieldTypes.PHONE]). TYPE_CUSTOM → le libellé natif tel quel (label
+     * personnalisé JTR) ; type sans équivalent (fax, pager…), inconnu ou absent
+     * → « other » (jamais de crash). [type] vaut 0 (= TYPE_CUSTOM) si la colonne
+     * est nulle → repli « other » via le libellé vide.
+     */
+    private fun phoneLabel(type: Int, customLabel: String?): String = when (type) {
+        ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE -> FieldTypes.PHONE_MOBILE
+        ContactsContract.CommonDataKinds.Phone.TYPE_HOME -> "home"
+        ContactsContract.CommonDataKinds.Phone.TYPE_WORK -> "work"
+        ContactsContract.CommonDataKinds.Phone.TYPE_MAIN,
+        ContactsContract.CommonDataKinds.Phone.TYPE_COMPANY_MAIN -> "main"
+        ContactsContract.CommonDataKinds.Phone.TYPE_CUSTOM ->
+            customLabel?.trim()?.takeIf { it.isNotBlank() } ?: "other"
+        else -> "other"
+    }
+
+    /**
+     * v7.1.35 (B2) — Équivalent pour [ContactsContract.CommonDataKinds.Email]
+     * (cf. [FieldTypes.EMAIL]). HOME/WORK mappés ; TYPE_CUSTOM → libellé natif ;
+     * MOBILE/OTHER/inconnu/absent → « other » (pas d'équivalent JTR).
+     */
+    private fun emailLabel(type: Int, customLabel: String?): String = when (type) {
+        ContactsContract.CommonDataKinds.Email.TYPE_HOME -> FieldTypes.EMAIL_HOME
+        ContactsContract.CommonDataKinds.Email.TYPE_WORK -> "work"
+        ContactsContract.CommonDataKinds.Email.TYPE_CUSTOM ->
+            customLabel?.trim()?.takeIf { it.isNotBlank() } ?: "other"
+        else -> "other"
+    }
+
+    /**
      * Convertit un brouillon en [Person] JTR. Le prénom est OBLIGATOIRE :
      * repli sur le premier mot du nom affiché, sinon le contact est ignoré.
      * Les listes téléphones/emails alimentent les lignes dynamiques ET les
@@ -336,9 +381,11 @@ class ContactsImporter(context: Context) {
         // plusieurs étiquettes natives (Mobile, Principal…) ou avec des formats
         // différents n'est conservé qu'une seule fois (comparaison normalisée) ;
         // les emails sont comparés en minuscules. Coût O(n) par contact — aucun
-        // ralentissement du traitement par lots sur Dispatchers.IO.
-        val uniquePhones = phones.toList().distinctBy { phoneKey(it) }
-        val uniqueEmails = emails.toList().distinctBy { it.lowercase() }
+        // ralentissement du traitement par lots sur Dispatchers.IO. v7.1.35 (B2) :
+        // les entrées portent désormais (valeur, type JTR) ; la 1ʳᵉ occurrence
+        // gagne (type inclus), l'ordre natif est préservé.
+        val uniquePhones = phones.entries.toList().distinctBy { phoneKey(it.key) }
+        val uniqueEmails = emails.entries.toList().distinctBy { it.key.lowercase() }
 
         return Person(
             firstName = first,
@@ -350,16 +397,17 @@ class ContactsImporter(context: Context) {
             phonetic = phonetic,
             nickname = nickname,
             photoUri = copyNativePhoto(photoUri),
-            phoneNumber = uniquePhones.firstOrNull(),
-            email = uniqueEmails.firstOrNull(),
+            phoneNumber = uniquePhones.firstOrNull()?.key,
+            email = uniqueEmails.firstOrNull()?.key,
             // v7.1.34 (B1) — poste + département en plus de la société.
             jobTitle = jobTitle,
             department = department,
             company = company,
             notes = note,
-            phoneLines = uniquePhones.map { DynamicLine(value = it, label = FieldTypes.PHONE_MOBILE) }
+            // v7.1.35 (B2) — label = type JTR issu du natif (fini le « mobile »/« home » figé).
+            phoneLines = uniquePhones.map { DynamicLine(value = it.key, label = it.value) }
                 .takeIf { it.isNotEmpty() },
-            emailLines = uniqueEmails.map { DynamicLine(value = it, label = FieldTypes.EMAIL_HOME) }
+            emailLines = uniqueEmails.map { DynamicLine(value = it.key, label = it.value) }
                 .takeIf { it.isNotEmpty() }
         )
     }
