@@ -18,12 +18,16 @@ import java.util.UUID
  *
  * Stratégie de lecture : UNE SEULE requête sur la table `Data` de
  * [ContactsContract] (au lieu d'une sous-requête par contact), filtrée sur les
- * 5 mimetypes utiles (nom structuré, téléphone, email, organisation, note),
- * puis regroupement en mémoire par `CONTACT_ID`. Les colonnes génériques
- * DATA1/DATA2/DATA3 portent la valeur selon le mimetype :
- *  - StructuredName : DATA2 = prénom, DATA3 = nom de famille ;
- *  - Phone / Email / Organization / Note : DATA1 = valeur principale.
- * `PHOTO_URI` est une colonne jointe du contact, disponible sur chaque ligne.
+ * 6 mimetypes utiles (nom structuré, surnom, téléphone, email, organisation,
+ * note), puis regroupement en mémoire par `CONTACT_ID`. Les colonnes génériques
+ * DATA1..DATA9 portent la valeur selon le mimetype :
+ *  - StructuredName : DATA2 = prénom, DATA3 = nom, DATA4 = préfixe (Dr…),
+ *    DATA5 = 2ᵉ prénom, DATA6 = suffixe (Jr…), DATA7/8/9 = phonétiques ;
+ *  - Organization : DATA1 = société, DATA4 = poste, DATA5 = département ;
+ *  - Nickname / Phone / Email / Note : DATA1 = valeur principale.
+ * `PHOTO_URI` (photo d'affichage pleine résolution, repli sur la vignette si
+ * absente) et `PHOTO_THUMBNAIL_URI` sont des colonnes jointes du contact,
+ * disponibles sur chaque ligne.
  *
  * Les photos sont COPIÉES dans filesDir/photos (fichiers `import_<uuid>.jpg`) :
  * les vignettes restent visibles même si la permission READ_CONTACTS est
@@ -91,8 +95,18 @@ class ContactsImporter(context: Context) {
         var givenName: String? = null
         var familyName: String? = null
         var displayName: String? = null
+        // v7.1.34 (B1) — sous-champs de nom avancés (mimetype StructuredName).
+        var prefix: String? = null
+        var middleName: String? = null
+        var suffix: String? = null
+        var phonetic: String? = null
+        // v7.1.34 (B1) — surnom (mimetype Nickname).
+        var nickname: String? = null
         var photoUri: String? = null
         var company: String? = null
+        // v7.1.34 (B1) — infos pro complémentaires (mimetype Organization).
+        var jobTitle: String? = null
+        var department: String? = null
         var note: String? = null
         val phones = LinkedHashSet<String>()
         val emails = LinkedHashSet<String>()
@@ -191,13 +205,21 @@ class ContactsImporter(context: Context) {
             ContactsContract.Data.MIMETYPE,
             ContactsContract.Data.DISPLAY_NAME,
             ContactsContract.Data.PHOTO_URI,
+            ContactsContract.Data.PHOTO_THUMBNAIL_URI,
             ContactsContract.Data.DATA1,
             ContactsContract.Data.DATA2,
-            ContactsContract.Data.DATA3
+            ContactsContract.Data.DATA3,
+            ContactsContract.Data.DATA4,
+            ContactsContract.Data.DATA5,
+            ContactsContract.Data.DATA6,
+            ContactsContract.Data.DATA7,
+            ContactsContract.Data.DATA8,
+            ContactsContract.Data.DATA9
         )
-        val selection = "${ContactsContract.Data.MIMETYPE} IN (?, ?, ?, ?, ?)"
+        val selection = "${ContactsContract.Data.MIMETYPE} IN (?, ?, ?, ?, ?, ?)"
         val selectionArgs = arrayOf(
             ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE,
+            ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE,
             ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
             ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE,
             ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE,
@@ -213,9 +235,16 @@ class ContactsImporter(context: Context) {
             val mimeIdx = cursor.getColumnIndexOrThrow(ContactsContract.Data.MIMETYPE)
             val nameIdx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DISPLAY_NAME)
             val photoIdx = cursor.getColumnIndexOrThrow(ContactsContract.Data.PHOTO_URI)
+            val thumbIdx = cursor.getColumnIndexOrThrow(ContactsContract.Data.PHOTO_THUMBNAIL_URI)
             val data1Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA1)
             val data2Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA2)
             val data3Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA3)
+            val data4Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA4)
+            val data5Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA5)
+            val data6Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA6)
+            val data7Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA7)
+            val data8Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA8)
+            val data9Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA9)
 
             while (cursor.moveToNext()) {
                 val contactId = cursor.getLong(idIdx)
@@ -225,7 +254,14 @@ class ContactsImporter(context: Context) {
                 if (selectedIds != null && contactId !in selectedIds) continue
                 val draft = drafts.getOrPut(contactId) { ContactDraft() }
                 if (draft.displayName == null) draft.displayName = cursor.getString(nameIdx)
-                if (draft.photoUri == null) draft.photoUri = cursor.getString(photoIdx)
+                // Photo PLEINE RÉSOLUTION (v7.1.34) : PHOTO_URI pointe sur la photo
+                // d'affichage et retombe lui-même sur la vignette si absente ; on
+                // ajoute un repli explicite sur PHOTO_THUMBNAIL_URI par robustesse.
+                if (draft.photoUri == null) {
+                    draft.photoUri = cursor.getString(photoIdx)
+                        ?.takeIf { it.isNotBlank() }
+                        ?: cursor.getString(thumbIdx)
+                }
 
                 when (cursor.getString(mimeIdx)) {
                     ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE -> {
@@ -233,16 +269,39 @@ class ContactsImporter(context: Context) {
                             ?.let { draft.givenName = it }
                         cursor.getString(data3Idx)?.takeIf { it.isNotBlank() }
                             ?.let { draft.familyName = it }
+                        cursor.getString(data4Idx)?.takeIf { it.isNotBlank() }
+                            ?.let { draft.prefix = it.trim() }
+                        cursor.getString(data5Idx)?.takeIf { it.isNotBlank() }
+                            ?.let { draft.middleName = it.trim() }
+                        cursor.getString(data6Idx)?.takeIf { it.isNotBlank() }
+                            ?.let { draft.suffix = it.trim() }
+                        // Phonétiques prénom/2ᵉ prénom/nom (DATA7/8/9) fusionnés en
+                        // un seul champ `phonetic` (Person n'en a qu'un).
+                        listOfNotNull(
+                            cursor.getString(data7Idx)?.takeIf { it.isNotBlank() },
+                            cursor.getString(data8Idx)?.takeIf { it.isNotBlank() },
+                            cursor.getString(data9Idx)?.takeIf { it.isNotBlank() }
+                        ).joinToString(" ") { it.trim() }
+                            .takeIf { it.isNotBlank() }
+                            ?.let { draft.phonetic = it }
                     }
+                    ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE ->
+                        cursor.getString(data1Idx)?.takeIf { it.isNotBlank() }
+                            ?.let { draft.nickname = it.trim() }
                     ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE ->
                         cursor.getString(data1Idx)?.takeIf { it.isNotBlank() }
                             ?.let { draft.phones.add(it.trim()) }
                     ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE ->
                         cursor.getString(data1Idx)?.takeIf { it.isNotBlank() }
                             ?.let { draft.emails.add(it.trim()) }
-                    ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE ->
+                    ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> {
                         cursor.getString(data1Idx)?.takeIf { it.isNotBlank() }
                             ?.let { draft.company = it }
+                        cursor.getString(data4Idx)?.takeIf { it.isNotBlank() }
+                            ?.let { draft.jobTitle = it.trim() }
+                        cursor.getString(data5Idx)?.takeIf { it.isNotBlank() }
+                            ?.let { draft.department = it.trim() }
+                    }
                     ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE ->
                         cursor.getString(data1Idx)?.takeIf { it.isNotBlank() }
                             ?.let { draft.note = it }
@@ -284,9 +343,18 @@ class ContactsImporter(context: Context) {
         return Person(
             firstName = first,
             lastName = last,
+            // v7.1.34 (B1) — sous-champs de nom + surnom (mapping direct, null-safe).
+            prefix = prefix,
+            middleName = middleName,
+            suffix = suffix,
+            phonetic = phonetic,
+            nickname = nickname,
             photoUri = copyNativePhoto(photoUri),
             phoneNumber = uniquePhones.firstOrNull(),
             email = uniqueEmails.firstOrNull(),
+            // v7.1.34 (B1) — poste + département en plus de la société.
+            jobTitle = jobTitle,
+            department = department,
             company = company,
             notes = note,
             phoneLines = uniquePhones.map { DynamicLine(value = it, label = FieldTypes.PHONE_MOBILE) }
