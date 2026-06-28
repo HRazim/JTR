@@ -333,7 +333,9 @@ class BackupManager(context: Context) {
         val tieBreak = DateCanonical.currentOrder(Locale.getDefault())
         var birthdayUsed = false
         val normalized = lines.map { line ->
-            if (line.value.isBlank() || DateCanonical.isIso(line.value)) return@map line
+            // v7.1.37 (B3b) — `--MM-dd` (date sans année) est DÉJÀ canonique → round-trip intact.
+            if (line.value.isBlank() || DateCanonical.isIso(line.value) ||
+                DateCanonical.isMonthDay(line.value)) return@map line
             // « birthday » : const FieldTypes.DATE_BIRTHDAY (literal pour découpler du module UI).
             val iso = if (line.label == "birthday" && !birthdayUsed && p.birthdate != null) {
                 birthdayUsed = true

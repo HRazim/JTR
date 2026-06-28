@@ -30,8 +30,65 @@ object DateCanonical {
 
     private val ISO = Regex("""\d{4}-\d{2}-\d{2}""")
 
+    /**
+     * Date SANS année au format ISO-8601 « year-less » `--MM-dd` (v7.1.37 / B3b) — identique
+     * au format natif de [android.provider.ContactsContract.CommonDataKinds.Event]. Forme
+     * DISTINCTE de l'ISO complet : `isIso`/`isoToMillis`/`millisToIso` restent strictement à 4
+     * chiffres d'année et ne traitent JAMAIS un `--MM-dd` (non-régression des dates existantes).
+     */
+    private val MONTH_DAY = Regex("""--\d{2}-\d{2}""")
+
     /** Vrai si [value] est déjà au format canonique ISO `yyyy-MM-dd`. */
     fun isIso(value: String): Boolean = ISO.matches(value)
+
+    /** Vrai si [value] est une date SANS année au format `--MM-dd` (B3b). */
+    fun isMonthDay(value: String): Boolean = MONTH_DAY.matches(value)
+
+    /**
+     * `--MM-dd` → `(mois 1-12, jour)` si la combinaison est RÉELLEMENT valide (via
+     * [java.time.MonthDay] : mois 1-12, jour ≤ max du mois, `--02-29` accepté car l'année
+     * n'est pas fixée), sinon `null`. Ne traite QUE le format sans année.
+     */
+    fun monthDayOf(value: String): Pair<Int, Int>? {
+        if (!isMonthDay(value)) return null
+        val month = value.substring(2, 4).toIntOrNull() ?: return null
+        val day = value.substring(5, 7).toIntOrNull() ?: return null
+        return try {
+            java.time.MonthDay.of(month, day) // valide mois (1..12) + jour max (29/02 OK)
+            month to day
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Millis (midi local) de la PROCHAINE occurrence (jour/mois) d'une date SANS année
+     * [monthDay] (`--MM-dd`), à partir de [fromMillis] : l'occurrence de l'année courante si
+     * son jour n'est pas encore passé, sinon celle de l'année suivante. L'année est CALCULÉE,
+     * **jamais stockée** — une date sans année est annuelle par nature. Garde `--02-29` →
+     * dernier jour de février les années non bissextiles. `null` si [monthDay] invalide.
+     */
+    fun nextOccurrenceMillis(monthDay: String, fromMillis: Long): Long? {
+        val (month, day) = monthDayOf(monthDay) ?: return null
+        val from = Calendar.getInstance().apply { timeInMillis = fromMillis }
+        val today0 = (from.clone() as Calendar).apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        fun occurrence(year: Int): Long {
+            val cal = Calendar.getInstance().apply {
+                clear()
+                set(Calendar.YEAR, year); set(Calendar.MONTH, month - 1); set(Calendar.DAY_OF_MONTH, 1)
+            }
+            val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+            cal.set(Calendar.DAY_OF_MONTH, day.coerceAtMost(maxDay))
+            cal.set(Calendar.HOUR_OF_DAY, 12) // midi local, cohérent avec isoToMillis
+            return cal.timeInMillis
+        }
+        val year = from.get(Calendar.YEAR)
+        val candidate = occurrence(year)
+        return if (candidate < today0) occurrence(year + 1) else candidate
+    }
 
     /** ISO `yyyy-MM-dd` → epoch millis (midi local), ou `null` si non parseable. */
     fun isoToMillis(iso: String): Long? {

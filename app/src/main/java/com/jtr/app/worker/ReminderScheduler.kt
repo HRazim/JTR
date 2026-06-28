@@ -65,9 +65,12 @@ object ReminderScheduler {
         val firstName: String,
         val lineId: String,
         val label: String,
-        val isBirthday: Boolean,     // v7.1.29 : SEUL l'anniversaire est récurrent (annuel)
-        val dateMillis: Long,        // date stockée (avec son année historique)
-        val offsetMinutes: Int
+        val isBirthday: Boolean,     // v7.1.29 : sert au LIBELLÉ de la notification
+        val dateMillis: Long,        // date stockée (avec son année) OU prochaine occurrence (year-less)
+        val offsetMinutes: Int,
+        // v7.1.37 (B3b) : date SANS année (`--MM-dd`) → ANNUELLE par nature ; force `recurring`
+        // dans rescheduleAll SANS toucher la comparaison passé/futur des dates datées.
+        val annualOnly: Boolean = false
     ) {
         val key get() = "$personId|$lineId"
     }
@@ -109,7 +112,9 @@ object ReminderScheduler {
             // est un rappel UNIQUE sur sa vraie date (année incluse). `isBirthday` ne sert plus
             // qu'au libellé de la notification. Une date future, une fois passée, redevient
             // annuelle au prochain recalcul (comportement accepté). Aucune date n'est ignorée.
-            val recurring = startOfDay(ev.dateMillis) < today0
+            // v7.1.37 (B3b) — une date SANS année est TOUJOURS annuelle (branche séparée) ; la
+            // comparaison passé/futur des dates DATÉES (v7.1.29) reste strictement inchangée.
+            val recurring = ev.annualOnly || startOfDay(ev.dateMillis) < today0
             val occurrence = if (recurring) nextEventMidnight(ev.dateMillis, now)
                              else startOfDay(ev.dateMillis)
             val trigger = occurrence - ev.offsetMinutes * 60_000L
@@ -155,8 +160,15 @@ object ReminderScheduler {
                 }.orEmpty()
             lines.forEach { line ->
                 if (!line.notify) return@forEach
-                // Interprétation LOCALE-LIBRE de la valeur stockée (ISO), repli hérité géré.
-                val millis = storedDateToMillis(line.value) ?: return@forEach
+                // v7.1.37 (B3b) — date SANS année (`--MM-dd`) : NE PAS passer par storedDateToMillis
+                // (qui rendrait null → date perdue) ; on calcule la prochaine occurrence (jour/mois)
+                // et on marque l'event annuel. Sinon : interprétation LOCALE-LIBRE de l'ISO stocké.
+                val yearLess = DateCanonical.isMonthDay(line.value)
+                val millis = if (yearLess)
+                    DateCanonical.nextOccurrenceMillis(line.value, System.currentTimeMillis())
+                else
+                    storedDateToMillis(line.value)
+                if (millis == null) return@forEach
                 out += Event(
                     personId = p.id,
                     firstName = p.firstName,
@@ -164,7 +176,8 @@ object ReminderScheduler {
                     label = line.label,
                     isBirthday = line.label == FieldTypes.DATE_BIRTHDAY,
                     dateMillis = millis,
-                    offsetMinutes = line.reminderOffsetMinutes.coerceAtLeast(0)
+                    offsetMinutes = line.reminderOffsetMinutes.coerceAtLeast(0),
+                    annualOnly = yearLess
                 )
             }
         }

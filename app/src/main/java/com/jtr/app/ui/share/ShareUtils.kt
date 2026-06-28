@@ -14,6 +14,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import com.jtr.app.R
 import com.jtr.app.domain.model.Person
+import com.jtr.app.ui.person.DateField
 import com.jtr.app.ui.person.FieldTypes
 import com.jtr.app.ui.person.millisToRawDigits
 import com.jtr.app.ui.person.resolveDateFormatSpec
@@ -102,6 +103,19 @@ object ShareUtils {
      * « JJ/MM/AAAA » selon la locale courante. Interprétation LOCALE-LIBRE (v7.1.0).
      */
     private fun formatStoredDate(value: String): String {
+        // v7.1.37 (B3b) — date SANS année : « JJ/MM » localisé (ordre + séparateur de la locale,
+        // segment année omis) — jamais la chaîne brute « --MM-dd ».
+        DateCanonical.monthDayOf(value)?.let { (month, day) ->
+            val spec = resolveDateFormatSpec(Locale.getDefault())
+            return spec.order.filter { it != DateField.YEAR }
+                .joinToString(spec.separator.toString()) {
+                    when (it) {
+                        DateField.DAY -> "%02d".format(day)
+                        DateField.MONTH -> "%02d".format(month)
+                        DateField.YEAR -> ""
+                    }
+                }
+        }
         val millis = storedDateToMillis(value) ?: return value
         val spec = resolveDateFormatSpec(Locale.getDefault())
         val raw = millisToRawDigits(millis, spec.order)

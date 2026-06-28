@@ -335,12 +335,12 @@ class ContactsImporter(context: Context) {
                             ?.let { draft.department = it.trim() }
                     }
                     ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE -> {
-                        // v7.1.36 (B3) : START_DATE (DATA1) → ISO ; TYPE (DATA2) + LABEL
-                        // perso (DATA3) → label de date JTR. Date sans année (--MM-dd) ou
-                        // non canonique = ignorée (eventDateToIso → null), pas de crash.
-                        eventDateToIso(cursor.getString(data1Idx))?.let { iso ->
+                        // v7.1.36/37 (B3/B3b) : START_DATE (DATA1) → ISO complet OU `--MM-dd` sans
+                        // année ; TYPE (DATA2) + LABEL perso (DATA3) → label de date JTR. Format non
+                        // reconnu = ignoré (eventDateToStored → null), pas de crash.
+                        eventDateToStored(cursor.getString(data1Idx))?.let { stored ->
                             draft.dates.add(
-                                iso to dateLabel(cursor.getInt(data2Idx), cursor.getString(data3Idx))
+                                stored to dateLabel(cursor.getInt(data2Idx), cursor.getString(data3Idx))
                             )
                         }
                     }
@@ -407,16 +407,19 @@ class ContactsImporter(context: Context) {
     }
 
     /**
-     * v7.1.36 (B3) — Normalise une `Event.START_DATE` native en ISO `yyyy-MM-dd`.
-     * On ne traite QUE les dates À ANNÉE COMPLÈTE, canoniques pour [DateCanonical] :
-     * les dates SANS année (`--MM-dd`) et tout format non ISO sont IGNORÉS (`null`,
-     * traités en sous-brique B3b) — jamais de crash. Une date ISO syntaxiquement
-     * correcte mais impossible (ex. 2025-13-40) est aussi rejetée (isoToMillis null).
+     * v7.1.36/37 (B3/B3b) — Normalise une `Event.START_DATE` native en valeur de date JTR :
+     *  - date À ANNÉE COMPLÈTE → ISO `yyyy-MM-dd` (validée par [DateCanonical.isoToMillis]) ;
+     *  - date SANS année `--MM-dd` (B3b) → conservée TELLE QUELLE (validée par
+     *    [DateCanonical.monthDayOf]) ; elle vit en `dateLines`, ANNUELLE par nature, scalaire
+     *    `birthdate` laissé `null` (pas d'année).
+     * Tout autre format (chiffres bruts, vide) ou date impossible → `null` = IGNORÉ, jamais de
+     * crash. (Android stocke un Event soit en « yyyy-MM-dd » soit en « --MM-dd ».)
      */
-    private fun eventDateToIso(raw: String?): String? {
+    private fun eventDateToStored(raw: String?): String? {
         val v = raw?.trim().orEmpty()
-        if (!DateCanonical.isIso(v)) return null
-        return if (DateCanonical.isoToMillis(v) != null) v else null
+        if (DateCanonical.isIso(v)) return if (DateCanonical.isoToMillis(v) != null) v else null
+        if (DateCanonical.isMonthDay(v)) return if (DateCanonical.monthDayOf(v) != null) v else null
+        return null
     }
 
     /**
@@ -460,6 +463,8 @@ class ContactsImporter(context: Context) {
         // avec le flag notify de sa ligne (jamais l'un sans l'autre), et la date scalaire ne
         // diverge jamais de la ligne.
         val birthdayLine = importedDateLines.firstOrNull { it.label == FieldTypes.DATE_BIRTHDAY }
+        // B3b : un birthday SANS année (`--MM-dd`) → isoToMillis null → scalaire `birthdate` null
+        // (pas d'année à projeter) ; il vit en `dateLines` et notifie via la branche annuelle.
         val birthdateMillis = birthdayLine?.let { DateCanonical.isoToMillis(it.value) }
 
         return Person(

@@ -1488,11 +1488,11 @@ private fun DatesBlock(lines: List<DynamicLine>) {
     // v7.1.30 — formateur ET rendu keyés sur la locale courante : un changement de langue
     // sans recreate() ne laisse jamais un formateur/texte périmé en cache.
     val locale = Locale.getDefault()
-    val formatter = remember(locale) { SimpleDateFormat("d MMMM yyyy", locale) }
     val rendered = remember(lines, locale) {
         lines.mapNotNull { line ->
-            val millis = storedDateToMillis(line.value) ?: return@mapNotNull null
-            Triple(line.label, formatter.format(Date(millis)), line.notify)
+            // v7.1.37 (B3b) — formatStoredDateLong gère l'ISO complet ET le year-less
+            // `--MM-dd` (« 15 mars » localisé) ; null = valeur non affichable → ignorée.
+            formatStoredDateLong(line.value, locale)?.let { Triple(line.label, it, line.notify) }
         }
     }
     if (rendered.isEmpty()) return

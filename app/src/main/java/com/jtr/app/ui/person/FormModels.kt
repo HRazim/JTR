@@ -1,14 +1,17 @@
 package com.jtr.app.ui.person
 
+import android.text.format.DateFormat
 import androidx.annotation.StringRes
 import com.jtr.app.R
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.utils.DateCanonical
+import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.chrono.IsoChronology
 import java.time.format.DateTimeFormatterBuilder
 import java.time.format.FormatStyle
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 /**
@@ -204,6 +207,10 @@ private const val MAX_DATE_YEAR = 9999
  */
 fun isDateLineValid(raw: String, spec: DateFormatSpec, label: String = ""): Boolean {
     if (raw.isBlank()) return true
+    // v7.1.37 (B3b) — une date SANS année (`--MM-dd`, importée) est VALIDE telle quelle : on ne
+    // BLOQUE pas la sauvegarde d'un contact qui en porte une (la saisie/édition year-less complète
+    // = v7.1.38). Le futur n'a pas de sens sans année (pas de garde « anniversaire futur » ici).
+    if (DateCanonical.isMonthDay(raw)) return DateCanonical.monthDayOf(raw) != null
     val millis = rawDigitsToMillis(raw, spec) ?: return false
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
     val year = Calendar.getInstance().apply { timeInMillis = millis }.get(Calendar.YEAR)
@@ -294,6 +301,9 @@ fun isoToRawDigits(iso: String, spec: DateFormatSpec): String = try {
  */
 fun storedDateToRawDigits(value: String, spec: DateFormatSpec): String {
     if (value.isBlank()) return value
+    // v7.1.37 (B3b) — date SANS année conservée TELLE QUELLE (le masque JJ/MM/AAAA ne sait pas
+    // encore la saisir → v7.1.38) ; au moins elle survit à un aller-retour d'édition sans corruption.
+    if (DateCanonical.isMonthDay(value)) return value
     if (DateCanonical.isIso(value)) return isoToRawDigits(value, spec)
     val iso = DateCanonical.legacyRawDigitsToIso(value, spec.canonicalOrder())
     return if (iso != null) isoToRawDigits(iso, spec) else value
@@ -322,6 +332,26 @@ fun storedDateToMillis(value: String): Long? {
  */
 fun canonicalizeDateLinesForStorage(lines: List<DynamicLine>, spec: DateFormatSpec): List<DynamicLine> =
     lines.map { line ->
-        if (line.value.isBlank() || DateCanonical.isIso(line.value)) line
+        // v7.1.37 (B3b) — `--MM-dd` est DÉJÀ canonique (date sans année) : laissée intacte.
+        if (line.value.isBlank() || DateCanonical.isIso(line.value) || DateCanonical.isMonthDay(line.value)) line
         else rawDigitsToIso(line.value, spec)?.let { line.copy(value = it) } ?: line
     }
+
+/**
+ * v7.1.37 (B3b) — Formate une valeur de date STOCKÉE pour l'affichage LONG localisé :
+ *  - ISO `yyyy-MM-dd` → « d MMMM yyyy » (avec année) ;
+ *  - `--MM-dd` (sans année) → squelette « MMMMd » localisé par l'OS (« 15 mars », « March 15 »,
+ *    « 3月15日 », arabe RTL) — l'année factice de calcul n'apparaît PAS.
+ * Renvoie `null` si [value] n'est pas une date affichable (consommateur : `mapNotNull`/skip).
+ */
+fun formatStoredDateLong(value: String, locale: Locale): String? {
+    DateCanonical.monthDayOf(value)?.let { (month, day) ->
+        val pattern = DateFormat.getBestDateTimePattern(locale, "MMMMd")
+        val cal = Calendar.getInstance().apply {
+            clear(); set(2020, month - 1, day, 12, 0, 0) // 2020 bissextile → 29/02 OK ; année non affichée
+        }
+        return SimpleDateFormat(pattern, locale).format(cal.time)
+    }
+    val millis = storedDateToMillis(value) ?: return null
+    return SimpleDateFormat("d MMMM yyyy", locale).format(Date(millis))
+}
