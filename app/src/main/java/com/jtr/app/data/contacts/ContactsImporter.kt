@@ -7,6 +7,8 @@ import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
 import com.jtr.app.ui.person.FieldTypes
+import com.jtr.app.utils.DateCanonical
+import com.jtr.app.worker.ReminderScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -18,13 +20,14 @@ import java.util.UUID
  *
  * Stratégie de lecture : UNE SEULE requête sur la table `Data` de
  * [ContactsContract] (au lieu d'une sous-requête par contact), filtrée sur les
- * 6 mimetypes utiles (nom structuré, surnom, téléphone, email, organisation,
- * note), puis regroupement en mémoire par `CONTACT_ID`. Les colonnes génériques
+ * 7 mimetypes utiles (nom structuré, surnom, téléphone, email, organisation,
+ * évènement, note), puis regroupement en mémoire par `CONTACT_ID`. Les colonnes génériques
  * DATA1..DATA9 portent la valeur selon le mimetype :
  *  - StructuredName : DATA2 = prénom, DATA3 = nom, DATA4 = préfixe (Dr…),
  *    DATA5 = 2ᵉ prénom, DATA6 = suffixe (Jr…), DATA7/8/9 = phonétiques ;
  *  - Organization : DATA1 = société, DATA4 = poste, DATA5 = département ;
  *  - Phone / Email : DATA1 = valeur, DATA2 = TYPE, DATA3 = libellé perso (B2) ;
+ *  - Event : DATA1 = date (ISO yyyy-MM-dd), DATA2 = TYPE, DATA3 = libellé perso (B3) ;
  *  - Nickname / Note : DATA1 = valeur principale.
  * `PHOTO_URI` (photo d'affichage pleine résolution, repli sur la vignette si
  * absente) et `PHOTO_THUMBNAIL_URI` sont des colonnes jointes du contact,
@@ -114,6 +117,10 @@ class ContactsImporter(context: Context) {
         // occurrence d'une valeur garde son type (putIfAbsent).
         val phones = LinkedHashMap<String, String>()
         val emails = LinkedHashMap<String, String>()
+        // v7.1.36 (B3) — dates importantes natives (mimetype Event) : (valeur ISO,
+        // clé/label JTR). Ordre natif préservé ; dédup intra-contact par (date, type)
+        // dans toPerson. Seules les dates ISO yyyy-MM-dd (année complète) sont ajoutées.
+        val dates = ArrayList<Pair<String, String>>()
     }
 
     /**
@@ -141,7 +148,7 @@ class ContactsImporter(context: Context) {
         onProgress: (done: Int, total: Int) -> Unit
     ): Result<ImportResult> =
         withContext(Dispatchers.IO) {
-            runCatching {
+            val result = runCatching {
                 val drafts = readDeviceContacts(selectedIds)
                 val total = drafts.size
 
@@ -179,6 +186,17 @@ class ContactsImporter(context: Context) {
                 }
                 ImportResult(imported = imported, skipped = skipped)
             }
+            // v7.1.36 (B3) — après un import RÉUSSI ayant inséré ≥1 contact, on (ré)arme
+            // les alarmes exactes des rappels : un anniversaire importé (notify=true) doit
+            // voir son rappel ANNUEL planifié DÈS l'import, sans attendre la prochaine
+            // ouverture de l'app — parité avec Add/EditPersonViewModel qui replanifient
+            // après chaque sauvegarde. Le calcul passé/futur reste celui, INCHANGÉ, de
+            // ReminderScheduler (idempotent). Erreur de planification ISOLÉE : elle ne
+            // doit jamais transformer un import réussi en échec.
+            result.getOrNull()?.takeIf { it.imported > 0 }?.let {
+                runCatching { ReminderScheduler.rescheduleAll(appContext) }
+            }
+            result
         }
 
     /** Ajoute les clés de dédoublonnage (téléphones normalisés, emails minuscules) de [p] aux index. */
@@ -220,13 +238,14 @@ class ContactsImporter(context: Context) {
             ContactsContract.Data.DATA8,
             ContactsContract.Data.DATA9
         )
-        val selection = "${ContactsContract.Data.MIMETYPE} IN (?, ?, ?, ?, ?, ?)"
+        val selection = "${ContactsContract.Data.MIMETYPE} IN (?, ?, ?, ?, ?, ?, ?)"
         val selectionArgs = arrayOf(
             ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE,
             ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE,
             ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
             ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE,
             ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE,
+            ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE,
             ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE
         )
 
@@ -315,6 +334,16 @@ class ContactsImporter(context: Context) {
                         cursor.getString(data5Idx)?.takeIf { it.isNotBlank() }
                             ?.let { draft.department = it.trim() }
                     }
+                    ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE -> {
+                        // v7.1.36 (B3) : START_DATE (DATA1) → ISO ; TYPE (DATA2) + LABEL
+                        // perso (DATA3) → label de date JTR. Date sans année (--MM-dd) ou
+                        // non canonique = ignorée (eventDateToIso → null), pas de crash.
+                        eventDateToIso(cursor.getString(data1Idx))?.let { iso ->
+                            draft.dates.add(
+                                iso to dateLabel(cursor.getInt(data2Idx), cursor.getString(data3Idx))
+                            )
+                        }
+                    }
                     ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE ->
                         cursor.getString(data1Idx)?.takeIf { it.isNotBlank() }
                             ?.let { draft.note = it }
@@ -364,6 +393,33 @@ class ContactsImporter(context: Context) {
     }
 
     /**
+     * v7.1.36 (B3) — Mappe [ContactsContract.CommonDataKinds.Event] TYPE (+ LABEL natif
+     * pour le type personnalisé) vers une clé de type de date JTR (cf. [FieldTypes.DATE]).
+     * TYPE_BIRTHDAY → « birthday » (collapse scalaire dans toPerson) ; ANNIVERSARY →
+     * « anniversary » ; CUSTOM → libellé natif ; OTHER/inconnu → « other ».
+     */
+    private fun dateLabel(type: Int, customLabel: String?): String = when (type) {
+        ContactsContract.CommonDataKinds.Event.TYPE_BIRTHDAY -> FieldTypes.DATE_BIRTHDAY
+        ContactsContract.CommonDataKinds.Event.TYPE_ANNIVERSARY -> "anniversary"
+        ContactsContract.CommonDataKinds.Event.TYPE_CUSTOM ->
+            customLabel?.trim()?.takeIf { it.isNotBlank() } ?: "other"
+        else -> "other"
+    }
+
+    /**
+     * v7.1.36 (B3) — Normalise une `Event.START_DATE` native en ISO `yyyy-MM-dd`.
+     * On ne traite QUE les dates À ANNÉE COMPLÈTE, canoniques pour [DateCanonical] :
+     * les dates SANS année (`--MM-dd`) et tout format non ISO sont IGNORÉS (`null`,
+     * traités en sous-brique B3b) — jamais de crash. Une date ISO syntaxiquement
+     * correcte mais impossible (ex. 2025-13-40) est aussi rejetée (isoToMillis null).
+     */
+    private fun eventDateToIso(raw: String?): String? {
+        val v = raw?.trim().orEmpty()
+        if (!DateCanonical.isIso(v)) return null
+        return if (DateCanonical.isoToMillis(v) != null) v else null
+    }
+
+    /**
      * Convertit un brouillon en [Person] JTR. Le prénom est OBLIGATOIRE :
      * repli sur le premier mot du nom affiché, sinon le contact est ignoré.
      * Les listes téléphones/emails alimentent les lignes dynamiques ET les
@@ -387,6 +443,25 @@ class ContactsImporter(context: Context) {
         val uniquePhones = phones.entries.toList().distinctBy { phoneKey(it.key) }
         val uniqueEmails = emails.entries.toList().distinctBy { it.key.lowercase() }
 
+        // v7.1.36 (B3) — dates : dédup intra-contact par (date ISO, type), ordre natif
+        // préservé. DÉCISION PRODUIT : à l'import, l'ANNIVERSAIRE notifie d'office
+        // (notify=true) ; les autres types (anniversary/other/custom) restent silencieux
+        // (notify=false) jusqu'à activation manuelle. L'offset reste au DÉFAUT de la saisie
+        // manuelle (DynamicLine.reminderOffsetMinutes = 0 = « Le jour J ») — aucun offset
+        // inventé. La règle passé/futur (ReminderScheduler) reste automatique : un
+        // anniversaire passé à notify=true → rappel ANNUEL planifié dès l'import.
+        val importedDateLines = dates.distinctBy { it.first to it.second }
+            .map { (iso, label) ->
+                DynamicLine(value = iso, label = label, notify = label == FieldTypes.DATE_BIRTHDAY)
+            }
+        // Collapse anniversaire = PARITÉ FORMULAIRE (cf. Add/EditPersonViewModel) : les
+        // scalaires `birthdate`/`birthdateNotify`/`birthdateReminderOffsetMinutes` dérivent
+        // TOUS de la ligne « birthday » → le scalaire birthdateNotify est TOUJOURS cohérent
+        // avec le flag notify de sa ligne (jamais l'un sans l'autre), et la date scalaire ne
+        // diverge jamais de la ligne.
+        val birthdayLine = importedDateLines.firstOrNull { it.label == FieldTypes.DATE_BIRTHDAY }
+        val birthdateMillis = birthdayLine?.let { DateCanonical.isoToMillis(it.value) }
+
         return Person(
             firstName = first,
             lastName = last,
@@ -397,6 +472,12 @@ class ContactsImporter(context: Context) {
             phonetic = phonetic,
             nickname = nickname,
             photoUri = copyNativePhoto(photoUri),
+            // v7.1.36 (B3) — scalaires anniversaire dérivés de la ligne « birthday »
+            // (parité formulaire) : date, cloche (notify d'office à l'import) et délai
+            // de rappel (= défaut saisie manuelle, 0). birthdateNotify ↔ ligne cohérents.
+            birthdate = birthdateMillis,
+            birthdateNotify = birthdayLine?.notify ?: false,
+            birthdateReminderOffsetMinutes = birthdayLine?.reminderOffsetMinutes ?: 0,
             phoneNumber = uniquePhones.firstOrNull()?.key,
             email = uniqueEmails.firstOrNull()?.key,
             // v7.1.34 (B1) — poste + département en plus de la société.
@@ -408,7 +489,10 @@ class ContactsImporter(context: Context) {
             phoneLines = uniquePhones.map { DynamicLine(value = it.key, label = it.value) }
                 .takeIf { it.isNotEmpty() },
             emailLines = uniqueEmails.map { DynamicLine(value = it.key, label = it.value) }
-                .takeIf { it.isNotEmpty() }
+                .takeIf { it.isNotEmpty() },
+            // v7.1.36 (B3) — dates importantes en ISO (anniversaire/anniversary/autres) ;
+            // seule la ligne « birthday » porte notify=true (cf. importedDateLines).
+            dateLines = importedDateLines.takeIf { it.isNotEmpty() }
         )
     }
 
