@@ -3,11 +3,17 @@ package com.jtr.app.data.contacts
 import android.content.Context
 import android.net.Uri
 import android.provider.ContactsContract
+import com.jtr.app.R
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.domain.model.DynamicLine
+import com.jtr.app.domain.model.NOTE_ICON_NOTES
+import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.domain.model.Person
+import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.ui.person.FieldTypes
 import com.jtr.app.utils.DateCanonical
+import com.jtr.app.utils.LocaleManager
+import com.jtr.app.utils.SocialPlatform
 import com.jtr.app.worker.ReminderScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -61,6 +67,8 @@ class ContactsImporter(context: Context) {
 
     private val appContext = context.applicationContext
     private val personDao = AppDatabase.getInstance(appContext).personDao()
+    // v7.1.39 (B4) — liens sociaux importés depuis les sites web natifs (table social_links).
+    private val socialLinkDao = AppDatabase.getInstance(appContext).socialLinkDao()
 
     /**
      * Liste ALPHABÉTIQUE des contacts du répertoire natif (projection minimale
@@ -121,6 +129,13 @@ class ContactsImporter(context: Context) {
         // clé/label JTR). Ordre natif préservé ; dédup intra-contact par (date, type)
         // dans toPerson. Seules les dates ISO yyyy-MM-dd (année complète) sont ajoutées.
         val dates = ArrayList<Pair<String, String>>()
+        // v7.1.39 (B4) — sites web (mimetype Website, DATA1=URL) → social_links. LinkedHashSet =
+        // dédup par URL + ordre natif préservé. Insérés APRÈS le Person (FK) dans import().
+        val websites = LinkedHashSet<String>()
+        // v7.1.39 (B4) — adresses postales (mimetype StructuredPostal) → une NoteSection « Adresse »
+        // par adresse (FORMATTED si présent, sinon composée). `postalCity` = 1ʳᵉ ville → Person.city.
+        val postals = ArrayList<String>()
+        var postalCity: String? = null
     }
 
     /**
@@ -162,14 +177,26 @@ class ContactsImporter(context: Context) {
                     indexKeys(p, existingPhones, existingEmails)
                 }
 
+                // v7.1.39 (B4) — titre localisé de la section « Adresse », résolu UNE fois.
+                // CORRECTIF locale (finding device) : ce titre est du texte LIBRE FIGÉ dans les
+                // données → il doit refléter la langue IN-APP active, pas la locale SYSTÈME. On
+                // résout donc via un contexte enveloppé par [LocaleManager] (qui relit le tag
+                // BCP-47 persisté ; renvoie le contexte système si « langue du système »), au lieu
+                // d'`appContext` brut (Application = locale système, ignore l'override in-app).
+                val addressTitle =
+                    LocaleManager.wrap(appContext).getString(R.string.note_section_address)
+
                 var done = 0
                 var imported = 0
                 var skipped = 0
                 onProgress(0, total)
                 drafts.chunked(BATCH_SIZE).forEach { batch ->
                     val toInsert = ArrayList<Person>(batch.size)
+                    // v7.1.39 (B4) — liens sociaux des Persons RÉELLEMENT insérés (non skippés) :
+                    // insérés APRÈS personDao.insertAll pour respecter la FK social_links → persons.
+                    val linksToInsert = ArrayList<SocialLinkEntity>()
                     batch.forEach { draft ->
-                        val person = draft.toPerson() ?: return@forEach
+                        val person = draft.toPerson(addressTitle) ?: return@forEach
                         if (isDuplicate(person, existingPhones, existingEmails)) {
                             skipped++
                         } else {
@@ -177,10 +204,23 @@ class ContactsImporter(context: Context) {
                             // intra-import (deux entrées natives au même numéro/email).
                             indexKeys(person, existingPhones, existingEmails)
                             toInsert.add(person)
+                            // Sites web → liens sociaux (URL dédoublonnée par le LinkedHashSet ;
+                            // plateforme auto-détectée, repli « Lien » comme la saisie manuelle ;
+                            // aucune URL perdue). FK satisfaite : la ligne Person sera insérée juste avant.
+                            draft.websites.forEach { url ->
+                                linksToInsert += SocialLinkEntity(
+                                    personId = person.id,
+                                    url = url,
+                                    platform = SocialPlatform.detect(url)?.displayName ?: "Lien"
+                                )
+                            }
                             imported++
                         }
                     }
-                    if (toInsert.isNotEmpty()) personDao.insertAll(toInsert)
+                    if (toInsert.isNotEmpty()) {
+                        personDao.insertAll(toInsert)
+                        if (linksToInsert.isNotEmpty()) socialLinkDao.insertAll(linksToInsert)
+                    }
                     done += batch.size
                     onProgress(done, total)
                 }
@@ -236,9 +276,11 @@ class ContactsImporter(context: Context) {
             ContactsContract.Data.DATA6,
             ContactsContract.Data.DATA7,
             ContactsContract.Data.DATA8,
-            ContactsContract.Data.DATA9
+            ContactsContract.Data.DATA9,
+            // v7.1.39 (B4) — StructuredPostal.COUNTRY (DATA10) pour composer l'adresse si FORMATTED absent.
+            ContactsContract.Data.DATA10
         )
-        val selection = "${ContactsContract.Data.MIMETYPE} IN (?, ?, ?, ?, ?, ?, ?)"
+        val selection = "${ContactsContract.Data.MIMETYPE} IN (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         val selectionArgs = arrayOf(
             ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE,
             ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE,
@@ -246,7 +288,10 @@ class ContactsImporter(context: Context) {
             ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE,
             ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE,
             ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE,
-            ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE
+            ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE,
+            // v7.1.39 (B4) — sites web → social_links ; adresses postales → city + section.
+            ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE,
+            ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE
         )
 
         appContext.contentResolver.query(
@@ -268,6 +313,7 @@ class ContactsImporter(context: Context) {
             val data7Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA7)
             val data8Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA8)
             val data9Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA9)
+            val data10Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA10)
 
             while (cursor.moveToNext()) {
                 val contactId = cursor.getLong(idIdx)
@@ -347,6 +393,25 @@ class ContactsImporter(context: Context) {
                     ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE ->
                         cursor.getString(data1Idx)?.takeIf { it.isNotBlank() }
                             ?.let { draft.note = it }
+                    // v7.1.39 (B4) — site web (DATA1=URL) → lien social (dédup URL via LinkedHashSet).
+                    ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE ->
+                        cursor.getString(data1Idx)?.trim()?.takeIf { it.isNotBlank() }
+                            ?.let { draft.websites.add(it) }
+                    // v7.1.39 (B4) — adresse postale → 1ʳᵉ ville (Person.city) + adresse formatée
+                    // (FORMATTED DATA1, sinon composée STREET/CITY REGION POSTCODE/COUNTRY) → section.
+                    ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE -> {
+                        cursor.getString(data7Idx)?.trim()?.takeIf { it.isNotBlank() }
+                            ?.let { if (draft.postalCity == null) draft.postalCity = it }
+                        val formatted = cursor.getString(data1Idx)?.trim()?.takeIf { it.isNotBlank() }
+                            ?: composePostal(
+                                street = cursor.getString(data4Idx),
+                                city = cursor.getString(data7Idx),
+                                region = cursor.getString(data8Idx),
+                                postcode = cursor.getString(data9Idx),
+                                country = cursor.getString(data10Idx)
+                            )
+                        formatted?.takeIf { it.isNotBlank() }?.let { draft.postals.add(it) }
+                    }
                 }
             }
         }
@@ -359,6 +424,25 @@ class ContactsImporter(context: Context) {
      * « 514 555 0001 » et « 514.555.0001 » produisent la même clé.
      */
     private fun phoneKey(raw: String): String = raw.filter { it.isDigit() || it == '+' }
+
+    /**
+     * v7.1.39 (B4) — Compose une adresse lisible quand `FORMATTED_ADDRESS` (DATA1) est absent :
+     * `rue` / `ville région code-postal` / `pays`, chaque ligne omise si vide. `null` si tout est vide.
+     */
+    private fun composePostal(
+        street: String?, city: String?, region: String?, postcode: String?, country: String?
+    ): String? {
+        val locality = listOfNotNull(
+            city?.trim()?.takeIf { it.isNotBlank() },
+            region?.trim()?.takeIf { it.isNotBlank() },
+            postcode?.trim()?.takeIf { it.isNotBlank() }
+        ).joinToString(" ").takeIf { it.isNotBlank() }
+        return listOfNotNull(
+            street?.trim()?.takeIf { it.isNotBlank() },
+            locality,
+            country?.trim()?.takeIf { it.isNotBlank() }
+        ).joinToString("\n").takeIf { it.isNotBlank() }
+    }
 
     /**
      * v7.1.35 (B2) — Mappe [ContactsContract.CommonDataKinds.Phone] TYPE (+ LABEL
@@ -428,7 +512,7 @@ class ContactsImporter(context: Context) {
      * Les listes téléphones/emails alimentent les lignes dynamiques ET les
      * scalaires dénormalisés (« 1ʳᵉ ligne », lus par les workers et cartes).
      */
-    private fun ContactDraft.toPerson(): Person? {
+    private fun ContactDraft.toPerson(addressTitle: String): Person? {
         val display = displayName?.trim().orEmpty()
         val first = givenName?.trim()?.takeIf { it.isNotBlank() }
             ?: display.substringBefore(' ').takeIf { it.isNotBlank() }
@@ -467,6 +551,24 @@ class ContactsImporter(context: Context) {
         // (pas d'année à projeter) ; il vit en `dateLines` et notifie via la branche annuelle.
         val birthdateMillis = birthdayLine?.let { DateCanonical.isoToMillis(it.value) }
 
+        // v7.1.39 (B4) — la note ET les adresses deviennent des NoteSection (jamais la colonne
+        // legacy `notes`). CRITIQUE : `noteSections` non vide masque `notes`/`likes` à l'affichage
+        // (effectiveNoteSections) → on y met TOUT et on force `notes = null` côté Person (source
+        // unique, anti-résurrection si l'utilisateur supprime une section en édition).
+        //  • note → section titre VIDE (placeholder M3 v7.1.33), icône « notes » ;
+        //  • chaque adresse → une section « Adresse » (titre localisé, icône « place »).
+        val importedSections = ArrayList<NoteSection>(1 + postals.size)
+        note?.trim()?.takeIf { it.isNotBlank() }?.let {
+            importedSections += NoteSection(
+                title = "", iconKey = NOTE_ICON_NOTES, content = it, order = importedSections.size
+            )
+        }
+        postals.forEach { addr ->
+            importedSections += NoteSection(
+                title = addressTitle, iconKey = "place", content = addr, order = importedSections.size
+            )
+        }
+
         return Person(
             firstName = first,
             lastName = last,
@@ -489,7 +591,12 @@ class ContactsImporter(context: Context) {
             jobTitle = jobTitle,
             department = department,
             company = company,
-            notes = note,
+            // v7.1.39 (B4) — city = 1ʳᵉ ville postale (Person.city toujours vide à l'import) → alimente
+            // le futur géocodage (NB : l'import ne géocode pas → pas de coords tant que non ré-enregistré).
+            city = postalCity?.trim()?.takeIf { it.isNotBlank() },
+            // v7.1.39 (B4) — note + adresses portées par noteSections ; legacy `notes` forcé null.
+            notes = null,
+            noteSections = importedSections,
             // v7.1.35 (B2) — label = type JTR issu du natif (fini le « mobile »/« home » figé).
             phoneLines = uniquePhones.map { DynamicLine(value = it.key, label = it.value) }
                 .takeIf { it.isNotEmpty() },

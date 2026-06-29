@@ -448,6 +448,7 @@
     <!-- v7.0.3 — bagian catatan yang dapat disesuaikan -->
     <string name="note_section_add">Tambah bagian</string>
     <string name="note_section_default_notes">Catatan</string>
+    <string name="note_section_address">Alamat</string>
     <string name="note_section_title_hint">Judul bagian</string>
     <string name="note_section_content_hint">Tulis sesuatu…</string>    <string name="note_section_delete_confirm_title">Hapus bagian ini?</string>
     <string name="note_section_delete_confirm_text">Isinya akan dihapus permanen.</string>

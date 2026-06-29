@@ -445,6 +445,7 @@
     <!-- v7.0.3 — أقسام ملاحظات قابلة للتخصيص -->
     <string name="note_section_add">إضافة قسم</string>
     <string name="note_section_default_notes">ملاحظات</string>
+    <string name="note_section_address">العنوان</string>
     <string name="note_section_title_hint">عنوان القسم</string>
     <string name="note_section_content_hint">اكتب شيئًا…</string>    <string name="note_section_delete_confirm_title">حذف هذا القسم؟</string>
     <string name="note_section_delete_confirm_text">سيُحذف محتواه نهائيًا.</string>

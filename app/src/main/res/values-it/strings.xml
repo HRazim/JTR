@@ -445,6 +445,7 @@
     <!-- v7.0.3 — sezioni di note personalizzabili -->
     <string name="note_section_add">Aggiungi una sezione</string>
     <string name="note_section_default_notes">Note</string>
+    <string name="note_section_address">Indirizzo</string>
     <string name="note_section_title_hint">Titolo della sezione</string>
     <string name="note_section_content_hint">Scrivi qualcosa…</string>    <string name="note_section_delete_confirm_title">Eliminare questa sezione?</string>
     <string name="note_section_delete_confirm_text">Il suo contenuto sarà eliminato definitivamente.</string>

@@ -445,6 +445,7 @@
     <!-- v7.0.3 — anpassbare Notiz-Abschnitte -->
     <string name="note_section_add">Abschnitt hinzufügen</string>
     <string name="note_section_default_notes">Notizen</string>
+    <string name="note_section_address">Adresse</string>
     <string name="note_section_title_hint">Abschnittstitel</string>
     <string name="note_section_content_hint">Schreibe etwas…</string>    <string name="note_section_delete_confirm_title">Diesen Abschnitt löschen?</string>
     <string name="note_section_delete_confirm_text">Sein Inhalt wird endgültig entfernt.</string>

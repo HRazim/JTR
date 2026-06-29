@@ -445,6 +445,7 @@
     <!-- v7.0.3 — özelleştirilebilir not bölümleri -->
     <string name="note_section_add">Bölüm ekle</string>
     <string name="note_section_default_notes">Notlar</string>
+    <string name="note_section_address">Adres</string>
     <string name="note_section_title_hint">Bölüm başlığı</string>
     <string name="note_section_content_hint">Bir şeyler yaz…</string>    <string name="note_section_delete_confirm_title">Bu bölüm silinsin mi?</string>
     <string name="note_section_delete_confirm_text">İçeriği kalıcı olarak silinecek.</string>
