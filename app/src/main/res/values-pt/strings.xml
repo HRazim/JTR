@@ -232,6 +232,7 @@
     <string name="add_phone">Adicionar telefone</string>
     <string name="add_email">Adicionar email</string>
     <string name="add_date">Adicionar data</string>
+    <string name="date_no_year">Sem ano</string>
     <string name="add_relation">Adicionar relação</string>
     <string name="name_details_title">Detalhes do nome</string>
     <string name="name_details_show">Mostrar detalhes do nome</string>

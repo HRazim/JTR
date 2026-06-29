@@ -223,6 +223,7 @@
     <string name="add_phone">添加电话</string>
     <string name="add_email">添加邮箱</string>
     <string name="add_date">添加日期</string>
+    <string name="date_no_year">无年份</string>
     <string name="add_relation">添加关系</string>
     <string name="name_details_title">姓名详情</string>
     <string name="name_details_show">显示姓名详情</string>

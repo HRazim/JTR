@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.NoteSection
+import com.jtr.app.utils.DateCanonical
 import com.jtr.app.utils.matchesAllTokens
 import com.jtr.app.utils.searchTokens
 import kotlinx.coroutines.flow.collectLatest
@@ -714,8 +715,14 @@ private fun DateLinesSection(
     val locale = Locale.getDefault()
     val spec = remember(locale) { resolveDateFormatSpec(locale) }
     val maxLen = remember(spec) { spec.segmentLengths.sum() }
+    val monthDayLen = remember(spec) { spec.monthDaySegmentLengths.sum() } // = 4
+    // Masque complet (adaptatif 4 ↔ longueur totale) ; masque dédié jour/mois pour le mode
+    // « sans année » des locales YMD (année en tête → l'année vide ne se déduit pas du préfixe).
     val transformation = remember(spec) {
         DateMaskVisualTransformation(spec.segmentLengths, spec.separator)
+    }
+    val monthDayTransformation = remember(spec) {
+        DateMaskVisualTransformation(spec.monthDaySegmentLengths, spec.separator)
     }
 
     val dayTok = stringResource(R.string.birthday_token_day)
@@ -730,9 +737,23 @@ private fun DateLinesSection(
             }
         }
     }
+    val monthDayPlaceholder = remember(spec, dayTok, monthTok) {
+        spec.monthDayOrder.joinToString(spec.separator.toString()) {
+            when (it) {
+                DateField.DAY -> dayTok
+                DateField.MONTH -> monthTok
+                DateField.YEAR -> ""
+            }
+        }
+    }
     val invalidMsg = stringResource(R.string.person_birthday_invalid)
     val yearInvalidMsg = stringResource(R.string.person_date_year_invalid)
     val birthdayFutureMsg = stringResource(R.string.person_birthday_future)
+
+    // v7.1.38 — mode « sans année » EXPLICITE par ligne (locales YMD UNIQUEMENT) ; à défaut,
+    // dérivé de la valeur chargée (`--MM-dd` ⇒ sans année). Permet d'entrer en year-less même
+    // champ vide. Inutilisé en locale année-en-dernier (l'année laissée vide suffit, zéro bouton).
+    val yearLessModes = remember { mutableStateMapOf<String, Boolean>() }
 
     AccordionSection(
         title = stringResource(R.string.section_dates),
@@ -740,14 +761,25 @@ private fun DateLinesSection(
         initiallyExpanded = lines.any { it.value.isNotBlank() }
     ) {
         lines.forEach { line ->
-            val complete = line.value.length == maxLen
-            // v7.0.5 — la date est validée DÈS qu'elle est non vide : une année incomplète
-            // (ex. 3 chiffres) ou hors plage raisonnable est refusée, avec retour clair.
+            // En YMD (année en tête), le year-less doit être SIGNALÉ : par l'affordance, ou par une
+            // valeur déjà `--MM-dd`. En locale année-en-dernier, jamais besoin (auto via 4 chiffres).
+            val ymdYearLess = !spec.isYearLast &&
+                (yearLessModes[line.id] ?: DateCanonical.isMonthDay(line.value))
+            // Valeur AFFICHÉE = chiffres bruts (jamais les tirets ISO) : un `--MM-dd` stocké est
+            // relu en jour/mois → le masque montre « 15/03 » proprement (fin du « --/03/-15 »).
+            val fieldValue = if (DateCanonical.isMonthDay(line.value))
+                monthDayToRawDigits(line.value, spec.monthDayOrder) else line.value
+            val fieldMaxLen = if (ymdYearLess) monthDayLen else maxLen
+
+            // v7.0.5 — validée DÈS qu'elle est non vide ; v7.1.38 — un year-less valide ne bloque pas.
             val isError = line.value.isNotBlank() && !isDateLineValid(line.value, spec, line.label)
-            // Incomplet → guide vers une année à 4 chiffres ; anniversaire complet mais invalide
-            // = forcément dans le futur (v7.1.29) ; sinon date réellement invalide.
+            // Contexte year-less = mode YMD sans année, OU (année-en-dernier ET ≤ 4 chiffres) :
+            // l'erreur éventuelle parle alors de « date invalide », pas d'« année à 4 chiffres ».
+            val yearLessContext = ymdYearLess ||
+                (spec.isYearLast && line.value.length <= monthDayLen)
             val errorMessage = when {
-                !complete -> yearInvalidMsg
+                yearLessContext -> invalidMsg
+                line.value.length != maxLen -> yearInvalidMsg
                 line.label == FieldTypes.DATE_BIRTHDAY -> birthdayFutureMsg
                 else -> invalidMsg
             }
@@ -755,14 +787,19 @@ private fun DateLinesSection(
                 line = line,
                 types = FieldTypes.DATE,
                 valueLabel = stringResource(R.string.date_value_label),
-                value = line.value,
+                value = fieldValue,
                 onValueChange = { input ->
-                    val digits = input.filter { ch -> ch.isDigit() }.take(maxLen)
-                    onLinesChange(lines.map { if (it.id == line.id) it.copy(value = digits) else it })
+                    val digits = input.filter { ch -> ch.isDigit() }.take(fieldMaxLen)
+                    // YMD sans année : canonicalise en `--MM-dd` dès 4 chiffres valides (sinon
+                    // chiffres bruts partiels) → la valeur PORTE l'intention « sans année » jusqu'au
+                    // VM. Ailleurs : chiffres bruts (l'état terminal `--MM-dd`/ISO se fait au save).
+                    val stored = if (ymdYearLess)
+                        rawDigitsToMonthDay(digits, spec.monthDayOrder) ?: digits else digits
+                    onLinesChange(lines.map { if (it.id == line.id) it.copy(value = stored) else it })
                 },
                 keyboardType = KeyboardType.Number,
-                visualTransformation = transformation,
-                placeholder = placeholder,
+                visualTransformation = if (ymdYearLess) monthDayTransformation else transformation,
+                placeholder = if (ymdYearLess) monthDayPlaceholder else placeholder,
                 isError = isError,
                 errorMessage = errorMessage,
                 showDelete = lines.size > 1,
@@ -778,6 +815,18 @@ private fun DateLinesSection(
                     })
                 }
             )
+            // Affordance « sans année » — UNIQUEMENT en locale YMD (ja/zh/ko, année en tête) où
+            // l'année vide ne se déduit pas du préfixe. Masquée dans les 10 autres langues.
+            if (!spec.isYearLast) {
+                YearLessChip(
+                    checked = ymdYearLess,
+                    onToggle = {
+                        yearLessModes[line.id] = !ymdYearLess
+                        // Ordres jour/mois ↔ complet incompatibles en YMD → repart d'un champ vide.
+                        onLinesChange(lines.map { if (it.id == line.id) it.copy(value = "") else it })
+                    }
+                )
+            }
             // Délai de rappel (v7.0) — visible UNIQUEMENT quand la cloche est active :
             // un rappel n'a de sens que pour une date qui notifie.
             if (line.notify) {
@@ -795,6 +844,26 @@ private fun DateLinesSection(
             onLinesChange(lines + DynamicLine(label = FieldTypes.DATE_BIRTHDAY))
         }
     }
+}
+
+/**
+ * v7.1.38 — petite affordance « sans année » affichée SOUS le champ date, UNIQUEMENT pour les
+ * locales YMD (ja/zh/ko) où l'année est en tête : activée, elle bascule le champ en mode jour/mois
+ * (date `--MM-dd`). Dans les 10 autres langues, « année laissée vide ⇒ sans année » suffit (pas de
+ * chip). Une coche discrète indique l'état actif.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun YearLessChip(checked: Boolean, onToggle: () -> Unit) {
+    FilterChip(
+        selected = checked,
+        onClick = onToggle,
+        label = { Text(stringResource(R.string.date_no_year)) },
+        leadingIcon = if (checked) {
+            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+        } else null,
+        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+    )
 }
 
 /**
@@ -1176,33 +1245,38 @@ private fun NotifyToggleRow(
  * Insère automatiquement les séparateurs d'une date au fil de la frappe.
  *
  * Le texte d'entrée ne contient que des chiffres ; [segmentLengths] donne la taille
- * de chaque composant dans l'ordre courant (ex. [2,2,4] ou [4,2,2]). L'[OffsetMapping]
- * garde le curseur cohérent, y compris au backspace.
+ * de chaque composant dans l'ordre courant (ex. [2,2,4], [4,2,2] ou [2,2] sans année).
+ * L'[OffsetMapping] garde le curseur cohérent, y compris au backspace.
+ *
+ * v7.1.38 — masque ADAPTATIF à la longueur saisie : un séparateur n'est inséré à une
+ * frontière que si un chiffre la suit RÉELLEMENT → aucun séparateur TRAÎNANT (« 15/03 »
+ * et non « 15/03/ »). Le même masque rend donc proprement une date sans année (4 chiffres)
+ * comme une date complète, sans cas particulier.
  */
 private class DateMaskVisualTransformation(
     segmentLengths: List<Int>,
     private val separator: Char
 ) : VisualTransformation {
 
-    // Frontières (en index original) après lesquelles insérer un séparateur.
+    // Frontières (en index original) après lesquelles un séparateur PEUT être inséré.
     private val sepAfter: List<Int> =
         segmentLengths.runningReduce { acc, n -> acc + n }.dropLast(1)
 
-    // Positions des séparateurs dans le texte transformé.
-    private val sepTransformedPos: List<Int> =
-        sepAfter.mapIndexed { i, s -> s + i }
-
     override fun filter(text: AnnotatedString): TransformedText {
         val digits = text.text
-        val sb = StringBuilder(digits.length + sepAfter.size)
+        // Séparateurs RÉELLEMENT insérés = frontières strictement suivies d'un chiffre.
+        val activeSep = sepAfter.filter { it < digits.length }
+        val sb = StringBuilder(digits.length + activeSep.size)
         for (i in digits.indices) {
             sb.append(digits[i])
-            if ((i + 1) in sepAfter) sb.append(separator)
+            if ((i + 1) in activeSep) sb.append(separator)
         }
 
+        // Positions des séparateurs actifs dans le texte transformé (k-ième sep ⇒ +k).
+        val sepTransformedPos = activeSep.mapIndexed { i, s -> s + i }
         val mapping = object : OffsetMapping {
             override fun originalToTransformed(offset: Int): Int =
-                offset + sepAfter.count { offset >= it }
+                offset + activeSep.count { it <= offset }
 
             override fun transformedToOriginal(offset: Int): Int =
                 offset - sepTransformedPos.count { offset > it }

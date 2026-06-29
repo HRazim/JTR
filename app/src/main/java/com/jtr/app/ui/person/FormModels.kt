@@ -138,7 +138,24 @@ data class DateFormatSpec(
     val order: List<DateField>,
     val separator: Char,
     val segmentLengths: List<Int>
-)
+) {
+    /** Index du segment ANNÉE dans [order] (toujours présent : 0, 1 ou 2). */
+    val yearIndex: Int = order.indexOf(DateField.YEAR)
+
+    /**
+     * v7.1.38 — vrai si l'ANNÉE est le DERNIER segment (locales DMY/MDY ≈ 10/13 langues) : la
+     * saisie « année laissée vide ⇒ sans année » y est NATURELLE (les 4 premiers chiffres = jour
+     * + mois, l'année omise est en queue). Faux pour YMD (ja/zh/ko, année EN TÊTE) où l'année
+     * vide ne se déduit pas du préfixe → une petite affordance « sans année » est requise.
+     */
+    val isYearLast: Boolean = yearIndex == order.lastIndex
+
+    /** Ordre des composantes d'une date SANS année (= [order] privé du segment ANNÉE). */
+    val monthDayOrder: List<DateField> = order.filter { it != DateField.YEAR }
+
+    /** Longueurs des segments d'une date SANS année (jour & mois = 2 chiffres) → somme = 4. */
+    val monthDaySegmentLengths: List<Int> = monthDayOrder.map { 2 }
+}
 
 /**
  * Déduit l'ordre des composants et le séparateur du motif court localisé
@@ -179,9 +196,9 @@ fun millisToRawDigits(millis: Long, order: List<DateField>): String {
     val year = cal.get(Calendar.YEAR)
     return order.joinToString("") {
         when (it) {
-            DateField.DAY -> "%02d".format(day)
-            DateField.MONTH -> "%02d".format(month)
-            DateField.YEAR -> "%04d".format(year)
+            DateField.DAY -> "%02d".format(Locale.ROOT, day)
+            DateField.MONTH -> "%02d".format(Locale.ROOT, month)
+            DateField.YEAR -> "%04d".format(Locale.ROOT, year)
         }
     }
 }
@@ -207,10 +224,14 @@ private const val MAX_DATE_YEAR = 9999
  */
 fun isDateLineValid(raw: String, spec: DateFormatSpec, label: String = ""): Boolean {
     if (raw.isBlank()) return true
-    // v7.1.37 (B3b) — une date SANS année (`--MM-dd`, importée) est VALIDE telle quelle : on ne
-    // BLOQUE pas la sauvegarde d'un contact qui en porte une (la saisie/édition year-less complète
-    // = v7.1.38). Le futur n'a pas de sens sans année (pas de garde « anniversaire futur » ici).
+    // Date SANS année DÉJÀ STOCKÉE (`--MM-dd` : importée B3b, ou saisie YMD via l'affordance) :
+    // VALIDE telle quelle. Le futur n'a pas de sens sans année (aucune garde « anniversaire futur »).
     if (DateCanonical.isMonthDay(raw)) return DateCanonical.monthDayOf(raw) != null
+    // v7.1.38 — SAISIE year-less « année laissée vide » : 4 chiffres jour/mois valides, UNIQUEMENT
+    // pour les locales année-en-dernier (en YMD le year-less passe par `--MM-dd` direct, branche
+    // ci-dessus). Pas de garde « futur ». La canonicalisation en `--MM-dd` a lieu à l'enregistrement.
+    if (spec.isYearLast && raw.length == spec.monthDaySegmentLengths.sum())
+        return rawDigitsToMonthDay(raw, spec.monthDayOrder) != null
     val millis = rawDigitsToMillis(raw, spec) ?: return false
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
     val year = Calendar.getInstance().apply { timeInMillis = millis }.get(Calendar.YEAR)
@@ -277,7 +298,7 @@ private fun DateFormatSpec.canonicalOrder(): DateCanonical.DateOrder = when {
 /** Chiffres bruts du formulaire (ordre [spec]) → ISO `yyyy-MM-dd`, ou `null` si invalide. */
 fun rawDigitsToIso(raw: String, spec: DateFormatSpec): String? {
     val d = rawDigitsToLocalDate(raw, spec) ?: return null
-    return "%04d-%02d-%02d".format(d.year, d.monthValue, d.dayOfMonth)
+    return "%04d-%02d-%02d".format(Locale.ROOT, d.year, d.monthValue, d.dayOfMonth)
 }
 
 /** ISO `yyyy-MM-dd` → chiffres bruts dans l'ordre de [spec] (pour réinjection au formulaire). */
@@ -285,13 +306,66 @@ fun isoToRawDigits(iso: String, spec: DateFormatSpec): String = try {
     val d = LocalDate.parse(iso)
     spec.order.joinToString("") {
         when (it) {
-            DateField.DAY -> "%02d".format(d.dayOfMonth)
-            DateField.MONTH -> "%02d".format(d.monthValue)
-            DateField.YEAR -> "%04d".format(d.year)
+            DateField.DAY -> "%02d".format(Locale.ROOT, d.dayOfMonth)
+            DateField.MONTH -> "%02d".format(Locale.ROOT, d.monthValue)
+            DateField.YEAR -> "%04d".format(Locale.ROOT, d.year)
         }
     }
 } catch (_: Exception) {
     ""
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v7.1.38 — Pont SANS année (`--MM-dd`) : pendants year-less de rawDigitsToIso /
+// isoToRawDigits. La forme STOCKÉE d'une date sans année est `--MM-dd` (acquis B3b,
+// v7.1.37) ; le formulaire la manipule en 4 chiffres bruts ordonnés jour/mois selon la
+// locale. La LOGIQUE stricte « 4 chiffres d'année » de `isIso`/`rawDigitsToIso` est inchangée
+// (dates DATÉES non régressées) ; seul le FORMATAGE des chiffres est forcé en `Locale.ROOT` →
+// la forme canonique reste ASCII même en arabe/persan (sinon `--٠٣-١٥`/`١٩٩٠-...` casserait
+// `isIso`/`isMonthDay` et `LocalDate.parse`). Vérifié sur device en arabe (v7.1.38).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 4 chiffres bruts du formulaire (ordre [monthDayOrder]) → `--MM-dd` si le couple jour/mois
+ * forme un [java.time.MonthDay] RÉELLEMENT valide (mois 1-12, jour ≤ max du mois, `--02-29`
+ * accepté car l'année n'est pas fixée), sinon `null`. Pendant year-less de [rawDigitsToIso].
+ */
+fun rawDigitsToMonthDay(raw: String, monthDayOrder: List<DateField>): String? {
+    if (raw.length != 4) return null
+    var idx = 0
+    var day = 0; var month = 0
+    for (field in monthDayOrder) {
+        val part = raw.substring(idx, idx + 2).toIntOrNull() ?: return null
+        when (field) {
+            DateField.DAY -> day = part
+            DateField.MONTH -> month = part
+            DateField.YEAR -> return null // ordre sans année : YEAR ne doit pas y figurer
+        }
+        idx += 2
+    }
+    return try {
+        java.time.MonthDay.of(month, day) // valide mois (1..12) + jour max (29/02 OK)
+        "--%02d-%02d".format(Locale.ROOT, month, day)
+    } catch (_: Exception) {
+        null
+    }
+}
+
+/**
+ * `--MM-dd` → 4 chiffres bruts jour/mois dans l'ordre [monthDayOrder] (réinjection au
+ * formulaire en mode year-less, et relecture propre — fin du « --/03/-15 »). Pendant
+ * year-less de [isoToRawDigits]. Renvoie [value] inchangée si ce n'est pas un `--MM-dd`
+ * valide (meilleur effort, jamais de perte).
+ */
+fun monthDayToRawDigits(value: String, monthDayOrder: List<DateField>): String {
+    val (month, day) = DateCanonical.monthDayOf(value) ?: return value
+    return monthDayOrder.joinToString("") {
+        when (it) {
+            DateField.DAY -> "%02d".format(Locale.ROOT, day)
+            DateField.MONTH -> "%02d".format(Locale.ROOT, month)
+            DateField.YEAR -> ""
+        }
+    }
 }
 
 /**
@@ -301,9 +375,14 @@ fun isoToRawDigits(iso: String, spec: DateFormatSpec): String = try {
  */
 fun storedDateToRawDigits(value: String, spec: DateFormatSpec): String {
     if (value.isBlank()) return value
-    // v7.1.37 (B3b) — date SANS année conservée TELLE QUELLE (le masque JJ/MM/AAAA ne sait pas
-    // encore la saisir → v7.1.38) ; au moins elle survit à un aller-retour d'édition sans corruption.
-    if (DateCanonical.isMonthDay(value)) return value
+    // v7.1.38 — date SANS année (`--MM-dd`) relue pour la SAISIE :
+    //  • locales année-en-dernier → 4 chiffres bruts jour/mois (le champ unique l'affiche en
+    //    « 15/03 » via le masque adaptatif ; fin du « --/03/-15 » cosmétique du socle B3b) ;
+    //  • locales YMD (année en tête) → conservée TELLE QUELLE en `--MM-dd` : le mode « sans
+    //    année » de l'affordance la consomme directement (l'année vide ne se déduit pas du préfixe).
+    if (DateCanonical.isMonthDay(value)) {
+        return if (spec.isYearLast) monthDayToRawDigits(value, spec.monthDayOrder) else value
+    }
     if (DateCanonical.isIso(value)) return isoToRawDigits(value, spec)
     val iso = DateCanonical.legacyRawDigitsToIso(value, spec.canonicalOrder())
     return if (iso != null) isoToRawDigits(iso, spec) else value
@@ -332,9 +411,17 @@ fun storedDateToMillis(value: String): Long? {
  */
 fun canonicalizeDateLinesForStorage(lines: List<DynamicLine>, spec: DateFormatSpec): List<DynamicLine> =
     lines.map { line ->
-        // v7.1.37 (B3b) — `--MM-dd` est DÉJÀ canonique (date sans année) : laissée intacte.
-        if (line.value.isBlank() || DateCanonical.isIso(line.value) || DateCanonical.isMonthDay(line.value)) line
-        else rawDigitsToIso(line.value, spec)?.let { line.copy(value = it) } ?: line
+        val v = line.value
+        when {
+            // `--MM-dd` (sans année, B3b) et ISO complet sont DÉJÀ canoniques : laissés intacts.
+            v.isBlank() || DateCanonical.isIso(v) || DateCanonical.isMonthDay(v) -> line
+            // v7.1.38 — état TERMINAL year-less : en locale année-en-dernier, 4 chiffres jour/mois
+            // valides ⇒ `--MM-dd` (l'année laissée vide fige une date sans année). 5-7 chiffres =
+            // incomplet → rawDigitsToIso renvoie null → ligne intacte (la sauvegarde est bloquée).
+            spec.isYearLast && v.length == spec.monthDaySegmentLengths.sum() ->
+                rawDigitsToMonthDay(v, spec.monthDayOrder)?.let { line.copy(value = it) } ?: line
+            else -> rawDigitsToIso(v, spec)?.let { line.copy(value = it) } ?: line
+        }
     }
 
 /**

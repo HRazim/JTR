@@ -107,8 +107,10 @@ object DateCanonical {
     /** epoch millis → ISO `yyyy-MM-dd` (date locale). */
     fun millisToIso(millis: Long): String {
         val cal = Calendar.getInstance().apply { timeInMillis = millis }
+        // Locale.ROOT → chiffres ASCII garantis : la forme canonique ne doit JAMAIS être
+        // localisée (arabe/persan → ٠٣), sinon isIso/LocalDate.parse (ASCII) la rejettent.
         return "%04d-%02d-%02d".format(
-            cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH)
+            Locale.ROOT, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH)
         )
     }
 
@@ -188,6 +190,6 @@ object DateCanonical {
         } else {
             valid.firstOrNull { it.first == tieBreak }?.second ?: valid.first().second
         }
-        return "%04d-%02d-%02d".format(chosen.year, chosen.monthValue, chosen.dayOfMonth)
+        return "%04d-%02d-%02d".format(Locale.ROOT, chosen.year, chosen.monthValue, chosen.dayOfMonth)
     }
 }

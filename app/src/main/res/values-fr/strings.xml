@@ -223,6 +223,7 @@
     <string name="add_phone">Ajouter un numéro</string>
     <string name="add_email">Ajouter un email</string>
     <string name="add_date">Ajouter une date</string>
+    <string name="date_no_year">Sans année</string>
     <string name="add_relation">Ajouter une relation</string>
     <string name="name_details_title">Détails du nom</string>
     <string name="name_details_show">Afficher les détails du nom</string>

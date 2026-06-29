@@ -235,6 +235,7 @@
     <string name="add_phone">Tambah telepon</string>
     <string name="add_email">Tambah email</string>
     <string name="add_date">Tambah tanggal</string>
+    <string name="date_no_year">Tanpa tahun</string>
     <string name="add_relation">Tambah hubungan</string>
     <string name="name_details_title">Detail nama</string>
     <string name="name_details_show">Tampilkan detail nama</string>

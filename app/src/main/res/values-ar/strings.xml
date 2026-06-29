@@ -232,6 +232,7 @@
     <string name="add_phone">إضافة هاتف</string>
     <string name="add_email">إضافة بريد إلكتروني</string>
     <string name="add_date">إضافة تاريخ</string>
+    <string name="date_no_year">بدون سنة</string>
     <string name="add_relation">إضافة علاقة</string>
     <string name="name_details_title">تفاصيل الاسم</string>
     <string name="name_details_show">عرض تفاصيل الاسم</string>

@@ -232,6 +232,7 @@
     <string name="add_phone">Добавить телефон</string>
     <string name="add_email">Добавить эл. почту</string>
     <string name="add_date">Добавить дату</string>
+    <string name="date_no_year">Без года</string>
     <string name="add_relation">Добавить связь</string>
     <string name="name_details_title">Детали имени</string>
     <string name="name_details_show">Показать детали имени</string>

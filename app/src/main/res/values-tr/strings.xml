@@ -232,6 +232,7 @@
     <string name="add_phone">Telefon ekle</string>
     <string name="add_email">E-posta ekle</string>
     <string name="add_date">Tarih ekle</string>
+    <string name="date_no_year">Yıl yok</string>
     <string name="add_relation">İlişki ekle</string>
     <string name="name_details_title">Ad ayrıntıları</string>
     <string name="name_details_show">Ad ayrıntılarını göster</string>
