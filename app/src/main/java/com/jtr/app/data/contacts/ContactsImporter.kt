@@ -1,6 +1,7 @@
 package com.jtr.app.data.contacts
 
 import android.content.Context
+import android.content.res.Resources
 import android.net.Uri
 import android.provider.ContactsContract
 import com.jtr.app.R
@@ -26,15 +27,17 @@ import java.util.UUID
  *
  * Stratégie de lecture : UNE SEULE requête sur la table `Data` de
  * [ContactsContract] (au lieu d'une sous-requête par contact), filtrée sur les
- * 7 mimetypes utiles (nom structuré, surnom, téléphone, email, organisation,
- * évènement, note), puis regroupement en mémoire par `CONTACT_ID`. Les colonnes génériques
- * DATA1..DATA9 portent la valeur selon le mimetype :
+ * 10 mimetypes utiles (nom structuré, surnom, téléphone, email, organisation,
+ * évènement, note, site web, adresse postale, relation), puis regroupement en
+ * mémoire par `CONTACT_ID`. Les colonnes génériques DATA1..DATA10 portent la
+ * valeur selon le mimetype :
  *  - StructuredName : DATA2 = prénom, DATA3 = nom, DATA4 = préfixe (Dr…),
  *    DATA5 = 2ᵉ prénom, DATA6 = suffixe (Jr…), DATA7/8/9 = phonétiques ;
  *  - Organization : DATA1 = société, DATA4 = poste, DATA5 = département ;
  *  - Phone / Email : DATA1 = valeur, DATA2 = TYPE, DATA3 = libellé perso (B2) ;
  *  - Event : DATA1 = date (ISO yyyy-MM-dd), DATA2 = TYPE, DATA3 = libellé perso (B3) ;
- *  - Nickname / Note : DATA1 = valeur principale.
+ *  - Relation : DATA1 = nom de la personne liée, DATA2 = TYPE, DATA3 = libellé perso (B5) ;
+ *  - Nickname / Note / Website : DATA1 = valeur principale.
  * `PHOTO_URI` (photo d'affichage pleine résolution, repli sur la vignette si
  * absente) et `PHOTO_THUMBNAIL_URI` sont des colonnes jointes du contact,
  * disponibles sur chaque ligne.
@@ -136,6 +139,10 @@ class ContactsImporter(context: Context) {
         // par adresse (FORMATTED si présent, sinon composée). `postalCity` = 1ʳᵉ ville → Person.city.
         val postals = ArrayList<String>()
         var postalCity: String? = null
+        // v7.1.40 (B5) — relations natives (mimetype Relation) : (nom de la personne liée,
+        // label de type JTR). Multi-valué, ordre natif préservé ; dédup intra-contact par
+        // (nom, label) dans toPerson. `linkedPersonId` reste null → résolu en 2ᵉ passe.
+        val relations = ArrayList<Pair<String, String>>()
     }
 
     /**
@@ -189,6 +196,9 @@ class ContactsImporter(context: Context) {
                 var done = 0
                 var imported = 0
                 var skipped = 0
+                // v7.1.40 (B5) — Persons RÉELLEMENT insérées (non skippées) de CE run, pour la
+                // 2ᵉ passe de résolution `linkedPersonId` (cf. resolveImportedRelationLinks).
+                val importedPersons = ArrayList<Person>()
                 onProgress(0, total)
                 drafts.chunked(BATCH_SIZE).forEach { batch ->
                     val toInsert = ArrayList<Person>(batch.size)
@@ -220,10 +230,17 @@ class ContactsImporter(context: Context) {
                     if (toInsert.isNotEmpty()) {
                         personDao.insertAll(toInsert)
                         if (linksToInsert.isNotEmpty()) socialLinkDao.insertAll(linksToInsert)
+                        importedPersons.addAll(toInsert)
                     }
                     done += batch.size
                     onProgress(done, total)
                 }
+                // v7.1.40 (B5) — 2ᵉ passe `linkedPersonId` : APRÈS que TOUS les contacts du run
+                // soient en base (les relations entre contacts du même lot deviennent résolvables),
+                // AVANT le rescheduleAll. Erreur ISOLÉE : un échec de résolution ne doit jamais
+                // transformer un import réussi en échec — les liens non posés se rabattent sur la
+                // résolution par nom au clic (résolveRelationTarget), qui reste fonctionnelle.
+                runCatching { resolveImportedRelationLinks(importedPersons) }
                 ImportResult(imported = imported, skipped = skipped)
             }
             // v7.1.36 (B3) — après un import RÉUSSI ayant inséré ≥1 contact, on (ré)arme
@@ -259,9 +276,51 @@ class ContactsImporter(context: Context) {
         return ek.any { it in emails }
     }
 
+    /**
+     * v7.1.40 (B5) — 2ᵉ passe de résolution des relations importées : fige `linkedPersonId`
+     * quand, et SEULEMENT quand, le nom de la relation désigne un contact UNIQUE.
+     *
+     * Périmètre : UNIQUEMENT les Person insérées par CE run ([imported]). Les contacts
+     * PRÉ-EXISTANTS ne sont jamais réécrits — leurs relations héritées « pendantes »
+     * (linkedPersonId null) se résolvent déjà par nom au clic ([EditPersonViewModel
+     * .resolveRelationTarget]) dès que la cible existe.
+     *
+     * Résolution : réutilise EXACTEMENT le chemin runtime [PersonDao.findIdsByName] (prénom,
+     * nom, ou « prénom nom », insensible à la casse) → sémantique IDENTIQUE au clic et au badge.
+     * On exclut `person.id` (anti auto-relation). Exactement UN candidat restant ⇒ lien sûr ;
+     * ZÉRO ou PLUSIEURS (homonymes) ⇒ `linkedPersonId` laissé null → le badge « À vérifier » et
+     * la résolution au clic prennent le relais. JAMAIS de lien deviné.
+     *
+     * Écriture via [PersonDao.update] (UPDATE ciblé, PAS REPLACE) → aucun risque de CASCADE sur
+     * les social_links fraîchement insérés. Seules les Person dont ≥1 ligne a été liée sont réécrites.
+     * PAS de réciprocité (miroir) : l'import reste « tel quel » et ne passe pas par le repository.
+     */
+    private suspend fun resolveImportedRelationLinks(imported: List<Person>) {
+        imported.forEach { person ->
+            val lines = person.relationLines ?: return@forEach
+            var changed = false
+            val resolved = lines.map { line ->
+                val name = line.value.trim()
+                if (name.isBlank()) return@map line
+                val target = personDao.findIdsByName(name)
+                    .filter { it != person.id }
+                    .singleOrNull()
+                if (target != null) {
+                    changed = true
+                    line.copy(linkedPersonId = target)
+                } else line
+            }
+            if (changed) personDao.update(person.copy(relationLines = resolved))
+        }
+    }
+
     /** Requête unique sur Data + agrégation par contact (filtrée si [selectedIds]). */
     private fun readDeviceContacts(selectedIds: Set<Long>? = null): List<ContactDraft> {
         val drafts = LinkedHashMap<Long, ContactDraft>()
+        // v7.1.40 (B5) — ressources en langue IN-APP (pas système) pour les libellés de
+        // relation que le framework localise (« Assistant », « Parent »… des types sans
+        // équivalent JTR, cf. relationLabel) → même correctif locale que B4 (LocaleManager.wrap).
+        val relationRes = LocaleManager.wrap(appContext).resources
         val projection = arrayOf(
             ContactsContract.Data.CONTACT_ID,
             ContactsContract.Data.MIMETYPE,
@@ -280,7 +339,7 @@ class ContactsImporter(context: Context) {
             // v7.1.39 (B4) — StructuredPostal.COUNTRY (DATA10) pour composer l'adresse si FORMATTED absent.
             ContactsContract.Data.DATA10
         )
-        val selection = "${ContactsContract.Data.MIMETYPE} IN (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        val selection = "${ContactsContract.Data.MIMETYPE} IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         val selectionArgs = arrayOf(
             ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE,
             ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE,
@@ -291,7 +350,9 @@ class ContactsImporter(context: Context) {
             ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE,
             // v7.1.39 (B4) — sites web → social_links ; adresses postales → city + section.
             ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE,
-            ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE
+            ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE,
+            // v7.1.40 (B5) — relations (Father/Manager/…) → relationLines (linkedPersonId 2ᵉ passe).
+            ContactsContract.CommonDataKinds.Relation.CONTENT_ITEM_TYPE
         )
 
         appContext.contentResolver.query(
@@ -412,6 +473,18 @@ class ContactsImporter(context: Context) {
                             )
                         formatted?.takeIf { it.isNotBlank() }?.let { draft.postals.add(it) }
                     }
+                    // v7.1.40 (B5) — relation : DATA1 = nom de la personne liée, DATA2 = TYPE,
+                    // DATA3 = libellé perso. value = nom (affiché) ; label = type JTR. Nom vide =
+                    // ignoré (une relation sans personne n'a pas de sens). linkedPersonId = null
+                    // ici, fixé en 2ᵉ passe (import()) quand le nom désigne un contact UNIQUE.
+                    ContactsContract.CommonDataKinds.Relation.CONTENT_ITEM_TYPE ->
+                        cursor.getString(data1Idx)?.trim()?.takeIf { it.isNotBlank() }?.let {
+                            draft.relations.add(
+                                it to relationLabel(
+                                    cursor.getInt(data2Idx), cursor.getString(data3Idx), relationRes
+                                )
+                            )
+                        }
                 }
             }
         }
@@ -488,6 +561,38 @@ class ContactsImporter(context: Context) {
         ContactsContract.CommonDataKinds.Event.TYPE_CUSTOM ->
             customLabel?.trim()?.takeIf { it.isNotBlank() } ?: "other"
         else -> "other"
+    }
+
+    /**
+     * v7.1.40 (B5) — Mappe [ContactsContract.CommonDataKinds.Relation] TYPE (+ LABEL natif pour
+     * le type personnalisé) vers un label de relation JTR (cf. [FieldTypes.RELATION]).
+     * Les 8 types à équivalent direct (mother/father/brother/sister/spouse/child/friend/manager)
+     * donnent leur clé JTR ; affichés localisés via `relation_type_*`.
+     *
+     * JTR n'a PAS de type « other » pour les relations (≠ tél/email/date). Donc :
+     *  - TYPE_CUSTOM → le libellé natif (DATA3) tel quel (un label inconnu s'affiche VERBATIM,
+     *    comme la saisie « custom » ; cf. typeLabelResOrNull) ; à défaut, le mot localisé du
+     *    framework (« Personnalisé »…) ;
+     *  - types intégrés SANS équivalent JTR (PARENT, PARTNER, ASSISTANT, RELATIVE, REFERRED_BY…)
+     *    → libellé localisé du framework via [getTypeLabel], traité comme un label verbatim.
+     * [res] doit être en langue IN-APP (cf. `relationRes`) pour que ces libellés framework
+     * suivent la langue de l'app, pas la locale système.
+     */
+    private fun relationLabel(type: Int, customLabel: String?, res: Resources): String = when (type) {
+        ContactsContract.CommonDataKinds.Relation.TYPE_MOTHER -> "mother"
+        ContactsContract.CommonDataKinds.Relation.TYPE_FATHER -> "father"
+        ContactsContract.CommonDataKinds.Relation.TYPE_BROTHER -> "brother"
+        ContactsContract.CommonDataKinds.Relation.TYPE_SISTER -> "sister"
+        ContactsContract.CommonDataKinds.Relation.TYPE_SPOUSE -> "spouse"
+        ContactsContract.CommonDataKinds.Relation.TYPE_CHILD -> "child"
+        ContactsContract.CommonDataKinds.Relation.TYPE_FRIEND -> FieldTypes.RELATION_FRIEND
+        ContactsContract.CommonDataKinds.Relation.TYPE_MANAGER -> "manager"
+        ContactsContract.CommonDataKinds.Relation.TYPE_CUSTOM ->
+            customLabel?.trim()?.takeIf { it.isNotBlank() }
+                ?: ContactsContract.CommonDataKinds.Relation
+                    .getTypeLabel(res, type, null).toString().trim()
+        else -> ContactsContract.CommonDataKinds.Relation
+            .getTypeLabel(res, type, customLabel).toString().trim()
     }
 
     /**
@@ -604,7 +709,13 @@ class ContactsImporter(context: Context) {
                 .takeIf { it.isNotEmpty() },
             // v7.1.36 (B3) — dates importantes en ISO (anniversaire/anniversary/autres) ;
             // seule la ligne « birthday » porte notify=true (cf. importedDateLines).
-            dateLines = importedDateLines.takeIf { it.isNotEmpty() }
+            dateLines = importedDateLines.takeIf { it.isNotEmpty() },
+            // v7.1.40 (B5) — relations natives : value = nom de la personne liée, label = type JTR.
+            // Dédup intra-contact par (nom, label). linkedPersonId reste null (résolu en 2ᵉ passe
+            // d'import() quand le nom désigne un contact UNIQUE ; sinon badge « À vérifier »).
+            relationLines = relations.distinctBy { it.first to it.second }
+                .map { DynamicLine(value = it.first, label = it.second) }
+                .takeIf { it.isNotEmpty() }
         )
     }
 
