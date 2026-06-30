@@ -55,8 +55,29 @@ import java.util.UUID
 data class DeviceContact(
     val id: Long,
     val displayName: String,
-    val photoUri: String?
+    val photoUri: String?,
+    // v7.1.41 (B6) — bitmask des capacités natives ([CAP_PHONE]…[CAP_NOTE]) pour l'aperçu
+    // (chips) de l'écran de sélection. Défaut 0 → tout autre site de construction reste valide ;
+    // PUREMENT INDICATIF : jamais relu par [ContactsImporter.import] (qui re-lit tout).
+    val capabilities: Int = 0
 )
+
+/**
+ * v7.1.41 (B6) — Capacités d'un contact natif, encodées 1 bit / capacité dans
+ * [DeviceContact.capabilities]. Alimentent l'aperçu (chips) de l'écran de sélection
+ * d'import ; purement indicatives. [CAP_PHOTO] est déduit de la vignette (pas un mimetype) ;
+ * l'anniversaire ([CAP_BIRTHDAY]) est distingué des autres dates ([CAP_DATE]) via `Event.TYPE`.
+ */
+const val CAP_PHONE = 1 shl 0
+const val CAP_EMAIL = 1 shl 1
+const val CAP_PHOTO = 1 shl 2
+const val CAP_BIRTHDAY = 1 shl 3
+const val CAP_DATE = 1 shl 4
+const val CAP_ADDRESS = 1 shl 5
+const val CAP_WEBSITE = 1 shl 6
+const val CAP_COMPANY = 1 shl 7
+const val CAP_RELATION = 1 shl 8
+const val CAP_NOTE = 1 shl 9
 
 /**
  * Bilan d'une importation (v7.1.28) : [imported] = contacts effectivement insérés,
@@ -78,6 +99,9 @@ class ContactsImporter(context: Context) {
      * id / nom / vignette) — alimente l'écran d'importation sélective.
      */
     suspend fun listDeviceContacts(): List<DeviceContact> = withContext(Dispatchers.IO) {
+        // v7.1.41 (B6) — bitmask des capacités par contact (UNE requête groupée, aucun N+1) ;
+        // mergé ci-dessous dans chaque DeviceContact pour l'aperçu (chips) de la sélection.
+        val capabilities = readContactCapabilities()
         val result = ArrayList<DeviceContact>()
         appContext.contentResolver.query(
             ContactsContract.Contacts.CONTENT_URI,
@@ -95,14 +119,81 @@ class ContactsImporter(context: Context) {
             while (cursor.moveToNext()) {
                 val name = cursor.getString(nameIdx)?.trim().orEmpty()
                 if (name.isBlank()) continue
+                val id = cursor.getLong(idIdx)
+                val photo = cursor.getString(photoIdx)
                 result.add(DeviceContact(
-                    id = cursor.getLong(idIdx),
+                    id = id,
                     displayName = name,
-                    photoUri = cursor.getString(photoIdx)
+                    photoUri = photo,
+                    // v7.1.41 (B6) — capacités natives ; PHOTO déduite de la vignette déjà lue
+                    // (pas de mimetype Photo dans la requête groupée), cohérent avec l'avatar du Row.
+                    capabilities = (capabilities[id] ?: 0) or (if (photo != null) CAP_PHOTO else 0)
                 ))
             }
         }
         result
+    }
+
+    /**
+     * v7.1.41 (B6) — UNE requête groupée sur la table `Data` (projection minimale
+     * `CONTACT_ID` + `MIMETYPE` + `DATA2`), repliée EN UNE PASSE en bitmask de capacités
+     * par contact (`Map<contactId, Int>`). Aucun N+1 ; projection à 3 colonnes → coût
+     * négligeable même sur 1000+ contacts. Alimente l'aperçu (chips) de l'écran de sélection.
+     *
+     * Mimetypes retenus = ceux qui produisent une capacité affichable (Phone, Email, Event,
+     * Note, Website, StructuredPostal, Relation, Organization) ; PAS StructuredName/Nickname
+     * (jamais une « capacité »), PAS Photo (déduite de la vignette dans [listDeviceContacts]).
+     * Pour l'évènement, `DATA2` (TYPE) distingue l'anniversaire ([CAP_BIRTHDAY], `TYPE_BIRTHDAY`)
+     * des autres dates ([CAP_DATE]). PUREMENT INDICATIF : jamais relu par [import].
+     */
+    private fun readContactCapabilities(): Map<Long, Int> {
+        val caps = HashMap<Long, Int>()
+        val projection = arrayOf(
+            ContactsContract.Data.CONTACT_ID,
+            ContactsContract.Data.MIMETYPE,
+            ContactsContract.Data.DATA2
+        )
+        val selection = "${ContactsContract.Data.MIMETYPE} IN (?, ?, ?, ?, ?, ?, ?, ?)"
+        val selectionArgs = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
+            ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE,
+            ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE,
+            ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE,
+            ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE,
+            ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE,
+            ContactsContract.CommonDataKinds.Relation.CONTENT_ITEM_TYPE,
+            ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE
+        )
+        appContext.contentResolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            projection, selection, selectionArgs,
+            ContactsContract.Data.CONTACT_ID
+        )?.use { cursor ->
+            val idIdx = cursor.getColumnIndexOrThrow(ContactsContract.Data.CONTACT_ID)
+            val mimeIdx = cursor.getColumnIndexOrThrow(ContactsContract.Data.MIMETYPE)
+            val data2Idx = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA2)
+            while (cursor.moveToNext()) {
+                val bit = when (cursor.getString(mimeIdx)) {
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE -> CAP_PHONE
+                    ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE -> CAP_EMAIL
+                    ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE ->
+                        if (cursor.getInt(data2Idx) ==
+                            ContactsContract.CommonDataKinds.Event.TYPE_BIRTHDAY
+                        ) CAP_BIRTHDAY else CAP_DATE
+                    ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE -> CAP_NOTE
+                    ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE -> CAP_WEBSITE
+                    ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE -> CAP_ADDRESS
+                    ContactsContract.CommonDataKinds.Relation.CONTENT_ITEM_TYPE -> CAP_RELATION
+                    ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> CAP_COMPANY
+                    else -> 0
+                }
+                if (bit != 0) {
+                    val id = cursor.getLong(idIdx)
+                    caps[id] = (caps[id] ?: 0) or bit
+                }
+            }
+        }
+        return caps
     }
 
     /** Brouillon d'un contact natif en cours d'agrégation. */
