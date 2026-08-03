@@ -44,12 +44,35 @@ private val ROLES: Map<String, RelationRole> = mapOf(
     "manager" to RelationRole(inverse = "employee", mirrorCandidates = setOf("employee")),
     "employee" to RelationRole(inverse = "manager", mirrorCandidates = setOf("manager")),
 
+    // Asymétriques — v7.1.44 : paires strictement réciproques (inverse(inverse(x)) == x),
+    // chacune sans variante genrée, donc `candidates` = l'autre membre de la paire.
+    "teacher" to RelationRole(inverse = "student", mirrorCandidates = setOf("student")),
+    "student" to RelationRole(inverse = "teacher", mirrorCandidates = setOf("teacher")),
+    "mentor" to RelationRole(inverse = "mentee", mirrorCandidates = setOf("mentee")),
+    "mentee" to RelationRole(inverse = "mentor", mirrorCandidates = setOf("mentor")),
+    "coach" to RelationRole(inverse = "player", mirrorCandidates = setOf("player")),
+    "player" to RelationRole(inverse = "coach", mirrorCandidates = setOf("coach")),
+    "doctor" to RelationRole(inverse = "patient", mirrorCandidates = setOf("patient")),
+    "patient" to RelationRole(inverse = "doctor", mirrorCandidates = setOf("doctor")),
+    "consultant" to RelationRole(inverse = "client", mirrorCandidates = setOf("client")),
+    "client" to RelationRole(inverse = "consultant", mirrorCandidates = setOf("consultant")),
+
     // Symétriques — l'inverse est le type lui-même. Frère/sœur : le genre de la cible étant
     // inconnu, on conserve le type source (frère⇒frère) plutôt que d'inventer « frère/sœur ».
     "spouse" to RelationRole(inverse = "spouse", mirrorCandidates = setOf("spouse")),
-    "friend" to RelationRole(inverse = "friend", mirrorCandidates = setOf("friend")),
     "brother" to RelationRole(inverse = "brother", mirrorCandidates = setOf("brother")),
     "sister" to RelationRole(inverse = "sister", mirrorCandidates = setOf("sister")),
+    "partner" to RelationRole(inverse = "partner", mirrorCandidates = setOf("partner")),
+    "colleague" to RelationRole(inverse = "colleague", mirrorCandidates = setOf("colleague")),
+    "classmate" to RelationRole(inverse = "classmate", mirrorCandidates = setOf("classmate")),
+    "neighbor" to RelationRole(inverse = "neighbor", mirrorCandidates = setOf("neighbor")),
+
+    // Amitié — v7.1.44 : « ami » et « meilleur ami » sont symétriques MAIS forment une classe
+    // d'équivalence (même esprit que mère/père/parent). La création conserve l'intensité choisie ;
+    // la reconnaissance croisée évite qu'un « ami » d'un côté et un « meilleur ami » de l'autre
+    // ne produisent deux lignes pour une seule amitié.
+    "friend" to RelationRole(inverse = "friend", mirrorCandidates = setOf("friend", "best_friend")),
+    "best_friend" to RelationRole(inverse = "best_friend", mirrorCandidates = setOf("best_friend", "friend")),
 )
 
 /** Le label à CRÉER en miroir (neutre). Type inconnu ou libellé libre ⇒ lui-même. */

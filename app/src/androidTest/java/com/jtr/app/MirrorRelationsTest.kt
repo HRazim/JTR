@@ -170,6 +170,47 @@ class MirrorRelationsTest {
         assertEquals("mother", lines.single().label) // ni doublon, ni écrasement du choix de l'utilisateur
     }
 
+    // ── v7.1.44 (P2) — catalogue étendu ──────────────────────────────────────
+    // La mécanique de réconciliation est déjà prouvée ci-dessus ; on vérifie ici que les
+    // nouveaux rôles la traversent correctement de bout en bout.
+
+    @Test
+    fun p2_teacherRelation_mirrorsAsStudent_andBack() = runBlocking {
+        val maxime = insert("Maxime")
+        val johan = insert("Johan", listOf(relation(maxime, "teacher")))
+        repo.syncMirrorRelations(johan, previousLines = null)
+        assertEquals("student", linesOf(maxime).single().label)
+
+        // Sens inverse, sur une autre paire de fiches.
+        val lea = insert("Lea")
+        val nour = insert("Nour", listOf(relation(lea, "student")))
+        repo.syncMirrorRelations(nour, previousLines = null)
+        assertEquals("teacher", linesOf(lea).single().label)
+    }
+
+    @Test
+    fun p2_neighborRelation_isSymmetric() = runBlocking {
+        val maxime = insert("Maxime")
+        val johan = insert("Johan", listOf(relation(maxime, "neighbor")))
+        repo.syncMirrorRelations(johan, previousLines = null)
+
+        assertEquals("neighbor", linesOf(maxime).single().label)
+    }
+
+    @Test
+    fun p2_bestFriendOverExistingFriend_createsNoDuplicate() = runBlocking {
+        // Maxime a déjà « ami : Johan » ; Johan déclare « meilleur ami : Maxime ».
+        val johan = insert("Johan")
+        val maxime = insert("Maxime", listOf(relation(johan, "friend")))
+        val withBestFriend = johan.copy(relationLines = listOf(relation(maxime, "best_friend")))
+        dao.update(withBestFriend)
+        repo.syncMirrorRelations(withBestFriend, previousLines = null)
+
+        val lines = linesOf(maxime)
+        assertEquals(1, lines.size)
+        assertEquals("friend", lines.single().label) // l'intensité choisie par Maxime est respectée
+    }
+
     @Test
     fun importedRelation_isNotDeletedByAnUnrelatedEdit() = runBlocking {
         // L'import ne crée pas de miroir (par design) : la ligne importée de Maxime vers Johan

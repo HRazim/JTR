@@ -863,14 +863,14 @@ class ContactsImporter(context: Context) {
     /**
      * v7.1.40 (B5) — Mappe [ContactsContract.CommonDataKinds.Relation] TYPE (+ LABEL natif pour
      * le type personnalisé) vers un label de relation JTR (cf. [FieldTypes.RELATION]).
-     * Les 9 types à équivalent direct (mother/father/parent/brother/sister/spouse/child/
-     * friend/manager) donnent leur clé JTR ; affichés localisés via `relation_type_*`.
+     * Les types à équivalent direct (mother/father/parent/brother/sister/spouse/child/friend/
+     * manager/partner) donnent leur clé JTR ; affichés localisés via `relation_type_*`.
      *
      * JTR n'a PAS de type « other » pour les relations (≠ tél/email/date). Donc :
      *  - TYPE_CUSTOM → le libellé natif (DATA3) tel quel (un label inconnu s'affiche VERBATIM,
      *    comme la saisie « custom » ; cf. typeLabelResOrNull) ; à défaut, le mot localisé du
      *    framework (« Personnalisé »…) ;
-     *  - types intégrés SANS équivalent JTR (PARTNER, ASSISTANT, RELATIVE, REFERRED_BY…)
+     *  - types intégrés SANS équivalent JTR (ASSISTANT, RELATIVE, REFERRED_BY)
      *    → libellé localisé du framework via [getTypeLabel], traité comme un label verbatim.
      *
      * v7.1.43 — TYPE_PARENT tombait dans ce dernier cas (« Parent » figé en texte libre, ni
@@ -889,6 +889,11 @@ class ContactsImporter(context: Context) {
         ContactsContract.CommonDataKinds.Relation.TYPE_CHILD -> "child"
         ContactsContract.CommonDataKinds.Relation.TYPE_FRIEND -> FieldTypes.RELATION_FRIEND
         ContactsContract.CommonDataKinds.Relation.TYPE_MANAGER -> "manager"
+        // v7.1.44 — les deux « partenaires » natifs (vie commune ou association) tombent sur le
+        // même type JTR : `partner` est SYMÉTRIQUE dans les deux lectures, le miroir est donc
+        // correct quelle que soit l'intention d'origine.
+        ContactsContract.CommonDataKinds.Relation.TYPE_PARTNER,
+        ContactsContract.CommonDataKinds.Relation.TYPE_DOMESTIC_PARTNER -> "partner"
         ContactsContract.CommonDataKinds.Relation.TYPE_CUSTOM ->
             customLabel?.trim()?.takeIf { it.isNotBlank() }
                 ?: ContactsContract.CommonDataKinds.Relation

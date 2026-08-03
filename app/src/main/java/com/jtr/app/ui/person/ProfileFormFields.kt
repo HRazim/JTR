@@ -1089,8 +1089,30 @@ private fun TypeDropdown(
             )
             Icon(Icons.Default.ArrowDropDown, contentDescription = null)
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        // v7.1.44 — hauteur PLAFONNÉE : à 26 entrées, le menu occupait toute la fenêtre et sa
+        // dernière option (« Personnalisé ») finissait SOUS la barre de navigation, donc
+        // intouchable. Plafonné, le popup est repositionné dans la zone sûre et défile.
+        // Sans effet sur PHONE/EMAIL/DATE (listes plus courtes que le plafond).
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.heightIn(max = 400.dp)
+        ) {
+            // v7.1.44 — en-têtes de section : le catalogue des relations compte 26 entrées, une
+            // liste plate n'y est plus lisible. L'en-tête n'est PAS un item (non cliquable) et
+            // n'apparaît que si [TypeOption.groupRes] change ⇒ PHONE/EMAIL/DATE (groupRes null)
+            // rendent exactement la même liste qu'avant.
+            var lastGroup: Int? = null
             types.forEach { opt ->
+                if (opt.groupRes != null && opt.groupRes != lastGroup) {
+                    Text(
+                        stringResource(opt.groupRes),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp)
+                    )
+                }
+                lastGroup = opt.groupRes
                 DropdownMenuItem(
                     text = { Text(stringResource(opt.labelRes)) },
                     onClick = {

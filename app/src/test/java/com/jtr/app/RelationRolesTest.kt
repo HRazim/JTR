@@ -23,8 +23,22 @@ import org.junit.Test
 class RelationRolesTest {
 
     private val KNOWN = listOf(
+        // P1 (v7.1.43)
         "mother", "father", "parent", "child",
         "manager", "employee", "spouse", "friend", "brother", "sister",
+        // P2 (v7.1.44)
+        "teacher", "student", "mentor", "mentee", "coach", "player",
+        "doctor", "patient", "consultant", "client",
+        "partner", "colleague", "classmate", "neighbor", "best_friend",
+    )
+
+    /** Les 5 paires ajoutées en P2 : strictement réciproques, sans variante genrée. */
+    private val PAIRS = listOf(
+        "teacher" to "student",
+        "mentor" to "mentee",
+        "coach" to "player",
+        "doctor" to "patient",
+        "consultant" to "client",
     )
 
     // ── Table de réciprocité ─────────────────────────────────────────────────
@@ -43,10 +57,40 @@ class RelationRolesTest {
 
     @Test
     fun symmetricRoles_invertToThemselves() {
-        listOf("spouse", "friend", "brother", "sister").forEach {
+        listOf(
+            "spouse", "brother", "sister",
+            "partner", "colleague", "classmate", "neighbor", // P2
+        ).forEach {
             assertEquals(it, inverseRelationLabel(it))
             assertEquals(setOf(it), mirrorLabelCandidates(it))
         }
+    }
+
+    @Test
+    fun p2Pairs_areStrictlyReciprocal() {
+        PAIRS.forEach { (a, b) ->
+            assertEquals(b, inverseRelationLabel(a))
+            assertEquals(a, inverseRelationLabel(b))
+            // Involutif : aller-retour = point de départ (aucune variante neutre à la Parent).
+            assertEquals(a, inverseRelationLabel(inverseRelationLabel(a)))
+            assertEquals(setOf(b), mirrorLabelCandidates(a))
+            assertEquals(setOf(a), mirrorLabelCandidates(b))
+        }
+    }
+
+    @Test
+    fun friendAndBestFriend_formOneEquivalenceClass() {
+        // Chacun garde son intensité à la CRÉATION…
+        assertEquals("friend", inverseRelationLabel("friend"))
+        assertEquals("best_friend", inverseRelationLabel("best_friend"))
+        // …mais se RECONNAISSENT mutuellement comme miroir (pas de doublon, cf. mother/parent).
+        assertEquals(setOf("friend", "best_friend"), mirrorLabelCandidates("friend"))
+        assertEquals(setOf("best_friend", "friend"), mirrorLabelCandidates("best_friend"))
+    }
+
+    @Test
+    fun allKnownRoles_areDistinctKeys() {
+        assertEquals(KNOWN.size, KNOWN.toSet().size)
     }
 
     @Test
@@ -194,6 +238,36 @@ class RelationRolesTest {
         val target = listOf(mirror("child"), mirror("friend"))
         val lines = reconcile(target = target, current = setOf("friend"), previous = setOf("mother", "friend"))!!
         assertEquals(listOf("friend"), lines.map { it.label })
+    }
+
+    @Test
+    fun p2_asymmetricPair_mirrorsToItsCounterpart() {
+        assertEquals("student", reconcile(current = setOf("teacher"))!!.single().label)
+        assertEquals("teacher", reconcile(current = setOf("student"))!!.single().label)
+        assertEquals("patient", reconcile(current = setOf("doctor"))!!.single().label)
+        assertEquals("client", reconcile(current = setOf("consultant"))!!.single().label)
+    }
+
+    @Test
+    fun p2_symmetricRole_mirrorsIdentically() {
+        assertEquals("neighbor", reconcile(current = setOf("neighbor"))!!.single().label)
+        assertEquals("partner", reconcile(current = setOf("partner"))!!.single().label)
+    }
+
+    @Test
+    fun p2_bestFriendAndFriend_neverProduceTwoLines() {
+        // La cible a déjà « ami : Johan » ; Johan déclare « meilleur ami » ⇒ aucune 2ᵉ ligne.
+        assertNull(reconcile(target = listOf(mirror("friend")), current = setOf("best_friend")))
+        // …et symétriquement.
+        assertNull(reconcile(target = listOf(mirror("best_friend")), current = setOf("friend")))
+    }
+
+    @Test
+    fun p2_removingFriendship_removesEitherIntensity() {
+        assertEquals(
+            emptyList<DynamicLine>(),
+            reconcile(target = listOf(mirror("best_friend")), current = emptySet(), previous = setOf("friend"))
+        )
     }
 
     @Test

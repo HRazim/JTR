@@ -59,8 +59,19 @@ data class NameDetails(
     val nickname: String = ""
 )
 
-/** Option de type sélectionnable dans le menu déroulant d'une ligne. */
-data class TypeOption(val key: String, @StringRes val labelRes: Int)
+/**
+ * Option de type sélectionnable dans le menu déroulant d'une ligne.
+ *
+ * [groupRes] (v7.1.44) — en-tête de section affiché dans le menu quand le groupe change d'une
+ * option à la suivante. `null` = aucun en-tête : c'est le cas de PHONE/EMAIL/DATE (listes
+ * courtes) et de « Personnalisé ». Seul le catalogue RELATION, devenu long (26 entrées), est
+ * groupé — l'ORDRE de la liste reste l'unique source de vérité, ce champ ne fait que l'annoter.
+ */
+data class TypeOption(
+    val key: String,
+    @StringRes val labelRes: Int,
+    @StringRes val groupRes: Int? = null,
+)
 
 /**
  * Référence d'un contact pour l'autocomplétion des relations (v7.1.6) : on AFFICHE
@@ -113,19 +124,51 @@ object FieldTypes {
         TypeOption("custom", R.string.type_custom),
     )
 
+    /**
+     * v7.1.44 — catalogue étendu à 25 types + « Personnalisé », groupé pour rester lisible.
+     * Les paires asymétriques sont ADJACENTES (source puis inverse) et « mother » reste en
+     * TÊTE : c'est `RELATION.first()` qui fournit le type par défaut d'une ligne ajoutée
+     * depuis la section Relations (cf. ProfileFormFields) — l'ordre n'est donc pas cosmétique.
+     */
+    private val GROUP_FAMILY = R.string.relation_group_family
+    private val GROUP_PRO = R.string.relation_group_professional
+    private val GROUP_SOCIAL = R.string.relation_group_social
+
     val RELATION = listOf(
-        TypeOption("mother", R.string.relation_type_mother),
-        TypeOption("father", R.string.relation_type_father),
+        // ── Famille ──────────────────────────────────────────────────────────
+        TypeOption("mother", R.string.relation_type_mother, GROUP_FAMILY),
+        TypeOption("father", R.string.relation_type_father, GROUP_FAMILY),
         // v7.1.43 — « parent » (neutre) : inverse d'« enfant » produit par le miroir, et
         // type saisissable à part entière. Idem « employé », inverse de « manager ».
-        TypeOption("parent", R.string.relation_type_parent),
-        TypeOption("brother", R.string.relation_type_brother),
-        TypeOption("sister", R.string.relation_type_sister),
-        TypeOption("spouse", R.string.relation_type_spouse),
-        TypeOption("child", R.string.relation_type_child),
-        TypeOption(RELATION_FRIEND, R.string.relation_type_friend),
-        TypeOption("manager", R.string.relation_type_manager),
-        TypeOption("employee", R.string.relation_type_employee),
+        TypeOption("parent", R.string.relation_type_parent, GROUP_FAMILY),
+        TypeOption("child", R.string.relation_type_child, GROUP_FAMILY),
+        TypeOption("brother", R.string.relation_type_brother, GROUP_FAMILY),
+        TypeOption("sister", R.string.relation_type_sister, GROUP_FAMILY),
+        TypeOption("spouse", R.string.relation_type_spouse, GROUP_FAMILY),
+        TypeOption("partner", R.string.relation_type_partner, GROUP_FAMILY),
+
+        // ── Professionnel ────────────────────────────────────────────────────
+        TypeOption("manager", R.string.relation_type_manager, GROUP_PRO),
+        TypeOption("employee", R.string.relation_type_employee, GROUP_PRO),
+        TypeOption("colleague", R.string.relation_type_colleague, GROUP_PRO),
+        TypeOption("teacher", R.string.relation_type_teacher, GROUP_PRO),
+        TypeOption("student", R.string.relation_type_student, GROUP_PRO),
+        TypeOption("mentor", R.string.relation_type_mentor, GROUP_PRO),
+        TypeOption("mentee", R.string.relation_type_mentee, GROUP_PRO),
+        TypeOption("coach", R.string.relation_type_coach, GROUP_PRO),
+        TypeOption("player", R.string.relation_type_player, GROUP_PRO),
+        TypeOption("doctor", R.string.relation_type_doctor, GROUP_PRO),
+        TypeOption("patient", R.string.relation_type_patient, GROUP_PRO),
+        TypeOption("consultant", R.string.relation_type_consultant, GROUP_PRO),
+        TypeOption("client", R.string.relation_type_client, GROUP_PRO),
+
+        // ── Social ───────────────────────────────────────────────────────────
+        TypeOption(RELATION_FRIEND, R.string.relation_type_friend, GROUP_SOCIAL),
+        TypeOption("best_friend", R.string.relation_type_best_friend, GROUP_SOCIAL),
+        TypeOption("classmate", R.string.relation_type_classmate, GROUP_SOCIAL),
+        TypeOption("neighbor", R.string.relation_type_neighbor, GROUP_SOCIAL),
+
+        // Toujours en dernier, hors groupe : ouvre le dialogue de libellé libre.
         TypeOption("custom", R.string.type_custom),
     )
 }
