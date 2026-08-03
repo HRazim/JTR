@@ -61,6 +61,13 @@ interface PersonDao {
     @Update
     suspend fun update(person: Person)
 
+    /**
+     * Mise à jour par LOTS (fusion à l'import, v7.1.42/B7). `@Update` = UPDATE CIBLÉ par
+     * clé primaire (PAS REPLACE) → ne déclenche jamais la CASCADE qui viderait `social_links`.
+     */
+    @Update
+    suspend fun updateAll(persons: List<Person>)
+
     @Query("UPDATE persons SET deletedAt = :timestamp WHERE id = :id")
     suspend fun softDelete(id: String, timestamp: Long = System.currentTimeMillis())
 

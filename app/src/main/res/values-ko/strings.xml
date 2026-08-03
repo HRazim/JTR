@@ -510,6 +510,13 @@
     <string name="settings_contacts_blocked_message">연락처 권한이 꺼져 있습니다. 설정을 열어 JTR이 연락처를 가져올 수 있도록 허용하세요.</string>
     <string name="import_contacts_done_title">가져오기 완료</string>
     <string name="import_contacts_done_message">%1$d개 가져옴 · %2$d개 건너뜀 (이미 JTR에 있음)</string>
+    <!-- v7.1.42 (B7) — 중복 처리 선택 -->
+    <string name="import_strategy_title">이미 JTR에 있나요?</string>
+    <string name="import_strategy_message">이미 JTR에 있는 연락처(전화 또는 이메일로 일치)를 어떻게 할지 선택하세요.</string>
+    <string name="import_strategy_skip">건너뛰기</string>
+    <string name="import_strategy_update">기존 업데이트</string>
+    <string name="import_strategy_import_anyway">무시하고 가져오기</string>
+    <string name="import_contacts_done_message_updated">%1$d개 가져옴 · %2$d개 업데이트 · %3$d개 건너뜀</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">생일은 미래일 수 없습니다</string>
 </resources>

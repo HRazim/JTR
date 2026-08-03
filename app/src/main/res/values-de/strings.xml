@@ -521,6 +521,13 @@
     <string name="settings_contacts_blocked_message">Die Kontaktberechtigung ist deaktiviert. Öffne die Einstellungen, damit JTR deine Kontakte importieren kann.</string>
     <string name="import_contacts_done_title">Import abgeschlossen</string>
     <string name="import_contacts_done_message">%1$d importiert · %2$d übersprungen (bereits in JTR)</string>
+    <!-- v7.1.42 (B7) — Auswahl zur Dublettenbehandlung -->
+    <string name="import_strategy_title">Schon in JTR?</string>
+    <string name="import_strategy_message">Wählen Sie, was mit Kontakten geschehen soll, die bereits in JTR sind (per Telefon oder E-Mail erkannt).</string>
+    <string name="import_strategy_skip">Überspringen</string>
+    <string name="import_strategy_update">Vorhandene aktualisieren</string>
+    <string name="import_strategy_import_anyway">Trotzdem importieren</string>
+    <string name="import_contacts_done_message_updated">%1$d importiert · %2$d aktualisiert · %3$d übersprungen</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">Ein Geburtstag kann nicht in der Zukunft liegen</string>
 </resources>

@@ -543,6 +543,13 @@
     <string name="settings_contacts_blocked_message">Разрешение на контакты отключено. Откройте настройки, чтобы разрешить JTR импортировать ваши контакты.</string>
     <string name="import_contacts_done_title">Импорт завершён</string>
     <string name="import_contacts_done_message">%1$d импортировано · %2$d пропущено (уже в JTR)</string>
+    <!-- v7.1.42 (B7) — выбор обработки дубликатов -->
+    <string name="import_strategy_title">Уже в JTR?</string>
+    <string name="import_strategy_message">Выберите, что делать с контактами, которые уже есть в JTR (определяются по телефону или эл. почте).</string>
+    <string name="import_strategy_skip">Пропустить</string>
+    <string name="import_strategy_update">Обновить существующий</string>
+    <string name="import_strategy_import_anyway">Всё равно импортировать</string>
+    <string name="import_contacts_done_message_updated">%1$d импортировано · %2$d обновлено · %3$d пропущено</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">Дата рождения не может быть в будущем</string>
 </resources>

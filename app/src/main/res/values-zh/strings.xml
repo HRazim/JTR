@@ -521,6 +521,13 @@
     <string name="settings_contacts_blocked_message">联系人权限已关闭。请打开设置以允许 JTR 导入您的联系人。</string>
     <string name="import_contacts_done_title">导入完成</string>
     <string name="import_contacts_done_message">%1$d 已导入 · %2$d 已跳过（已在 JTR 中）</string>
+    <!-- v7.1.42 (B7) — 重复处理选择 -->
+    <string name="import_strategy_title">已在 JTR 中？</string>
+    <string name="import_strategy_message">选择如何处理已在 JTR 中的联系人（通过电话或邮箱匹配）。</string>
+    <string name="import_strategy_skip">跳过</string>
+    <string name="import_strategy_update">更新现有</string>
+    <string name="import_strategy_import_anyway">仍然导入</string>
+    <string name="import_contacts_done_message_updated">%1$d 已导入 · %2$d 已更新 · %3$d 已跳过</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">生日不能是未来的日期</string>
 </resources>

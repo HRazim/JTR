@@ -9,6 +9,7 @@ import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.NOTE_ICON_NOTES
 import com.jtr.app.domain.model.NoteSection
+import com.jtr.app.domain.model.deriveNoteSections
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.ui.person.FieldTypes
@@ -80,12 +81,21 @@ const val CAP_RELATION = 1 shl 8
 const val CAP_NOTE = 1 shl 9
 
 /**
- * Bilan d'une importation (v7.1.28) : [imported] = contacts effectivement insérés,
- * [skipped] = contacts IGNORÉS car déjà présents dans JTR (dédoublonnage minimal,
- * cf. [ContactsImporter.import]). Permet à l'UI d'afficher un récap « X importés ·
- * Y ignorés (déjà dans JTR) » et garantit l'invariant « ré-importer ne duplique pas ».
+ * Bilan d'une importation (v7.1.28 ; [updated] ajouté en v7.1.42/B7) : [imported] =
+ * contacts effectivement insérés, [updated] = contacts EXISTANTS fusionnés (mode UPDATE,
+ * comptage DISTINCT), [skipped] = contacts IGNORÉS (déjà présents et non fusionnés :
+ * mode SKIP, cible ambiguë, ou UPDATE no-op). Permet à l'UI d'afficher le récap et
+ * garantit l'invariant « ré-importer ne duplique pas ».
  */
-data class ImportResult(val imported: Int, val skipped: Int)
+data class ImportResult(val imported: Int, val updated: Int, val skipped: Int)
+
+/**
+ * v7.1.42 (B7) — que faire d'un contact natif déjà présent dans JTR (détecté par
+ * téléphone/email, JAMAIS par nom). [SKIP] = comportement historique (ignorer) ;
+ * [UPDATE] = fusionner sans rien écraser (cf. [ContactsImporter.mergePerson]) ;
+ * [IMPORT_ANYWAY] = insérer un doublon ASSUMÉ. Choix GLOBAL au lot, défaut [SKIP].
+ */
+enum class DuplicateStrategy { SKIP, UPDATE, IMPORT_ANYWAY }
 
 class ContactsImporter(context: Context) {
 
@@ -241,23 +251,31 @@ class ContactsImporter(context: Context) {
      * [BATCH_SIZE] dans Room (REPLACE). [onProgress] est rappelé après chaque
      * lot avec (traités, total) pour piloter la barre de progression de l'UI.
      *
-     * DÉDOUBLONNAGE MINIMAL (v7.1.28) — SKIP uniquement, jamais d'écrasement ni de
-     * mise à jour : on construit UNE FOIS un index des contacts JTR ACTIFS
-     * (`deletedAt == null`) par téléphone normalisé ([phoneKey]) et email minuscule,
-     * puis tout contact natif partageant un téléphone OU un email avec un contact
-     * existant est IGNORÉ. L'index est aussi alimenté au fil des insertions → deux
-     * contacts natifs identiques dans le MÊME import ne se dupliquent pas non plus.
-     * Conséquence voulue : ré-importer les mêmes contacts n'ajoute aucun doublon.
+     * DÉDOUBLONNAGE (v7.1.28, élargi en v7.1.42/B7) — détecté PAR TÉLÉPHONE/EMAIL
+     * (jamais par nom) : on construit UNE FOIS un index des contacts JTR ACTIFS
+     * (`deletedAt == null`) par téléphone normalisé ([phoneKey]) et email minuscule →
+     * id ([indexKeys]). Pour chaque contact natif, [matchedIds] renvoie les contacts
+     * JTR partagés. Selon [strategy] :
+     *  - aucun match → INSERTION (quelle que soit la stratégie) ;
+     *  - [DuplicateStrategy.SKIP] (défaut, comportement historique) → IGNORÉ ;
+     *  - [DuplicateStrategy.UPDATE] → FUSION « ne jamais écraser » ([mergePerson]) dans
+     *    l'unique cible ; cible AMBIGUË (≥2 contacts) → ignoré (jamais merger deux personnes) ;
+     *  - [DuplicateStrategy.IMPORT_ANYWAY] → INSERTION d'un doublon ASSUMÉ.
+     * L'index/snapshot est alimenté au fil des écritures → deux contacts natifs identiques
+     * dans le MÊME import ne se dupliquent pas non plus. Ré-importer reste sans doublon ;
+     * un ré-import en UPDATE est idempotent (no-op si rien à ajouter).
      *
      * @param selectedIds importation SÉLECTIVE (v5.4.1) : seuls ces contacts
      *   natifs sont agrégés (les autres lignes sont ignorées dès le curseur —
      *   aucune allocation pour les non-cochés). `null` = tout importer.
      *   La déduplication INTRA-contact v5.3.3 (téléphones/emails d'un même contact)
      *   reste active dans [toPerson].
-     * @return [ImportResult] = (insérés, ignorés car déjà présents).
+     * @param strategy comportement sur doublon détecté (défaut [DuplicateStrategy.SKIP]).
+     * @return [ImportResult] = (insérés, mis à jour [distincts], ignorés).
      */
     suspend fun import(
         selectedIds: Set<Long>? = null,
+        strategy: DuplicateStrategy = DuplicateStrategy.SKIP,
         onProgress: (done: Int, total: Int) -> Unit
     ): Result<ImportResult> =
         withContext(Dispatchers.IO) {
@@ -265,114 +283,302 @@ class ContactsImporter(context: Context) {
                 val drafts = readDeviceContacts(selectedIds)
                 val total = drafts.size
 
-                // Index des contacts JTR ACTIFS (clés de dédoublonnage). `getAllSync()`
-                // renvoie TOUTES les lignes (corbeille incluse) → on exclut les supprimés :
-                // un contact mis à la corbeille ne bloque pas un ré-import volontaire.
-                val existingPhones = HashSet<String>()
-                val existingEmails = HashSet<String>()
+                // Index des contacts JTR ACTIFS. v7.1.42 (B7) : clé → id (et non simple
+                // présence) pour savoir DANS QUEL contact fusionner en mode UPDATE. `getAllSync()`
+                // renvoie la corbeille → on l'exclut (un contact supprimé ne bloque pas un
+                // ré-import volontaire). `personsById` = snapshot des Person actives, source de la
+                // fusion et mis à jour au fil des écritures (anti-doublon/refusion intra-import).
+                val phoneToId = HashMap<String, String>()
+                val emailToId = HashMap<String, String>()
+                val personsById = HashMap<String, Person>()
                 personDao.getAllSync().forEach { p ->
                     if (p.deletedAt != null) return@forEach
-                    indexKeys(p, existingPhones, existingEmails)
+                    personsById[p.id] = p
+                    indexKeys(p, phoneToId, emailToId)
+                }
+                // v7.1.42 (B7) — URL des liens sociaux existants par contact (UNE lecture groupée,
+                // pas de N+1) pour dédupliquer en mode UPDATE (ajout des URL ABSENTES uniquement).
+                val linksByPerson = HashMap<String, MutableSet<String>>()
+                socialLinkDao.getAllSync().forEach { link ->
+                    link.url.trim().takeIf { it.isNotBlank() }?.let {
+                        linksByPerson.getOrPut(link.personId) { HashSet() }.add(it)
+                    }
                 }
 
-                // v7.1.39 (B4) — titre localisé de la section « Adresse », résolu UNE fois.
-                // CORRECTIF locale (finding device) : ce titre est du texte LIBRE FIGÉ dans les
-                // données → il doit refléter la langue IN-APP active, pas la locale SYSTÈME. On
-                // résout donc via un contexte enveloppé par [LocaleManager] (qui relit le tag
-                // BCP-47 persisté ; renvoie le contexte système si « langue du système »), au lieu
-                // d'`appContext` brut (Application = locale système, ignore l'override in-app).
-                val addressTitle =
-                    LocaleManager.wrap(appContext).getString(R.string.note_section_address)
+                // v7.1.39 (B4) — titres LIBRES FIGÉS dans les données (section « Adresse » +
+                // titres legacy notes/likes pour la matérialisation B7) résolus en langue IN-APP
+                // active (pas la locale SYSTÈME) via un contexte enveloppé par [LocaleManager].
+                val localized = LocaleManager.wrap(appContext)
+                val addressTitle = localized.getString(R.string.note_section_address)
+                val notesTitle = localized.getString(R.string.note_section_default_notes)
+                val likesTitle = localized.getString(R.string.person_likes_label)
 
                 var done = 0
                 var imported = 0
                 var skipped = 0
-                // v7.1.40 (B5) — Persons RÉELLEMENT insérées (non skippées) de CE run, pour la
-                // 2ᵉ passe de résolution `linkedPersonId` (cf. resolveImportedRelationLinks).
-                val importedPersons = ArrayList<Person>()
+                // Ids RÉELLEMENT touchés de ce run → 2ᵉ passe `linkedPersonId` (cf.
+                // resolveImportedRelationLinks) + comptage des mises à jour DISTINCTES.
+                val insertedIds = LinkedHashSet<String>()
+                val updatedIds = LinkedHashSet<String>()
                 onProgress(0, total)
                 drafts.chunked(BATCH_SIZE).forEach { batch ->
                     val toInsert = ArrayList<Person>(batch.size)
-                    // v7.1.39 (B4) — liens sociaux des Persons RÉELLEMENT insérés (non skippés) :
-                    // insérés APRÈS personDao.insertAll pour respecter la FK social_links → persons.
+                    val toUpdate = ArrayList<Person>()
+                    // v7.1.39 (B4) — liens sociaux insérés APRÈS les Person (FK social_links →
+                    // persons) ; v7.1.42 (B7) : confond inserts et compléments d'UPDATE.
                     val linksToInsert = ArrayList<SocialLinkEntity>()
                     batch.forEach { draft ->
                         val person = draft.toPerson(addressTitle) ?: return@forEach
-                        if (isDuplicate(person, existingPhones, existingEmails)) {
+                        val matches = matchedIds(person, phoneToId, emailToId)
+                        if (matches.isEmpty() || strategy == DuplicateStrategy.IMPORT_ANYWAY) {
+                            // INSERT : nouveau contact, OU doublon ASSUMÉ (IMPORT_ANYWAY). Alimente
+                            // l'index/snapshot AVANT le prochain contact (anti-doublon intra-import).
+                            indexKeys(person, phoneToId, emailToId)
+                            personsById[person.id] = person
+                            insertedIds.add(person.id)
+                            toInsert.add(person)
+                            val urls = linksByPerson.getOrPut(person.id) { HashSet() }
+                            draft.websites.map { it.trim() }.filter { it.isNotBlank() && urls.add(it) }
+                                .forEach { url ->
+                                    linksToInsert += SocialLinkEntity(
+                                        personId = person.id, url = url,
+                                        platform = SocialPlatform.detect(url)?.displayName ?: "Lien"
+                                    )
+                                }
+                            imported++
+                        } else if (strategy == DuplicateStrategy.SKIP || matches.size >= 2) {
+                            // SKIP explicite, OU cible AMBIGUË (le draft « ponte » ≥2 contacts JTR)
+                            // → jamais de fusion (on ne peut pas merger deux personnes).
                             skipped++
                         } else {
-                            // Alimente l'index AVANT le prochain contact → anti-doublon
-                            // intra-import (deux entrées natives au même numéro/email).
-                            indexKeys(person, existingPhones, existingEmails)
-                            toInsert.add(person)
-                            // Sites web → liens sociaux (URL dédoublonnée par le LinkedHashSet ;
-                            // plateforme auto-détectée, repli « Lien » comme la saisie manuelle ;
-                            // aucune URL perdue). FK satisfaite : la ligne Person sera insérée juste avant.
-                            draft.websites.forEach { url ->
-                                linksToInsert += SocialLinkEntity(
-                                    personId = person.id,
-                                    url = url,
-                                    platform = SocialPlatform.detect(url)?.displayName ?: "Lien"
-                                )
+                            // UPDATE : fusion « ne jamais écraser » dans l'UNIQUE contact ciblé.
+                            val targetId = matches.first()
+                            val target = personsById.getValue(targetId)
+                            val merged = mergePerson(target, person, notesTitle, likesTitle)
+                            val urls = linksByPerson.getOrPut(targetId) { HashSet() }
+                            val newLinks = draft.websites.map { it.trim() }
+                                .filter { it.isNotBlank() && urls.add(it) }
+                                .map {
+                                    SocialLinkEntity(
+                                        personId = targetId, url = it,
+                                        platform = SocialPlatform.detect(it)?.displayName ?: "Lien"
+                                    )
+                                }
+                            if (merged != null || newLinks.isNotEmpty()) {
+                                val finalPerson =
+                                    (merged ?: target).copy(updatedAt = System.currentTimeMillis())
+                                personsById[targetId] = finalPerson
+                                toUpdate.add(finalPerson)
+                                linksToInsert.addAll(newLinks)
+                                updatedIds.add(targetId)
+                            } else {
+                                // Idempotence : rien à ajouter → no-op (updatedAt INCHANGÉ).
+                                skipped++
                             }
-                            imported++
                         }
                     }
-                    if (toInsert.isNotEmpty()) {
-                        personDao.insertAll(toInsert)
-                        if (linksToInsert.isNotEmpty()) socialLinkDao.insertAll(linksToInsert)
-                        importedPersons.addAll(toInsert)
-                    }
+                    // Persons d'abord (FK), puis les liens (inserts + compléments d'UPDATE).
+                    // updateAll = @Update CIBLÉ (par PK, PAS REPLACE → pas de CASCADE social_links).
+                    if (toInsert.isNotEmpty()) personDao.insertAll(toInsert)
+                    if (toUpdate.isNotEmpty()) personDao.updateAll(toUpdate)
+                    if (linksToInsert.isNotEmpty()) socialLinkDao.insertAll(linksToInsert)
                     done += batch.size
                     onProgress(done, total)
                 }
-                // v7.1.40 (B5) — 2ᵉ passe `linkedPersonId` : APRÈS que TOUS les contacts du run
-                // soient en base (les relations entre contacts du même lot deviennent résolvables),
-                // AVANT le rescheduleAll. Erreur ISOLÉE : un échec de résolution ne doit jamais
-                // transformer un import réussi en échec — les liens non posés se rabattent sur la
-                // résolution par nom au clic (résolveRelationTarget), qui reste fonctionnelle.
-                runCatching { resolveImportedRelationLinks(importedPersons) }
-                ImportResult(imported = imported, skipped = skipped)
+                // v7.1.40 (B5) / v7.1.42 (B7) — 2ᵉ passe `linkedPersonId` sur TOUS les contacts
+                // touchés (insérés ET mis à jour) une fois TOUTES les écritures faites. Erreur
+                // ISOLÉE : un échec de résolution ne transforme jamais un import réussi en échec
+                // (les liens non posés se rabattent sur la résolution par nom au clic).
+                val touched = (insertedIds + updatedIds).map { personsById.getValue(it) }
+                runCatching { resolveImportedRelationLinks(touched) }
+                ImportResult(imported = imported, updated = updatedIds.size, skipped = skipped)
             }
-            // v7.1.36 (B3) — après un import RÉUSSI ayant inséré ≥1 contact, on (ré)arme
-            // les alarmes exactes des rappels : un anniversaire importé (notify=true) doit
-            // voir son rappel ANNUEL planifié DÈS l'import, sans attendre la prochaine
-            // ouverture de l'app — parité avec Add/EditPersonViewModel qui replanifient
-            // après chaque sauvegarde. Le calcul passé/futur reste celui, INCHANGÉ, de
-            // ReminderScheduler (idempotent). Erreur de planification ISOLÉE : elle ne
-            // doit jamais transformer un import réussi en échec.
-            result.getOrNull()?.takeIf { it.imported > 0 }?.let {
+            // v7.1.36 (B3) / v7.1.42 (B7) — après un import RÉUSSI ayant inséré OU mis à jour ≥1
+            // contact, on (ré)arme les alarmes exactes : un anniversaire importé OU fraîchement
+            // fusionné (notify=true) doit voir son rappel ANNUEL planifié DÈS l'import. Calcul
+            // passé/futur INCHANGÉ (ReminderScheduler, idempotent). Erreur de planification ISOLÉE.
+            result.getOrNull()?.takeIf { it.imported > 0 || it.updated > 0 }?.let {
                 runCatching { ReminderScheduler.rescheduleAll(appContext) }
             }
             result
         }
 
-    /** Ajoute les clés de dédoublonnage (téléphones normalisés, emails minuscules) de [p] aux index. */
-    private fun indexKeys(p: Person, phones: HashSet<String>, emails: HashSet<String>) {
+    /**
+     * Ajoute les clés de dédoublonnage (téléphones normalisés, emails minuscules) de [p] aux
+     * index clé → id. `putIfAbsent` : la 1ʳᵉ occurrence d'une clé gagne (le contact JTR existant
+     * prime sur un éventuel doublon inséré plus tard dans le même run).
+     */
+    private fun indexKeys(p: Person, phones: HashMap<String, String>, emails: HashMap<String, String>) {
         (listOfNotNull(p.phoneNumber) + (p.phoneLines?.map { it.value } ?: emptyList()))
             .map { phoneKey(it) }.filter { it.isNotBlank() }
-            .forEach { phones.add(it) }
+            .forEach { phones.putIfAbsent(it, p.id) }
         (listOfNotNull(p.email) + (p.emailLines?.map { it.value } ?: emptyList()))
             .map { it.trim().lowercase() }.filter { it.isNotBlank() }
-            .forEach { emails.add(it) }
+            .forEach { emails.putIfAbsent(it, p.id) }
     }
 
-    /** Vrai si [person] partage un téléphone normalisé OU un email avec l'index existant. */
-    private fun isDuplicate(person: Person, phones: Set<String>, emails: Set<String>): Boolean {
-        val pk = (listOfNotNull(person.phoneNumber) + (person.phoneLines?.map { it.value } ?: emptyList()))
+    /**
+     * v7.1.42 (B7) — Ids des contacts JTR partageant un téléphone normalisé OU un email avec
+     * [person]. Vide = pas un doublon (insertion). Un seul id = cible de fusion unique. Plusieurs
+     * ids = le contact natif « ponte » plusieurs contacts JTR → ambigu (SKIP, jamais de merge).
+     */
+    private fun matchedIds(
+        person: Person, phones: Map<String, String>, emails: Map<String, String>
+    ): Set<String> {
+        val ids = LinkedHashSet<String>()
+        (listOfNotNull(person.phoneNumber) + (person.phoneLines?.map { it.value } ?: emptyList()))
             .map { phoneKey(it) }.filter { it.isNotBlank() }
-        if (pk.any { it in phones }) return true
-        val ek = (listOfNotNull(person.email) + (person.emailLines?.map { it.value } ?: emptyList()))
+            .forEach { phones[it]?.let(ids::add) }
+        (listOfNotNull(person.email) + (person.emailLines?.map { it.value } ?: emptyList()))
             .map { it.trim().lowercase() }.filter { it.isNotBlank() }
-        return ek.any { it in emails }
+            .forEach { emails[it]?.let(ids::add) }
+        return ids
+    }
+
+    /**
+     * v7.1.42 (B7) — Fusion « ne JAMAIS écraser » du contact natif [incoming] dans le contact
+     * JTR existant [target]. Renvoie une copie modifiée SI au moins un champ a changé, sinon
+     * `null` (idempotence). N'écrit JAMAIS (l'appelant le fait via [PersonDao.updateAll], UPDATE
+     * ciblé) ; les liens sociaux (table FK) sont fusionnés à part dans [import].
+     *
+     * Règles :
+     *  - Scalaires (nom secondaire, pro, ville, origine, photo…) remplis SEULEMENT si vides côté
+     *    JTR ; jamais écrasés ni supprimés. `firstName` (obligatoire) intouché.
+     *  - Listes (téléphone/email/date/relation) en UNION dédupliquée par clé adéquate (numéro
+     *    normalisé / email minuscule / (valeur, label) / (nom, label)) ; existant et ordre conservés.
+     *  - Scalaires « 1ʳᵉ ligne » `phoneNumber`/`email` remplis si null avec la 1ʳᵉ ligne fusionnée.
+     *  - Anniversaire scalaire rempli seulement si absent côté JTR (sinon conservé).
+     *  - `noteSections` : on MATÉRIALISE d'abord le legacy `notes`/`likes` (anti-disparition, car
+     *    une liste non vide masque le legacy), PUIS on APPEND les nouvelles sections, et on force
+     *    `notes`/`likes` à null (anti-résurrection, cf. B4). Si la cible a déjà des sections, on
+     *    se contente d'append (legacy déjà migré).
+     */
+    private fun mergePerson(
+        target: Person, incoming: Person, notesTitle: String, likesTitle: String
+    ): Person? {
+        var changed = false
+        val mark: () -> Unit = { changed = true }
+        fun fill(cur: String?, inc: String?): String? =
+            if (cur.isNullOrBlank() && !inc.isNullOrBlank()) { changed = true; inc } else cur
+
+        val lastName = fill(target.lastName, incoming.lastName)
+        val prefix = fill(target.prefix, incoming.prefix)
+        val middleName = fill(target.middleName, incoming.middleName)
+        val suffix = fill(target.suffix, incoming.suffix)
+        val phonetic = fill(target.phonetic, incoming.phonetic)
+        val nickname = fill(target.nickname, incoming.nickname)
+        val jobTitle = fill(target.jobTitle, incoming.jobTitle)
+        val department = fill(target.department, incoming.department)
+        val company = fill(target.company, incoming.company)
+        val city = fill(target.city, incoming.city)
+        val origin = fill(target.origin, incoming.origin)
+        val photoUri = fill(target.photoUri, incoming.photoUri)
+
+        val phoneLines = unionLines(target.phoneLines, incoming.phoneLines, { phoneKey(it.value) }, mark)
+        val emailLines = unionLines(target.emailLines, incoming.emailLines, { it.value.trim().lowercase() }, mark)
+        val dateLines = unionLines(target.dateLines, incoming.dateLines, { "${it.value} ${it.label}" }, mark)
+        val relationLines = unionLines(
+            target.relationLines, incoming.relationLines, { "${it.value.trim()} ${it.label}" }, mark
+        )
+
+        // Scalaires « 1ʳᵉ ligne » : remplir si null (cohérence scalaire ↔ liste fusionnée).
+        val phoneNumber = if (target.phoneNumber.isNullOrBlank() && !phoneLines.isNullOrEmpty()) {
+            changed = true; phoneLines.first().value
+        } else target.phoneNumber
+        val email = if (target.email.isNullOrBlank() && !emailLines.isNullOrEmpty()) {
+            changed = true; emailLines.first().value
+        } else target.email
+
+        // Anniversaire scalaire : rempli SEULEMENT si absent côté JTR (jamais écrasé).
+        // notify/offset dérivent alors de la même source que la date → cohérents (parité toPerson).
+        var birthdate = target.birthdate
+        var birthdateNotify = target.birthdateNotify
+        var birthdateOffset = target.birthdateReminderOffsetMinutes
+        if (target.birthdate == null && incoming.birthdate != null) {
+            birthdate = incoming.birthdate
+            birthdateNotify = incoming.birthdateNotify
+            birthdateOffset = incoming.birthdateReminderOffsetMinutes
+            changed = true
+        }
+
+        // noteSections : matérialiser le legacy (anti-disparition) PUIS append (anti-résurrection).
+        // Dédup par CONTENU (titre+icône+contenu, l'`id` étant aléatoire à chaque construction) →
+        // ré-importer le même contact n'ajoute pas de doublon (idempotence). On ne matérialise le
+        // legacy et ne marque `changed` que si AU MOINS une section réellement nouvelle est ajoutée.
+        var notes = target.notes
+        var likes = target.likes
+        var noteSections = target.noteSections
+        if (incoming.noteSections.isNotEmpty()) {
+            val hadSections = target.noteSections.isNotEmpty()
+            val base = (if (hadSections) target.noteSections
+                else deriveNoteSections(target.notes, target.likes, notesTitle, likesTitle))
+                .toMutableList()
+            val seen = HashSet<String>()
+            base.forEach { seen.add(noteSectionKey(it)) }
+            var addedSection = false
+            incoming.noteSections.forEach { sec ->
+                if (seen.add(noteSectionKey(sec))) {
+                    base.add(sec.copy(order = base.size))
+                    addedSection = true
+                }
+            }
+            if (addedSection) {
+                noteSections = base
+                if (!hadSections) { notes = null; likes = null }
+                changed = true
+            }
+        }
+
+        if (!changed) return null
+        return target.copy(
+            lastName = lastName, prefix = prefix, middleName = middleName, suffix = suffix,
+            phonetic = phonetic, nickname = nickname, jobTitle = jobTitle, department = department,
+            company = company, city = city, origin = origin, photoUri = photoUri,
+            phoneNumber = phoneNumber, email = email,
+            birthdate = birthdate, birthdateNotify = birthdateNotify,
+            birthdateReminderOffsetMinutes = birthdateOffset,
+            phoneLines = phoneLines, emailLines = emailLines, dateLines = dateLines,
+            relationLines = relationLines, notes = notes, likes = likes, noteSections = noteSections
+        )
+    }
+
+    /**
+     * v7.1.42 (B7) — Clé de dédup d'une [NoteSection] par CONTENU (titre + icône + contenu ;
+     * l'`id`/`order` sont volatils). Deux sections « identiques » importées deux fois produisent
+     * la même clé → pas de doublon en ré-import (idempotence de la fusion `noteSections`).
+     */
+    private fun noteSectionKey(s: NoteSection): String =
+        "${s.title} ${s.iconKey} ${s.content}"
+
+    /**
+     * v7.1.42 (B7) — Union de deux listes de [DynamicLine] dédupliquée par [keyOf] : conserve
+     * [existing] (valeur ET ordre), puis APPEND les lignes de [incoming] dont la clé est absente.
+     * Appelle [onChange] pour chaque ligne réellement ajoutée. `null` si le résultat est vide.
+     */
+    private fun unionLines(
+        existing: List<DynamicLine>?,
+        incoming: List<DynamicLine>?,
+        keyOf: (DynamicLine) -> String,
+        onChange: () -> Unit
+    ): List<DynamicLine>? {
+        if (incoming.isNullOrEmpty()) return existing
+        val out = existing?.toMutableList() ?: ArrayList()
+        val seen = HashSet<String>()
+        out.forEach { keyOf(it).takeIf { k -> k.isNotBlank() }?.let(seen::add) }
+        incoming.forEach { line ->
+            val k = keyOf(line)
+            if (k.isNotBlank() && seen.add(k)) { out.add(line); onChange() }
+        }
+        return out.takeIf { it.isNotEmpty() }
     }
 
     /**
      * v7.1.40 (B5) — 2ᵉ passe de résolution des relations importées : fige `linkedPersonId`
      * quand, et SEULEMENT quand, le nom de la relation désigne un contact UNIQUE.
      *
-     * Périmètre : UNIQUEMENT les Person insérées par CE run ([imported]). Les contacts
-     * PRÉ-EXISTANTS ne sont jamais réécrits — leurs relations héritées « pendantes »
+     * Périmètre (v7.1.42/B7) : les Person TOUCHÉES par CE run — insérées ET mises à jour
+     * (qui peuvent avoir gagné de nouvelles `relationLines` en mode UPDATE). Les contacts
+     * non touchés ne sont jamais réécrits — leurs relations héritées « pendantes »
      * (linkedPersonId null) se résolvent déjà par nom au clic ([EditPersonViewModel
      * .resolveRelationTarget]) dès que la cible existe.
      *

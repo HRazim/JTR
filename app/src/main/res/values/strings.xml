@@ -547,6 +547,13 @@
     <string name="settings_contacts_blocked_message">Contacts permission is turned off. Open settings to allow JTR to import your contacts.</string>
     <string name="import_contacts_done_title">Import complete</string>
     <string name="import_contacts_done_message">%1$d imported · %2$d skipped (already in JTR)</string>
+    <!-- v7.1.42 (B7) — duplicate handling chooser -->
+    <string name="import_strategy_title">Already in JTR?</string>
+    <string name="import_strategy_message">Choose what to do with contacts already in JTR (matched by phone or email).</string>
+    <string name="import_strategy_skip">Skip</string>
+    <string name="import_strategy_update">Update existing</string>
+    <string name="import_strategy_import_anyway">Import anyway</string>
+    <string name="import_contacts_done_message_updated">%1$d imported · %2$d updated · %3$d skipped</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">A birthday cannot be in the future</string>
 </resources>

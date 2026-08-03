@@ -57,7 +57,7 @@ fun ImportContactsScreen(
         onSearchChange = viewModel::setContactSearch,
         onToggle = viewModel::toggleContact,
         onBack = onNavigateBack,
-        onConfirm = { viewModel.startImport() }
+        onConfirm = { strategy -> viewModel.startImport(strategy) }
     )
 
     when (val s = state) {
@@ -70,6 +70,7 @@ fun ImportContactsScreen(
         is ImportContactsViewModel.UiState.Done -> {
             ImportRecapDialog(
                 imported = s.imported,
+                updated = s.updated,
                 skipped = s.skipped,
                 onDismiss = onNavigateBack
             )
@@ -128,14 +129,23 @@ private fun ImportProgressDialog(done: Int, total: Int) {
     }
 }
 
-/** Récap final : « X importés · Y ignorés (déjà dans JTR) ». */
+/**
+ * Récap final. Sans mise à jour (B7) → message historique « X importés · Y ignorés » (aucune
+ * régression onboarding/SKIP). Avec ≥1 mise à jour → message à 3 nombres « X · Y · Z ».
+ */
 @Composable
-private fun ImportRecapDialog(imported: Int, skipped: Int, onDismiss: () -> Unit) {
+private fun ImportRecapDialog(imported: Int, updated: Int, skipped: Int, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.Contacts, contentDescription = null) },
         title = { Text(stringResource(R.string.import_contacts_done_title)) },
-        text = { Text(stringResource(R.string.import_contacts_done_message, imported, skipped)) },
+        text = {
+            Text(
+                if (updated > 0)
+                    stringResource(R.string.import_contacts_done_message_updated, imported, updated, skipped)
+                else stringResource(R.string.import_contacts_done_message, imported, skipped)
+            )
+        },
         confirmButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_done)) }
         }

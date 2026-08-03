@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.data.contacts.ContactsImporter
 import com.jtr.app.data.contacts.DeviceContact
+import com.jtr.app.data.contacts.DuplicateStrategy
 import com.jtr.app.utils.matchesAllTokens
 import com.jtr.app.utils.searchTokens
 import kotlinx.coroutines.Dispatchers
@@ -42,8 +43,8 @@ class ImportContactsViewModel(application: Application) : AndroidViewModel(appli
         /** Importation en cours : [done] traités sur [total]. */
         data class Importing(val done: Int, val total: Int) : UiState
 
-        /** Terminé : [imported] insérés, [skipped] ignorés (déjà dans JTR). */
-        data class Done(val imported: Int, val skipped: Int) : UiState
+        /** Terminé : [imported] insérés, [updated] fusionnés (B7), [skipped] ignorés. */
+        data class Done(val imported: Int, val updated: Int, val skipped: Int) : UiState
 
         data object Error : UiState
     }
@@ -90,15 +91,15 @@ class ImportContactsViewModel(application: Application) : AndroidViewModel(appli
         }
     }
 
-    /** Lance l'import des contacts cochés (dédoublonnage SKIP appliqué par l'importateur). */
-    fun startImport() {
+    /** Lance l'import des contacts cochés avec la [strategy] de doublon choisie (B7). */
+    fun startImport(strategy: DuplicateStrategy = DuplicateStrategy.SKIP) {
         if (_state.value is UiState.Importing) return
         _state.value = UiState.Importing(0, 0)
         viewModelScope.launch {
-            importer.import(_selectedContactIds.value) { done, total ->
+            importer.import(_selectedContactIds.value, strategy) { done, total ->
                 _state.value = UiState.Importing(done, total)
             }.onSuccess { result ->
-                _state.value = UiState.Done(result.imported, result.skipped)
+                _state.value = UiState.Done(result.imported, result.updated, result.skipped)
             }.onFailure {
                 _state.value = UiState.Error
             }

@@ -532,6 +532,13 @@
     <string name="settings_contacts_blocked_message">A permissão de Contactos está desativada. Abre as definições para permitir que o JTR importe os teus contactos.</string>
     <string name="import_contacts_done_title">Importação concluída</string>
     <string name="import_contacts_done_message">%1$d importados · %2$d ignorados (já no JTR)</string>
+    <!-- v7.1.42 (B7) — seletor de tratamento de duplicados -->
+    <string name="import_strategy_title">Já no JTR?</string>
+    <string name="import_strategy_message">Escolha o que fazer com contatos que já estão no JTR (detectados por telefone ou e-mail).</string>
+    <string name="import_strategy_skip">Ignorar</string>
+    <string name="import_strategy_update">Atualizar existente</string>
+    <string name="import_strategy_import_anyway">Importar mesmo assim</string>
+    <string name="import_contacts_done_message_updated">%1$d importados · %2$d atualizados · %3$d ignorados</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">Uma data de nascimento não pode estar no futuro</string>
 </resources>

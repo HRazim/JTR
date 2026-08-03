@@ -565,6 +565,13 @@
     <string name="settings_contacts_blocked_message">إذن جهات الاتصال معطَّل. افتح الإعدادات للسماح لـ JTR باستيراد جهات اتصالك.</string>
     <string name="import_contacts_done_title">اكتمل الاستيراد</string>
     <string name="import_contacts_done_message">%1$d مستورد · %2$d متجاوَز (موجود بالفعل في JTR)</string>
+    <!-- v7.1.42 (B7) — اختيار معالجة التكرارات -->
+    <string name="import_strategy_title">موجود بالفعل في JTR؟</string>
+    <string name="import_strategy_message">اختر ما تريد فعله بجهات الاتصال الموجودة بالفعل في JTR (تُطابَق عبر الهاتف أو البريد الإلكتروني).</string>
+    <string name="import_strategy_skip">تجاوز</string>
+    <string name="import_strategy_update">تحديث الموجود</string>
+    <string name="import_strategy_import_anyway">استيراد على أي حال</string>
+    <string name="import_contacts_done_message_updated">%1$d مستورد · %2$d محدَّث · %3$d متجاوَز</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">لا يمكن أن يكون تاريخ الميلاد في المستقبل</string>
 </resources>

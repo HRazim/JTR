@@ -521,6 +521,13 @@
     <string name="settings_contacts_blocked_message">連絡先の権限が無効です。設定を開いて、JTRが連絡先をインポートできるようにしてください。</string>
     <string name="import_contacts_done_title">インポート完了</string>
     <string name="import_contacts_done_message">%1$d 件をインポート · %2$d 件をスキップ（すでにJTRにあります）</string>
+    <!-- v7.1.42 (B7) — 重複の処理方法を選択 -->
+    <string name="import_strategy_title">すでにJTRにありますか？</string>
+    <string name="import_strategy_message">すでにJTRにある連絡先（電話またはメールで照合）の処理方法を選択してください。</string>
+    <string name="import_strategy_skip">スキップ</string>
+    <string name="import_strategy_update">既存を更新</string>
+    <string name="import_strategy_import_anyway">それでもインポート</string>
+    <string name="import_contacts_done_message_updated">%1$d 件をインポート · %2$d 件を更新 · %3$d 件をスキップ</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">誕生日を未来の日付にはできません</string>
 </resources>

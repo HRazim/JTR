@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -30,15 +32,18 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +56,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,6 +74,7 @@ import com.jtr.app.data.contacts.CAP_PHOTO
 import com.jtr.app.data.contacts.CAP_RELATION
 import com.jtr.app.data.contacts.CAP_WEBSITE
 import com.jtr.app.data.contacts.DeviceContact
+import com.jtr.app.data.contacts.DuplicateStrategy
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 
 /**
@@ -87,9 +94,22 @@ fun ContactSelectionScreen(
     onSearchChange: (String) -> Unit,
     onToggle: (Long) -> Unit,
     onBack: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: (DuplicateStrategy) -> Unit
 ) {
     var searchActive by remember { mutableStateOf(false) }
+    // v7.1.42 (B7) — dialogue de stratégie de doublon, déclenché par « Importer N ».
+    var showStrategyDialog by remember { mutableStateOf(false) }
+
+    if (showStrategyDialog) {
+        DuplicateStrategyDialog(
+            count = selectedIds.size,
+            onConfirm = { strategy ->
+                showStrategyDialog = false
+                onConfirm(strategy)
+            },
+            onDismiss = { showStrategyDialog = false }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -111,7 +131,7 @@ fun ContactSelectionScreen(
         bottomBar = {
             Surface(tonalElevation = 4.dp) {
                 Button(
-                    onClick = onConfirm,
+                    onClick = { showStrategyDialog = true },
                     enabled = selectedIds.isNotEmpty(),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -189,6 +209,73 @@ private fun DeviceContactRow(
             )
             CapabilityChips(capabilities = contact.capabilities)
         }
+    }
+}
+
+/**
+ * v7.1.42 (B7) — Choix GLOBAL de ce qu'il faut faire des contacts déjà présents dans JTR
+ * (détectés par téléphone/email). Radio à 3 options, défaut **Ignorer** (= comportement
+ * historique strict). Valider lance l'import avec la stratégie choisie ; le bouton de
+ * confirmation réutilise le compteur « Importer N » (0 nouvelle string). RTL automatique.
+ */
+@Composable
+private fun DuplicateStrategyDialog(
+    count: Int,
+    onConfirm: (DuplicateStrategy) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selected by remember { mutableStateOf(DuplicateStrategy.SKIP) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.import_strategy_title)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.import_strategy_message),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                StrategyOption(R.string.import_strategy_skip, DuplicateStrategy.SKIP, selected) { selected = it }
+                StrategyOption(R.string.import_strategy_update, DuplicateStrategy.UPDATE, selected) { selected = it }
+                StrategyOption(
+                    R.string.import_strategy_import_anyway, DuplicateStrategy.IMPORT_ANYWAY, selected
+                ) { selected = it }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selected) }) {
+                Text(pluralStringResource(R.plurals.import_selected_count, count, count))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+        }
+    )
+}
+
+/** v7.1.42 (B7) — une ligne radio du sélecteur de stratégie (toute la ligne cliquable, a11y). */
+@Composable
+private fun StrategyOption(
+    @StringRes labelRes: Int,
+    value: DuplicateStrategy,
+    selected: DuplicateStrategy,
+    onSelect: (DuplicateStrategy) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(
+                selected = value == selected,
+                role = Role.RadioButton,
+                onClick = { onSelect(value) }
+            )
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = value == selected, onClick = null)
+        Spacer(Modifier.width(12.dp))
+        Text(text = stringResource(labelRes), style = MaterialTheme.typography.bodyLarge)
     }
 }
 
