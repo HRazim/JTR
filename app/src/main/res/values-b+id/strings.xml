@@ -222,12 +222,14 @@
     <string name="date_value_label">Tanggal</string>
     <string name="relation_type_mother">Ibu</string>
     <string name="relation_type_father">Ayah</string>
+    <string name="relation_type_parent">Orang tua</string>
     <string name="relation_type_brother">Saudara laki-laki</string>
     <string name="relation_type_sister">Saudara perempuan</string>
     <string name="relation_type_spouse">Pasangan</string>
     <string name="relation_type_child">Anak</string>
     <string name="relation_type_friend">Teman</string>
     <string name="relation_type_manager">Atasan</string>
+    <string name="relation_type_employee">Bawahan</string>
     <string name="section_phones">Telepon</string>
     <string name="section_emails">Email</string>
     <string name="section_dates">Tanggal penting</string>

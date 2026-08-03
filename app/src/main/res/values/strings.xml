@@ -215,12 +215,14 @@
     <string name="date_value_label">Date</string>
     <string name="relation_type_mother">Mother</string>
     <string name="relation_type_father">Father</string>
+    <string name="relation_type_parent">Parent</string>
     <string name="relation_type_brother">Brother</string>
     <string name="relation_type_sister">Sister</string>
     <string name="relation_type_spouse">Spouse</string>
     <string name="relation_type_child">Child</string>
     <string name="relation_type_friend">Friend</string>
     <string name="relation_type_manager">Manager</string>
+    <string name="relation_type_employee">Employee</string>
     <string name="section_phones">Phones</string>
     <string name="section_emails">Emails</string>
     <string name="section_dates">Important dates</string>

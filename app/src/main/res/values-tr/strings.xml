@@ -219,12 +219,14 @@
     <string name="date_value_label">Tarih</string>
     <string name="relation_type_mother">Anne</string>
     <string name="relation_type_father">Baba</string>
+    <string name="relation_type_parent">Ebeveyn</string>
     <string name="relation_type_brother">Erkek kardeş</string>
     <string name="relation_type_sister">Kız kardeş</string>
     <string name="relation_type_spouse">Eş</string>
     <string name="relation_type_child">Çocuk</string>
     <string name="relation_type_friend">Arkadaş</string>
     <string name="relation_type_manager">Yönetici</string>
+    <string name="relation_type_employee">Çalışan</string>
     <string name="section_phones">Telefonlar</string>
     <string name="section_emails">E-postalar</string>
     <string name="section_dates">Önemli tarihler</string>

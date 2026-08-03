@@ -25,8 +25,8 @@ android {
         applicationId = "com.jtr.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 96
-        versionName = "7.1.42"
+        versionCode = 97
+        versionName = "7.1.43"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -43,6 +43,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            // INSTALL PARALLÈLE : le build de test s'installe sous com.jtr.app.debug et
+            // cohabite avec la production (com.jtr.app) — données réelles jamais touchées,
+            // ni par une réinstallation ni par un `connectedAndroidTest` (qui désinstalle
+            // l'app sous test). L'autorité du FileProvider suit `${applicationId}`.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             signingConfig = signingConfigs.getByName("release")
             // ⚠️ Pas de minification/R8 pour cette première release (éviter tout

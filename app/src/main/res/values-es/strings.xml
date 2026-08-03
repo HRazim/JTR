@@ -210,12 +210,14 @@
     <string name="date_value_label">Fecha</string>
     <string name="relation_type_mother">Madre</string>
     <string name="relation_type_father">Padre</string>
+    <string name="relation_type_parent">Padre/madre</string>
     <string name="relation_type_brother">Hermano</string>
     <string name="relation_type_sister">Hermana</string>
     <string name="relation_type_spouse">Cónyuge</string>
     <string name="relation_type_child">Hijo</string>
     <string name="relation_type_friend">Amigo</string>
     <string name="relation_type_manager">Responsable</string>
+    <string name="relation_type_employee">Empleado</string>
     <string name="section_phones">Teléfonos</string>
     <string name="section_emails">Correos</string>
     <string name="section_dates">Fechas importantes</string>

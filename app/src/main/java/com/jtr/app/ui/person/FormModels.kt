@@ -116,12 +116,16 @@ object FieldTypes {
     val RELATION = listOf(
         TypeOption("mother", R.string.relation_type_mother),
         TypeOption("father", R.string.relation_type_father),
+        // v7.1.43 — « parent » (neutre) : inverse d'« enfant » produit par le miroir, et
+        // type saisissable à part entière. Idem « employé », inverse de « manager ».
+        TypeOption("parent", R.string.relation_type_parent),
         TypeOption("brother", R.string.relation_type_brother),
         TypeOption("sister", R.string.relation_type_sister),
         TypeOption("spouse", R.string.relation_type_spouse),
         TypeOption("child", R.string.relation_type_child),
         TypeOption(RELATION_FRIEND, R.string.relation_type_friend),
         TypeOption("manager", R.string.relation_type_manager),
+        TypeOption("employee", R.string.relation_type_employee),
         TypeOption("custom", R.string.type_custom),
     )
 }

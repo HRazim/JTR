@@ -219,12 +219,14 @@
     <string name="date_value_label">Datum</string>
     <string name="relation_type_mother">Mutter</string>
     <string name="relation_type_father">Vater</string>
+    <string name="relation_type_parent">Elternteil</string>
     <string name="relation_type_brother">Bruder</string>
     <string name="relation_type_sister">Schwester</string>
     <string name="relation_type_spouse">Ehepartner</string>
     <string name="relation_type_child">Kind</string>
     <string name="relation_type_friend">Freund</string>
     <string name="relation_type_manager">Vorgesetzter</string>
+    <string name="relation_type_employee">Mitarbeiter</string>
     <string name="section_phones">Telefonnummern</string>
     <string name="section_emails">E-Mail-Adressen</string>
     <string name="section_dates">Wichtige Termine</string>

@@ -219,12 +219,14 @@
     <string name="date_value_label">날짜</string>
     <string name="relation_type_mother">어머니</string>
     <string name="relation_type_father">아버지</string>
+    <string name="relation_type_parent">부모</string>
     <string name="relation_type_brother">형제</string>
     <string name="relation_type_sister">자매</string>
     <string name="relation_type_spouse">배우자</string>
     <string name="relation_type_child">자녀</string>
     <string name="relation_type_friend">친구</string>
     <string name="relation_type_manager">매니저</string>
+    <string name="relation_type_employee">직원</string>
     <string name="section_phones">전화번호</string>
     <string name="section_emails">이메일</string>
     <string name="section_dates">중요한 날짜</string>

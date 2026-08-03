@@ -863,21 +863,26 @@ class ContactsImporter(context: Context) {
     /**
      * v7.1.40 (B5) — Mappe [ContactsContract.CommonDataKinds.Relation] TYPE (+ LABEL natif pour
      * le type personnalisé) vers un label de relation JTR (cf. [FieldTypes.RELATION]).
-     * Les 8 types à équivalent direct (mother/father/brother/sister/spouse/child/friend/manager)
-     * donnent leur clé JTR ; affichés localisés via `relation_type_*`.
+     * Les 9 types à équivalent direct (mother/father/parent/brother/sister/spouse/child/
+     * friend/manager) donnent leur clé JTR ; affichés localisés via `relation_type_*`.
      *
      * JTR n'a PAS de type « other » pour les relations (≠ tél/email/date). Donc :
      *  - TYPE_CUSTOM → le libellé natif (DATA3) tel quel (un label inconnu s'affiche VERBATIM,
      *    comme la saisie « custom » ; cf. typeLabelResOrNull) ; à défaut, le mot localisé du
      *    framework (« Personnalisé »…) ;
-     *  - types intégrés SANS équivalent JTR (PARENT, PARTNER, ASSISTANT, RELATIVE, REFERRED_BY…)
+     *  - types intégrés SANS équivalent JTR (PARTNER, ASSISTANT, RELATIVE, REFERRED_BY…)
      *    → libellé localisé du framework via [getTypeLabel], traité comme un label verbatim.
+     *
+     * v7.1.43 — TYPE_PARENT tombait dans ce dernier cas (« Parent » figé en texte libre, ni
+     * traduit au changement de langue, ni inversible) : la clé `parent` existant désormais,
+     * il devient canonique comme les autres.
      * [res] doit être en langue IN-APP (cf. `relationRes`) pour que ces libellés framework
      * suivent la langue de l'app, pas la locale système.
      */
     private fun relationLabel(type: Int, customLabel: String?, res: Resources): String = when (type) {
         ContactsContract.CommonDataKinds.Relation.TYPE_MOTHER -> "mother"
         ContactsContract.CommonDataKinds.Relation.TYPE_FATHER -> "father"
+        ContactsContract.CommonDataKinds.Relation.TYPE_PARENT -> "parent"
         ContactsContract.CommonDataKinds.Relation.TYPE_BROTHER -> "brother"
         ContactsContract.CommonDataKinds.Relation.TYPE_SISTER -> "sister"
         ContactsContract.CommonDataKinds.Relation.TYPE_SPOUSE -> "spouse"

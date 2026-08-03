@@ -210,12 +210,14 @@
     <string name="date_value_label">日付</string>
     <string name="relation_type_mother">母</string>
     <string name="relation_type_father">父</string>
+    <string name="relation_type_parent">親</string>
     <string name="relation_type_brother">兄弟</string>
     <string name="relation_type_sister">姉妹</string>
     <string name="relation_type_spouse">配偶者</string>
     <string name="relation_type_child">子供</string>
     <string name="relation_type_friend">友人</string>
     <string name="relation_type_manager">上司</string>
+    <string name="relation_type_employee">部下</string>
     <string name="section_phones">電話</string>
     <string name="section_emails">メール</string>
     <string name="section_dates">重要な日付</string>

@@ -12,6 +12,7 @@ import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.domain.relations.reconcileMirrorLines
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.io.File
@@ -23,25 +24,6 @@ import java.io.File
  * (table de jointure) au lieu du champ Person.categoryId.
  * Supprimer un contact d'une catégorie ne supprime PAS le contact.
  */
-/**
- * Dictionnaire de réciprocité des types de relation (clés stables du catalogue
- * FieldTypes.RELATION). Les types symétriques se reflètent à l'identique ;
- * « mère »/« père » se reflètent en « enfant ». Tout type inconnu ou
- * personnalisé (« Cousin », « Collègue »…) est appliqué TEXTUELLEMENT en miroir.
- */
-private val MIRROR_RELATION_LABELS = mapOf(
-    "mother" to "child",
-    "father" to "child",
-    "brother" to "brother",
-    "sister" to "sister",
-    "spouse" to "spouse",
-    "friend" to "friend",
-)
-
-/** Type de la relation inverse (réciprocité), identique par défaut. */
-internal fun mirrorRelationLabel(label: String): String =
-    MIRROR_RELATION_LABELS[label] ?: label
-
 class PersonRepository(context: Context) {
 
     private val db = AppDatabase.getInstance(context)
@@ -219,16 +201,19 @@ class PersonRepository(context: Context) {
 
     /**
      * Synchronise les fiches LIÉES après la sauvegarde de [person], dans UNE
-     * transaction Room — par IDENTIFIANT STABLE, jamais par nom (v7.1.6) :
-     *  - chaque relation AJOUTÉE (présente maintenant, absente de
-     *    [previousLines]) insère la relation INVERSE — type résolu par
-     *    [mirrorRelationLabel] — sur la fiche cible, identifiée par
-     *    [DynamicLine.linkedPersonId] (repli SANS AMBIGUÏTÉ par nom pour l'hérité) ;
-     *  - chaque relation SUPPRIMÉE nettoie instantanément son miroir (même id
-     *    source + même type inverse) — aucune donnée fantôme.
+     * transaction Room — par IDENTIFIANT STABLE, jamais par nom (v7.1.6).
      *
-     * Idempotent : un miroir déjà présent n'est jamais dupliqué. Une cible introuvable
-     * ou un nom AMBIGU (homonymes) n'engendre AUCUN miroir (jamais de faux lien).
+     * v7.1.43 — RÉCONCILIATION PAR CIBLE (et non plus deux boucles ajout/retrait
+     * indépendantes) : pour chaque fiche dont l'ensemble des relations reçues a changé,
+     * [reconcileMirrorLines] recalcule ses lignes miroirs à partir des relations COURANTES
+     * de [person] vers elle. L'inversion (« enfant » ⇒ « parent », « manager » ⇒
+     * « employé », symétriques inchangés) vit exclusivement dans `domain/relations`.
+     * Conséquences : un miroir équivalent n'est jamais dupliqué, un miroir devenu obsolète
+     * est retiré, et un miroir encore justifié survit à un changement de type
+     * (« mère » → « père » conserve l'« enfant » d'en face).
+     *
+     * Une cible introuvable ou un nom AMBIGU (homonymes) n'engendre AUCUN miroir
+     * (jamais de faux lien). L'auto-relation est exclue.
      */
     suspend fun syncMirrorRelations(person: Person, previousLines: List<DynamicLine>?) {
         val selfName = person.fullName.trim()
@@ -241,48 +226,33 @@ class PersonRepository(context: Context) {
             val id = line.linkedPersonId ?: dao.findIdsByName(line.value.trim()).singleOrNull()
             return id?.takeIf { it != person.id }
         }
-        // Une relation est identifiée par (idCible, label) — pas par le nom affiché.
-        suspend fun keysOf(lines: List<DynamicLine>): Set<Pair<String, String>> =
+        // Les relations sont regroupées PAR CIBLE : une fiche peut en recevoir plusieurs.
+        suspend fun labelsByTarget(lines: List<DynamicLine>): Map<String, Set<String>> =
             lines.filter { it.value.isNotBlank() || it.linkedPersonId != null }
                 .mapNotNull { l -> targetIdOf(l)?.let { it to l.label } }
-                .toSet()
+                .groupBy({ it.first }, { it.second })
+                .mapValues { (_, labels) -> labels.toSet() }
 
-        val currentKeys = keysOf(person.relationLines.orEmpty())
-        val previousKeys = keysOf(previousLines.orEmpty())
-        val added = currentKeys - previousKeys
-        val removed = previousKeys - currentKeys
-        if (added.isEmpty() && removed.isEmpty()) return
-
-        // Le miroir sur la fiche cible est lui aussi identifié par l'id SOURCE (person.id),
-        // avec repli nom pour les miroirs hérités → robuste au renommage des deux côtés.
-        fun isMirrorOf(it: DynamicLine, mirrorLabel: String): Boolean =
-            it.label == mirrorLabel && (it.linkedPersonId == person.id ||
-                (it.linkedPersonId == null && it.value.trim().equals(selfName, ignoreCase = true)))
+        val current = labelsByTarget(person.relationLines.orEmpty())
+        val previous = labelsByTarget(previousLines.orEmpty())
+        val affected = (current.keys + previous.keys)
+            .filter { current[it].orEmpty() != previous[it].orEmpty() }
+        if (affected.isEmpty()) return
 
         db.withTransaction {
-            added.forEach { (targetId, label) ->
+            affected.forEach { targetId ->
                 val target = dao.getById(targetId) ?: return@forEach
-                val mirrorLabel = mirrorRelationLabel(label)
-                val lines = target.relationLines.orEmpty()
-                if (lines.none { isMirrorOf(it, mirrorLabel) }) {
-                    dao.update(target.copy(
-                        relationLines = lines + DynamicLine(
-                            value = selfName, label = mirrorLabel, linkedPersonId = person.id),
-                        updatedAt = System.currentTimeMillis()
-                    ))
-                }
-            }
-            removed.forEach { (targetId, label) ->
-                val target = dao.getById(targetId) ?: return@forEach
-                val mirrorLabel = mirrorRelationLabel(label)
-                val original = target.relationLines.orEmpty()
-                val filtered = original.filterNot { isMirrorOf(it, mirrorLabel) }
-                if (filtered.size != original.size) {
-                    dao.update(target.copy(
-                        relationLines = filtered.takeIf { it.isNotEmpty() },
-                        updatedAt = System.currentTimeMillis()
-                    ))
-                }
+                val reconciled = reconcileMirrorLines(
+                    targetLines = target.relationLines.orEmpty(),
+                    sourceId = person.id,
+                    sourceName = selfName,
+                    currentLabels = current[targetId].orEmpty(),
+                    previousLabels = previous[targetId].orEmpty(),
+                ) ?: return@forEach
+                dao.update(target.copy(
+                    relationLines = reconciled.takeIf { it.isNotEmpty() },
+                    updatedAt = System.currentTimeMillis()
+                ))
             }
         }
     }

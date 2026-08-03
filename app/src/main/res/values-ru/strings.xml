@@ -219,12 +219,14 @@
     <string name="date_value_label">Дата</string>
     <string name="relation_type_mother">Мать</string>
     <string name="relation_type_father">Отец</string>
+    <string name="relation_type_parent">Родитель</string>
     <string name="relation_type_brother">Брат</string>
     <string name="relation_type_sister">Сестра</string>
     <string name="relation_type_spouse">Супруг(а)</string>
     <string name="relation_type_child">Ребёнок</string>
     <string name="relation_type_friend">Друг</string>
     <string name="relation_type_manager">Руководитель</string>
+    <string name="relation_type_employee">Сотрудник</string>
     <string name="section_phones">Телефоны</string>
     <string name="section_emails">Эл. почта</string>
     <string name="section_dates">Важные даты</string>

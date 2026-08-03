@@ -219,12 +219,14 @@
     <string name="date_value_label">التاريخ</string>
     <string name="relation_type_mother">الأم</string>
     <string name="relation_type_father">الأب</string>
+    <string name="relation_type_parent">أحد الوالدين</string>
     <string name="relation_type_brother">الأخ</string>
     <string name="relation_type_sister">الأخت</string>
     <string name="relation_type_spouse">الزوج/الزوجة</string>
     <string name="relation_type_child">الابن/الابنة</string>
     <string name="relation_type_friend">صديق</string>
     <string name="relation_type_manager">المدير</string>
+    <string name="relation_type_employee">موظف</string>
     <string name="section_phones">الهواتف</string>
     <string name="section_emails">رسائل البريد الإلكتروني</string>
     <string name="section_dates">التواريخ المهمة</string>
