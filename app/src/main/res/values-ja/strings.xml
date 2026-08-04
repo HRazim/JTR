@@ -25,7 +25,6 @@
     <string name="common_photo">写真</string>
     <string name="common_name_label">名前</string>
     <string name="common_color_label">カラー</string>
-    <string name="separator_and">と</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR 連絡先</string>
@@ -134,6 +133,7 @@
     <string name="trash_empty_cd">ゴミ箱を空にする</string>
     <string name="trash_empty_dialog_title">ゴミ箱を空にしますか？</string>
     <string name="trash_empty_dialog_text">この操作は取り消せません。\n%1$sが完全に削除されます。</string>
+    <string name="trash_empty_dialog_text_both">この操作は取り消せません。\n%1$sと%2$sが完全に削除されます。</string>
     <string name="trash_empty_confirm">完全に空にする</string>
     <string name="trash_delete_dialog_title">完全に削除しますか？</string>
     <string name="trash_delete_category_with_contacts">カテゴリー\"%1$s\"と%2$d件の連絡先が失われます。</string>

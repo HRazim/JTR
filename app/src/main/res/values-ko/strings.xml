@@ -25,7 +25,6 @@
     <string name="common_photo">사진</string>
     <string name="common_name_label">이름</string>
     <string name="common_color_label">색상</string>
-    <string name="separator_and">" 및 "</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR 연락처</string>
@@ -139,6 +138,7 @@
     <string name="trash_empty_cd">휴지통 비우기</string>
     <string name="trash_empty_dialog_title">휴지통을 비울까요?</string>
     <string name="trash_empty_dialog_text">이 작업은 되돌릴 수 없습니다.\n%1$s이(가) 영구 삭제됩니다.</string>
+    <string name="trash_empty_dialog_text_both">이 작업은 되돌릴 수 없습니다.\n%1$s 및 %2$s이(가) 영구 삭제됩니다.</string>
     <string name="trash_empty_confirm">영구 삭제</string>
     <string name="trash_delete_dialog_title">영구 삭제할까요?</string>
     <string name="trash_delete_category_with_contacts">카테고리 “%1$s”과(와) 연락처 %2$d명이 사라집니다.</string>

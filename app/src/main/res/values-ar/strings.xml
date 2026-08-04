@@ -25,7 +25,6 @@
     <string name="common_photo">صورة</string>
     <string name="common_name_label">الاسم</string>
     <string name="common_color_label">اللون</string>
-    <string name="separator_and">" و "</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">جهات الاتصال JTR</string>
@@ -139,6 +138,7 @@
     <string name="trash_empty_cd">إفراغ السلة</string>
     <string name="trash_empty_dialog_title">إفراغ سلة المهملات؟</string>
     <string name="trash_empty_dialog_text">هذا الإجراء لا يمكن التراجع عنه.\nسيتم حذف %1$s نهائيًا.</string>
+    <string name="trash_empty_dialog_text_both">هذا الإجراء لا يمكن التراجع عنه.\nسيتم حذف %1$s و%2$s نهائيًا.</string>
     <string name="trash_empty_confirm">إفراغ نهائي</string>
     <string name="trash_delete_dialog_title">حذف نهائي؟</string>
     <string name="trash_delete_category_with_contacts">ستفقد الفئة «%1$s» و%2$d جهة اتصال بداخلها.</string>

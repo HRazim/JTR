@@ -25,7 +25,6 @@
     <string name="common_photo">Fotoğraf</string>
     <string name="common_name_label">Ad</string>
     <string name="common_color_label">Renk</string>
-    <string name="separator_and">" ve "</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Kişiler</string>
@@ -139,6 +138,7 @@
     <string name="trash_empty_cd">Çöp kutusunu boşalt</string>
     <string name="trash_empty_dialog_title">Çöp kutusu boşaltılsın mı?</string>
     <string name="trash_empty_dialog_text">Bu işlem geri alınamaz.\n%1$s kalıcı olarak silinecek.</string>
+    <string name="trash_empty_dialog_text_both">Bu işlem geri alınamaz.\n%1$s ve %2$s kalıcı olarak silinecek.</string>
     <string name="trash_empty_confirm">Kalıcı olarak boşalt</string>
     <string name="trash_delete_dialog_title">Kalıcı olarak silinsin mi?</string>
     <string name="trash_delete_category_with_contacts">“%1$s” kategorisi ve içindeki %2$d kişi kaybolacak.</string>

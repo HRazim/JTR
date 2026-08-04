@@ -25,7 +25,6 @@
     <string name="common_photo">Foto</string>
     <string name="common_name_label">Nombre</string>
     <string name="common_color_label">Color</string>
-    <string name="separator_and"> y </string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Contactos</string>
@@ -134,6 +133,7 @@
     <string name="trash_empty_cd">Vaciar papelera</string>
     <string name="trash_empty_dialog_title">¿Vaciar la papelera?</string>
     <string name="trash_empty_dialog_text">Esta acción es irreversible.\n%1$s serán eliminados permanentemente.</string>
+    <string name="trash_empty_dialog_text_both">Esta acción es irreversible.\n%1$s y %2$s serán eliminados permanentemente.</string>
     <string name="trash_empty_confirm">Vaciar definitivamente</string>
     <string name="trash_delete_dialog_title">¿Eliminar definitivamente?</string>
     <string name="trash_delete_category_with_contacts">La categoría \"%1$s\" y sus %2$d contacto(s) se perderán.</string>

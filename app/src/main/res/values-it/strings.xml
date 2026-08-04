@@ -25,7 +25,6 @@
     <string name="common_photo">Foto</string>
     <string name="common_name_label">Nome</string>
     <string name="common_color_label">Colore</string>
-    <string name="separator_and">" e "</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">Contatti JTR</string>
@@ -139,6 +138,7 @@
     <string name="trash_empty_cd">Svuota cestino</string>
     <string name="trash_empty_dialog_title">Svuotare il cestino?</string>
     <string name="trash_empty_dialog_text">Questa azione è irreversibile.\n%1$s verranno eliminati definitivamente.</string>
+    <string name="trash_empty_dialog_text_both">Questa azione è irreversibile.\n%1$s e %2$s verranno eliminati definitivamente.</string>
     <string name="trash_empty_confirm">Svuota definitivamente</string>
     <string name="trash_delete_dialog_title">Eliminare definitivamente?</string>
     <string name="trash_delete_category_with_contacts">La categoria «%1$s» e i suoi %2$d contatto/i andranno persi.</string>

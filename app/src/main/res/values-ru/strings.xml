@@ -25,7 +25,6 @@
     <string name="common_photo">Фото</string>
     <string name="common_name_label">Имя</string>
     <string name="common_color_label">Цвет</string>
-    <string name="separator_and">" и "</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">Контакты JTR</string>
@@ -139,6 +138,7 @@
     <string name="trash_empty_cd">Очистить корзину</string>
     <string name="trash_empty_dialog_title">Очистить корзину?</string>
     <string name="trash_empty_dialog_text">Это действие необратимо.\n%1$s будут удалены навсегда.</string>
+    <string name="trash_empty_dialog_text_both">Это действие необратимо.\n%1$s и %2$s будут удалены навсегда.</string>
     <string name="trash_empty_confirm">Очистить навсегда</string>
     <string name="trash_delete_dialog_title">Удалить навсегда?</string>
     <string name="trash_delete_category_with_contacts">Категория «%1$s» и её %2$d контакт(ов) будут потеряны.</string>

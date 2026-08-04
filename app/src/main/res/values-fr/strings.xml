@@ -25,7 +25,6 @@
     <string name="common_photo">Photo</string>
     <string name="common_name_label">Nom</string>
     <string name="common_color_label">Couleur</string>
-    <string name="separator_and"> et </string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Contacts</string>
@@ -134,6 +133,7 @@
     <string name="trash_empty_cd">Vider la corbeille</string>
     <string name="trash_empty_dialog_title">Vider la corbeille ?</string>
     <string name="trash_empty_dialog_text">Cette action est irréversible.\n%1$s seront définitivement supprimés.</string>
+    <string name="trash_empty_dialog_text_both">Cette action est irréversible.\n%1$s et %2$s seront définitivement supprimés.</string>
     <string name="trash_empty_confirm">Vider définitivement</string>
     <string name="trash_delete_dialog_title">Supprimer définitivement ?</string>
     <string name="trash_delete_category_with_contacts">La catégorie « %1$s » et ses %2$d contact(s) seront perdus.</string>

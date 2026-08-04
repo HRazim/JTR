@@ -25,7 +25,6 @@
     <string name="common_photo">Foto</string>
     <string name="common_name_label">Name</string>
     <string name="common_color_label">Farbe</string>
-    <string name="separator_and">" und "</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Kontakte</string>
@@ -139,6 +138,7 @@
     <string name="trash_empty_cd">Papierkorb leeren</string>
     <string name="trash_empty_dialog_title">Papierkorb leeren?</string>
     <string name="trash_empty_dialog_text">Diese Aktion ist unwiderruflich.\n%1$s werden endgültig gelöscht.</string>
+    <string name="trash_empty_dialog_text_both">Diese Aktion ist unwiderruflich.\n%1$s und %2$s werden endgültig gelöscht.</string>
     <string name="trash_empty_confirm">Endgültig leeren</string>
     <string name="trash_delete_dialog_title">Endgültig löschen?</string>
     <string name="trash_delete_category_with_contacts">Kategorie „%1$s“ und ihre %2$d Kontakt(e) gehen verloren.</string>

@@ -28,7 +28,6 @@
     <string name="common_photo">Foto</string>
     <string name="common_name_label">Nama</string>
     <string name="common_color_label">Warna</string>
-    <string name="separator_and">" dan "</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">Kontak JTR</string>
@@ -142,6 +141,7 @@
     <string name="trash_empty_cd">Kosongkan sampah</string>
     <string name="trash_empty_dialog_title">Kosongkan sampah?</string>
     <string name="trash_empty_dialog_text">Tindakan ini tidak dapat dibatalkan.\n%1$s akan dihapus permanen.</string>
+    <string name="trash_empty_dialog_text_both">Tindakan ini tidak dapat dibatalkan.\n%1$s dan %2$s akan dihapus permanen.</string>
     <string name="trash_empty_confirm">Kosongkan permanen</string>
     <string name="trash_delete_dialog_title">Hapus permanen?</string>
     <string name="trash_delete_category_with_contacts">Kategori “%1$s” dan %2$d kontaknya akan hilang.</string>

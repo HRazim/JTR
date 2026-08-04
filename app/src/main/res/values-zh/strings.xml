@@ -25,7 +25,6 @@
     <string name="common_photo">照片</string>
     <string name="common_name_label">名称</string>
     <string name="common_color_label">颜色</string>
-    <string name="separator_and">和</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR 联系人</string>
@@ -134,6 +133,7 @@
     <string name="trash_empty_cd">清空回收站</string>
     <string name="trash_empty_dialog_title">清空回收站？</string>
     <string name="trash_empty_dialog_text">此操作不可撤销。\n%1$s 将被永久删除。</string>
+    <string name="trash_empty_dialog_text_both">此操作不可撤销。\n%1$s和%2$s将被永久删除。</string>
     <string name="trash_empty_confirm">永久清空</string>
     <string name="trash_delete_dialog_title">永久删除？</string>
     <string name="trash_delete_category_with_contacts">分类"%1$s"及其 %2$d 个联系人将被删除。</string>

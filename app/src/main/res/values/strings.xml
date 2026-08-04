@@ -25,7 +25,6 @@
     <string name="common_photo">Photo</string>
     <string name="common_name_label">Name</string>
     <string name="common_color_label">Color</string>
-    <string name="separator_and"> and </string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Contacts</string>
@@ -139,6 +138,7 @@
     <string name="trash_empty_cd">Empty trash</string>
     <string name="trash_empty_dialog_title">Empty trash?</string>
     <string name="trash_empty_dialog_text">This action is irreversible.\n%1$s will be permanently deleted.</string>
+    <string name="trash_empty_dialog_text_both">This action is irreversible.\n%1$s and %2$s will be permanently deleted.</string>
     <string name="trash_empty_confirm">Permanently empty</string>
     <string name="trash_delete_dialog_title">Delete permanently?</string>
     <string name="trash_delete_category_with_contacts">Category \"%1$s\" and its %2$d contact(s) will be lost.</string>
