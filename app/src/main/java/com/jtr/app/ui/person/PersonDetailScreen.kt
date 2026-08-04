@@ -1339,6 +1339,19 @@ private fun CityDetailRow(city: String, cityLat: Double?, cityLng: Double?) {
     }
 }
 
+/**
+ * v7.1.46 — Zoom de la mini-carte, à l'ÉCHELLE DE LA VILLE. Il était figé à 12,0, soit ~32 m/px :
+ * à ce niveau, le décalage kilométrique NORMAL entre le point renvoyé par Nominatim et le centre
+ * perçu d'une ville suffit à poser le repère sur un quartier, dont l'étiquette se lit alors à la
+ * place du nom de la ville (« Lakhssassi » au lieu de « Safi », à 1,2 km). À 11,0 (~65 m/px) le
+ * même écart devient négligeable et c'est le toponyme de la ville qui s'affiche sous le repère.
+ *
+ * `MapViewModel.zoomForResult()` n'est pas réutilisable ici : il se déduit de `addresstype`, or
+ * seules les coordonnées sont persistées (aucun type de lieu en base). On retient donc la valeur
+ * de sa tranche « ville », arrondie vers le bas pour la marge.
+ */
+private const val CITY_MAP_ZOOM = 11.0
+
 @Composable
 private fun MapLibreMiniMap(lat: Double, lng: Double, cityName: String, modifier: Modifier) {
     val context = LocalContext.current
@@ -1392,7 +1405,7 @@ private fun MapLibreMiniMap(lat: Double, lng: Double, cityName: String, modifier
                 map.setStyle("https://tiles.openfreemap.org/styles/liberty") {
                     map.uiSettings.isScrollGesturesEnabled = true
                     map.uiSettings.isZoomGesturesEnabled = true
-                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), 12.0))
+                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), CITY_MAP_ZOOM))
                     @Suppress("DEPRECATION")
                     map.addMarker(org.maplibre.android.annotations.MarkerOptions()
                         .position(LatLng(lat, lng)).title(cityName))
