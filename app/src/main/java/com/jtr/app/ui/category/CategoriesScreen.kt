@@ -58,6 +58,7 @@ import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.ui.components.FavoriteStar
+import com.jtr.app.ui.components.PhotoZoomDialog
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
@@ -2172,9 +2173,28 @@ private fun CategoryFormDialog(
     var selectedColor by remember { mutableStateOf(initialColor) }
     var imagePath by remember { mutableStateOf(initialImagePath) }
     var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
+    // v7.1.49 — visionneuse plein écran de l'image de catégorie (même composant que
+    // l'avatar de contact), ouverte PAR-DESSUS ce formulaire (Dialog sur Dialog).
+    var showImageZoom by remember { mutableStateOf(false) }
 
     // Galerie IN-APP par ALBUMS (v5.5).
     val photoPicker = rememberGalleryImagePicker { uri -> pendingCropUri = uri }
+
+    // Le formulaire RESTE en composition sous la visionneuse (Dialog empilé) : `name`,
+    // `selectedColor` et `imagePath` sont des `remember` de CE composable, donc fermer la
+    // visionneuse ne recompose rien — le brouillon d'édition est préservé par construction.
+    if (showImageZoom) {
+        imagePath?.let { current ->
+            PhotoZoomDialog(
+                photoUri = current,
+                onDismiss = { showImageZoom = false },
+                // ⚠️ On ferme la visionneuse AVANT d'ouvrir le sélecteur : sans cela le
+                // crop viendrait s'empiler en 3e dialogue au-dessus d'elle.
+                onReplace = { showImageZoom = false; photoPicker() },
+                onRemove = { showImageZoom = false; imagePath = null }
+            )
+        }
+    }
 
     pendingCropUri?.let { uri ->
         ImageCropDialog(
@@ -2206,7 +2226,9 @@ private fun CategoryFormDialog(
                         .size(96.dp)
                         .clip(CircleShape)
                         .background(rememberCategoryColor(selectedColor))
-                        .clickable { photoPicker() },
+                        // Image présente → on la MONTRE en grand (Remplacer/Retirer y sont
+                        // proposés) ; image absente → rien à zoomer, on va droit au picker.
+                        .clickable { if (imagePath != null) showImageZoom = true else photoPicker() },
                     contentAlignment = Alignment.Center
                 ) {
                     if (imagePath != null) {
@@ -2237,15 +2259,9 @@ private fun CategoryFormDialog(
                     }
                 }
 
-                if (imagePath != null) {
-                    TextButton(onClick = { imagePath = null }) {
-                        Text(stringResource(R.string.categories_remove_photo),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.labelSmall)
-                    }
-                } else {
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
+                // Aucun bouton « Retirer » ICI : taper le cercle ouvre la visionneuse, qui
+                // porte déjà Remplacer/Retirer (v7.1.49). Simple respiration avant le nom.
+                Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedTextField(
                     value = name,
