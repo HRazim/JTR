@@ -98,7 +98,6 @@ import com.jtr.app.utils.SocialLink
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
-import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.abs
 
@@ -786,8 +785,10 @@ fun PersonDetailScreen(
 
     if (showInfoDialog && person != null) {
         // v7.1.30 — keyé sur la locale courante (cf. DatesBlock) : jamais de format périmé.
+        // v7.1.48 — formatage délégué à [formatDateTimeLong] (squelettes OS « yMMMMd » + « jm ») :
+        // l'ancien pattern en dur « d MMMM yyyy, HH:mm » imposait l'ordre jour-mois-année et le
+        // 24 h à TOUTES les langues (« 14 June 2026 » en anglais, ordre faux en japonais).
         val infoLocale = Locale.getDefault()
-        val df = remember(infoLocale) { SimpleDateFormat("d MMMM yyyy, HH:mm", infoLocale) }
         AlertDialog(
             onDismissRequest = { showInfoDialog = false },
             icon = { Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary) },
@@ -798,14 +799,16 @@ fun PersonDetailScreen(
                         Text(stringResource(R.string.person_info_created),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(df.format(Date(person.createdAt)),
+                        Text(formatDateTimeLong(person.createdAt, infoLocale),
                             style = MaterialTheme.typography.bodyLarge)
                     }
                     Column {
                         Text(stringResource(R.string.person_info_updated),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(df.format(Date(person.updatedAt.takeIf { it > 0 } ?: person.createdAt)),
+                        Text(
+                            formatDateTimeLong(
+                                person.updatedAt.takeIf { it > 0 } ?: person.createdAt, infoLocale),
                             style = MaterialTheme.typography.bodyLarge)
                     }
                 }

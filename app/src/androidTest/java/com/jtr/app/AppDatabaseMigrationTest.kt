@@ -261,4 +261,47 @@ class AppDatabaseMigrationTest {
             assertEquals(true, notifyByLabel["anniversary"])
         }
     }
+
+    /**
+     * Migration v21 → v22 (métadonnées de catégorie, v7.1.48) : la colonne
+     * categories.updatedAt est AJOUTÉE sans perte et backfillée depuis `createdAt`
+     * — et NON à l'horodatage de migration : une catégorie jamais modifiée doit
+     * afficher « Dernière modification » == « Créé le », et un backfill à `now`
+     * remonterait toutes les catégories en tête du tri « Dernière modification ».
+     * `runMigrationsAndValidate(..., true, ...)` valide en prime la conformité
+     * STRUCTURELLE du schéma résultant à `22.json` (présence + affinité INTEGER
+     * NOT NULL DEFAULT 0).
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate21To22_addsUpdatedAtBackfilledFromCreatedAt() {
+        val categoryId = "cat-pre-v22"
+        val createdAt = 1_700_000_000_000L
+
+        helper.createDatabase(testDb, 21).use { db ->
+            db.execSQL(
+                "INSERT INTO categories " +
+                    "(id, name, color, icon, imagePath, `order`, isFavorite, position, " +
+                    "parentGroupId, createdAt, deletedAt) " +
+                    "VALUES (?, 'Famille', '#2E86C1', 'folder', NULL, 0, 0, 0, NULL, ?, NULL)",
+                arrayOf<Any?>(categoryId, createdAt)
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 22, true, AppDatabase.MIGRATION_21_22
+        )
+
+        db.query(
+            "SELECT name, createdAt, updatedAt FROM categories WHERE id = ?",
+            arrayOf(categoryId)
+        ).use { c ->
+            assertTrue("La catégorie doit survivre à la migration", c.moveToFirst())
+            // Aucune perte sur les colonnes existantes.
+            assertEquals("Famille", c.getString(0))
+            assertEquals(createdAt, c.getLong(1))
+            // Backfill : updatedAt == createdAt (et surtout PAS l'horodatage de migration).
+            assertEquals(createdAt, c.getLong(2))
+        }
+    }
 }

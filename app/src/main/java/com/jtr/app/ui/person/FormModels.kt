@@ -489,3 +489,25 @@ fun formatStoredDateLong(value: String, locale: Locale): String? {
     val millis = storedDateToMillis(value) ?: return null
     return SimpleDateFormat("d MMMM yyyy", locale).format(Date(millis))
 }
+
+/**
+ * v7.1.48 — Formate un HORODATAGE (millis) en date longue + heure, ENTIÈREMENT localisé :
+ * les squelettes sont résolus par l'OS via [DateFormat.getBestDateTimePattern], jamais par un
+ * pattern codé en dur.
+ *  - date, squelette « yMMMMd » → « 14 juin 2026 » (fr) / « June 14, 2026 » (en) /
+ *    « 2026年6月14日 » (ja) / arabe RTL — l'ORDRE des composants suit la locale ;
+ *  - heure, squelette « jm » → le « j » demande l'heure dans la convention de la locale
+ *    (24 h en fr/de, 12 h « 2:05 PM » en en-US), là où un « HH:mm » en dur imposait le 24 h.
+ *
+ * Remplace le `SimpleDateFormat("d MMMM yyyy, HH:mm")` du dialogue « Informations » des
+ * contacts, qui affichait « 14 June 2026 » au lieu de « June 14, 2026 » en anglais.
+ * L'appelant garde son `remember(Locale.getDefault())` (correctif v7.1.30 : jamais de format
+ * périmé après un changement de langue in-app).
+ */
+fun formatDateTimeLong(millis: Long, locale: Locale): String {
+    val datePattern = DateFormat.getBestDateTimePattern(locale, "yMMMMd")
+    val timePattern = DateFormat.getBestDateTimePattern(locale, "jm")
+    val date = Date(millis)
+    return SimpleDateFormat(datePattern, locale).format(date) + ", " +
+        SimpleDateFormat(timePattern, locale).format(date)
+}

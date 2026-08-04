@@ -22,6 +22,8 @@ import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.home.AssignCategoryDialog
 import com.jtr.app.ui.home.PersonListContent
+import com.jtr.app.ui.person.formatDateTimeLong
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,9 +50,12 @@ fun CategoryDetailScreen(
     // Catégorie virtuelle « Favoris » : lecture seule (ni ajout, ni édition, ni retrait).
     val isVirtual = viewModel.isVirtualFavorites
 
+    val lastModified by viewModel.lastModified.collectAsStateWithLifecycle()
+
     var showCategoryDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var showTrashConfirm by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
     // Mode recherche de la TopAppBar (état d'UI local ; la query vient du ViewModel).
     var searchActive by remember { mutableStateOf(false) }
 
@@ -68,6 +73,53 @@ fun CategoryDetailScreen(
                     showEditDialog = false
                 },
                 onDismiss = { showEditDialog = false }
+            )
+        }
+    }
+
+    // « Informations » (v7.1.48) : dates de création / dernière modification, calqué sur le
+    // dialogue des contacts (PersonDetailScreen). Les libellés `person_info_*` sont GÉNÉRIQUES
+    // (« Created on » / « Last modified », aucun ne mentionne « contact ») et déjà traduits
+    // dans les 13 langues → réutilisés tels quels, zéro nouvelle string.
+    if (showInfoDialog) {
+        category?.let { current ->
+            // Keyé sur la locale courante (cf. PersonDetailScreen) : jamais de format périmé
+            // après un changement de langue in-app (v7.1.30).
+            val infoLocale = Locale.getDefault()
+            AlertDialog(
+                onDismissRequest = { showInfoDialog = false },
+                icon = { Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary) },
+                title = { Text(stringResource(R.string.person_info_title)) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // Ligne MASQUÉE si l'horodatage est absent (0) plutôt qu'affichée à
+                        // « — » ou « 1970 » : dans un dialogue à deux lignes, une ligne vide
+                        // est plus bruyante qu'une ligne absente.
+                        current.createdAt.takeIf { it > 0L }?.let { created ->
+                            Column {
+                                Text(stringResource(R.string.person_info_created),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(formatDateTimeLong(created, infoLocale),
+                                    style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                        lastModified?.let { modified ->
+                            Column {
+                                Text(stringResource(R.string.person_info_updated),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(formatDateTimeLong(modified, infoLocale),
+                                    style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showInfoDialog = false }) {
+                        Text(stringResource(R.string.common_ok))
+                    }
+                }
             )
         }
     }
@@ -165,6 +217,17 @@ fun CategoryDetailScreen(
                                     text = { Text(stringResource(R.string.common_edit)) },
                                     leadingIcon = { Icon(Icons.Default.Edit, null) },
                                     onClick = { dismiss(); showEditDialog = true }
+                                )
+                                DropdownMenuItem(
+                                    // `person_info_title` (« Information ») et NON
+                                    // `person_info_menu`, qui vaut « Profile information » /
+                                    // « Informations du profil » — spécifique au contact, faux
+                                    // pour une catégorie. Le libellé neutre sert ici de titre
+                                    // d'entrée de menu ET de titre de dialogue.
+                                    text = { Text(stringResource(R.string.person_info_title)) },
+                                    leadingIcon = { Icon(Icons.Default.Info, null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    onClick = { dismiss(); showInfoDialog = true }
                                 )
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.action_move_to_trash)) },

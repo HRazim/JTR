@@ -288,7 +288,10 @@ class BackupManager(context: Context) {
                 try {
                     db.withTransaction {
                         groups.forEach { db.categoryGroupDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt))) }
-                        categories.forEach { db.categoryDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt))) }
+                        // v7.1.48 : `updatedAt` reçoit le MÊME traitement que `createdAt` — une
+                        // archive antérieure à v22 ne porte pas le champ, Gson le laisse à 0 et
+                        // la fiche afficherait « 1 janvier 1970 » en « Dernière modification ».
+                        categories.forEach { db.categoryDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt), updatedAt = orRestore(it.updatedAt))) }
                         // v7.1.0 — normalise les dates des sauvegardes ANCIENNES (chiffres bruts
                         // locale-dépendants) vers l'ISO canonique : round-trip sûr, locale-libre.
                         persons.forEach {

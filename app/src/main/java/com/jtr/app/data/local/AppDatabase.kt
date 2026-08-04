@@ -17,8 +17,15 @@ import org.json.JSONArray
 import java.util.Locale
 
 /**
- * AppDatabase — Version 21.
+ * AppDatabase — Version 22.
  *
+ * v22 : Métadonnées de catégorie (v7.1.48). Ajout de Category.updatedAt (INTEGER NOT NULL
+ *       DEFAULT 0) — dernière modification du CONTENU (nom / couleur / image), en parité
+ *       avec Person.updatedAt (v14). Les lignes préexistantes sont backfillées depuis
+ *       `createdAt` (déjà présent depuis v18) et NON à l'horodatage de migration : une
+ *       catégorie jamais modifiée a bien updatedAt == createdAt, et le tri « Dernière
+ *       modification » n'est pas bouleversé par la mise à jour. ZÉRO perte de données
+ *       ([MIGRATION_21_22]).
  * v21 : Dates en forme CANONIQUE (v7.1.0). AUCUN changement de schéma — migration de
  *       DONNÉES uniquement : les dates de `dateLines` (JSON) étaient stockées en chiffres
  *       bruts ordonnés selon la locale de saisie (changer de langue cassait l'affichage et
@@ -60,7 +67,7 @@ import java.util.Locale
 @Database(
     entities = [Person::class, Category::class, CategoryGroup::class,
         PersonCategoryJoin::class, SocialLinkEntity::class],
-    version = 21,
+    version = 22,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -322,6 +329,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration v21 → v22, ZÉRO perte de données — métadonnées de catégorie (v7.1.48).
+         *
+         * 1. ADD COLUMN categories.updatedAt (NOT NULL DEFAULT 0, aligné sur @ColumnInfo(
+         *    defaultValue="0") de l'entité) : dernière modification du CONTENU de la catégorie.
+         * 2. Backfill depuis `createdAt` (colonne déjà présente depuis v18) — et NON à
+         *    l'horodatage de migration : une catégorie jamais modifiée doit afficher
+         *    updatedAt == createdAt, et un backfill à `now` remonterait TOUTES les catégories
+         *    en tête du tri « Dernière modification ». Même stratégie que [MIGRATION_13_14]
+         *    pour persons.updatedAt.
+         *
+         * Uniquement un ALTER TABLE ADD COLUMN : aucune table recréée, aucune ligne supprimée
+         * → la migration destructive (filet de sécurité) n'est jamais atteinte.
+         */
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE categories ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE categories SET updatedAt = createdAt")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -331,7 +359,7 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                         MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
-                        MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
+                        MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
                     // Filet de sécurité ultime UNIQUEMENT : tous les chemins de version
                     // ont une migration explicite ci-dessus, donc la destruction n'est
                     // jamais déclenchée en pratique (données utilisateur préservées).

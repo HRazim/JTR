@@ -30,5 +30,13 @@ data class Category(
     // lignes existantes à l'horodatage de migration.
     @ColumnInfo(defaultValue = "0")
     val createdAt: Long = System.currentTimeMillis(),
+    // v7.1.48 (DB v22) — dernière modification du CONTENU de la catégorie (nom, couleur,
+    // image). Estampillé par CategoryRepository.update() ; les changements d'ORGANISATION
+    // (favori, position, dossier) et les mouvements de membres n'y touchent PAS — l'activité
+    // des membres est dérivée à la volée (PersonCategoryDao.getCategoryActivity).
+    // Contrat identique à Person.updatedAt : défaut SQL "0", backfillé depuis createdAt par
+    // la migration v21→v22 (une catégorie jamais modifiée a bien updatedAt == createdAt).
+    @ColumnInfo(defaultValue = "0")
+    val updatedAt: Long = System.currentTimeMillis(),
     val deletedAt: Long? = null
 )

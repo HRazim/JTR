@@ -226,8 +226,9 @@ fun CategoriesScreen(
             .groupBy { it.parentGroupId!! }
         val subByParent = groups.filter { it.parentGroupId != null }
             .groupBy { it.parentGroupId!! }
-        // Activité d'une catégorie : la valeur calculée, sinon sa date de création.
-        fun activityOf(c: Category) = categoryActivity[c.id] ?: c.createdAt
+        // Dernière modification d'une catégorie — formule PARTAGÉE avec le dialogue
+        // « Informations » (v7.1.48) : contenu (updatedAt) ∪ activité des membres.
+        fun activityOf(c: Category) = categoryLastModified(c, categoryActivity[c.id])
         // À la racine : seulement les groupes de PREMIER NIVEAU (parentGroupId == null).
         val folders = groups.filter { it.parentGroupId == null }.map { g ->
             val memberCats = membersByGroup[g.id]?.sortedBy { it.name.lowercase() } ?: emptyList()
