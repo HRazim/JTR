@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -547,7 +548,11 @@ fun SettingsScreen(
     }
 
     if (showPrivacySheet) {
-        PrivacyPolicySheet(isDarkMode = isDarkMode, onDismiss = { showPrivacySheet = false })
+        PrivacyPolicySheet(
+            isDarkMode = isDarkMode,
+            preset = selectedPreset,
+            onDismiss = { showPrivacySheet = false }
+        )
     }
 
     if (showBackupDialog) {
@@ -1136,17 +1141,97 @@ private fun ColorDot(color: Color, size: Int) {
 
 // ── Politique de confidentialité ─────────────────────────────────────────────
 
+/** `#RRGGBB` d'une couleur Compose, pour l'injecter dans une feuille de style. */
+private fun Color.toCssHex(): String =
+    String.format("#%06X", toArgb() and 0xFFFFFF)
+
+/**
+ * Feuille de style INJECTÉE (v7.1.52) : la politique de confidentialité suit la palette
+ * choisie dans « Palette de couleurs » au lieu du bleu figé d'origine.
+ *
+ * Les 13 traductions (`res/raw-xx`, un `privacy_policy.html` chacune) portent un `<style>` STRICTEMENT
+ * identique où TOUTE couleur passe par une variable CSS — on se contente donc de surcharger
+ * ces variables, sans toucher à un seul fichier HTML (zéro risque de divergence entre
+ * langues). On surcharge `:root` ET `html.dark` avec les mêmes valeurs : les couleurs
+ * viennent de `MaterialTheme`, donc déjà celles du mode courant.
+ *
+ * ⚠️ Uniquement des rôles EXPLICITEMENT définis par les presets : `outline`,
+ * `outlineVariant`, `tertiary` et `error` ne le sont pas et retomberaient sur la baseline
+ * Material (violet) — d'où `surfaceVariant` pour les cartes ET les bordures.
+ *
+ * `--ok` / `--warn` suivent eux aussi la primaire : un vert fixe jurait sur un thème violet
+ * et se confondait avec un thème émeraude. Le SENS reste porté par le **glyphe** « ✓ », pas
+ * par la teinte — y compris sur « JTR Signature », dont la primaire monochrome rend les ✓
+ * quasi noirs (clair) / blancs (sombre), ce qui est le rendu voulu. Aucune couleur fixe ne
+ * subsiste dans la page.
+ */
+private fun privacyThemeCss(
+    accent: String,
+    onAccent: String,
+    chipBg: String,
+    chipFg: String,
+    bg: String,
+    surface: String,
+    textPrimary: String,
+    textMuted: String
+): String = """
+<style>
+  :root, html.dark {
+    --accent: $accent;
+    --chip-bg: $chipBg;
+    --chip-fg: $chipFg;
+    --bg: $bg;
+    --surface: $surface;
+    --border: $surface;
+    --text-primary: $textPrimary;
+    --text-muted: $textMuted;
+    --on-accent: $onAccent;
+    --ok: $accent;
+    --warn: $accent;
+  }
+  /* Un lien doit rester repérable SANS la couleur : le preset « JTR Signature » a une
+     primaire quasi noire (clair) / quasi blanche (sombre), un lien seulement coloré y
+     serait indiscernable du texte courant (et WCAG 1.4.1 l'interdit). */
+  a { text-decoration: underline; }
+  /* Pastille numérotée : le texte posé SUR la primaire doit être `onPrimary`, seule
+     couleur dont M3 garantit le contraste (le HTML utilisait le fond de page). */
+  h2 .num { color: var(--on-accent); }
+</style>
+"""
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PrivacyPolicySheet(isDarkMode: Boolean, onDismiss: () -> Unit) {
+private fun PrivacyPolicySheet(
+    isDarkMode: Boolean,
+    preset: ThemePreset,
+    onDismiss: () -> Unit
+) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+
+    val scheme = MaterialTheme.colorScheme
+    // `--bg` = couleur RÉELLE du conteneur de la feuille (et non `surface`) : la WebView se
+    // fond alors dans la feuille, sans couture visible sous la poignée.
+    val sheetContainer = BottomSheetDefaults.ContainerColor
+    val themeCss = privacyThemeCss(
+        accent = scheme.primary.toCssHex(),
+        onAccent = scheme.onPrimary.toCssHex(),
+        chipBg = scheme.primaryContainer.toCssHex(),
+        chipFg = scheme.onPrimaryContainer.toCssHex(),
+        bg = sheetContainer.toCssHex(),
+        surface = scheme.surfaceVariant.toCssHex(),
+        textPrimary = scheme.onSurface.toCssHex(),
+        textMuted = scheme.onSurfaceVariant.toCssHex()
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
     ) {
+        // `factory` ne s'exécute qu'à la création de la vue : on la clé sur le thème pour
+        // que la WebView soit RECONSTRUITE avec le CSS courant si la palette change.
+        key(preset, isDarkMode) {
         AndroidView(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1181,12 +1266,15 @@ private fun PrivacyPolicySheet(isDarkMode: Boolean, onDismiss: () -> Unit) {
                     }
                     val raw = ctx.resources.openRawResource(R.raw.privacy_policy)
                         .bufferedReader().use { it.readText() }
-                    val themed = if (isDarkMode)
+                    val darkened = if (isDarkMode)
                         raw.replace("<html ", "<html class=\"dark\" ")
                     else raw
+                    // Injecté APRÈS le <style> d'origine → gagne par ordre de cascade.
+                    val themed = darkened.replace("</head>", "$themeCss</head>")
                     loadDataWithBaseURL(null, themed, "text/html", "UTF-8", null)
                 }
             }
         )
+        }
     }
 }
