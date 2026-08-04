@@ -18,6 +18,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import com.jtr.app.R
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +67,17 @@ fun MapScreen(
     val mapRef = remember { arrayOfNulls<MapLibreMap>(1) }
     val markerRef = remember { arrayOfNulls<Marker>(1) }
     val mapView = rememberMapViewWithLifecycle()
+
+    // v7.1.47 — La recherche TERMINÉE (résultat choisi ou point piqué sur la carte) rend
+    // l'écran à la carte : on retire le focus du champ ET on masque l'IME. Sans ça, le
+    // clavier restait ouvert alors que le bandeau « ville + Enregistrer » venait
+    // d'apparaître en bas — c'est ce qui le rendait inatteignable.
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    fun endSearchInput() {
+        focusManager.clearFocus()
+        keyboardController?.hide()
+    }
 
     // ── Animation caméra (événement one-shot depuis le ViewModel) ───────────
     // collectLatest : si l'utilisateur sélectionne un 2e résultat pendant que la 1ère
@@ -112,6 +126,12 @@ fun MapScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                // v7.1.47 — Le Scaffold a DÉJÀ retiré les barres système de cette zone ; on le
+                // DÉCLARE ici pour que l'`imePadding()` du bandeau bas ne recompte pas la barre
+                // de navigation (sinon le bandeau flotterait de sa hauteur — ~48 dp en 3 boutons
+                // Samsung — au-dessus du clavier). N'affecte QUE les consommateurs d'insets
+                // imbriqués : la MapView (AndroidView) n'en utilise aucun, elle reste intacte.
+                .consumeWindowInsets(padding)
         ) {
             // ── Carte MapLibre (couche de fond) ────────────────────────────────
             AndroidView(
@@ -155,6 +175,10 @@ fun MapScreen(
                             )
                             map.setStyle(STYLE_URL)
                             map.addOnMapClickListener { point ->
+                                // Piquer un point sur la carte CLÔT la saisie : le bandeau de
+                                // sélection va apparaître en bas, il ne doit pas naître derrière
+                                // un clavier resté ouvert (v7.1.47).
+                                endSearchInput()
                                 // Feedback visuel immédiat — le nom arrive après le géocodage inverse
                                 markerRef[0]?.remove()
                                 markerRef[0] = map.addMarker(
@@ -243,6 +267,9 @@ fun MapScreen(
                                         viewModel.selectFromSearch(result)
                                         query = ""
                                         showResults = false
+                                        // La recherche est finie : on rend l'écran à la carte
+                                        // et au bandeau « Enregistrer » (v7.1.47).
+                                        endSearchInput()
                                     }
                                 )
                                 HorizontalDivider()
@@ -253,10 +280,24 @@ fun MapScreen(
             }
 
             // ── Bandeau bas : ville sélectionnée + bouton Enregistrer ──────────
-            selectedLocation?.let { (city, lat, lng) ->
+            // Le bandeau est en CONCURRENCE D'ESPACE avec le clavier : sa visibilité suit donc
+            // l'état du CLAVIER (v7.1.47), pas le focus du champ — ainsi tout geste de fermeture
+            // (Done, Back, swipe du clavier) le fait revenir, sans code dédié par geste.
+            // Seuil STRICT `> 0` : le bandeau ne réapparaît qu'une fois le clavier PLEINEMENT
+            // fermé, jamais en milieu d'animation (pas de pop, pas de bandeau écrasé dans la
+            // bande résiduelle — en paysage elle ne fait que ~136 px pour un bandeau de ~168).
+            val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+            selectedLocation?.takeIf { !showResults && !imeVisible }?.let { (city, lat, lng) ->
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        // Inset IME appliqué EXACTEMENT UNE FOIS, et UNIQUEMENT ICI (v7.1.47) :
+                        // l'app est edge-to-edge (enableEdgeToEdge) → la fenêtre NE se
+                        // redimensionne PAS, le clavier est un inset. Le bandeau remonte donc
+                        // avec lui (animation portée par le framework). On NE touche PAS au
+                        // `contentWindowInsets` du Scaffold : cela redimensionnerait la MapView
+                        // plein écran à chaque ouverture de clavier (re-layout GL + saut visuel).
+                        .imePadding()
                         .fillMaxWidth()
                         .padding(12.dp)
                         .zIndex(1f),
