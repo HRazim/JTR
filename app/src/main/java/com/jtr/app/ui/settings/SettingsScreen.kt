@@ -14,6 +14,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -873,25 +875,50 @@ private fun LanguagePickerSheet(
     onSelect: (String?) -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // v7.1.51 — Sans plafond, les 14 langues empilées dans une Column NON scrollable
+    // dépassaient la hauteur de l'écran (~814 dp mesurés > 800 dp sur S21) : la feuille
+    // montait en PLEIN écran et la dernière entrée (한국어) était purement INATTEIGNABLE,
+    // rien ne défilant. On borne donc la feuille ENTIÈRE (et non la seule liste) à ~55 %
+    // de l'écran — même recette de plafond que [PrivacyPolicySheet] — et on rend la liste
+    // scrollable.
+    //
+    // ⚠️ Deux détails mesurés à l'écran, pas déductibles du code :
+    //  - plafonner la LISTE seule ne suffit pas : titre + poignée s'ajoutent par-dessus,
+    //    la feuille dépasse le point d'ancrage et sa dernière ligne se dessine SOUS la
+    //    barre de navigation. C'est la hauteur TOTALE qu'il faut borner, la liste prenant
+    //    le reste via `weight(1f, fill = false)` (elle s'adapte donc aux grandes polices).
+    //  - `skipPartiallyExpanded = true` est alors REQUIS : l'ancrage « à moitié » vaut
+    //    exactement 50 % de l'écran, soit un peu moins que la feuille (~55 %), et cachait
+    //    à nouveau une ligne hors écran. Déployée d'emblée, la feuille fait exactement sa
+    //    hauteur de contenu : tout est visible et le seul défilement est celui de la liste.
+    val maxSheetHeight = LocalConfiguration.current.screenHeightDp.dp * 0.55f
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(max = maxSheetHeight)
                 .padding(bottom = 16.dp)
+                // HORS du scroll : l'inset de la barre de navigation ne doit pas défiler
+                // avec les lignes.
                 .navigationBarsPadding()
         ) {
+            // Titre FIXE (hors zone scrollable) : il reste visible pendant le défilement.
             Text(
                 text = stringResource(R.string.settings_language_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
             )
-            LANGUAGE_OPTIONS.forEach { (tag, labelRes) ->
-                PickerOptionRow(
-                    label = stringResource(labelRes),
-                    selected = tag == currentTag,
-                    onClick = { onSelect(tag) }
-                )
+            LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+                items(LANGUAGE_OPTIONS) { (tag, labelRes) ->
+                    PickerOptionRow(
+                        label = stringResource(labelRes),
+                        selected = tag == currentTag,
+                        onClick = { onSelect(tag) }
+                    )
+                }
             }
         }
     }
