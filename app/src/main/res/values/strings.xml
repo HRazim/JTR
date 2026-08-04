@@ -503,6 +503,9 @@
     <string name="person_categories_dialog_title">Categories</string>
     <string name="person_category_new">New category</string>
     <string name="person_categories_empty">No categories yet. Create one to get started.</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">Search a category…</string>
+    <string name="person_categories_no_results">No category matches your search</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">Needs review</string>
     <string name="person_relation_linked_cd">Linked contact</string>

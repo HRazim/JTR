@@ -477,6 +477,9 @@
     <string name="person_categories_dialog_title">الفئات</string>
     <string name="person_category_new">فئة جديدة</string>
     <string name="person_categories_empty">لا توجد فئات بعد. أنشئ واحدة للبدء.</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">ابحث عن فئة…</string>
+    <string name="person_categories_no_results">لا توجد فئة تطابق بحثك</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">للتحقق</string>
     <string name="person_relation_linked_cd">جهة اتصال مرتبطة</string>

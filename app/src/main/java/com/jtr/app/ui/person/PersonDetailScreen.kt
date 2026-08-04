@@ -102,7 +102,7 @@ import org.maplibre.android.maps.MapView
 import java.util.*
 import kotlin.math.abs
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) // FlowRow (badges de catégories)
 @Composable
 fun PersonDetailScreen(
     person: Person?,
@@ -525,7 +525,17 @@ fun PersonDetailScreen(
 
             if (categoryChips.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // FlowRow (v7.1.50) : au-delà de ~3 catégories, une `Row` simple poussait les
+                // badges HORS de l'écran (ni retour à la ligne, ni scroll) — le contact
+                // paraissait n'appartenir qu'aux premières. Ils se replient désormais sur
+                // autant de lignes que nécessaire. Alignement au DÉBUT (et non centré) :
+                // centrer chaque rangée indépendamment donnait une pyramide, la dernière
+                // rangée, plus courte, se retrouvant décalée par rapport aux précédentes.
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     // Badges INTERACTIFS (v5.3.4) : un tap ouvre le détail de la catégorie.
                     // Source RÉACTIVE (v7.1.5) → ajout/retrait depuis le sélecteur reflété ici.
                     categoryChips.forEach { (categoryId, name) ->

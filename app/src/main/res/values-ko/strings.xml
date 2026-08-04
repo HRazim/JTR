@@ -477,6 +477,9 @@
     <string name="person_categories_dialog_title">카테고리</string>
     <string name="person_category_new">새 카테고리</string>
     <string name="person_categories_empty">아직 카테고리가 없습니다. 하나 만들어 시작하세요.</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">카테고리 검색…</string>
+    <string name="person_categories_no_results">검색과 일치하는 카테고리가 없습니다</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">확인 필요</string>
     <string name="person_relation_linked_cd">연결된 연락처</string>

@@ -477,6 +477,9 @@
     <string name="person_categories_dialog_title">Kategorien</string>
     <string name="person_category_new">Neue Kategorie</string>
     <string name="person_categories_empty">Noch keine Kategorien. Erstelle eine, um zu beginnen.</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">Kategorie suchen…</string>
+    <string name="person_categories_no_results">Keine Kategorie entspricht deiner Suche</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">Zu prüfen</string>
     <string name="person_relation_linked_cd">Verknüpfter Kontakt</string>

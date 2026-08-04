@@ -488,6 +488,9 @@
     <string name="person_categories_dialog_title">分类</string>
     <string name="person_category_new">新建分类</string>
     <string name="person_categories_empty">暂无分类。创建一个开始吧。</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">搜索分类…</string>
+    <string name="person_categories_no_results">没有匹配的分类</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">待核对</string>
     <string name="person_relation_linked_cd">已关联联系人</string>

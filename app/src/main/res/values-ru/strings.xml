@@ -477,6 +477,9 @@
     <string name="person_categories_dialog_title">Категории</string>
     <string name="person_category_new">Новая категория</string>
     <string name="person_categories_empty">Категорий пока нет. Создайте, чтобы начать.</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">Поиск категории…</string>
+    <string name="person_categories_no_results">Нет категорий, соответствующих запросу</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">Требует проверки</string>
     <string name="person_relation_linked_cd">Связанный контакт</string>

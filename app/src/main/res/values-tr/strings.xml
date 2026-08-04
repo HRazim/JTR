@@ -477,6 +477,9 @@
     <string name="person_categories_dialog_title">Kategoriler</string>
     <string name="person_category_new">Yeni kategori</string>
     <string name="person_categories_empty">Henüz kategori yok. Başlamak için bir tane oluşturun.</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">Kategori ara…</string>
+    <string name="person_categories_no_results">Aramanızla eşleşen kategori yok</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">Doğrulanmalı</string>
     <string name="person_relation_linked_cd">Bağlı kişi</string>

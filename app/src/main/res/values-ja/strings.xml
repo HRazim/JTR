@@ -488,6 +488,9 @@
     <string name="person_categories_dialog_title">カテゴリー</string>
     <string name="person_category_new">新しいカテゴリー</string>
     <string name="person_categories_empty">カテゴリーがまだありません。作成して始めましょう。</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">カテゴリーを検索…</string>
+    <string name="person_categories_no_results">検索に一致するカテゴリーがありません</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">要確認</string>
     <string name="person_relation_linked_cd">リンクされた連絡先</string>
