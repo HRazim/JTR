@@ -26,19 +26,6 @@ import java.util.Locale
 import java.util.UUID
 
 /**
- * Élément partageable côté Catégories : une catégorie (compteur de contacts) ou
- * un dossier (catégories membres + sous-groupes). Les libellés localisés sont
- * résolus au rendu (texte/PDF via Context, aperçu via stringResource).
- */
-data class ShareCategoryItem(
-    val name: String,
-    val isFolder: Boolean,
-    val personCount: Int = 0,
-    val memberNames: List<String> = emptyList(),
-    val subGroupCount: Int = 0
-)
-
-/**
  * Boîte à outils du partage contextuel (TEXTE / PNG / PDF) — 100 % APIs natives :
  * [PdfDocument] pour le document, Intent ACTION_SEND pour la diffusion, et le
  * [FileProvider] de l'app pour exposer les fichiers temporaires (cache/share).
@@ -204,24 +191,6 @@ object ShareUtils {
             }.trimEnd()
         }
 
-    /** Format TEXTE des catégories/dossiers : nom, compteurs, membres. */
-    fun buildCategoriesShareText(context: Context, items: List<ShareCategoryItem>): String =
-        items.joinToString("\n\n") { item ->
-            buildString {
-                appendLine("${if (item.isFolder) "🗂" else "📁"} ${item.name} — ${itemSubtitle(context, item)}")
-                item.memberNames.forEach { appendLine("• $it") }
-            }.trimEnd()
-        }
-
-    /** Sous-titre localisé d'un élément (réutilise les pluriels existants). */
-    fun itemSubtitle(context: Context, item: ShareCategoryItem): String =
-        if (item.isFolder) {
-            context.getString(R.string.categories_group_counter,
-                item.memberNames.size, item.subGroupCount)
-        } else {
-            context.resources.getQuantityString(R.plurals.categories_person_count, item.personCount, item.personCount)
-        }
-
     // ── Génération PDF (PdfDocument natif) ─────────────────────────────────────
 
     private fun titlePaint() = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -276,19 +245,6 @@ object ShareUtils {
             personFieldLines(context, person).forEach { writer.line(it, bodyPaint()) }
         }
         return finishPdf(context, doc, writer, "jtr_contacts")
-    }
-
-    /** Écrit le résumé PDF des catégories/dossiers sélectionnés (flux continu). */
-    fun writeCategoriesPdf(context: Context, items: List<ShareCategoryItem>): File {
-        val doc = PdfDocument()
-        val writer = PdfWriter(doc)
-        items.forEachIndexed { index, item ->
-            if (index > 0) writer.spacer(14f)
-            writer.line("${item.name} — ${itemSubtitle(context, item)}", titlePaint())
-            writer.spacer(4f)
-            item.memberNames.forEach { writer.line("• $it", bodyPaint()) }
-        }
-        return finishPdf(context, doc, writer, "jtr_categories")
     }
 
     private fun finishPdf(context: Context, doc: PdfDocument, writer: PdfWriter, prefix: String): File {

@@ -62,6 +62,22 @@ import com.jtr.app.utils.LocaleManager
 import com.jtr.app.utils.LocationUtils
 import kotlin.math.abs
 
+/**
+ * Fiche Play Store de JTR, jointe au message de « Partager JTR » (v7.1.55).
+ *
+ * ⚠️ L'identifiant est écrit EN DUR. Ni `BuildConfig.APPLICATION_ID` ni
+ * `context.packageName` : la variante de test porte le suffixe `.debug`
+ * (`com.jtr.app.debug`), et le lien partagé depuis un device de test pointerait
+ * alors vers une fiche INEXISTANTE — précisément là où on le vérifie.
+ *
+ * L'URL n'est pas traduisible : elle est concaténée ici plutôt qu'insérée dans les
+ * 13 `settings_share_text` (13 éditions et autant d'occasions de l'abîmer, pour rien).
+ * Tant que l'app est en test fermé, le lien renvoie une 404 : c'est ATTENDU, il
+ * s'activera à la publication sans nouvelle livraison.
+ */
+private const val PLAY_STORE_URL =
+    "https://play.google.com/store/apps/details?id=com.jtr.app"
+
 /** Tailles de police proposées (facteur → libellé) ; plafond strict = 1.30. */
 private val FONT_SCALE_OPTIONS: List<Pair<Float, Int>> = listOf(
     0.9f to R.string.settings_font_small,
@@ -321,6 +337,7 @@ fun SettingsScreen(
             ?: R.string.settings_font_normal
     )
     val shareText = stringResource(R.string.settings_share_text)
+    val appName = stringResource(R.string.app_name)
 
     // Persiste le choix puis recrée l'Activity → attachBaseContext applique la
     // locale et TOUT le texte change immédiatement (fiable sur toutes versions).
@@ -333,7 +350,11 @@ fun SettingsScreen(
     fun shareApp() {
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, shareText)
+            // Argumentaire traduit + lien vers la fiche Play (v7.1.55) : le message
+            // seul ne disait pas OÙ trouver l'app.
+            putExtra(Intent.EXTRA_TEXT, "$shareText\n\n$PLAY_STORE_URL")
+            // Objet utilisé par les cibles qui en ont un (e-mail) ; ignoré ailleurs.
+            putExtra(Intent.EXTRA_SUBJECT, appName)
         }
         runCatching { context.startActivity(Intent.createChooser(intent, null)) }
     }

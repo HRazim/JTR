@@ -66,10 +66,6 @@ import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.components.rememberGalleryImagePicker
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
-import com.jtr.app.ui.share.CategoriesSharePreview
-import com.jtr.app.ui.share.ShareCategoryItem
-import com.jtr.app.ui.share.ShareFormatSheet
-import com.jtr.app.ui.share.ShareUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -407,17 +403,6 @@ fun CategoriesScreen(
         )
     }
 
-    // Partage contextuel : instantané de la sélection (catégories + dossiers).
-    var shareItems by remember { mutableStateOf<List<ShareCategoryItem>?>(null) }
-    shareItems?.let { items ->
-        ShareFormatSheet(
-            onDismiss = { shareItems = null },
-            buildText = { ShareUtils.buildCategoriesShareText(screenContext, items) },
-            writePdf = { ShareUtils.writeCategoriesPdf(screenContext, items) },
-            preview = { CategoriesSharePreview(items) }
-        )
-    }
-
     Scaffold(
         topBar = {
             if (isSelectionActive) {
@@ -525,30 +510,6 @@ fun CategoriesScreen(
                     },
                     canDelete = totalSelected >= 1,
                     onDelete = { showBulkDeleteDialog = true },
-                    canShare = totalSelected >= 1,
-                    onShare = {
-                        // Dossiers : noms des catégories membres (via topEntries) ;
-                        // catégories : compteur de contacts.
-                        val folderEntries = topEntries.filterIsInstance<TopEntry.Folder>()
-                        shareItems = buildList {
-                            selectedGroups.forEach { g ->
-                                val entry = folderEntries.firstOrNull { it.group.id == g.id }
-                                add(ShareCategoryItem(
-                                    name = g.name,
-                                    isFolder = true,
-                                    memberNames = entry?.members?.map { it.name } ?: emptyList(),
-                                    subGroupCount = entry?.subGroupCount ?: 0
-                                ))
-                            }
-                            selectedCategories.forEach { c ->
-                                add(ShareCategoryItem(
-                                    name = c.name,
-                                    isFolder = false,
-                                    personCount = personCountByCategory[c.id] ?: 0
-                                ))
-                            }
-                        }
-                    },
                     canRename = totalSelected == 1,
                     onRename = {
                         val cat = selectedCategories.singleOrNull()
@@ -1147,6 +1108,12 @@ private fun EntryCompactRow(
 /**
  * Footer contextuel (barre basse) du mode sélection. 4 actions dont l'activation
  * dépend strictement du nombre de catégories cochées.
+ *
+ * v7.1.55 — le partage de catégories a été RETIRÉ (il n'exportait qu'un nom et un
+ * compteur, et le mode sélection en faisait un export de masse mal cadré). Le
+ * partage de PROFILS, lui, est conservé (HomeScreen). Les 4 actions restantes se
+ * répartissent d'elles-mêmes : chaque `Box` porte `weight(1f)`, donc un quart de la
+ * barre chacune — rien à recalculer.
  */
 @Composable
 internal fun SelectionFooter(
@@ -1165,9 +1132,7 @@ internal fun SelectionFooter(
     canChangeImage: Boolean,
     onChangeImage: () -> Unit,
     canMoveOut: Boolean = false,
-    onMoveOut: (() -> Unit)? = null,
-    canShare: Boolean = false,
-    onShare: () -> Unit = {}
+    onMoveOut: (() -> Unit)? = null
 ) {
     var folderMenu by remember { mutableStateOf(false) }
     var overflowMenu by remember { mutableStateOf(false) }
@@ -1209,11 +1174,6 @@ internal fun SelectionFooter(
                     }
                 }
             }
-        }
-        // Partager (texte / image / PDF) la sélection.
-        Box(Modifier.weight(1f).fillMaxHeight()) {
-            FooterActionColumn(Icons.Default.Share, stringResource(R.string.share_action),
-                canShare, onShare)
         }
         // Supprimer — rouge vif d'alerte (action destructive sur la sélection).
         Box(Modifier.weight(1f).fillMaxHeight()) {
