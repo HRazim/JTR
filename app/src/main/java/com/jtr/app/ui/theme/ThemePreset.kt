@@ -5,6 +5,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import com.jtr.app.R
 
 enum class ThemePreset(
@@ -50,6 +51,29 @@ enum class ThemePreset(
         previewTertiary = Color(0xFFFCE4EC)
     )
 }
+
+/**
+ * Complète un schéma CLAIR avec l'échelle `surfaceContainer*` (v7.1.53).
+ *
+ * Ces 5 rôles n'étaient renseignés QUE dans les schémas sombres : en clair ils retombaient
+ * donc sur la baseline Material, **lavande**, identique pour les 6 presets — d'où des
+ * feuilles, des `AlertDialog` (28 dans l'app, aucun ne force `containerColor`), des menus
+ * déroulants et 4 cartes mauves alors que le reste de l'écran suivait bien la palette.
+ *
+ * L'échelle est DÉRIVÉE des surfaces déjà choisies pour le preset plutôt que codée en dur :
+ * aucune teinte étrangère ne peut apparaître, et retoucher une surface propage
+ * automatiquement. Elle reprend la convention des schémas sombres, où `surfaceContainer`
+ * vaut exactement `surface`, avec des crans plus clairs en dessous et plus soutenus au-dessus.
+ * Monotonie garantie : dans les 6 presets clairs, `surface` est plus clair que `background`,
+ * lui-même plus clair que `surfaceVariant`.
+ */
+private fun ColorScheme.withLightContainers(): ColorScheme = copy(
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = lerp(Color.White, surface, 0.5f),
+    surfaceContainer = surface,
+    surfaceContainerHigh = background,
+    surfaceContainerHighest = surfaceVariant,
+)
 
 fun ThemePreset.toLightColorScheme(): ColorScheme = when (this) {
     ThemePreset.JTR_SIGNATURE -> lightColorScheme(
@@ -148,7 +172,7 @@ fun ThemePreset.toLightColorScheme(): ColorScheme = when (this) {
         surfaceVariant = Color(0xFFF5DEE7),
         onSurfaceVariant = Color(0xFF514349),
     )
-}
+}.withLightContainers()
 
 fun ThemePreset.toDarkColorScheme(): ColorScheme = when (this) {
     ThemePreset.JTR_SIGNATURE -> darkColorScheme(
