@@ -86,7 +86,7 @@
 
   <div class="header">
     <h1>プライバシーポリシー</h1>
-    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; 最終更新：2025年5月</p>
+    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; 最終更新：2026年8月</p>
   </div>
 
   <div class="summary">
@@ -96,12 +96,17 @@
   <h2><span class="num">1</span>収集するデータ</h2>
   <p>アプリは<strong>連絡先の管理のみを目的として</strong>、以下の情報を保存します：</p>
   <ul>
-    <li>名前、姓、性別</li>
-    <li>誕生日</li>
-    <li>居住地の市区町村およびGPS座標</li>
-    <li>ソーシャルネットワークのプロフィールリンク</li>
-    <li>出身地、趣味・関心、個人メモ</li>
-    <li>プロフィール写真（ローカル保存）</li>
+    <li>名、姓、性別</li>
+    <li>誕生日およびその他の重要な日付</li>
+    <li>電話番号</li>
+    <li>メールアドレス</li>
+    <li>役職、会社、部署</li>
+    <li>居住地の都市と関連する GPS 座標</li>
+    <li>ソーシャルネットワークのプロフィールへのリンク</li>
+    <li>連絡先どうしの関係</li>
+    <li>作成したカテゴリーとフォルダー</li>
+    <li>出身地、興味、メモおよびメモのセクション</li>
+    <li>プロフィール写真とカテゴリーのカバー画像（ローカルに保存）</li>
   </ul>
 
   <h2><span class="num">2</span>データの保存</h2>
@@ -121,7 +126,17 @@
     <p style="margin-top:8px;font-size:12px;">位置の検出とジオフェンシングは<strong>Google Play開発者サービス</strong>に依存しており、JTRとは独立して独自の位置情報の仕組み（Android／Googleのシステムの動作）を利用する場合があります。</p>
   </div>
 
-  <h2><span class="num">4</span>サードパーティサービス</h2>
+  <h2><span class="num">4</span>写真へのアクセス</h2>
+  <p>写真へのアクセス（Android 13 以降の <em>READ_MEDIA_IMAGES</em>、または Android 14 以降の「選択した写真」への部分的アクセス）は、プロフィール写真またはカバー画像を選ぶときに<strong>のみ</strong>要求されます：</p>
+  <ul>
+    <li>アプリ内のピッカーは、アルバムと写真を表示するためにギャラリーをローカルで読み取ります</li>
+    <li>選択した画像は切り抜かれ、<strong>お使いの端末にのみ</strong>保存されます</li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> <strong>写真やギャラリーのデータ</strong>がアップロードまたは共有されることはありません。すべての写真、選択した写真のみ、または一切許可しない、のいずれかを選べます。</p>
+  </div>
+
+  <h2><span class="num">5</span>サードパーティサービス</h2>
   <div class="card">
     <span class="badge">Nominatim (OpenStreetMap)</span>
     <p>都市を検索／選択する際（または地図上の地点をタップする際）、<strong>都市名または座標</strong>がジオコーディングのために<code>nominatim.openstreetmap.org</code>に送信されます。送信されるもの：検索語とお客様の<strong>IPアドレス</strong> — <strong>連絡先データ</strong>・識別子・アカウントは送信されません。</p>
@@ -134,14 +149,33 @@
   </div>
   <p><span class="ok">✓</span> <strong>分析・広告・クラッシュレポートのSDKは一切統合されていません</strong>。唯一のGoogleライブラリは、任意の近接機能に使用されるPlay Services Locationです。</p>
 
-  <h2><span class="num">5</span>通知</h2>
+  <h2><span class="num">6</span>通知</h2>
   <p>JTRの通知は<strong>完全にローカル</strong>で、いかなるサーバーも経由しません：</p>
   <ul>
     <li><strong>誕生日リマインダー</strong> — 当日にローカルでトリガー</li>
     <li><strong>近接リマインダー</strong> — WorkManagerまたはジオフェンシングによりローカルでトリガー</li>
   </ul>
 
-  <h2><span class="num">6</span>お客様の権利</h2>
+  <h2><span class="num">7</span>アプリロック（任意）</h2>
+  <p>JTR には<strong>任意のローカルロック</strong>があります — リカバリーコード付きのパターンロックと、任意の生体認証による解除です：</p>
+  <div class="card">
+    <p><span class="ok">✓</span> 保存されるのはパターンとリカバリーコードの<strong>ソルト付きハッシュのみ</strong>で、<strong>端末上で暗号化</strong>されます（Android Keystore を用いた EncryptedSharedPreferences）。パターンとコード自体が<strong>平文で保存されたり送信されたりすることはありません</strong>。</p>
+    <p style="margin-top:8px;"><span class="ok">✓</span> アプリが<strong>生体情報</strong>を読み取ったり保存したりすることはありません — 生体認証は Android システムが完全に処理します。</p>
+  </div>
+
+  <h2><span class="num">8</span>端末からのインポート（任意）</h2>
+  <p>連絡先をインポートする場合、JTR は端末の連絡先を読み取る権限（<em>READ_CONTACTS</em>）を求め、<strong>選択した項目のみ</strong>をコピーします。</p>
+  <div class="card">
+    <p><span class="ok">✓</span> インポートされた情報は、ご自身で入力したデータと同様に <strong>JTR 内にローカル保存</strong>され、<strong>どこにも送信されません</strong>。この権限は拒否でき、Android の設定でいつでも取り消せます。</p>
+  </div>
+
+  <h2><span class="num">9</span>共有とバックアップ（操作したときのみ）</h2>
+  <p>連絡先カードを<strong>テキスト・画像・PDF</strong> として共有したり、すべてのデータを <strong><code>.jtr</code> バックアップファイル</strong>に書き出したりできます。</p>
+  <div class="card">
+    <p><span class="ok">✓</span> いずれの場合も、情報は<strong>あなたが選んだアプリまたは保存先にのみ</strong>、<strong>あなたが操作したときにのみ</strong>渡されます。JTR が自動的にデータを共有・アップロード・同期することはありません。</p>
+  </div>
+
+  <h2><span class="num">10</span>お客様の権利</h2>
   <ul>
     <li><strong>アクセスと変更</strong> — すべてのデータはアプリ内で確認・編集できます</li>
     <li><strong>削除</strong> — すべての連絡先またはカテゴリーを削除できます（30日間のゴミ箱）</li>
@@ -149,17 +183,17 @@
     <li><strong>許可の管理</strong> — 位置情報と通知はAndroid設定でいつでも取り消すことができます</li>
   </ul>
 
-  <h2><span class="num">7</span>未成年者</h2>
+  <h2><span class="num">11</span>未成年者</h2>
   <p>JTRは13歳未満の方のデータを意図的に収集しておらず、そのような対象者に向けたものではありません。</p>
 
-  <h2><span class="num">8</span>お問い合わせ</h2>
+  <h2><span class="num">12</span>お問い合わせ</h2>
   <p>このポリシーに関するご質問は：</p>
   <p><a href="mailto:justtorememberjtr@gmail.com">justtorememberjtr@gmail.com</a></p>
 
   <hr>
 
   <footer>
-    <p>JTR — Just To Remember &nbsp;·&nbsp; バージョン 4.1</p>
+    <p>JTR — Just To Remember &nbsp;·&nbsp; バージョン 7.1.56</p>
     <p>このポリシーは更新される場合があります。適用されるバージョンはアプリ内で提供されているものです。</p>
   </footer>
 
