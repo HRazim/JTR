@@ -1,6 +1,12 @@
 package com.jtr.app.ui.person
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
@@ -169,7 +175,17 @@ fun ProfileFormFields(
         }
 
         // ── 5. Bloc masqué : accordéons compacts déployés d'un coup ───────────
-        AnimatedVisibility(visible = showMore) {
+        // v7.1.59 — DÉPLOIEMENT VERS LE BAS. Le défaut d'AnimatedVisibility est
+        // `expandVertically(expandFrom = Alignment.Bottom)` : le bloc est aligné en BAS de sa
+        // boîte qui grandit, donc le HAUT est rogné et les champs apparaissent dans l'ordre
+        // INVERSE (« Ville » d'abord, « Dates importantes » en dernier), en remontant — pile à
+        // contresens du défilement qui, lui, descend. En ancrant sur `Top`, le bloc se déroule
+        // vers le bas depuis le bouton, DANS LE MÊME SENS que le défilement : une seule motion.
+        AnimatedVisibility(
+            visible = showMore,
+            enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top)
+        ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -1180,11 +1196,21 @@ private fun CustomLabelDialog(
 
 // ── Défilement auto de « plus / moins d'informations » (v7.1.58) ──────────────────────
 
-/** Images stables consécutives de `maxValue` valant « la hauteur ne bouge plus ». */
-private const val SETTLE_STABLE_FRAMES = 3
+/**
+ * Plafond de la boucle de suivi du déploiement (v7.1.59), en NANOSECONDES réelles.
+ *
+ * Ce N'EST PAS une attente : le défilement commence à la PREMIÈRE image et la boucle sort dès
+ * que la cible est atteinte (typiquement ~300 ms). Le plafond n'est qu'un garde-fou si le
+ * contenu ne pousse jamais assez pour amener le bouton en haut.
+ *
+ * ⚠️ Borne en TEMPS et non en nombre d'images : le S21 monte à 120 Hz, un plafond en images y
+ * vaudrait deux fois moins longtemps que sur un 60 Hz et pourrait couper le suivi avant la fin
+ * du déploiement. Le temps, lui, ne dépend pas du taux de rafraîchissement.
+ */
+private const val FOLLOW_TIMEOUT_NANOS = 900_000_000L
 
-/** Garde-fou : ~45 images ≈ 750 ms à 60 Hz. L'attente est BORNÉE par construction. */
-private const val SETTLE_MAX_FRAMES = 45
+/** Durée de la remontée à la fermeture. Assez court pour rester vif, assez long pour être doux. */
+private const val CLOSE_DURATION_MS = 380
 
 /**
  * Pilote le défilement du formulaire au basculement du bouton « plus / moins
@@ -1242,21 +1268,26 @@ internal class MoreInfoScrollState(private val scrollState: ScrollState) {
      * Attend que `AnimatedVisibility` ait fini de poser la hauteur du bloc déplié, en
      * observant la stabilisation de `maxValue` image par image.
      *
-     * ⚠️ On NE pilote PAS le défilement depuis la hauteur (`snapshotFlow { maxValue }` non
-     * borné) : tant que le bloc est ouvert, le moindre ajout (téléphone, accordéon) relancerait
-     * un défilement et arracherait la vue sous le doigt. Ici la hauteur ne sert qu'à SAVOIR
-     * QUAND mesurer ; le déclencheur reste le basculement, et l'attente est doublement bornée
-     * ([SETTLE_STABLE_FRAMES], [SETTLE_MAX_FRAMES]).
+     * ⚠️ Le déclencheur reste le BASCULEMENT SEUL. La boucle ne vit que le temps du déploiement
+     * (sortie dès la cible atteinte, plafond [FOLLOW_TIMEOUT_NANOS]) : passé ce court instant,
+     * plus rien n'observe la hauteur, donc éditer un champ ou ouvrir un accordéon ne défile
+     * jamais.
      */
-    private suspend fun awaitContentSettled() {
-        var last = -1
-        var stable = 0
-        var frames = 0
-        while (stable < SETTLE_STABLE_FRAMES && frames < SETTLE_MAX_FRAMES) {
-            withFrameNanos { }
-            val max = scrollState.maxValue
-            if (max == last) stable++ else { stable = 0; last = max }
-            frames++
+    private suspend fun followExpansion() {
+        var startNanos = 0L
+        while (true) {
+            val frameNanos = withFrameNanos { it }
+            if (startNanos == 0L) startNanos = frameNanos
+            val target = toggleOffsetInContent()
+            // scrollTo INSTANTANÉ, mais rejoué à chaque image : la douceur ne vient pas d'une
+            // courbe d'animation, elle vient du DÉPLOIEMENT lui-même. `scrollTo` est borné par
+            // `maxValue` ; tant que le bloc grandit, on avance d'exactement ce que la nouvelle
+            // hauteur autorise → le bouton glisse vers le haut au rythme des champs qui
+            // apparaissent. Synchronisation EXACTE par construction : une seule motion.
+            scrollState.scrollTo(target)
+            // Cible atteinte (plus rien ne bride le défilement) → le contenu a fini de pousser.
+            if (scrollState.value >= target) return
+            if (frameNanos - startNanos > FOLLOW_TIMEOUT_NANOS) return
         }
     }
 
@@ -1265,11 +1296,16 @@ internal class MoreInfoScrollState(private val scrollState: ScrollState) {
         if (!expanded) {
             // Fermeture : retour au profil principal. Cible sans ambiguïté — un
             // BringIntoViewRequester ne pourrait rien viser, le bloc replié a une hauteur nulle.
-            scrollState.animateScrollTo(0)
+            // Spec explicite : le ressort par défaut d'animateScrollTo part trop sec sur une
+            // longue remontée. Un tween court en FastOutSlowInEasing démarre franchement puis
+            // décélère — la fiche « se repose » en haut au lieu de s'y cogner.
+            scrollState.animateScrollTo(
+                0,
+                animationSpec = tween(CLOSE_DURATION_MS, easing = FastOutSlowInEasing)
+            )
             return
         }
-        awaitContentSettled()
-        scrollState.animateScrollTo(toggleOffsetInContent())
+        followExpansion()
     }
 }
 
