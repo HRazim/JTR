@@ -27,8 +27,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.edit
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -122,6 +126,9 @@ fun ProfileFormFields(
     onToggleTopInRoot: (Float) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
+    // v7.1.60 — état ouvert/fermé des accordéons : mémorisé PAR TYPE, global à tous les
+    // contacts, persisté. Créé ici (une lecture des 5 clés) et partagé par les sections.
+    val sectionExpansion = rememberSectionExpansion()
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -191,14 +198,19 @@ fun ProfileFormFields(
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 // 5.1 Dates importantes (accordéon)
-                DateLinesSection(lines = dateLines, onLinesChange = onDateLinesChange)
+                DateLinesSection(
+                    lines = dateLines,
+                    onLinesChange = onDateLinesChange,
+                    expansion = sectionExpansion
+                )
 
                 // 5.2 Relations (accordéon + autocomplétion des contacts JTR)
                 // v7.1.6 : sélectionner une suggestion STOCKE l'id (linkedPersonId), pas le nom.
                 RelationLinesSection(
                     lines = relationLines,
                     onLinesChange = onRelationLinesChange,
-                    suggestions = relationSuggestions
+                    suggestions = relationSuggestions,
+                    expansion = sectionExpansion
                 )
 
                 // 5.3 Téléphones (accordéon)
@@ -210,7 +222,9 @@ fun ProfileFormFields(
                     keyboardType = KeyboardType.Phone,
                     types = FieldTypes.PHONE,
                     lines = phoneLines,
-                    onLinesChange = onPhoneLinesChange
+                    onLinesChange = onPhoneLinesChange,
+                    sectionKey = SectionKey.PHONES,
+                    expansion = sectionExpansion
                 )
 
                 // 5.4 Emails (accordéon + validation « @ »)
@@ -224,6 +238,8 @@ fun ProfileFormFields(
                     types = FieldTypes.EMAIL,
                     lines = emailLines,
                     onLinesChange = onEmailLinesChange,
+                    sectionKey = SectionKey.EMAILS,
+                    expansion = sectionExpansion,
                     validator = { value -> if (isValidEmailValue(value)) null else emailInvalidMsg }
                 )
 
@@ -234,7 +250,8 @@ fun ProfileFormFields(
                     department = department,
                     onDepartmentChange = onDepartmentChange,
                     company = company,
-                    onCompanyChange = onCompanyChange
+                    onCompanyChange = onCompanyChange,
+                    expansion = sectionExpansion
                 )
 
                 // 5.6 Origine — juste AU-DESSUS de la ville (miroir du mode lecture)
@@ -367,25 +384,82 @@ internal fun SoftTextField(
 // En-tête d'accordéon réutilisable (Dates, Relations, Téléphones, Emails)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Mémorisation de l'état des accordéons (v7.1.60) ──────────────────────────────────
+
+/**
+ * Sections repliables de « plus d'informations » dont l'état ouvert/fermé est mémorisé.
+ *
+ * La portée est le **TYPE**, pas le contact : ouvrir « Téléphones » l'ouvre pour TOUS les
+ * contacts, et le choix survit au redémarrage (SharedPreferences `jtr_prefs`, une clé par
+ * type). Défaut **fermé** — cf. [SectionExpansionState].
+ */
+internal enum class SectionKey(val prefKey: String) {
+    DATES("section_dates_expanded"),
+    RELATIONS("section_relations_expanded"),
+    PHONES("section_phones_expanded"),
+    EMAILS("section_emails_expanded"),
+    WORK("section_work_expanded"),
+}
+
+/**
+ * État ouvert/fermé des accordéons, persisté (v7.1.60).
+ *
+ * AVANT : chaque section s'ouvrait d'office dès qu'elle contenait des données
+ * (`initiallyExpanded = lines.any { it.value.isNotBlank() }`) — un contact bien renseigné
+ * ouvrait donc tout d'un coup et la fiche devenait illisible. Désormais tout est **fermé par
+ * défaut** et c'est l'utilisateur qui décide, une fois pour toutes, par type de section.
+ *
+ * Les 5 clés sont lues **une seule fois** à la construction ; ensuite tout se joue en mémoire
+ * (`mutableStateMapOf`, donc observable par Compose) et seule une bascule écrit dans les prefs.
+ * Aucune I/O en recomposition.
+ */
+@Stable
+internal class SectionExpansionState(private val prefs: SharedPreferences) {
+
+    private val states = mutableStateMapOf<SectionKey, Boolean>().apply {
+        SectionKey.entries.forEach { put(it, prefs.getBoolean(it.prefKey, false)) }
+    }
+
+    fun isExpanded(key: SectionKey): Boolean = states[key] ?: false
+
+    fun setExpanded(key: SectionKey, value: Boolean) {
+        states[key] = value
+        prefs.edit { putBoolean(key.prefKey, value) }
+    }
+}
+
+/** Porteur d'état des accordéons, adossé à `jtr_prefs`. Une lecture par clé, à la création. */
+@Composable
+internal fun rememberSectionExpansion(): SectionExpansionState {
+    val context = LocalContext.current
+    return remember(context) {
+        SectionExpansionState(
+            context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
+        )
+    }
+}
+
 /**
  * Section repliable générique : ligne d'en-tête (icône + titre + flèche) cliquable
  * et contenu sous [AnimatedVisibility]. Replié ⇒ le contenu n'est PAS composé (0 dp).
- * Dépliée d'office via [initiallyExpanded] (édition d'un profil contenant déjà des
- * données valides) ; l'état est mémorisé entre recompositions.
+ *
+ * v7.1.60 — l'état est entièrement HISSÉ ([expanded] / [onExpandedChange]) : plus de
+ * `rememberSaveable` interne, plus d'ouverture d'office sur données. La source de vérité est
+ * [SectionExpansionState], donc mémorisée par type et persistée.
  */
 @Composable
 private fun AccordionSection(
     title: String,
     leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    initiallyExpanded: Boolean,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    var expanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded },
+                .clickable { onExpandedChange(!expanded) },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(leadingIcon, contentDescription = null,
@@ -533,23 +607,24 @@ private fun JobSection(
     department: String,
     onDepartmentChange: (String) -> Unit,
     company: String,
-    onCompanyChange: (String) -> Unit
+    onCompanyChange: (String) -> Unit,
+    expansion: SectionExpansionState
 ) {
     val focusManager = LocalFocusManager.current
     val opts = KeyboardOptions(
         capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next)
     val actions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
 
-    // Déplié d'office si des données existent déjà (édition d'un contact avec job).
-    var expanded by rememberSaveable {
-        mutableStateOf(jobTitle.isNotBlank() || department.isNotBlank() || company.isNotBlank())
-    }
+    // v7.1.60 — plus d'ouverture d'office sur données ; état mémorisé par type et persisté.
+    // (Cette section n'utilise pas AccordionSection : son en-tête a ses propres descriptions
+    // d'accessibilité, `job_details_show`/`job_details_hide`.)
+    val expanded = expansion.isExpanded(SectionKey.WORK)
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded },
+                .clickable { expansion.setExpanded(SectionKey.WORK, !expanded) },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Work, contentDescription = null,
@@ -616,14 +691,18 @@ private fun TextLinesSection(
     types: List<TypeOption>,
     lines: List<DynamicLine>,
     onLinesChange: (List<DynamicLine>) -> Unit,
+    // v7.1.60 — ce composable sert DEUX sections (Téléphones et E-mails) : la clé de
+    // mémorisation ne peut donc pas être déduite du code, elle est passée par l'appelant.
+    sectionKey: SectionKey,
+    expansion: SectionExpansionState,
     validator: ((String) -> String?)? = null
 ) {
     val focusManager = LocalFocusManager.current
-    // Déplié d'office si au moins une ligne valide existe déjà (édition).
     AccordionSection(
         title = title,
         leadingIcon = leadingIcon,
-        initiallyExpanded = lines.any { it.value.isNotBlank() }
+        expanded = expansion.isExpanded(sectionKey),
+        onExpandedChange = { expansion.setExpanded(sectionKey, it) }
     ) {
         lines.forEach { line ->
             val errorMsg = validator?.invoke(line.value)
@@ -663,13 +742,15 @@ private fun TextLinesSection(
 private fun RelationLinesSection(
     lines: List<DynamicLine>,
     onLinesChange: (List<DynamicLine>) -> Unit,
-    suggestions: List<PersonRef>
+    suggestions: List<PersonRef>,
+    expansion: SectionExpansionState
 ) {
     val focusManager = LocalFocusManager.current
     AccordionSection(
         title = stringResource(R.string.section_relations),
         leadingIcon = Icons.Default.Group,
-        initiallyExpanded = lines.any { it.value.isNotBlank() }
+        expanded = expansion.isExpanded(SectionKey.RELATIONS),
+        onExpandedChange = { expansion.setExpanded(SectionKey.RELATIONS, it) }
     ) {
         lines.forEach { line ->
             var showCustomDialog by remember { mutableStateOf(false) }
@@ -744,7 +825,8 @@ private fun RelationLinesSection(
 @Composable
 private fun DateLinesSection(
     lines: List<DynamicLine>,
-    onLinesChange: (List<DynamicLine>) -> Unit
+    onLinesChange: (List<DynamicLine>) -> Unit,
+    expansion: SectionExpansionState
 ) {
     val focusManager = LocalFocusManager.current
     val locale = Locale.getDefault()
@@ -793,7 +875,8 @@ private fun DateLinesSection(
     AccordionSection(
         title = stringResource(R.string.section_dates),
         leadingIcon = Icons.Default.Cake,
-        initiallyExpanded = lines.any { it.value.isNotBlank() }
+        expanded = expansion.isExpanded(SectionKey.DATES),
+        onExpandedChange = { expansion.setExpanded(SectionKey.DATES, it) }
     ) {
         lines.forEach { line ->
             // En YMD (année en tête), le year-less doit être SIGNALÉ : par l'affordance, ou par une
