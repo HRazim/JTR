@@ -25,8 +25,8 @@ android {
         applicationId = "com.jtr.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 110
-        versionName = "7.1.56"
+        versionCode = 111
+        versionName = "7.1.57"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

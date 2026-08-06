@@ -59,6 +59,28 @@ object ReminderScheduler {
 
     private const val DAY_MS = 24L * 60 * 60 * 1000
 
+    /**
+     * Plafond d'alarmes EXACTES armées simultanément (v7.1.57).
+     *
+     * Android 13+ (API 33) limite une application à **500** alarmes exactes ; au-delà,
+     * `setExactAndAllowWhileIdle` lève `IllegalStateException`. 400 laisse une marge
+     * confortable sous ce seuil tout en couvrant très largement l'usage réel (une base de
+     * 116 contacts en arme quelques centaines au plus). Les dates au-delà du plafond ne sont
+     * pas perdues : elles sont réévaluées à chaque recalcul et armées dès que les échéances
+     * plus proches se sont déclenchées.
+     */
+    internal const val MAX_EXACT_ALARMS = 400
+
+    /**
+     * Sélection des alarmes à armer : les [MAX_EXACT_ALARMS] échéances les PLUS PROCHES
+     * (v7.1.57). Extraite en fonction PURE pour être testable sans `AlarmManager`.
+     *
+     * `sortedBy` est STABLE → à instants d'armement égaux, l'ordre de collecte est conservé,
+     * donc deux recalculs successifs sur les mêmes données donnent la même sélection.
+     */
+    internal fun capByProximity(candidates: List<Pair<Long, String>>): List<Pair<Long, String>> =
+        candidates.sortedBy { (armAt, _) -> armAt }.take(MAX_EXACT_ALARMS)
+
     /** Date notifiable résolue, prête à être planifiée / postée. */
     private data class Event(
         val personId: String,
@@ -74,6 +96,21 @@ object ReminderScheduler {
     ) {
         val key get() = "$personId|$lineId"
     }
+
+    /**
+     * Résolution PURE d'un [Event] (v7.1.57) — sépare le CALCUL des dates de l'ACTION.
+     *
+     * Le calcul lui-même est strictement celui d'avant ; on l'a seulement extrait de la boucle
+     * pour pouvoir TRIER les armements par proximité avant d'en plafonner le nombre
+     * ([MAX_EXACT_ALARMS]). Aucune règle de récurrence n'est touchée.
+     */
+    private data class Resolved(
+        val event: Event,
+        /** Occurrence dont la fenêtre est DÉJÀ ouverte (à rattraper), sinon null. */
+        val catchUp: Long?,
+        /** Instant auquel armer l'alarme exacte, sinon null (plus rien à armer). */
+        val armAt: Long?
+    )
 
     /**
      * Recalcule TOUTES les alarmes de rappel. Idempotent : appelable à volonté
@@ -106,7 +143,8 @@ object ReminderScheduler {
         val events = collectEvents(app)
         val active = HashSet<String>()
 
-        events.forEach { ev ->
+        // 2. RÉSOLUTION (v7.1.57) — calcul PUR, sans effet de bord, identique à l'existant.
+        val resolved = events.map { ev ->
             // v7.1.29 — critère PASSÉ/FUTUR (indépendant du type) : une date dont le jour est
             // déjà RÉVOLU refête chaque année (prochaine occurrence jour/mois) ; une date À VENIR
             // est un rappel UNIQUE sur sa vraie date (année incluse). `isBirthday` ne sert plus
@@ -120,23 +158,50 @@ object ReminderScheduler {
             val trigger = occurrence - ev.offsetMinutes * 60_000L
             if (trigger > now) {
                 // Fenêtre à venir → alarme exacte (recalculée depuis Room chaque jour, même à +ans).
-                scheduleExact(am, app, ev.key, trigger)
-                active += ev.key
+                Resolved(ev, catchUp = null, armAt = trigger)
             } else {
-                // Fenêtre déjà ouverte (ajout tardif, appareil éteint au moment prévu…) :
-                // rattrapage immédiat, une seule fois par occurrence.
-                val lastKey = LAST_PREFIX + ev.key
-                if (prefs.getLong(lastKey, -1L) != occurrence && postReminder(app, ev)) {
-                    prefs.edit().putLong(lastKey, occurrence).apply()
-                }
+                // Fenêtre déjà ouverte (ajout tardif, appareil éteint au moment prévu…) → rattrapage.
                 // Date passée (annuelle) : on arme l'occurrence suivante. Date future unique : terminé.
-                if (recurring) {
-                    val nextOccurrence = nextEventMidnight(ev.dateMillis, occurrence + DAY_MS)
-                    scheduleExact(am, app, ev.key, nextOccurrence - ev.offsetMinutes * 60_000L)
-                    active += ev.key
+                val next = if (recurring)
+                    nextEventMidnight(ev.dateMillis, occurrence + DAY_MS) - ev.offsetMinutes * 60_000L
+                else null
+                Resolved(ev, catchUp = occurrence, armAt = next)
+            }
+        }
+
+        // 3. RATTRAPAGE — inchangé, dans l'ordre de collecte, et JAMAIS plafonné : une
+        //    notification déjà due est postée immédiatement, elle ne consomme aucun quota
+        //    d'alarme. Une seule fois par occurrence.
+        //    Chaque rattrapage est ISOLÉ par un runCatching (v7.1.57), en parité avec
+        //    l'armement : une notification qui lève (ou une écriture de prefs qui échoue) ne
+        //    doit pas plus faire tomber le recalcul global qu'une alarme refusée. Objectif
+        //    complet : `rescheduleAll` ne plante JAMAIS — ni au démarrage, ni au boot.
+        resolved.forEach { r ->
+            val occurrence = r.catchUp ?: return@forEach
+            val lastKey = LAST_PREFIX + r.event.key
+            runCatching {
+                if (prefs.getLong(lastKey, -1L) != occurrence && postReminder(app, r.event)) {
+                    prefs.edit().putLong(lastKey, occurrence).apply()
                 }
             }
         }
+
+        // 4. ARMEMENT — PLAFONNÉ PAR PROXIMITÉ (v7.1.57). Android 13+ limite une app à 500
+        //    alarmes exactes ; au-delà, setExactAndAllowWhileIdle lève IllegalStateException.
+        //    Une alarme par date notifiable, sans borne, franchissait ce seuil dès ~250 contacts
+        //    portant 2 dates — et l'exception remontait jusqu'à rescheduleAll, appelée au
+        //    DÉMARRAGE, à chaque sauvegarde et au boot : panne dure.
+        //    On trie par instant d'armement CROISSANT et on n'arme que les [MAX_EXACT_ALARMS]
+        //    premières : les échéances les plus proches — les seules qui comptent aujourd'hui —
+        //    sont toujours servies. Les suivantes seront armées d'elles-mêmes au prochain
+        //    recalcul (quotidien via ImportantDateCheckWorker, et à chaque ouverture de l'app),
+        //    au fur et à mesure que les alarmes armées se déclenchent et libèrent la place.
+        //    La sélection elle-même vit dans [capByProximity] (fonction pure, testée).
+        capByProximity(resolved.mapNotNull { r -> r.armAt?.let { it to r.event.key } })
+            .forEach { (armAt, key) ->
+                scheduleExact(am, app, key, armAt)
+                active += key
+            }
         prefs.edit().putStringSet(KEY_ACTIVE, active).apply()
     }
 
@@ -235,8 +300,15 @@ object ReminderScheduler {
                 // Permission d'alarme exacte révoquée : repli INEXACT (jamais de crash).
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
             }
-        } catch (_: SecurityException) {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
+        } catch (_: Exception) {
+            // v7.1.57 — FILET ÉLARGI. On n'attrapait que SecurityException (permission d'alarme
+            // exacte révoquée) ; le quota de 500 alarmes exactes d'Android 13+ lève, lui, une
+            // IllegalStateException qui remontait jusqu'à rescheduleAll et faisait tomber le
+            // démarrage. L'armement d'UNE date ne doit JAMAIS faire échouer le recalcul GLOBAL :
+            // toute défaillance retombe sur une alarme INEXACTE (non soumise au quota), et si
+            // même ce repli échoue, la date est simplement sautée — le prochain recalcul
+            // (quotidien / à l'ouverture) retentera.
+            runCatching { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi) }
         }
     }
 

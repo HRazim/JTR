@@ -1,5 +1,6 @@
 package com.jtr.app.data.remote
 
+import com.jtr.app.BuildConfig
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -11,8 +12,8 @@ import java.util.Locale
 /**
  * ApiClient — Configuration Retrofit pour l'API Nominatim.
  *
- * Inclut un User-Agent obligatoire (règles d'utilisation Nominatim) et
- * un intercepteur de journalisation HTTP en mode debug.
+ * Inclut un User-Agent obligatoire (règles d'utilisation Nominatim) et un intercepteur
+ * de journalisation HTTP **uniquement en debug** (v7.1.57, cf. [okHttpClient]).
  */
 object ApiClient {
 
@@ -43,14 +44,28 @@ object ApiClient {
         chain.proceed(request)
     }
 
-    private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
-    }
-
+    /**
+     * v7.1.57 — CONFIDENTIALITÉ : le journal HTTP est réservé au build DEBUG.
+     *
+     * `HttpLoggingInterceptor` en `Level.BODY` écrit dans logcat la requête ET la réponse
+     * complètes — donc la VILLE saisie par l'utilisateur, qui est une donnée de contact.
+     * L'intercepteur était ajouté INCONDITIONNELLEMENT : en production, tout `adb logcat`
+     * ou rapport de bug OEM la captait, en contradiction directe avec la politique de
+     * confidentialité de JTR (aucune donnée de contact ne doit transiter en clair hors de
+     * l'app). Il n'apporte QUE de l'observabilité : hors debug, on ne l'INSTANCIE même pas,
+     * et rien n'est ajouté à la chaîne. Le géocodage lui-même est inchangé — les deux
+     * intercepteurs fonctionnels (User-Agent, Accept-Language) restent toujours actifs.
+     */
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(userAgentInterceptor)
         .addInterceptor(acceptLanguageInterceptor)
-        .addInterceptor(loggingInterceptor)
+        .apply {
+            if (BuildConfig.DEBUG) {
+                addInterceptor(
+                    HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
+                )
+            }
+        }
         .build()
 
     private val json = Json {

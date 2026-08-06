@@ -360,10 +360,22 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                         MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
                         MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
-                    // Filet de sécurité ultime UNIQUEMENT : tous les chemins de version
-                    // ont une migration explicite ci-dessus, donc la destruction n'est
-                    // jamais déclenchée en pratique (données utilisateur préservées).
-                    .fallbackToDestructiveMigration()
+                    // v7.1.57 — PLUS D'EFFACEMENT SILENCIEUX EN MISE À JOUR.
+                    //
+                    // `fallbackToDestructiveMigration()` (sans suffixe) autorisait Room à
+                    // DÉTRUIRE ET RECRÉER la base dès qu'un chemin de version n'était pas
+                    // couvert — y compris à la MONTÉE de version et en cas de simple
+                    // divergence de schéma. Pour une app 100 % locale dont l'Auto Backup OS
+                    // est volontairement désactivé (v7.1.7), c'était le SEUL chemin capable
+                    // d'effacer définitivement les données de l'utilisateur, sans filet.
+                    //
+                    // Restreint au DOWNGRADE (rollback Play / réinstallation d'un APK
+                    // antérieur) : une base plus RÉCENTE que le code ne peut pas être lue et
+                    // n'a aucune migration descendante — la repartir à vide reste la seule
+                    // issue. À la MONTÉE, en revanche, Room valide désormais le schéma et
+                    // PLANTE bruyamment si une migration manque : un crash est diagnosticable
+                    // et réparable, une perte de données ne l'est pas.
+                    .fallbackToDestructiveMigrationOnDowngrade()
                     .build()
                 INSTANCE = instance
                 instance
