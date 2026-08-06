@@ -88,6 +88,10 @@ fun AddPersonScreen(
     val dateSpec = remember { resolveDateFormatSpec(Locale.getDefault()) }
     // État du mode réordonnancement des notes, hissé pour rendre le footer au niveau écran.
     val noteReorderState = rememberNoteReorderState()
+    // v7.1.58 — le ScrollState était créé EN LIGNE : rien ne pouvait le piloter. Nommé ici, il
+    // alimente le défilement auto de « plus / moins d'informations » (cf. MoreInfoScrollState).
+    val scrollState = rememberScrollState()
+    val moreInfoScroll = rememberMoreInfoScroll(scrollState)
     // Verrou proximité : activable uniquement si notifications + proximité globales actives.
     val proximityAllowed = remember {
         val p = context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
@@ -254,7 +258,10 @@ fun AddPersonScreen(
                 // clavier. PAS de imePadding/consumeWindowInsets ici (sinon double inset = vide).
                 // L'auto-scroll repose sur BringIntoView (focus + curseur du TextField).
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
+                // v7.1.58 — AVANT verticalScroll : le nœud reste HORS du défilement, il mesure
+                // donc le VIEWPORT (référence fixe) et non le contenu qui glisse.
+                .then(moreInfoScroll.viewportModifier)
+                .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -403,7 +410,9 @@ fun AddPersonScreen(
                 onDepartmentChange = viewModel::onDepartmentChanged,
                 company = company,
                 onCompanyChange = viewModel::onCompanyChanged,
-                noteReorderState = noteReorderState
+                noteReorderState = noteReorderState,
+                onExpandedChange = moreInfoScroll.onExpandedChange,
+                onToggleTopInRoot = moreInfoScroll.onToggleTopInRoot
             )
 
             // Enregistrement déplacé en haut à droite (v7.0.2) — plus de gros bouton bas.

@@ -201,8 +201,18 @@ fun PersonDetailScreen(
     val dateSpec = remember { resolveDateFormatSpec(java.util.Locale.getDefault()) }
     // État du mode réordonnancement des notes, hissé pour rendre le footer au niveau écran.
     val noteReorderState = rememberNoteReorderState()
-    // Sortie du mode édition → réinitialise le footer de réordonnancement.
-    LaunchedEffect(isEditing) { if (!isEditing) noteReorderState.reset() }
+    // v7.1.58 — le ScrollState était créé EN LIGNE : rien ne pouvait le piloter. Nommé ici, il
+    // alimente le défilement auto de « plus / moins d'informations » (cf. MoreInfoScrollState).
+    val scrollState = rememberScrollState()
+    val moreInfoScroll = rememberMoreInfoScroll(scrollState)
+    // Sortie du mode édition → réinitialise le footer de réordonnancement ET le pilote de
+    // défilement : ProfileFormFields quitte la composition, son `showMore` local repart à false.
+    LaunchedEffect(isEditing) {
+        if (!isEditing) {
+            noteReorderState.reset()
+            moreInfoScroll.reset()
+        }
+    }
     // Verrou proximité : la notif de proximité n'est activable que si les
     // notifications globales ET la proximité sont actives dans les paramètres.
     val proximityAllowed = remember {
@@ -430,7 +440,10 @@ fun PersonDetailScreen(
                 // clavier. PAS de imePadding/consumeWindowInsets ici (sinon double inset = vide).
                 // L'auto-scroll repose sur BringIntoView (focus + curseur du TextField).
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
+                // v7.1.58 — AVANT verticalScroll : le nœud reste HORS du défilement, il mesure
+                // donc le VIEWPORT (référence fixe) et non le contenu qui glisse.
+                .then(moreInfoScroll.viewportModifier)
+                .verticalScroll(scrollState)
                 .pointerInput(isEditing) {
                     if (!isEditing) detectTapGestures(onDoubleTap = { editVm.enterEditMode() })
                 }
@@ -598,7 +611,9 @@ fun PersonDetailScreen(
                     onDepartmentChange = { editVm.onDepartmentChanged(it) },
                     company = vmCompany,
                     onCompanyChange = { editVm.onCompanyChanged(it) },
-                    noteReorderState = noteReorderState
+                    noteReorderState = noteReorderState,
+                    onExpandedChange = moreInfoScroll.onExpandedChange,
+                    onToggleTopInRoot = moreInfoScroll.onToggleTopInRoot
                 )
             } else {
                 // ── Mode lecture : ordre IDENTIQUE au formulaire ─────────────────

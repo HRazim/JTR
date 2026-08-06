@@ -2,6 +2,7 @@ package com.jtr.app.ui.person
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -21,6 +22,8 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
@@ -40,6 +43,7 @@ import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.utils.DateCanonical
 import com.jtr.app.utils.matchesAllTokens
 import com.jtr.app.utils.searchTokens
+import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import java.util.Locale
@@ -101,7 +105,15 @@ fun ProfileFormFields(
     company: String,
     onCompanyChange: (String) -> Unit,
     noteReorderState: NoteReorderState,
-    modifier: Modifier = Modifier
+    // `modifier` reste le PREMIER paramètre optionnel (convention Compose, vérifiée par lint).
+    modifier: Modifier = Modifier,
+    // v7.1.58 — DÉFILEMENT AUTO du bloc « plus / moins d'informations ». L'état `showMore`
+    // reste LOCAL (cf. plus bas) : l'écran hôte est seulement NOTIFIÉ du basculement et de la
+    // position du bouton. Les deux paramètres ont une valeur par défaut → un appelant qui ne
+    // veut pas de défilement auto n'a rien à faire.
+    onExpandedChange: (Boolean) -> Unit = {},
+    /** Position verticale du bouton bascule dans la fenêtre, à chaque passe de layout. */
+    onToggleTopInRoot: (Float) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -133,8 +145,15 @@ fun ProfileFormFields(
         // profil déjà rempli, l'utilisateur l'ouvre lui-même pour voir le reste.
         var showMore by rememberSaveable { mutableStateOf(false) }
         OutlinedButton(
-            onClick = { showMore = !showMore },
-            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                showMore = !showMore
+                // v7.1.58 — notifie l'écran hôte APRÈS la bascule (nouvelle valeur), pour qu'il
+                // pilote le défilement. L'état reste la propriété de ce composable.
+                onExpandedChange(showMore)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { onToggleTopInRoot(it.positionInRoot().y) },
             shape = RoundedCornerShape(16.dp)
         ) {
             Icon(
@@ -1157,6 +1176,112 @@ private fun CustomLabelDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
+}
+
+// ── Défilement auto de « plus / moins d'informations » (v7.1.58) ──────────────────────
+
+/** Images stables consécutives de `maxValue` valant « la hauteur ne bouge plus ». */
+private const val SETTLE_STABLE_FRAMES = 3
+
+/** Garde-fou : ~45 images ≈ 750 ms à 60 Hz. L'attente est BORNÉE par construction. */
+private const val SETTLE_MAX_FRAMES = 45
+
+/**
+ * Pilote le défilement du formulaire au basculement du bouton « plus / moins
+ * d'informations » (v7.1.58). Obtenu par [rememberMoreInfoScroll], partagé tel quel par
+ * [AddPersonScreen] et le mode édition de [PersonDetailScreen] — une seule logique.
+ *
+ * Trois points de branchement, tous passifs :
+ *  - [viewportModifier] sur le conteneur défilant, **AVANT** `verticalScroll` (le nœud est
+ *    alors HORS du défilement → il mesure le VIEWPORT, pas le contenu qui glisse) ;
+ *  - [onToggleTopInRoot] et [onExpandedChange] passés à [ProfileFormFields] — le bouton,
+ *    lui, défile, d'où la mesure à chaque passe de layout.
+ *
+ * La cible d'ouverture est **le bouton amené en haut du viewport** : le bloc déplié occupe
+ * alors tout l'espace en dessous. Cible STABLE — elle ne dépend pas de la hauteur dépliée,
+ * contrairement à `maxValue` qui est encore périmé à l'instant du clic.
+ */
+@Stable
+internal class MoreInfoScrollState(private val scrollState: ScrollState) {
+
+    /** Vrai quand le bloc supplémentaire est déplié. Miroir de `showMore`, jamais sa source. */
+    var expanded by mutableStateOf(false)
+        private set
+
+    // Sans ce drapeau, le LaunchedEffect s'exécuterait à la PREMIÈRE composition (expanded =
+    // false) et défilerait en haut à l'ouverture de l'écran, ou en entrant en édition.
+    private var userToggled = false
+
+    private var viewportTopInRoot by mutableFloatStateOf(0f)
+    private var toggleTopInRoot by mutableFloatStateOf(0f)
+
+    val viewportModifier: Modifier =
+        Modifier.onGloballyPositioned { viewportTopInRoot = it.positionInRoot().y }
+
+    val onToggleTopInRoot: (Float) -> Unit = { toggleTopInRoot = it }
+
+    val onExpandedChange: (Boolean) -> Unit = { userToggled = true; expanded = it }
+
+    /**
+     * Remet le pilote au repos — à appeler quand [ProfileFormFields] QUITTE la composition
+     * (sortie du mode édition) : son `showMore` local repart à false, l'écran doit suivre,
+     * sinon le prochain basculement serait interprété à l'envers.
+     */
+    fun reset() {
+        userToggled = false
+        expanded = false
+    }
+
+    /** Offset de contenu qui amène le bouton bascule en haut du viewport. */
+    private fun toggleOffsetInContent(): Int =
+        (scrollState.value + (toggleTopInRoot - viewportTopInRoot))
+            .roundToInt()
+            .coerceAtLeast(0)
+
+    /**
+     * Attend que `AnimatedVisibility` ait fini de poser la hauteur du bloc déplié, en
+     * observant la stabilisation de `maxValue` image par image.
+     *
+     * ⚠️ On NE pilote PAS le défilement depuis la hauteur (`snapshotFlow { maxValue }` non
+     * borné) : tant que le bloc est ouvert, le moindre ajout (téléphone, accordéon) relancerait
+     * un défilement et arracherait la vue sous le doigt. Ici la hauteur ne sert qu'à SAVOIR
+     * QUAND mesurer ; le déclencheur reste le basculement, et l'attente est doublement bornée
+     * ([SETTLE_STABLE_FRAMES], [SETTLE_MAX_FRAMES]).
+     */
+    private suspend fun awaitContentSettled() {
+        var last = -1
+        var stable = 0
+        var frames = 0
+        while (stable < SETTLE_STABLE_FRAMES && frames < SETTLE_MAX_FRAMES) {
+            withFrameNanos { }
+            val max = scrollState.maxValue
+            if (max == last) stable++ else { stable = 0; last = max }
+            frames++
+        }
+    }
+
+    internal suspend fun animateOnToggle() {
+        if (!userToggled) return
+        if (!expanded) {
+            // Fermeture : retour au profil principal. Cible sans ambiguïté — un
+            // BringIntoViewRequester ne pourrait rien viser, le bloc replié a une hauteur nulle.
+            scrollState.animateScrollTo(0)
+            return
+        }
+        awaitContentSettled()
+        scrollState.animateScrollTo(toggleOffsetInContent())
+    }
+}
+
+/**
+ * Crée le pilote et branche l'unique effet de défilement, keyé sur le seul état déplié —
+ * donc déclenché au BASCULEMENT et à rien d'autre.
+ */
+@Composable
+internal fun rememberMoreInfoScroll(scrollState: ScrollState): MoreInfoScrollState {
+    val state = remember(scrollState) { MoreInfoScrollState(scrollState) }
+    LaunchedEffect(state.expanded) { state.animateOnToggle() }
+    return state
 }
 
 /**
