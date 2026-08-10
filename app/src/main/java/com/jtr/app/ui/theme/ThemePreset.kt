@@ -75,6 +75,45 @@ private fun ColorScheme.withLightContainers(): ColorScheme = copy(
     surfaceContainerHighest = surfaceVariant,
 )
 
+/**
+ * Complète `tertiary*` et `outline*` (v7.1.62, audit H5).
+ *
+ * Aucun des 12 schémas ne renseignait ces rôles : ils retombaient donc sur la baseline
+ * Material — **rose/mauve** — identique pour les 6 presets. Le plus visible : la barre
+ * « Choisir une catégorie » (`CategoriesScreen`, `tertiaryContainer`), **entièrement rose**
+ * jusque dans le thème Signature monochrome, et les cartes du bandeau d'événements de
+ * l'accueil (`UpcomingEventsBanner`). Contrairement à `surfaceContainer*` (v7.1.53, absents
+ * du seul côté clair), ceux-ci manquent des DEUX côtés → helper appliqué aux **12** schémas.
+ *
+ * ⚠️ `error*` est LAISSÉ en baseline, volontairement : le rouge y est sémantiquement juste
+ * (action destructive) et c'est la convention universelle. Seuls `tertiary*`/`outline*`
+ * sont des ruptures de thème.
+ *
+ * Tout est DÉRIVÉ des couleurs déjà choisies par preset — aucune teinte inventée :
+ *
+ * - `tertiary`/`onTertiary` reprennent l'accent **secondaire** du thème.
+ * - `tertiaryContainer` n'est PAS un simple alias de `secondaryContainer` : il est adouci
+ *   d'un demi-pas vers `surfaceVariant`. Sans cela, les deux rôles deviendraient identiques
+ *   et l'on PERDRAIT deux distinctions voulues par le code — la barre « Choisir une
+ *   catégorie » ne se distinguerait plus de la barre de sélection, et le bandeau
+ *   d'événements passerait de trois crans d'imminence (aujourd'hui → J-2 → au-delà) à deux.
+ *   `onTertiaryContainer` reste celui de `secondary` : la teinte ne bouge que d'un demi-pas
+ *   vers une surface du MÊME côté clair/sombre, donc le contraste du texte est préservé.
+ * - `outline*` sont dérivés du couple neutre `onSurfaceVariant` ↔ `surfaceVariant`, exprimés
+ *   « vers l'autre rôle » : la formule s'inverse donc d'elle-même entre clair et sombre
+ *   (même propriété que [withLightContainers]) et reste contrastée des deux côtés.
+ *   `outline` (bordures marquées) tire vers le neutre médian, `outlineVariant` (séparateurs
+ *   discrets) reste proche de la surface.
+ */
+private fun ColorScheme.withThemedAccents(): ColorScheme = copy(
+    tertiary = secondary,
+    onTertiary = onSecondary,
+    tertiaryContainer = lerp(secondaryContainer, surfaceVariant, 0.5f),
+    onTertiaryContainer = onSecondaryContainer,
+    outline = lerp(onSurfaceVariant, surfaceVariant, 0.35f),
+    outlineVariant = lerp(surfaceVariant, onSurfaceVariant, 0.20f),
+)
+
 fun ThemePreset.toLightColorScheme(): ColorScheme = when (this) {
     ThemePreset.JTR_SIGNATURE -> lightColorScheme(
         primary = Color(0xFF1A1A1A),
@@ -172,7 +211,7 @@ fun ThemePreset.toLightColorScheme(): ColorScheme = when (this) {
         surfaceVariant = Color(0xFFF5DEE7),
         onSurfaceVariant = Color(0xFF514349),
     )
-}.withLightContainers()
+}.withLightContainers().withThemedAccents()
 
 fun ThemePreset.toDarkColorScheme(): ColorScheme = when (this) {
     ThemePreset.JTR_SIGNATURE -> darkColorScheme(
@@ -301,4 +340,4 @@ fun ThemePreset.toDarkColorScheme(): ColorScheme = when (this) {
         surfaceContainerHigh = Color(0xFF3F2831),
         surfaceContainerHighest = Color(0xFF4A323C),
     )
-}
+}.withThemedAccents()
