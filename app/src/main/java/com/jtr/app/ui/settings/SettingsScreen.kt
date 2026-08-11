@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -35,6 +36,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -738,7 +740,15 @@ private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> U
     }
 }
 
-/** Ligne avec interrupteur (Switch Material 3). */
+/**
+ * Ligne avec interrupteur (Switch Material 3).
+ *
+ * v7.1.65 — TOUTE LA LIGNE est bascule (même patron que `CategoryCheckRow`) : sans cela,
+ * le `Switch` était un arrêt de focus SÉPARÉ de son libellé et TalkBack annonçait
+ * « activé, interrupteur » sans dire QUEL réglage. `Modifier.toggleable` fusionne la
+ * sémantique des descendants ⇒ un seul nœud « titre, sous-titre, état, interrupteur ».
+ * Effet de bord voulu : la cible tactile passe de l'interrupteur à la ligne entière.
+ */
 @Composable
 private fun SettingsToggleRow(
     icon: ImageVector,
@@ -749,6 +759,12 @@ private fun SettingsToggleRow(
     onCheckedChange: (Boolean) -> Unit
 ) {
     ListItem(
+        modifier = Modifier.toggleable(
+            value = checked,
+            enabled = enabled,
+            role = Role.Switch,
+            onValueChange = onCheckedChange
+        ),
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         leadingContent = {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -758,7 +774,18 @@ private fun SettingsToggleRow(
             { Text(it, style = MaterialTheme.typography.bodySmall) }
         },
         trailingContent = {
-            Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+            // Le rôle/clic est porté par la ligne → l'interrupteur ne re-gère pas l'événement.
+            // ⚠️ `minimumInteractiveComponentSize()` est REQUIS : sans `onCheckedChange`, Compose
+            // n'applique plus la cible tactile minimale de 48 dp, la boîte de l'interrupteur
+            // rétrécit, et sur un ListItem à TROIS lignes (contenu de fin aligné en HAUT) il
+            // remonterait d'une douzaine de pixels. On le réserve donc explicitement : rendu
+            // strictement identique à avant.
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+                enabled = enabled,
+                modifier = Modifier.minimumInteractiveComponentSize()
+            )
         }
     )
 }

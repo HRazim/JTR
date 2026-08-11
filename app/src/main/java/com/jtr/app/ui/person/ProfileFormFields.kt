@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -37,6 +38,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -1464,22 +1466,39 @@ private fun NotifyToggleRow(
     onCheckedChange: (Boolean) -> Unit,
     onBlockedClick: (() -> Unit)? = null
 ) {
+    // v7.1.65 — état RÉELLEMENT affiché : sert à la fois au rendu et à ce qu'annonce
+    // TalkBack, pour qu'ils ne puissent pas diverger.
+    val displayChecked = checked && enabled
     Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
-                    if (!enabled && onBlockedClick != null)
-                        Modifier.clickable { onBlockedClick() }
-                    else Modifier
+                    // v7.1.65 — TOUTE LA LIGNE porte la bascule (accessibilité : rôle Switch
+                    // + libellé fusionné), sinon l'interrupteur était un arrêt de focus séparé
+                    // annoncé « activé, interrupteur » sans dire de quoi il s'agit.
+                    // Désactivée, la ligne garde son clic « bloqué » explicatif d'origine.
+                    when {
+                        enabled -> Modifier.toggleable(
+                            value = displayChecked,
+                            role = Role.Switch,
+                            onValueChange = onCheckedChange
+                        )
+                        onBlockedClick != null -> Modifier.clickable { onBlockedClick() }
+                        else -> Modifier
+                    }
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Switch(
-                checked = checked && enabled,
-                onCheckedChange = onCheckedChange,
+                checked = displayChecked,
+                // Le rôle/clic est porté par la ligne → l'interrupteur ne re-gère pas l'événement.
+                onCheckedChange = null,
                 enabled = enabled,
-                thumbContent = if (checked && enabled) {
+                // ⚠️ Sans `onCheckedChange`, la cible tactile minimale de 48 dp n'est plus
+                // appliquée : on la réserve pour que la hauteur de la ligne ne bouge pas.
+                modifier = Modifier.minimumInteractiveComponentSize(),
+                thumbContent = if (displayChecked) {
                     {
                         Icon(
                             Icons.Default.Check,
