@@ -88,6 +88,10 @@ fun AddPersonScreen(
     val dateSpec = remember { resolveDateFormatSpec(Locale.getDefault()) }
     // État du mode réordonnancement des notes, hissé pour rendre le footer au niveau écran.
     val noteReorderState = rememberNoteReorderState()
+    // v7.1.58 — le ScrollState était créé EN LIGNE : rien ne pouvait le piloter. Nommé ici, il
+    // alimente le défilement auto de « plus / moins d'informations » (cf. MoreInfoScrollState).
+    val scrollState = rememberScrollState()
+    val moreInfoScroll = rememberMoreInfoScroll(scrollState)
     // Verrou proximité : activable uniquement si notifications + proximité globales actives.
     val proximityAllowed = remember {
         val p = context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
@@ -179,13 +183,15 @@ fun AddPersonScreen(
         onMapResultConsumed()
     }
 
-    // Nouveau contact : démarre avec UNE section « Notes » par défaut (titre localisé,
-    // semé ici pour respecter la langue in-app). Idempotent (ne re-sème pas si non vide).
-    val defaultNotesTitle = stringResource(R.string.note_section_default_notes)
+    // Nouveau contact : démarre avec UNE section vide prête à remplir — titre VIDE (v7.1.33)
+    // → le champ affiche le placeholder Material 3 « Titre de la section » (note_section_title_hint)
+    // au lieu de préremplir la VRAIE valeur « Notes » que l'utilisateur devait effacer. Idempotent
+    // (ne re-sème pas si la liste n'est pas vide). Le titre reste vide tant que l'utilisateur n'écrit
+    // rien ; il n'est jamais persisté tel quel (placeholder natif M3).
     LaunchedEffect(Unit) {
         if (viewModel.noteSections.value.isEmpty()) {
             viewModel.onNoteSectionsChanged(
-                listOf(NoteSection(title = defaultNotesTitle, iconKey = NOTE_ICON_NOTES, order = 0))
+                listOf(NoteSection(title = "", iconKey = NOTE_ICON_NOTES, order = 0))
             )
         }
     }
@@ -216,7 +222,7 @@ fun AddPersonScreen(
                         when {
                             firstName.isBlank() ->
                                 scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
-                            dateLines.any { !isDateLineValid(it.value, dateSpec) } ->
+                            dateLines.any { !isDateLineValid(it.value, dateSpec, it.label) } ->
                                 scope.launch { snackbarHostState.showSnackbar(dateInvalidMsg) }
                         }
                         viewModel.savePerson(onSuccess = onNavigateBack)
@@ -252,7 +258,10 @@ fun AddPersonScreen(
                 // clavier. PAS de imePadding/consumeWindowInsets ici (sinon double inset = vide).
                 // L'auto-scroll repose sur BringIntoView (focus + curseur du TextField).
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
+                // v7.1.58 — AVANT verticalScroll : le nœud reste HORS du défilement, il mesure
+                // donc le VIEWPORT (référence fixe) et non le contenu qui glisse.
+                .then(moreInfoScroll.viewportModifier)
+                .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -401,7 +410,9 @@ fun AddPersonScreen(
                 onDepartmentChange = viewModel::onDepartmentChanged,
                 company = company,
                 onCompanyChange = viewModel::onCompanyChanged,
-                noteReorderState = noteReorderState
+                noteReorderState = noteReorderState,
+                onExpandedChange = moreInfoScroll.onExpandedChange,
+                onToggleTopInRoot = moreInfoScroll.onToggleTopInRoot
             )
 
             // Enregistrement déplacé en haut à droite (v7.0.2) — plus de gros bouton bas.

@@ -32,7 +32,20 @@ class CategoryRepository(context: Context) {
         categoryDao.insert(category.copy(position = pos))
     }
 
-    suspend fun update(category: Category) = categoryDao.update(category)
+    /**
+     * Édition du CONTENU d'une catégorie (nom, couleur, image) — point d'entrée UNIQUE des
+     * trois ViewModels (liste, détail, dossier) et du renommage rapide. L'horodatage est posé
+     * ICI, jamais dans la UI : aucun appelant ne peut l'oublier, et aucun `copy()` construit
+     * depuis un Flow Room ne peut réintroduire une valeur périmée (v7.1.48).
+     *
+     * Les mutations d'ORGANISATION gardent volontairement leur propre requête sans estampille :
+     * [setFavorite] (statut d'affichage, cf. EditPersonViewModel), [setPosition]/[persistOrder]
+     * /[persistTopOrder] (un drag & drop bumperait N catégories d'un coup) et [assignToGroup]
+     * (la même requête sert à [deleteGroup], qui désassigne EN MASSE). Les mouvements de membres
+     * sont dérivés à la lecture par [getCategoryLastActivity] — aucune écriture.
+     */
+    suspend fun update(category: Category) =
+        categoryDao.update(category.copy(updatedAt = System.currentTimeMillis()))
 
     // ── v4.5 : favoris, tri personnalisé, regroupement et actions de masse ──────
     fun getGroups(): Flow<List<CategoryGroup>> = categoryGroupDao.getAll()

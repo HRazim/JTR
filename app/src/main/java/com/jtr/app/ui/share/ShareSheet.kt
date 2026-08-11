@@ -8,13 +8,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.CircularProgressIndicator
@@ -22,6 +22,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -82,11 +83,21 @@ fun ShareFormatSheet(
     var isExporting by remember { mutableStateOf(false) }
     var exportFailed by remember { mutableStateOf(false) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // v7.1.61 (H1) — LA FEUILLE NE S'ANCRE PLUS « À MOITIÉ ». Par défaut, ModalBottomSheet
+    // s'ouvre à l'ancre partielle (~50 % de l'écran) : l'aperçu occupait tout le visible et les
+    // TROIS formats se retrouvaient hors écran — l'utilisateur découvrait une feuille de partage
+    // SANS option de partage, sans rien pour lui indiquer qu'il fallait la tirer vers le haut.
+    // Le contenu tient très largement dans un écran ; c'était donc bien l'ancre, pas la hauteur.
+    // Même recette que le sélecteur de langues (v7.1.51).
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
+                // v7.1.61 — sans cet inset, le compteur « +N » et la dernière ligne de format
+                // passaient SOUS la barre de navigation.
+                .navigationBarsPadding()
                 .padding(bottom = 24.dp)
         ) {
             Text(
@@ -98,9 +109,17 @@ fun ShareFormatSheet(
 
             // Aperçu capturable : le contenu est rejoué dans le GraphicsLayer puis
             // dessiné normalement (drawLayer) — zéro coût visuel supplémentaire.
+            //
+            // v7.1.61 — FILET : `weight(1f, fill = false)` ne borne l'aperçu QUE s'il n'y a pas
+            // la place (grande police, paysage…). Dans le cas courant il garde sa hauteur
+            // naturelle, donc la capture PNG est INCHANGÉE. Quand le filet joue, l'aperçu est
+            // rogné plutôt que de repousser les formats hors écran — et le PNG suit alors ce
+            // qui est visible, ce qui reste conforme au contrat annoncé plus haut (« capture
+            // EXACTEMENT ce que l'utilisateur voit ») et vaut mieux qu'une feuille inutilisable.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .weight(1f, fill = false)
                     .clip(RoundedCornerShape(16.dp))
                     .drawWithContent {
                         graphicsLayer.record { this@drawWithContent.drawContent() }
@@ -268,45 +287,6 @@ fun PersonsSharePreview(
             if (persons.size > 6) {
                 Text(
                     text = stringResource(R.string.share_more_count, persons.size - 6),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-    }
-}
-
-/** Aperçu capturable des catégories/dossiers sélectionnés. */
-@Composable
-fun CategoriesSharePreview(items: List<ShareCategoryItem>) {
-    val context = LocalContext.current
-    Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items.take(6).forEach { item ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Folder, contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text(item.name,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(ShareUtils.itemSubtitle(context, item),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-            }
-            if (items.size > 6) {
-                Text(
-                    text = stringResource(R.string.share_more_count, items.size - 6),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary
                 )

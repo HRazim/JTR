@@ -41,6 +41,9 @@ import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.ui.person.FieldTypes
+import com.jtr.app.ui.person.formatStoredDateLong
+import com.jtr.app.utils.DateCanonical
 import com.jtr.app.ui.category.FooterActionColumn
 import com.jtr.app.ui.category.contactSortCriteria
 import com.jtr.app.ui.components.FavoriteStar
@@ -565,7 +568,15 @@ fun PersonCard(
                         )
                     }
                 }
-                if (person.birthdate != null) {
+                // v7.1.37 (B3b) — anniversaire affiché : scalaire daté (« 15 mars 1985 ») OU, à
+                // défaut (anniversaire SANS année importé → scalaire null), la ligne `--MM-dd`
+                // (« 15 mars »). Les autres dateLines ne s'affichent pas sur la carte (inchangé).
+                val birthdayText = person.birthdate?.let {
+                    SimpleDateFormat("d MMMM yyyy", Locale.getDefault()).format(Date(it))
+                } ?: person.dateLines
+                    ?.firstOrNull { it.label == FieldTypes.DATE_BIRTHDAY && DateCanonical.isMonthDay(it.value) }
+                    ?.let { formatStoredDateLong(it.value, Locale.getDefault()) }
+                if (birthdayText != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.Cake,
@@ -575,8 +586,7 @@ fun PersonCard(
                         )
                         Spacer(modifier = Modifier.width(3.dp))
                         Text(
-                            text = SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
-                                .format(Date(person.birthdate)),
+                            text = birthdayText,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

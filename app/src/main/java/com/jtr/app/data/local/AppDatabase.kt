@@ -17,8 +17,15 @@ import org.json.JSONArray
 import java.util.Locale
 
 /**
- * AppDatabase — Version 21.
+ * AppDatabase — Version 22.
  *
+ * v22 : Métadonnées de catégorie (v7.1.48). Ajout de Category.updatedAt (INTEGER NOT NULL
+ *       DEFAULT 0) — dernière modification du CONTENU (nom / couleur / image), en parité
+ *       avec Person.updatedAt (v14). Les lignes préexistantes sont backfillées depuis
+ *       `createdAt` (déjà présent depuis v18) et NON à l'horodatage de migration : une
+ *       catégorie jamais modifiée a bien updatedAt == createdAt, et le tri « Dernière
+ *       modification » n'est pas bouleversé par la mise à jour. ZÉRO perte de données
+ *       ([MIGRATION_21_22]).
  * v21 : Dates en forme CANONIQUE (v7.1.0). AUCUN changement de schéma — migration de
  *       DONNÉES uniquement : les dates de `dateLines` (JSON) étaient stockées en chiffres
  *       bruts ordonnés selon la locale de saisie (changer de langue cassait l'affichage et
@@ -60,7 +67,7 @@ import java.util.Locale
 @Database(
     entities = [Person::class, Category::class, CategoryGroup::class,
         PersonCategoryJoin::class, SocialLinkEntity::class],
-    version = 21,
+    version = 22,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -322,6 +329,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration v21 → v22, ZÉRO perte de données — métadonnées de catégorie (v7.1.48).
+         *
+         * 1. ADD COLUMN categories.updatedAt (NOT NULL DEFAULT 0, aligné sur @ColumnInfo(
+         *    defaultValue="0") de l'entité) : dernière modification du CONTENU de la catégorie.
+         * 2. Backfill depuis `createdAt` (colonne déjà présente depuis v18) — et NON à
+         *    l'horodatage de migration : une catégorie jamais modifiée doit afficher
+         *    updatedAt == createdAt, et un backfill à `now` remonterait TOUTES les catégories
+         *    en tête du tri « Dernière modification ». Même stratégie que [MIGRATION_13_14]
+         *    pour persons.updatedAt.
+         *
+         * Uniquement un ALTER TABLE ADD COLUMN : aucune table recréée, aucune ligne supprimée
+         * → la migration destructive (filet de sécurité) n'est jamais atteinte.
+         */
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE categories ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE categories SET updatedAt = createdAt")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -331,11 +359,30 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                         MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
-                        MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
-                    // Filet de sécurité ultime UNIQUEMENT : tous les chemins de version
-                    // ont une migration explicite ci-dessus, donc la destruction n'est
-                    // jamais déclenchée en pratique (données utilisateur préservées).
-                    .fallbackToDestructiveMigration()
+                        MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
+                    // v7.1.63 — AUCUN FALLBACK DESTRUCTIF : la base n'est PLUS JAMAIS
+                    // effacée silencieusement, quel que soit le scénario.
+                    //
+                    // Historique. `fallbackToDestructiveMigration()` (sans suffixe) laissait
+                    // Room DÉTRUIRE ET RECRÉER la base dès qu'un chemin de version n'était pas
+                    // couvert — y compris à la MONTÉE et sur une simple divergence de schéma.
+                    // Pour une app 100 % locale dont l'Auto Backup OS est volontairement
+                    // désactivé (v7.1.7), c'était le SEUL chemin capable d'effacer
+                    // définitivement les données, sans filet. v7.1.57 (C3) l'a restreint au
+                    // DOWNGRADE ; v7.1.63 le retire COMPLÈTEMENT, une fois les 11 migrations
+                    // 11→22 toutes couvertes par `AppDatabaseMigrationTest` (H4).
+                    //
+                    // Conséquence assumée : tout chemin absent ou incohérent — divergence de
+                    // schéma, downgrade (rollback Play / APK antérieur), base antérieure à v11 —
+                    // lève désormais une IllegalStateException au lieu d'effacer. C'est
+                    // L'OBJECTIF : sur disque, la donnée reste INTACTE, donc récupérable en
+                    // réinstallant la version courante. Un crash est diagnosticable et
+                    // réversible ; une perte de données ne l'est pas.
+                    //
+                    // ⚠️ Corollaire pour les évolutions futures : bumper `version` SANS fournir
+                    // la Migration correspondante ne « repart plus à zéro », cela rend l'app
+                    // INDÉMARRABLE. Le garde-fou historique (« ne bumper QUE avec une Migration
+                    // explicite ») n'est donc plus une convention mais une contrainte dure.
                     .build()
                 INSTANCE = instance
                 instance

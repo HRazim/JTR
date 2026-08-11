@@ -1,11 +1,19 @@
 package com.jtr.app.ui.person
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -20,10 +28,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.edit
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,8 +52,10 @@ import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.NoteSection
+import com.jtr.app.utils.DateCanonical
 import com.jtr.app.utils.matchesAllTokens
 import com.jtr.app.utils.searchTokens
+import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import java.util.Locale
@@ -100,9 +117,20 @@ fun ProfileFormFields(
     company: String,
     onCompanyChange: (String) -> Unit,
     noteReorderState: NoteReorderState,
-    modifier: Modifier = Modifier
+    // `modifier` reste le PREMIER paramètre optionnel (convention Compose, vérifiée par lint).
+    modifier: Modifier = Modifier,
+    // v7.1.58 — DÉFILEMENT AUTO du bloc « plus / moins d'informations ». L'état `showMore`
+    // reste LOCAL (cf. plus bas) : l'écran hôte est seulement NOTIFIÉ du basculement et de la
+    // position du bouton. Les deux paramètres ont une valeur par défaut → un appelant qui ne
+    // veut pas de défilement auto n'a rien à faire.
+    onExpandedChange: (Boolean) -> Unit = {},
+    /** Position verticale du bouton bascule dans la fenêtre, à chaque passe de layout. */
+    onToggleTopInRoot: (Float) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
+    // v7.1.60 — état ouvert/fermé des accordéons : mémorisé PAR TYPE, global à tous les
+    // contacts, persisté. Créé ici (une lecture des 5 clés) et partagé par les sections.
+    val sectionExpansion = rememberSectionExpansion()
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -132,8 +160,15 @@ fun ProfileFormFields(
         // profil déjà rempli, l'utilisateur l'ouvre lui-même pour voir le reste.
         var showMore by rememberSaveable { mutableStateOf(false) }
         OutlinedButton(
-            onClick = { showMore = !showMore },
-            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                showMore = !showMore
+                // v7.1.58 — notifie l'écran hôte APRÈS la bascule (nouvelle valeur), pour qu'il
+                // pilote le défilement. L'état reste la propriété de ce composable.
+                onExpandedChange(showMore)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { onToggleTopInRoot(it.positionInRoot().y) },
             shape = RoundedCornerShape(16.dp)
         ) {
             Icon(
@@ -149,20 +184,35 @@ fun ProfileFormFields(
         }
 
         // ── 5. Bloc masqué : accordéons compacts déployés d'un coup ───────────
-        AnimatedVisibility(visible = showMore) {
+        // v7.1.59 — DÉPLOIEMENT VERS LE BAS. Le défaut d'AnimatedVisibility est
+        // `expandVertically(expandFrom = Alignment.Bottom)` : le bloc est aligné en BAS de sa
+        // boîte qui grandit, donc le HAUT est rogné et les champs apparaissent dans l'ordre
+        // INVERSE (« Ville » d'abord, « Dates importantes » en dernier), en remontant — pile à
+        // contresens du défilement qui, lui, descend. En ancrant sur `Top`, le bloc se déroule
+        // vers le bas depuis le bouton, DANS LE MÊME SENS que le défilement : une seule motion.
+        AnimatedVisibility(
+            visible = showMore,
+            enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top)
+        ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 // 5.1 Dates importantes (accordéon)
-                DateLinesSection(lines = dateLines, onLinesChange = onDateLinesChange)
+                DateLinesSection(
+                    lines = dateLines,
+                    onLinesChange = onDateLinesChange,
+                    expansion = sectionExpansion
+                )
 
                 // 5.2 Relations (accordéon + autocomplétion des contacts JTR)
                 // v7.1.6 : sélectionner une suggestion STOCKE l'id (linkedPersonId), pas le nom.
                 RelationLinesSection(
                     lines = relationLines,
                     onLinesChange = onRelationLinesChange,
-                    suggestions = relationSuggestions
+                    suggestions = relationSuggestions,
+                    expansion = sectionExpansion
                 )
 
                 // 5.3 Téléphones (accordéon)
@@ -174,7 +224,9 @@ fun ProfileFormFields(
                     keyboardType = KeyboardType.Phone,
                     types = FieldTypes.PHONE,
                     lines = phoneLines,
-                    onLinesChange = onPhoneLinesChange
+                    onLinesChange = onPhoneLinesChange,
+                    sectionKey = SectionKey.PHONES,
+                    expansion = sectionExpansion
                 )
 
                 // 5.4 Emails (accordéon + validation « @ »)
@@ -188,6 +240,8 @@ fun ProfileFormFields(
                     types = FieldTypes.EMAIL,
                     lines = emailLines,
                     onLinesChange = onEmailLinesChange,
+                    sectionKey = SectionKey.EMAILS,
+                    expansion = sectionExpansion,
                     validator = { value -> if (isValidEmailValue(value)) null else emailInvalidMsg }
                 )
 
@@ -198,7 +252,8 @@ fun ProfileFormFields(
                     department = department,
                     onDepartmentChange = onDepartmentChange,
                     company = company,
-                    onCompanyChange = onCompanyChange
+                    onCompanyChange = onCompanyChange,
+                    expansion = sectionExpansion
                 )
 
                 // 5.6 Origine — juste AU-DESSUS de la ville (miroir du mode lecture)
@@ -331,25 +386,82 @@ internal fun SoftTextField(
 // En-tête d'accordéon réutilisable (Dates, Relations, Téléphones, Emails)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Mémorisation de l'état des accordéons (v7.1.60) ──────────────────────────────────
+
+/**
+ * Sections repliables de « plus d'informations » dont l'état ouvert/fermé est mémorisé.
+ *
+ * La portée est le **TYPE**, pas le contact : ouvrir « Téléphones » l'ouvre pour TOUS les
+ * contacts, et le choix survit au redémarrage (SharedPreferences `jtr_prefs`, une clé par
+ * type). Défaut **fermé** — cf. [SectionExpansionState].
+ */
+internal enum class SectionKey(val prefKey: String) {
+    DATES("section_dates_expanded"),
+    RELATIONS("section_relations_expanded"),
+    PHONES("section_phones_expanded"),
+    EMAILS("section_emails_expanded"),
+    WORK("section_work_expanded"),
+}
+
+/**
+ * État ouvert/fermé des accordéons, persisté (v7.1.60).
+ *
+ * AVANT : chaque section s'ouvrait d'office dès qu'elle contenait des données
+ * (`initiallyExpanded = lines.any { it.value.isNotBlank() }`) — un contact bien renseigné
+ * ouvrait donc tout d'un coup et la fiche devenait illisible. Désormais tout est **fermé par
+ * défaut** et c'est l'utilisateur qui décide, une fois pour toutes, par type de section.
+ *
+ * Les 5 clés sont lues **une seule fois** à la construction ; ensuite tout se joue en mémoire
+ * (`mutableStateMapOf`, donc observable par Compose) et seule une bascule écrit dans les prefs.
+ * Aucune I/O en recomposition.
+ */
+@Stable
+internal class SectionExpansionState(private val prefs: SharedPreferences) {
+
+    private val states = mutableStateMapOf<SectionKey, Boolean>().apply {
+        SectionKey.entries.forEach { put(it, prefs.getBoolean(it.prefKey, false)) }
+    }
+
+    fun isExpanded(key: SectionKey): Boolean = states[key] ?: false
+
+    fun setExpanded(key: SectionKey, value: Boolean) {
+        states[key] = value
+        prefs.edit { putBoolean(key.prefKey, value) }
+    }
+}
+
+/** Porteur d'état des accordéons, adossé à `jtr_prefs`. Une lecture par clé, à la création. */
+@Composable
+internal fun rememberSectionExpansion(): SectionExpansionState {
+    val context = LocalContext.current
+    return remember(context) {
+        SectionExpansionState(
+            context.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
+        )
+    }
+}
+
 /**
  * Section repliable générique : ligne d'en-tête (icône + titre + flèche) cliquable
  * et contenu sous [AnimatedVisibility]. Replié ⇒ le contenu n'est PAS composé (0 dp).
- * Dépliée d'office via [initiallyExpanded] (édition d'un profil contenant déjà des
- * données valides) ; l'état est mémorisé entre recompositions.
+ *
+ * v7.1.60 — l'état est entièrement HISSÉ ([expanded] / [onExpandedChange]) : plus de
+ * `rememberSaveable` interne, plus d'ouverture d'office sur données. La source de vérité est
+ * [SectionExpansionState], donc mémorisée par type et persistée.
  */
 @Composable
 private fun AccordionSection(
     title: String,
     leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    initiallyExpanded: Boolean,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    var expanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded },
+                .clickable { onExpandedChange(!expanded) },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(leadingIcon, contentDescription = null,
@@ -497,23 +609,24 @@ private fun JobSection(
     department: String,
     onDepartmentChange: (String) -> Unit,
     company: String,
-    onCompanyChange: (String) -> Unit
+    onCompanyChange: (String) -> Unit,
+    expansion: SectionExpansionState
 ) {
     val focusManager = LocalFocusManager.current
     val opts = KeyboardOptions(
         capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next)
     val actions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
 
-    // Déplié d'office si des données existent déjà (édition d'un contact avec job).
-    var expanded by rememberSaveable {
-        mutableStateOf(jobTitle.isNotBlank() || department.isNotBlank() || company.isNotBlank())
-    }
+    // v7.1.60 — plus d'ouverture d'office sur données ; état mémorisé par type et persisté.
+    // (Cette section n'utilise pas AccordionSection : son en-tête a ses propres descriptions
+    // d'accessibilité, `job_details_show`/`job_details_hide`.)
+    val expanded = expansion.isExpanded(SectionKey.WORK)
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded },
+                .clickable { expansion.setExpanded(SectionKey.WORK, !expanded) },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Work, contentDescription = null,
@@ -580,14 +693,18 @@ private fun TextLinesSection(
     types: List<TypeOption>,
     lines: List<DynamicLine>,
     onLinesChange: (List<DynamicLine>) -> Unit,
+    // v7.1.60 — ce composable sert DEUX sections (Téléphones et E-mails) : la clé de
+    // mémorisation ne peut donc pas être déduite du code, elle est passée par l'appelant.
+    sectionKey: SectionKey,
+    expansion: SectionExpansionState,
     validator: ((String) -> String?)? = null
 ) {
     val focusManager = LocalFocusManager.current
-    // Déplié d'office si au moins une ligne valide existe déjà (édition).
     AccordionSection(
         title = title,
         leadingIcon = leadingIcon,
-        initiallyExpanded = lines.any { it.value.isNotBlank() }
+        expanded = expansion.isExpanded(sectionKey),
+        onExpandedChange = { expansion.setExpanded(sectionKey, it) }
     ) {
         lines.forEach { line ->
             val errorMsg = validator?.invoke(line.value)
@@ -627,13 +744,15 @@ private fun TextLinesSection(
 private fun RelationLinesSection(
     lines: List<DynamicLine>,
     onLinesChange: (List<DynamicLine>) -> Unit,
-    suggestions: List<PersonRef>
+    suggestions: List<PersonRef>,
+    expansion: SectionExpansionState
 ) {
     val focusManager = LocalFocusManager.current
     AccordionSection(
         title = stringResource(R.string.section_relations),
         leadingIcon = Icons.Default.Group,
-        initiallyExpanded = lines.any { it.value.isNotBlank() }
+        expanded = expansion.isExpanded(SectionKey.RELATIONS),
+        onExpandedChange = { expansion.setExpanded(SectionKey.RELATIONS, it) }
     ) {
         lines.forEach { line ->
             var showCustomDialog by remember { mutableStateOf(false) }
@@ -708,14 +827,21 @@ private fun RelationLinesSection(
 @Composable
 private fun DateLinesSection(
     lines: List<DynamicLine>,
-    onLinesChange: (List<DynamicLine>) -> Unit
+    onLinesChange: (List<DynamicLine>) -> Unit,
+    expansion: SectionExpansionState
 ) {
     val focusManager = LocalFocusManager.current
     val locale = Locale.getDefault()
     val spec = remember(locale) { resolveDateFormatSpec(locale) }
     val maxLen = remember(spec) { spec.segmentLengths.sum() }
+    val monthDayLen = remember(spec) { spec.monthDaySegmentLengths.sum() } // = 4
+    // Masque complet (adaptatif 4 ↔ longueur totale) ; masque dédié jour/mois pour le mode
+    // « sans année » des locales YMD (année en tête → l'année vide ne se déduit pas du préfixe).
     val transformation = remember(spec) {
         DateMaskVisualTransformation(spec.segmentLengths, spec.separator)
+    }
+    val monthDayTransformation = remember(spec) {
+        DateMaskVisualTransformation(spec.monthDaySegmentLengths, spec.separator)
     }
 
     val dayTok = stringResource(R.string.birthday_token_day)
@@ -730,33 +856,70 @@ private fun DateLinesSection(
             }
         }
     }
+    val monthDayPlaceholder = remember(spec, dayTok, monthTok) {
+        spec.monthDayOrder.joinToString(spec.separator.toString()) {
+            when (it) {
+                DateField.DAY -> dayTok
+                DateField.MONTH -> monthTok
+                DateField.YEAR -> ""
+            }
+        }
+    }
     val invalidMsg = stringResource(R.string.person_birthday_invalid)
     val yearInvalidMsg = stringResource(R.string.person_date_year_invalid)
+    val birthdayFutureMsg = stringResource(R.string.person_birthday_future)
+
+    // v7.1.38 — mode « sans année » EXPLICITE par ligne (locales YMD UNIQUEMENT) ; à défaut,
+    // dérivé de la valeur chargée (`--MM-dd` ⇒ sans année). Permet d'entrer en year-less même
+    // champ vide. Inutilisé en locale année-en-dernier (l'année laissée vide suffit, zéro bouton).
+    val yearLessModes = remember { mutableStateMapOf<String, Boolean>() }
 
     AccordionSection(
         title = stringResource(R.string.section_dates),
         leadingIcon = Icons.Default.Cake,
-        initiallyExpanded = lines.any { it.value.isNotBlank() }
+        expanded = expansion.isExpanded(SectionKey.DATES),
+        onExpandedChange = { expansion.setExpanded(SectionKey.DATES, it) }
     ) {
         lines.forEach { line ->
-            val complete = line.value.length == maxLen
-            // v7.0.5 — la date est validée DÈS qu'elle est non vide : une année incomplète
-            // (ex. 3 chiffres) ou hors plage raisonnable est refusée, avec retour clair.
-            val isError = line.value.isNotBlank() && !isDateLineValid(line.value, spec)
-            // Incomplet → guide vers une année à 4 chiffres ; complet mais invalide → date invalide.
-            val errorMessage = if (!complete) yearInvalidMsg else invalidMsg
+            // En YMD (année en tête), le year-less doit être SIGNALÉ : par l'affordance, ou par une
+            // valeur déjà `--MM-dd`. En locale année-en-dernier, jamais besoin (auto via 4 chiffres).
+            val ymdYearLess = !spec.isYearLast &&
+                (yearLessModes[line.id] ?: DateCanonical.isMonthDay(line.value))
+            // Valeur AFFICHÉE = chiffres bruts (jamais les tirets ISO) : un `--MM-dd` stocké est
+            // relu en jour/mois → le masque montre « 15/03 » proprement (fin du « --/03/-15 »).
+            val fieldValue = if (DateCanonical.isMonthDay(line.value))
+                monthDayToRawDigits(line.value, spec.monthDayOrder) else line.value
+            val fieldMaxLen = if (ymdYearLess) monthDayLen else maxLen
+
+            // v7.0.5 — validée DÈS qu'elle est non vide ; v7.1.38 — un year-less valide ne bloque pas.
+            val isError = line.value.isNotBlank() && !isDateLineValid(line.value, spec, line.label)
+            // Contexte year-less = mode YMD sans année, OU (année-en-dernier ET ≤ 4 chiffres) :
+            // l'erreur éventuelle parle alors de « date invalide », pas d'« année à 4 chiffres ».
+            val yearLessContext = ymdYearLess ||
+                (spec.isYearLast && line.value.length <= monthDayLen)
+            val errorMessage = when {
+                yearLessContext -> invalidMsg
+                line.value.length != maxLen -> yearInvalidMsg
+                line.label == FieldTypes.DATE_BIRTHDAY -> birthdayFutureMsg
+                else -> invalidMsg
+            }
             DynamicLineRow(
                 line = line,
                 types = FieldTypes.DATE,
                 valueLabel = stringResource(R.string.date_value_label),
-                value = line.value,
+                value = fieldValue,
                 onValueChange = { input ->
-                    val digits = input.filter { ch -> ch.isDigit() }.take(maxLen)
-                    onLinesChange(lines.map { if (it.id == line.id) it.copy(value = digits) else it })
+                    val digits = input.filter { ch -> ch.isDigit() }.take(fieldMaxLen)
+                    // YMD sans année : canonicalise en `--MM-dd` dès 4 chiffres valides (sinon
+                    // chiffres bruts partiels) → la valeur PORTE l'intention « sans année » jusqu'au
+                    // VM. Ailleurs : chiffres bruts (l'état terminal `--MM-dd`/ISO se fait au save).
+                    val stored = if (ymdYearLess)
+                        rawDigitsToMonthDay(digits, spec.monthDayOrder) ?: digits else digits
+                    onLinesChange(lines.map { if (it.id == line.id) it.copy(value = stored) else it })
                 },
                 keyboardType = KeyboardType.Number,
-                visualTransformation = transformation,
-                placeholder = placeholder,
+                visualTransformation = if (ymdYearLess) monthDayTransformation else transformation,
+                placeholder = if (ymdYearLess) monthDayPlaceholder else placeholder,
                 isError = isError,
                 errorMessage = errorMessage,
                 showDelete = lines.size > 1,
@@ -772,6 +935,18 @@ private fun DateLinesSection(
                     })
                 }
             )
+            // Affordance « sans année » — UNIQUEMENT en locale YMD (ja/zh/ko, année en tête) où
+            // l'année vide ne se déduit pas du préfixe. Masquée dans les 10 autres langues.
+            if (!spec.isYearLast) {
+                YearLessChip(
+                    checked = ymdYearLess,
+                    onToggle = {
+                        yearLessModes[line.id] = !ymdYearLess
+                        // Ordres jour/mois ↔ complet incompatibles en YMD → repart d'un champ vide.
+                        onLinesChange(lines.map { if (it.id == line.id) it.copy(value = "") else it })
+                    }
+                )
+            }
             // Délai de rappel (v7.0) — visible UNIQUEMENT quand la cloche est active :
             // un rappel n'a de sens que pour une date qui notifie.
             if (line.notify) {
@@ -789,6 +964,26 @@ private fun DateLinesSection(
             onLinesChange(lines + DynamicLine(label = FieldTypes.DATE_BIRTHDAY))
         }
     }
+}
+
+/**
+ * v7.1.38 — petite affordance « sans année » affichée SOUS le champ date, UNIQUEMENT pour les
+ * locales YMD (ja/zh/ko) où l'année est en tête : activée, elle bascule le champ en mode jour/mois
+ * (date `--MM-dd`). Dans les 10 autres langues, « année laissée vide ⇒ sans année » suffit (pas de
+ * chip). Une coche discrète indique l'état actif.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun YearLessChip(checked: Boolean, onToggle: () -> Unit) {
+    FilterChip(
+        selected = checked,
+        onClick = onToggle,
+        label = { Text(stringResource(R.string.date_no_year)) },
+        leadingIcon = if (checked) {
+            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+        } else null,
+        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+    )
 }
 
 /**
@@ -1014,8 +1209,30 @@ private fun TypeDropdown(
             )
             Icon(Icons.Default.ArrowDropDown, contentDescription = null)
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        // v7.1.44 — hauteur PLAFONNÉE : à 26 entrées, le menu occupait toute la fenêtre et sa
+        // dernière option (« Personnalisé ») finissait SOUS la barre de navigation, donc
+        // intouchable. Plafonné, le popup est repositionné dans la zone sûre et défile.
+        // Sans effet sur PHONE/EMAIL/DATE (listes plus courtes que le plafond).
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.heightIn(max = 400.dp)
+        ) {
+            // v7.1.44 — en-têtes de section : le catalogue des relations compte 26 entrées, une
+            // liste plate n'y est plus lisible. L'en-tête n'est PAS un item (non cliquable) et
+            // n'apparaît que si [TypeOption.groupRes] change ⇒ PHONE/EMAIL/DATE (groupRes null)
+            // rendent exactement la même liste qu'avant.
+            var lastGroup: Int? = null
             types.forEach { opt ->
+                if (opt.groupRes != null && opt.groupRes != lastGroup) {
+                    Text(
+                        stringResource(opt.groupRes),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp)
+                    )
+                }
+                lastGroup = opt.groupRes
                 DropdownMenuItem(
                     text = { Text(stringResource(opt.labelRes)) },
                     onClick = {
@@ -1060,6 +1277,132 @@ private fun CustomLabelDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
+}
+
+// ── Défilement auto de « plus / moins d'informations » (v7.1.58) ──────────────────────
+
+/**
+ * Plafond de la boucle de suivi du déploiement (v7.1.59), en NANOSECONDES réelles.
+ *
+ * Ce N'EST PAS une attente : le défilement commence à la PREMIÈRE image et la boucle sort dès
+ * que la cible est atteinte (typiquement ~300 ms). Le plafond n'est qu'un garde-fou si le
+ * contenu ne pousse jamais assez pour amener le bouton en haut.
+ *
+ * ⚠️ Borne en TEMPS et non en nombre d'images : le S21 monte à 120 Hz, un plafond en images y
+ * vaudrait deux fois moins longtemps que sur un 60 Hz et pourrait couper le suivi avant la fin
+ * du déploiement. Le temps, lui, ne dépend pas du taux de rafraîchissement.
+ */
+private const val FOLLOW_TIMEOUT_NANOS = 900_000_000L
+
+/** Durée de la remontée à la fermeture. Assez court pour rester vif, assez long pour être doux. */
+private const val CLOSE_DURATION_MS = 380
+
+/**
+ * Pilote le défilement du formulaire au basculement du bouton « plus / moins
+ * d'informations » (v7.1.58). Obtenu par [rememberMoreInfoScroll], partagé tel quel par
+ * [AddPersonScreen] et le mode édition de [PersonDetailScreen] — une seule logique.
+ *
+ * Trois points de branchement, tous passifs :
+ *  - [viewportModifier] sur le conteneur défilant, **AVANT** `verticalScroll` (le nœud est
+ *    alors HORS du défilement → il mesure le VIEWPORT, pas le contenu qui glisse) ;
+ *  - [onToggleTopInRoot] et [onExpandedChange] passés à [ProfileFormFields] — le bouton,
+ *    lui, défile, d'où la mesure à chaque passe de layout.
+ *
+ * La cible d'ouverture est **le bouton amené en haut du viewport** : le bloc déplié occupe
+ * alors tout l'espace en dessous. Cible STABLE — elle ne dépend pas de la hauteur dépliée,
+ * contrairement à `maxValue` qui est encore périmé à l'instant du clic.
+ */
+@Stable
+internal class MoreInfoScrollState(private val scrollState: ScrollState) {
+
+    /** Vrai quand le bloc supplémentaire est déplié. Miroir de `showMore`, jamais sa source. */
+    var expanded by mutableStateOf(false)
+        private set
+
+    // Sans ce drapeau, le LaunchedEffect s'exécuterait à la PREMIÈRE composition (expanded =
+    // false) et défilerait en haut à l'ouverture de l'écran, ou en entrant en édition.
+    private var userToggled = false
+
+    private var viewportTopInRoot by mutableFloatStateOf(0f)
+    private var toggleTopInRoot by mutableFloatStateOf(0f)
+
+    val viewportModifier: Modifier =
+        Modifier.onGloballyPositioned { viewportTopInRoot = it.positionInRoot().y }
+
+    val onToggleTopInRoot: (Float) -> Unit = { toggleTopInRoot = it }
+
+    val onExpandedChange: (Boolean) -> Unit = { userToggled = true; expanded = it }
+
+    /**
+     * Remet le pilote au repos — à appeler quand [ProfileFormFields] QUITTE la composition
+     * (sortie du mode édition) : son `showMore` local repart à false, l'écran doit suivre,
+     * sinon le prochain basculement serait interprété à l'envers.
+     */
+    fun reset() {
+        userToggled = false
+        expanded = false
+    }
+
+    /** Offset de contenu qui amène le bouton bascule en haut du viewport. */
+    private fun toggleOffsetInContent(): Int =
+        (scrollState.value + (toggleTopInRoot - viewportTopInRoot))
+            .roundToInt()
+            .coerceAtLeast(0)
+
+    /**
+     * Attend que `AnimatedVisibility` ait fini de poser la hauteur du bloc déplié, en
+     * observant la stabilisation de `maxValue` image par image.
+     *
+     * ⚠️ Le déclencheur reste le BASCULEMENT SEUL. La boucle ne vit que le temps du déploiement
+     * (sortie dès la cible atteinte, plafond [FOLLOW_TIMEOUT_NANOS]) : passé ce court instant,
+     * plus rien n'observe la hauteur, donc éditer un champ ou ouvrir un accordéon ne défile
+     * jamais.
+     */
+    private suspend fun followExpansion() {
+        var startNanos = 0L
+        while (true) {
+            val frameNanos = withFrameNanos { it }
+            if (startNanos == 0L) startNanos = frameNanos
+            val target = toggleOffsetInContent()
+            // scrollTo INSTANTANÉ, mais rejoué à chaque image : la douceur ne vient pas d'une
+            // courbe d'animation, elle vient du DÉPLOIEMENT lui-même. `scrollTo` est borné par
+            // `maxValue` ; tant que le bloc grandit, on avance d'exactement ce que la nouvelle
+            // hauteur autorise → le bouton glisse vers le haut au rythme des champs qui
+            // apparaissent. Synchronisation EXACTE par construction : une seule motion.
+            scrollState.scrollTo(target)
+            // Cible atteinte (plus rien ne bride le défilement) → le contenu a fini de pousser.
+            if (scrollState.value >= target) return
+            if (frameNanos - startNanos > FOLLOW_TIMEOUT_NANOS) return
+        }
+    }
+
+    internal suspend fun animateOnToggle() {
+        if (!userToggled) return
+        if (!expanded) {
+            // Fermeture : retour au profil principal. Cible sans ambiguïté — un
+            // BringIntoViewRequester ne pourrait rien viser, le bloc replié a une hauteur nulle.
+            // Spec explicite : le ressort par défaut d'animateScrollTo part trop sec sur une
+            // longue remontée. Un tween court en FastOutSlowInEasing démarre franchement puis
+            // décélère — la fiche « se repose » en haut au lieu de s'y cogner.
+            scrollState.animateScrollTo(
+                0,
+                animationSpec = tween(CLOSE_DURATION_MS, easing = FastOutSlowInEasing)
+            )
+            return
+        }
+        followExpansion()
+    }
+}
+
+/**
+ * Crée le pilote et branche l'unique effet de défilement, keyé sur le seul état déplié —
+ * donc déclenché au BASCULEMENT et à rien d'autre.
+ */
+@Composable
+internal fun rememberMoreInfoScroll(scrollState: ScrollState): MoreInfoScrollState {
+    val state = remember(scrollState) { MoreInfoScrollState(scrollState) }
+    LaunchedEffect(state.expanded) { state.animateOnToggle() }
+    return state
 }
 
 /**
@@ -1123,22 +1466,39 @@ private fun NotifyToggleRow(
     onCheckedChange: (Boolean) -> Unit,
     onBlockedClick: (() -> Unit)? = null
 ) {
+    // v7.1.65 — état RÉELLEMENT affiché : sert à la fois au rendu et à ce qu'annonce
+    // TalkBack, pour qu'ils ne puissent pas diverger.
+    val displayChecked = checked && enabled
     Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
-                    if (!enabled && onBlockedClick != null)
-                        Modifier.clickable { onBlockedClick() }
-                    else Modifier
+                    // v7.1.65 — TOUTE LA LIGNE porte la bascule (accessibilité : rôle Switch
+                    // + libellé fusionné), sinon l'interrupteur était un arrêt de focus séparé
+                    // annoncé « activé, interrupteur » sans dire de quoi il s'agit.
+                    // Désactivée, la ligne garde son clic « bloqué » explicatif d'origine.
+                    when {
+                        enabled -> Modifier.toggleable(
+                            value = displayChecked,
+                            role = Role.Switch,
+                            onValueChange = onCheckedChange
+                        )
+                        onBlockedClick != null -> Modifier.clickable { onBlockedClick() }
+                        else -> Modifier
+                    }
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Switch(
-                checked = checked && enabled,
-                onCheckedChange = onCheckedChange,
+                checked = displayChecked,
+                // Le rôle/clic est porté par la ligne → l'interrupteur ne re-gère pas l'événement.
+                onCheckedChange = null,
                 enabled = enabled,
-                thumbContent = if (checked && enabled) {
+                // ⚠️ Sans `onCheckedChange`, la cible tactile minimale de 48 dp n'est plus
+                // appliquée : on la réserve pour que la hauteur de la ligne ne bouge pas.
+                modifier = Modifier.minimumInteractiveComponentSize(),
+                thumbContent = if (displayChecked) {
                     {
                         Icon(
                             Icons.Default.Check,
@@ -1170,33 +1530,38 @@ private fun NotifyToggleRow(
  * Insère automatiquement les séparateurs d'une date au fil de la frappe.
  *
  * Le texte d'entrée ne contient que des chiffres ; [segmentLengths] donne la taille
- * de chaque composant dans l'ordre courant (ex. [2,2,4] ou [4,2,2]). L'[OffsetMapping]
- * garde le curseur cohérent, y compris au backspace.
+ * de chaque composant dans l'ordre courant (ex. [2,2,4], [4,2,2] ou [2,2] sans année).
+ * L'[OffsetMapping] garde le curseur cohérent, y compris au backspace.
+ *
+ * v7.1.38 — masque ADAPTATIF à la longueur saisie : un séparateur n'est inséré à une
+ * frontière que si un chiffre la suit RÉELLEMENT → aucun séparateur TRAÎNANT (« 15/03 »
+ * et non « 15/03/ »). Le même masque rend donc proprement une date sans année (4 chiffres)
+ * comme une date complète, sans cas particulier.
  */
 private class DateMaskVisualTransformation(
     segmentLengths: List<Int>,
     private val separator: Char
 ) : VisualTransformation {
 
-    // Frontières (en index original) après lesquelles insérer un séparateur.
+    // Frontières (en index original) après lesquelles un séparateur PEUT être inséré.
     private val sepAfter: List<Int> =
         segmentLengths.runningReduce { acc, n -> acc + n }.dropLast(1)
 
-    // Positions des séparateurs dans le texte transformé.
-    private val sepTransformedPos: List<Int> =
-        sepAfter.mapIndexed { i, s -> s + i }
-
     override fun filter(text: AnnotatedString): TransformedText {
         val digits = text.text
-        val sb = StringBuilder(digits.length + sepAfter.size)
+        // Séparateurs RÉELLEMENT insérés = frontières strictement suivies d'un chiffre.
+        val activeSep = sepAfter.filter { it < digits.length }
+        val sb = StringBuilder(digits.length + activeSep.size)
         for (i in digits.indices) {
             sb.append(digits[i])
-            if ((i + 1) in sepAfter) sb.append(separator)
+            if ((i + 1) in activeSep) sb.append(separator)
         }
 
+        // Positions des séparateurs actifs dans le texte transformé (k-ième sep ⇒ +k).
+        val sepTransformedPos = activeSep.mapIndexed { i, s -> s + i }
         val mapping = object : OffsetMapping {
             override fun originalToTransformed(offset: Int): Int =
-                offset + sepAfter.count { offset >= it }
+                offset + activeSep.count { it <= offset }
 
             override fun transformedToOriginal(offset: Int): Int =
                 offset - sepTransformedPos.count { offset > it }

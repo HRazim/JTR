@@ -93,6 +93,259 @@ class AppDatabaseMigrationTest {
     }
 
     /**
+     * Migration v12 → v13 (champs professionnels, v4.x) : les 3 colonnes nullables
+     * jobTitle / department / company sont AJOUTÉES sans perte. Aucune donnée
+     * préexistante n'est touchée, et les nouvelles colonnes valent NULL (et non ''),
+     * ce qui permet à l'UI de distinguer « jamais renseigné » de « vidé ».
+     * `runMigrationsAndValidate(..., true, ...)` valide en prime la conformité
+     * STRUCTURELLE du schéma résultant à `13.json`.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate12To13_addsJobColumnsAsNullWithoutLoss() {
+        val personId = "person-pre-v13"
+
+        helper.createDatabase(testDb, 12).use { db ->
+            db.execSQL(
+                "INSERT INTO persons " +
+                    "(id, firstName, lastName, birthdate, birthdateNotify, cityNotify, " +
+                    "isFavorite, city, notes, createdAt) " +
+                    "VALUES (?, 'Émile', 'Dupont', 631152000000, 1, 0, 1, " +
+                    "'Chicoutimi', 'Collègue de bureau', 1700000000000)",
+                arrayOf<Any?>(personId)
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 13, true, AppDatabase.MIGRATION_12_13
+        )
+
+        db.query(
+            "SELECT firstName, lastName, city, notes, birthdate, isFavorite, " +
+                "jobTitle, department, company FROM persons WHERE id = ?",
+            arrayOf(personId)
+        ).use { c ->
+            assertTrue("Le contact doit survivre à la migration", c.moveToFirst())
+            // Aucune perte sur les colonnes existantes.
+            assertEquals("Émile", c.getString(0))
+            assertEquals("Dupont", c.getString(1))
+            assertEquals("Chicoutimi", c.getString(2))
+            assertEquals("Collègue de bureau", c.getString(3))
+            assertEquals(631152000000L, c.getLong(4))
+            assertEquals(1, c.getInt(5))
+            // Les 3 nouvelles colonnes sont NULL (« jamais renseigné »).
+            assertTrue("jobTitle doit être NULL", c.isNull(6))
+            assertTrue("department doit être NULL", c.isNull(7))
+            assertTrue("company doit être NULL", c.isNull(8))
+        }
+    }
+
+    /**
+     * Migration v13 → v14 — LA PLUS RISQUÉE du lot (audit H4) : elle ne fait pas que
+     * des ADD COLUMN, elle exécute deux `UPDATE` de backfill et CRÉE une table.
+     *
+     * Trois pièges couverts ici :
+     *  1. `UPDATE persons SET updatedAt = createdAt` doit être PAR LIGNE (et non une
+     *     constante) → deux contacts aux `createdAt` DIFFÉRENTS.
+     *  2. `UPDATE categories SET position = \`order\`` porte sur une colonne dont le nom
+     *     est un MOT-CLÉ SQL réservé (`order`), échappé par des backticks. Une erreur
+     *     d'échappement donnerait soit une exception, soit — pire — un tri silencieusement
+     *     faux. On insère donc des `order` DISTINCTS et NON TRIVIAUX (7, 3, 0) : un
+     *     backfill constant, inversé ou nul serait détecté.
+     *  3. La table `category_groups` est CRÉÉE par la migration : on vérifie qu'elle
+     *     existe, qu'elle est utilisable en écriture et que son AUTOINCREMENT fonctionne.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate13To14_backfillsUpdatedAtAndEscapedOrderAndCreatesGroups() {
+        val oldCreatedAt = 1_600_000_000_000L
+        val newCreatedAt = 1_700_000_000_000L
+
+        helper.createDatabase(testDb, 13).use { db ->
+            // Deux contacts aux createdAt DIFFÉRENTS (piège 1).
+            db.execSQL(
+                "INSERT INTO persons (id, firstName, birthdateNotify, cityNotify, " +
+                    "isFavorite, createdAt) VALUES ('p-old', 'Ancien', 0, 0, 0, ?)",
+                arrayOf<Any?>(oldCreatedAt)
+            )
+            db.execSQL(
+                "INSERT INTO persons (id, firstName, birthdateNotify, cityNotify, " +
+                    "isFavorite, createdAt) VALUES ('p-new', 'Recent', 0, 0, 0, ?)",
+                arrayOf<Any?>(newCreatedAt)
+            )
+            // Trois catégories aux `order` distincts et non triviaux (piège 2).
+            db.execSQL(
+                "INSERT INTO categories (id, name, color, icon, imagePath, `order`, deletedAt) " +
+                    "VALUES ('c-a', 'Amis', '#2E86C1', 'folder', NULL, 7, NULL)"
+            )
+            db.execSQL(
+                "INSERT INTO categories (id, name, color, icon, imagePath, `order`, deletedAt) " +
+                    "VALUES ('c-b', 'Boulot', '#C0392B', 'work', NULL, 3, NULL)"
+            )
+            db.execSQL(
+                "INSERT INTO categories (id, name, color, icon, imagePath, `order`, deletedAt) " +
+                    "VALUES ('c-c', 'Famille', '#27AE60', 'home', NULL, 0, NULL)"
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 14, true, AppDatabase.MIGRATION_13_14
+        )
+
+        // Piège 1 : updatedAt backfillé DEPUIS createdAt, par ligne.
+        db.query("SELECT id, createdAt, updatedAt FROM persons ORDER BY id").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("p-new", c.getString(0))
+            assertEquals(newCreatedAt, c.getLong(1))
+            assertEquals("updatedAt doit valoir createdAt (p-new)", newCreatedAt, c.getLong(2))
+
+            assertTrue(c.moveToNext())
+            assertEquals("p-old", c.getString(0))
+            assertEquals(oldCreatedAt, c.getLong(1))
+            assertEquals("updatedAt doit valoir createdAt (p-old)", oldCreatedAt, c.getLong(2))
+        }
+
+        // Piège 2 : position == `order` POUR CHAQUE ligne, valeurs distinctes conservées.
+        db.query(
+            "SELECT id, name, `order`, position, isFavorite, parentGroupId " +
+                "FROM categories ORDER BY id"
+        ).use { c ->
+            val positionsById = LinkedHashMap<String, Pair<Int, Int>>()
+            assertTrue("Les catégories doivent survivre à la migration", c.moveToFirst())
+            do {
+                positionsById[c.getString(0)] = c.getInt(2) to c.getInt(3)
+                // Les colonnes NOT NULL ajoutées prennent leur DEFAULT 0…
+                assertEquals("isFavorite doit valoir 0 par défaut", 0, c.getInt(4))
+                // …et parentGroupId (nullable) reste NULL (aucun dossier assigné).
+                assertTrue("parentGroupId doit être NULL", c.isNull(5))
+            } while (c.moveToNext())
+
+            assertEquals("Les 3 catégories doivent être présentes", 3, positionsById.size)
+            // `order` intact ET recopié dans position, sans écrasement ni constante.
+            assertEquals(7 to 7, positionsById["c-a"])
+            assertEquals(3 to 3, positionsById["c-b"])
+            assertEquals(0 to 0, positionsById["c-c"])
+        }
+
+        // Piège 3 : la table créée existe, est utilisable, et son AUTOINCREMENT marche.
+        db.execSQL("INSERT INTO category_groups (name, position, isFavorite) VALUES ('Proches', 2, 1)")
+        db.query("SELECT id, name, position, isFavorite FROM category_groups").use { c ->
+            assertTrue("category_groups doit exister et accepter une insertion", c.moveToFirst())
+            assertTrue("L'id AUTOINCREMENT doit être attribué (> 0)", c.getLong(0) > 0L)
+            assertEquals("Proches", c.getString(1))
+            assertEquals(2, c.getInt(2))
+            assertEquals(1, c.getInt(3))
+        }
+    }
+
+    /**
+     * Migration v14 → v15 : `category_groups.imagePath` (illustration de couverture)
+     * est AJOUTÉE, nullable, sans perte des dossiers existants.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate14To15_addsGroupImagePathAsNull() {
+        helper.createDatabase(testDb, 14).use { db ->
+            db.execSQL(
+                "INSERT INTO category_groups (id, name, position, isFavorite) " +
+                    "VALUES (1, 'Proches', 4, 1)"
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 15, true, AppDatabase.MIGRATION_14_15
+        )
+
+        db.query(
+            "SELECT name, position, isFavorite, imagePath FROM category_groups WHERE id = 1"
+        ).use { c ->
+            assertTrue("Le dossier doit survivre à la migration", c.moveToFirst())
+            // Aucune perte.
+            assertEquals("Proches", c.getString(0))
+            assertEquals(4, c.getInt(1))
+            assertEquals(1, c.getInt(2))
+            // Nouvelle colonne nullable, non renseignée.
+            assertTrue("imagePath doit être NULL", c.isNull(3))
+        }
+    }
+
+    /**
+     * Migration v15 → v16 : `category_groups.parentGroupId` (sous-dossiers imbriqués)
+     * est AJOUTÉE, nullable — les dossiers existants restent donc à la RACINE (NULL),
+     * ce qui est le comportement attendu (aucun dossier ne doit se retrouver orphelin
+     * ou rattaché arbitrairement).
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate15To16_addsGroupParentIdAsNullSoGroupsStayAtRoot() {
+        helper.createDatabase(testDb, 15).use { db ->
+            db.execSQL(
+                "INSERT INTO category_groups (id, name, position, isFavorite, imagePath) " +
+                    "VALUES (1, 'Proches', 4, 1, '/data/img/proches.jpg')"
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 16, true, AppDatabase.MIGRATION_15_16
+        )
+
+        db.query(
+            "SELECT name, position, isFavorite, imagePath, parentGroupId " +
+                "FROM category_groups WHERE id = 1"
+        ).use { c ->
+            assertTrue("Le dossier doit survivre à la migration", c.moveToFirst())
+            // Aucune perte.
+            assertEquals("Proches", c.getString(0))
+            assertEquals(4, c.getInt(1))
+            assertEquals(1, c.getInt(2))
+            assertEquals("/data/img/proches.jpg", c.getString(3))
+            // Le dossier reste à la racine.
+            assertTrue("parentGroupId doit être NULL (racine)", c.isNull(4))
+        }
+    }
+
+    /**
+     * Migration v16 → v17 : `persons.proximityNotifiedAt` (anti-spam de proximité,
+     * une alerte max par contact par 48 h) est AJOUTÉE, nullable. NULL signifie
+     * « jamais notifié » — un backfill à l'horodatage de migration aurait au contraire
+     * BÂILLONNÉ toutes les alertes pendant 48 h après la mise à jour.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate16To17_addsProximityNotifiedAtAsNullNotBackfilled() {
+        val personId = "person-pre-v17"
+
+        helper.createDatabase(testDb, 16).use { db ->
+            db.execSQL(
+                "INSERT INTO persons " +
+                    "(id, firstName, city, cityLat, cityLng, cityNotify, birthdateNotify, " +
+                    "isFavorite, createdAt, updatedAt) " +
+                    "VALUES (?, 'Fanny', 'Safi', 32.2994, -9.2372, 1, 0, 0, " +
+                    "1700000000000, 1700000000000)",
+                arrayOf<Any?>(personId)
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 17, true, AppDatabase.MIGRATION_16_17
+        )
+
+        db.query(
+            "SELECT firstName, city, cityNotify, proximityNotifiedAt " +
+                "FROM persons WHERE id = ?",
+            arrayOf(personId)
+        ).use { c ->
+            assertTrue("Le contact doit survivre à la migration", c.moveToFirst())
+            // Aucune perte.
+            assertEquals("Fanny", c.getString(0))
+            assertEquals("Safi", c.getString(1))
+            assertEquals(1, c.getInt(2))
+            // « Jamais notifié » : la première alerte de proximité reste possible.
+            assertTrue("proximityNotifiedAt doit être NULL", c.isNull(3))
+        }
+    }
+
+    /**
      * Migration v17 → v18 (tri des catégories en parité contacts) : les nouvelles
      * colonnes d'horodatage sont AJOUTÉES sans perte, et les lignes préexistantes
      * sont BACKFILLÉES (> 0). `runMigrationsAndValidate(..., true, ...)` valide en
@@ -259,6 +512,49 @@ class AppDatabaseMigrationTest {
             assertEquals("1990-12-25", byLabel["anniversary"])
             // Champs non-date PRÉSERVÉS (aucune perte).
             assertEquals(true, notifyByLabel["anniversary"])
+        }
+    }
+
+    /**
+     * Migration v21 → v22 (métadonnées de catégorie, v7.1.48) : la colonne
+     * categories.updatedAt est AJOUTÉE sans perte et backfillée depuis `createdAt`
+     * — et NON à l'horodatage de migration : une catégorie jamais modifiée doit
+     * afficher « Dernière modification » == « Créé le », et un backfill à `now`
+     * remonterait toutes les catégories en tête du tri « Dernière modification ».
+     * `runMigrationsAndValidate(..., true, ...)` valide en prime la conformité
+     * STRUCTURELLE du schéma résultant à `22.json` (présence + affinité INTEGER
+     * NOT NULL DEFAULT 0).
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate21To22_addsUpdatedAtBackfilledFromCreatedAt() {
+        val categoryId = "cat-pre-v22"
+        val createdAt = 1_700_000_000_000L
+
+        helper.createDatabase(testDb, 21).use { db ->
+            db.execSQL(
+                "INSERT INTO categories " +
+                    "(id, name, color, icon, imagePath, `order`, isFavorite, position, " +
+                    "parentGroupId, createdAt, deletedAt) " +
+                    "VALUES (?, 'Famille', '#2E86C1', 'folder', NULL, 0, 0, 0, NULL, ?, NULL)",
+                arrayOf<Any?>(categoryId, createdAt)
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 22, true, AppDatabase.MIGRATION_21_22
+        )
+
+        db.query(
+            "SELECT name, createdAt, updatedAt FROM categories WHERE id = ?",
+            arrayOf(categoryId)
+        ).use { c ->
+            assertTrue("La catégorie doit survivre à la migration", c.moveToFirst())
+            // Aucune perte sur les colonnes existantes.
+            assertEquals("Famille", c.getString(0))
+            assertEquals(createdAt, c.getLong(1))
+            // Backfill : updatedAt == createdAt (et surtout PAS l'horodatage de migration).
+            assertEquals(createdAt, c.getLong(2))
         }
     }
 }

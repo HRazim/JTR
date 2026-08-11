@@ -1,14 +1,17 @@
 package com.jtr.app.ui.person
 
+import android.text.format.DateFormat
 import androidx.annotation.StringRes
 import com.jtr.app.R
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.utils.DateCanonical
+import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.chrono.IsoChronology
 import java.time.format.DateTimeFormatterBuilder
 import java.time.format.FormatStyle
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 /**
@@ -56,8 +59,19 @@ data class NameDetails(
     val nickname: String = ""
 )
 
-/** Option de type sélectionnable dans le menu déroulant d'une ligne. */
-data class TypeOption(val key: String, @StringRes val labelRes: Int)
+/**
+ * Option de type sélectionnable dans le menu déroulant d'une ligne.
+ *
+ * [groupRes] (v7.1.44) — en-tête de section affiché dans le menu quand le groupe change d'une
+ * option à la suivante. `null` = aucun en-tête : c'est le cas de PHONE/EMAIL/DATE (listes
+ * courtes) et de « Personnalisé ». Seul le catalogue RELATION, devenu long (26 entrées), est
+ * groupé — l'ORDRE de la liste reste l'unique source de vérité, ce champ ne fait que l'annoter.
+ */
+data class TypeOption(
+    val key: String,
+    @StringRes val labelRes: Int,
+    @StringRes val groupRes: Int? = null,
+)
 
 /**
  * Référence d'un contact pour l'autocomplétion des relations (v7.1.6) : on AFFICHE
@@ -110,15 +124,51 @@ object FieldTypes {
         TypeOption("custom", R.string.type_custom),
     )
 
+    /**
+     * v7.1.44 — catalogue étendu à 25 types + « Personnalisé », groupé pour rester lisible.
+     * Les paires asymétriques sont ADJACENTES (source puis inverse) et « mother » reste en
+     * TÊTE : c'est `RELATION.first()` qui fournit le type par défaut d'une ligne ajoutée
+     * depuis la section Relations (cf. ProfileFormFields) — l'ordre n'est donc pas cosmétique.
+     */
+    private val GROUP_FAMILY = R.string.relation_group_family
+    private val GROUP_PRO = R.string.relation_group_professional
+    private val GROUP_SOCIAL = R.string.relation_group_social
+
     val RELATION = listOf(
-        TypeOption("mother", R.string.relation_type_mother),
-        TypeOption("father", R.string.relation_type_father),
-        TypeOption("brother", R.string.relation_type_brother),
-        TypeOption("sister", R.string.relation_type_sister),
-        TypeOption("spouse", R.string.relation_type_spouse),
-        TypeOption("child", R.string.relation_type_child),
-        TypeOption(RELATION_FRIEND, R.string.relation_type_friend),
-        TypeOption("manager", R.string.relation_type_manager),
+        // ── Famille ──────────────────────────────────────────────────────────
+        TypeOption("mother", R.string.relation_type_mother, GROUP_FAMILY),
+        TypeOption("father", R.string.relation_type_father, GROUP_FAMILY),
+        // v7.1.43 — « parent » (neutre) : inverse d'« enfant » produit par le miroir, et
+        // type saisissable à part entière. Idem « employé », inverse de « manager ».
+        TypeOption("parent", R.string.relation_type_parent, GROUP_FAMILY),
+        TypeOption("child", R.string.relation_type_child, GROUP_FAMILY),
+        TypeOption("brother", R.string.relation_type_brother, GROUP_FAMILY),
+        TypeOption("sister", R.string.relation_type_sister, GROUP_FAMILY),
+        TypeOption("spouse", R.string.relation_type_spouse, GROUP_FAMILY),
+        TypeOption("partner", R.string.relation_type_partner, GROUP_FAMILY),
+
+        // ── Professionnel ────────────────────────────────────────────────────
+        TypeOption("manager", R.string.relation_type_manager, GROUP_PRO),
+        TypeOption("employee", R.string.relation_type_employee, GROUP_PRO),
+        TypeOption("colleague", R.string.relation_type_colleague, GROUP_PRO),
+        TypeOption("teacher", R.string.relation_type_teacher, GROUP_PRO),
+        TypeOption("student", R.string.relation_type_student, GROUP_PRO),
+        TypeOption("mentor", R.string.relation_type_mentor, GROUP_PRO),
+        TypeOption("mentee", R.string.relation_type_mentee, GROUP_PRO),
+        TypeOption("coach", R.string.relation_type_coach, GROUP_PRO),
+        TypeOption("player", R.string.relation_type_player, GROUP_PRO),
+        TypeOption("doctor", R.string.relation_type_doctor, GROUP_PRO),
+        TypeOption("patient", R.string.relation_type_patient, GROUP_PRO),
+        TypeOption("consultant", R.string.relation_type_consultant, GROUP_PRO),
+        TypeOption("client", R.string.relation_type_client, GROUP_PRO),
+
+        // ── Social ───────────────────────────────────────────────────────────
+        TypeOption(RELATION_FRIEND, R.string.relation_type_friend, GROUP_SOCIAL),
+        TypeOption("best_friend", R.string.relation_type_best_friend, GROUP_SOCIAL),
+        TypeOption("classmate", R.string.relation_type_classmate, GROUP_SOCIAL),
+        TypeOption("neighbor", R.string.relation_type_neighbor, GROUP_SOCIAL),
+
+        // Toujours en dernier, hors groupe : ouvre le dialogue de libellé libre.
         TypeOption("custom", R.string.type_custom),
     )
 }
@@ -135,7 +185,24 @@ data class DateFormatSpec(
     val order: List<DateField>,
     val separator: Char,
     val segmentLengths: List<Int>
-)
+) {
+    /** Index du segment ANNÉE dans [order] (toujours présent : 0, 1 ou 2). */
+    val yearIndex: Int = order.indexOf(DateField.YEAR)
+
+    /**
+     * v7.1.38 — vrai si l'ANNÉE est le DERNIER segment (locales DMY/MDY ≈ 10/13 langues) : la
+     * saisie « année laissée vide ⇒ sans année » y est NATURELLE (les 4 premiers chiffres = jour
+     * + mois, l'année omise est en queue). Faux pour YMD (ja/zh/ko, année EN TÊTE) où l'année
+     * vide ne se déduit pas du préfixe → une petite affordance « sans année » est requise.
+     */
+    val isYearLast: Boolean = yearIndex == order.lastIndex
+
+    /** Ordre des composantes d'une date SANS année (= [order] privé du segment ANNÉE). */
+    val monthDayOrder: List<DateField> = order.filter { it != DateField.YEAR }
+
+    /** Longueurs des segments d'une date SANS année (jour & mois = 2 chiffres) → somme = 4. */
+    val monthDaySegmentLengths: List<Int> = monthDayOrder.map { 2 }
+}
 
 /**
  * Déduit l'ordre des composants et le séparateur du motif court localisé
@@ -176,9 +243,9 @@ fun millisToRawDigits(millis: Long, order: List<DateField>): String {
     val year = cal.get(Calendar.YEAR)
     return order.joinToString("") {
         when (it) {
-            DateField.DAY -> "%02d".format(day)
-            DateField.MONTH -> "%02d".format(month)
-            DateField.YEAR -> "%04d".format(year)
+            DateField.DAY -> "%02d".format(Locale.ROOT, day)
+            DateField.MONTH -> "%02d".format(Locale.ROOT, month)
+            DateField.YEAR -> "%04d".format(Locale.ROOT, year)
         }
     }
 }
@@ -186,21 +253,39 @@ fun millisToRawDigits(millis: Long, order: List<DateField>): String {
 /** Année plancher (impose 4 chiffres) pour une date importante saisie. */
 private const val MIN_DATE_YEAR = 1000
 
+/** Année plafond (borne haute saine) — autorise les événements ponctuels futurs (v7.1.29). */
+private const val MAX_DATE_YEAR = 9999
+
 /**
- * Valide une date saisie (chiffres bruts) pour l'UI ET la sauvegarde (v7.0.5).
+ * Valide une date saisie (chiffres bruts) pour l'UI ET la sauvegarde.
  *
  * Une valeur vide est acceptée (date optionnelle) ; sinon la date doit être COMPLÈTE et
- * parseable, avec une **année cohérente à 4 chiffres** dans une plage raisonnable
- * (≥ [MIN_DATE_YEAR], ≤ année courante). Rejette notamment une année incomplète à 3 chiffres
- * (la date n'atteint pas la longueur attendue → [rawDigitsToMillis] renvoie `null`).
+ * parseable, avec une **année cohérente à 4 chiffres** entre MIN_DATE_YEAR et MAX_DATE_YEAR.
+ * Rejette une année incomplète à 3 chiffres (la longueur attendue n'est pas atteinte →
+ * [rawDigitsToMillis] renvoie `null`).
+ *
+ * v7.1.29 — les **années FUTURES sont désormais autorisées** (événement ponctuel daté, ex.
+ * « avril 2027 »). Le futur n'est REFUSÉ que pour [FieldTypes.DATE_BIRTHDAY] (« on ne naît pas
+ * dans le futur ») : un anniversaire avec une année > année courante est invalide. Les autres
+ * types (anniversaire de mariage, autre, personnalisé) acceptent le futur.
  */
-fun isDateLineValid(raw: String, spec: DateFormatSpec): Boolean {
+fun isDateLineValid(raw: String, spec: DateFormatSpec, label: String = ""): Boolean {
     if (raw.isBlank()) return true
+    // Date SANS année DÉJÀ STOCKÉE (`--MM-dd` : importée B3b, ou saisie YMD via l'affordance) :
+    // VALIDE telle quelle. Le futur n'a pas de sens sans année (aucune garde « anniversaire futur »).
+    if (DateCanonical.isMonthDay(raw)) return DateCanonical.monthDayOf(raw) != null
+    // v7.1.38 — SAISIE year-less « année laissée vide » : 4 chiffres jour/mois valides, UNIQUEMENT
+    // pour les locales année-en-dernier (en YMD le year-less passe par `--MM-dd` direct, branche
+    // ci-dessus). Pas de garde « futur ». La canonicalisation en `--MM-dd` a lieu à l'enregistrement.
+    if (spec.isYearLast && raw.length == spec.monthDaySegmentLengths.sum())
+        return rawDigitsToMonthDay(raw, spec.monthDayOrder) != null
     val millis = rawDigitsToMillis(raw, spec) ?: return false
-    val cal = Calendar.getInstance()
-    val maxYear = cal.get(Calendar.YEAR)
-    cal.timeInMillis = millis
-    return cal.get(Calendar.YEAR) in MIN_DATE_YEAR..maxYear
+    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+    val year = Calendar.getInstance().apply { timeInMillis = millis }.get(Calendar.YEAR)
+    if (year !in MIN_DATE_YEAR..MAX_DATE_YEAR) return false
+    // Seul l'anniversaire interdit le futur (année > année courante).
+    if (label == FieldTypes.DATE_BIRTHDAY && year > currentYear) return false
+    return true
 }
 
 /**
@@ -260,7 +345,7 @@ private fun DateFormatSpec.canonicalOrder(): DateCanonical.DateOrder = when {
 /** Chiffres bruts du formulaire (ordre [spec]) → ISO `yyyy-MM-dd`, ou `null` si invalide. */
 fun rawDigitsToIso(raw: String, spec: DateFormatSpec): String? {
     val d = rawDigitsToLocalDate(raw, spec) ?: return null
-    return "%04d-%02d-%02d".format(d.year, d.monthValue, d.dayOfMonth)
+    return "%04d-%02d-%02d".format(Locale.ROOT, d.year, d.monthValue, d.dayOfMonth)
 }
 
 /** ISO `yyyy-MM-dd` → chiffres bruts dans l'ordre de [spec] (pour réinjection au formulaire). */
@@ -268,13 +353,66 @@ fun isoToRawDigits(iso: String, spec: DateFormatSpec): String = try {
     val d = LocalDate.parse(iso)
     spec.order.joinToString("") {
         when (it) {
-            DateField.DAY -> "%02d".format(d.dayOfMonth)
-            DateField.MONTH -> "%02d".format(d.monthValue)
-            DateField.YEAR -> "%04d".format(d.year)
+            DateField.DAY -> "%02d".format(Locale.ROOT, d.dayOfMonth)
+            DateField.MONTH -> "%02d".format(Locale.ROOT, d.monthValue)
+            DateField.YEAR -> "%04d".format(Locale.ROOT, d.year)
         }
     }
 } catch (_: Exception) {
     ""
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v7.1.38 — Pont SANS année (`--MM-dd`) : pendants year-less de rawDigitsToIso /
+// isoToRawDigits. La forme STOCKÉE d'une date sans année est `--MM-dd` (acquis B3b,
+// v7.1.37) ; le formulaire la manipule en 4 chiffres bruts ordonnés jour/mois selon la
+// locale. La LOGIQUE stricte « 4 chiffres d'année » de `isIso`/`rawDigitsToIso` est inchangée
+// (dates DATÉES non régressées) ; seul le FORMATAGE des chiffres est forcé en `Locale.ROOT` →
+// la forme canonique reste ASCII même en arabe/persan (sinon `--٠٣-١٥`/`١٩٩٠-...` casserait
+// `isIso`/`isMonthDay` et `LocalDate.parse`). Vérifié sur device en arabe (v7.1.38).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 4 chiffres bruts du formulaire (ordre [monthDayOrder]) → `--MM-dd` si le couple jour/mois
+ * forme un [java.time.MonthDay] RÉELLEMENT valide (mois 1-12, jour ≤ max du mois, `--02-29`
+ * accepté car l'année n'est pas fixée), sinon `null`. Pendant year-less de [rawDigitsToIso].
+ */
+fun rawDigitsToMonthDay(raw: String, monthDayOrder: List<DateField>): String? {
+    if (raw.length != 4) return null
+    var idx = 0
+    var day = 0; var month = 0
+    for (field in monthDayOrder) {
+        val part = raw.substring(idx, idx + 2).toIntOrNull() ?: return null
+        when (field) {
+            DateField.DAY -> day = part
+            DateField.MONTH -> month = part
+            DateField.YEAR -> return null // ordre sans année : YEAR ne doit pas y figurer
+        }
+        idx += 2
+    }
+    return try {
+        java.time.MonthDay.of(month, day) // valide mois (1..12) + jour max (29/02 OK)
+        "--%02d-%02d".format(Locale.ROOT, month, day)
+    } catch (_: Exception) {
+        null
+    }
+}
+
+/**
+ * `--MM-dd` → 4 chiffres bruts jour/mois dans l'ordre [monthDayOrder] (réinjection au
+ * formulaire en mode year-less, et relecture propre — fin du « --/03/-15 »). Pendant
+ * year-less de [isoToRawDigits]. Renvoie [value] inchangée si ce n'est pas un `--MM-dd`
+ * valide (meilleur effort, jamais de perte).
+ */
+fun monthDayToRawDigits(value: String, monthDayOrder: List<DateField>): String {
+    val (month, day) = DateCanonical.monthDayOf(value) ?: return value
+    return monthDayOrder.joinToString("") {
+        when (it) {
+            DateField.DAY -> "%02d".format(Locale.ROOT, day)
+            DateField.MONTH -> "%02d".format(Locale.ROOT, month)
+            DateField.YEAR -> ""
+        }
+    }
 }
 
 /**
@@ -284,6 +422,14 @@ fun isoToRawDigits(iso: String, spec: DateFormatSpec): String = try {
  */
 fun storedDateToRawDigits(value: String, spec: DateFormatSpec): String {
     if (value.isBlank()) return value
+    // v7.1.38 — date SANS année (`--MM-dd`) relue pour la SAISIE :
+    //  • locales année-en-dernier → 4 chiffres bruts jour/mois (le champ unique l'affiche en
+    //    « 15/03 » via le masque adaptatif ; fin du « --/03/-15 » cosmétique du socle B3b) ;
+    //  • locales YMD (année en tête) → conservée TELLE QUELLE en `--MM-dd` : le mode « sans
+    //    année » de l'affordance la consomme directement (l'année vide ne se déduit pas du préfixe).
+    if (DateCanonical.isMonthDay(value)) {
+        return if (spec.isYearLast) monthDayToRawDigits(value, spec.monthDayOrder) else value
+    }
     if (DateCanonical.isIso(value)) return isoToRawDigits(value, spec)
     val iso = DateCanonical.legacyRawDigitsToIso(value, spec.canonicalOrder())
     return if (iso != null) isoToRawDigits(iso, spec) else value
@@ -312,6 +458,56 @@ fun storedDateToMillis(value: String): Long? {
  */
 fun canonicalizeDateLinesForStorage(lines: List<DynamicLine>, spec: DateFormatSpec): List<DynamicLine> =
     lines.map { line ->
-        if (line.value.isBlank() || DateCanonical.isIso(line.value)) line
-        else rawDigitsToIso(line.value, spec)?.let { line.copy(value = it) } ?: line
+        val v = line.value
+        when {
+            // `--MM-dd` (sans année, B3b) et ISO complet sont DÉJÀ canoniques : laissés intacts.
+            v.isBlank() || DateCanonical.isIso(v) || DateCanonical.isMonthDay(v) -> line
+            // v7.1.38 — état TERMINAL year-less : en locale année-en-dernier, 4 chiffres jour/mois
+            // valides ⇒ `--MM-dd` (l'année laissée vide fige une date sans année). 5-7 chiffres =
+            // incomplet → rawDigitsToIso renvoie null → ligne intacte (la sauvegarde est bloquée).
+            spec.isYearLast && v.length == spec.monthDaySegmentLengths.sum() ->
+                rawDigitsToMonthDay(v, spec.monthDayOrder)?.let { line.copy(value = it) } ?: line
+            else -> rawDigitsToIso(v, spec)?.let { line.copy(value = it) } ?: line
+        }
     }
+
+/**
+ * v7.1.37 (B3b) — Formate une valeur de date STOCKÉE pour l'affichage LONG localisé :
+ *  - ISO `yyyy-MM-dd` → « d MMMM yyyy » (avec année) ;
+ *  - `--MM-dd` (sans année) → squelette « MMMMd » localisé par l'OS (« 15 mars », « March 15 »,
+ *    « 3月15日 », arabe RTL) — l'année factice de calcul n'apparaît PAS.
+ * Renvoie `null` si [value] n'est pas une date affichable (consommateur : `mapNotNull`/skip).
+ */
+fun formatStoredDateLong(value: String, locale: Locale): String? {
+    DateCanonical.monthDayOf(value)?.let { (month, day) ->
+        val pattern = DateFormat.getBestDateTimePattern(locale, "MMMMd")
+        val cal = Calendar.getInstance().apply {
+            clear(); set(2020, month - 1, day, 12, 0, 0) // 2020 bissextile → 29/02 OK ; année non affichée
+        }
+        return SimpleDateFormat(pattern, locale).format(cal.time)
+    }
+    val millis = storedDateToMillis(value) ?: return null
+    return SimpleDateFormat("d MMMM yyyy", locale).format(Date(millis))
+}
+
+/**
+ * v7.1.48 — Formate un HORODATAGE (millis) en date longue + heure, ENTIÈREMENT localisé :
+ * les squelettes sont résolus par l'OS via [DateFormat.getBestDateTimePattern], jamais par un
+ * pattern codé en dur.
+ *  - date, squelette « yMMMMd » → « 14 juin 2026 » (fr) / « June 14, 2026 » (en) /
+ *    « 2026年6月14日 » (ja) / arabe RTL — l'ORDRE des composants suit la locale ;
+ *  - heure, squelette « jm » → le « j » demande l'heure dans la convention de la locale
+ *    (24 h en fr/de, 12 h « 2:05 PM » en en-US), là où un « HH:mm » en dur imposait le 24 h.
+ *
+ * Remplace le `SimpleDateFormat("d MMMM yyyy, HH:mm")` du dialogue « Informations » des
+ * contacts, qui affichait « 14 June 2026 » au lieu de « June 14, 2026 » en anglais.
+ * L'appelant garde son `remember(Locale.getDefault())` (correctif v7.1.30 : jamais de format
+ * périmé après un changement de langue in-app).
+ */
+fun formatDateTimeLong(millis: Long, locale: Locale): String {
+    val datePattern = DateFormat.getBestDateTimePattern(locale, "yMMMMd")
+    val timePattern = DateFormat.getBestDateTimePattern(locale, "jm")
+    val date = Date(millis)
+    return SimpleDateFormat(datePattern, locale).format(date) + ", " +
+        SimpleDateFormat(timePattern, locale).format(date)
+}

@@ -25,7 +25,6 @@
     <string name="common_photo">사진</string>
     <string name="common_name_label">이름</string>
     <string name="common_color_label">색상</string>
-    <string name="separator_and">" 및 "</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR 연락처</string>
@@ -139,6 +138,7 @@
     <string name="trash_empty_cd">휴지통 비우기</string>
     <string name="trash_empty_dialog_title">휴지통을 비울까요?</string>
     <string name="trash_empty_dialog_text">이 작업은 되돌릴 수 없습니다.\n%1$s이(가) 영구 삭제됩니다.</string>
+    <string name="trash_empty_dialog_text_both">이 작업은 되돌릴 수 없습니다.\n%1$s 및 %2$s이(가) 영구 삭제됩니다.</string>
     <string name="trash_empty_confirm">영구 삭제</string>
     <string name="trash_delete_dialog_title">영구 삭제할까요?</string>
     <string name="trash_delete_category_with_contacts">카테고리 “%1$s”과(와) 연락처 %2$d명이 사라집니다.</string>
@@ -219,12 +219,32 @@
     <string name="date_value_label">날짜</string>
     <string name="relation_type_mother">어머니</string>
     <string name="relation_type_father">아버지</string>
+    <string name="relation_type_parent">부모</string>
     <string name="relation_type_brother">형제</string>
     <string name="relation_type_sister">자매</string>
     <string name="relation_type_spouse">배우자</string>
     <string name="relation_type_child">자녀</string>
     <string name="relation_type_friend">친구</string>
     <string name="relation_type_manager">매니저</string>
+    <string name="relation_type_employee">직원</string>
+    <string name="relation_type_colleague">동료</string>
+    <string name="relation_type_teacher">선생님</string>
+    <string name="relation_type_student">학생</string>
+    <string name="relation_type_mentor">멘토</string>
+    <string name="relation_type_mentee">멘티</string>
+    <string name="relation_type_coach">코치</string>
+    <string name="relation_type_player">선수</string>
+    <string name="relation_type_doctor">의사</string>
+    <string name="relation_type_patient">환자</string>
+    <string name="relation_type_consultant">컨설턴트</string>
+    <string name="relation_type_client">고객</string>
+    <string name="relation_type_partner">파트너</string>
+    <string name="relation_type_best_friend">절친</string>
+    <string name="relation_type_classmate">동창</string>
+    <string name="relation_type_neighbor">이웃</string>
+    <string name="relation_group_family">가족</string>
+    <string name="relation_group_professional">직장</string>
+    <string name="relation_group_social">친목</string>
     <string name="section_phones">전화번호</string>
     <string name="section_emails">이메일</string>
     <string name="section_dates">중요한 날짜</string>
@@ -232,6 +252,7 @@
     <string name="add_phone">전화 추가</string>
     <string name="add_email">이메일 추가</string>
     <string name="add_date">날짜 추가</string>
+    <string name="date_no_year">연도 없음</string>
     <string name="add_relation">관계 추가</string>
     <string name="name_details_title">이름 세부 정보</string>
     <string name="name_details_show">이름 세부 정보 표시</string>
@@ -444,6 +465,7 @@
     <!-- v7.0.3 — 맞춤형 메모 섹션 -->
     <string name="note_section_add">섹션 추가</string>
     <string name="note_section_default_notes">메모</string>
+    <string name="note_section_address">주소</string>
     <string name="note_section_title_hint">섹션 제목</string>
     <string name="note_section_content_hint">내용을 입력하세요…</string>    <string name="note_section_delete_confirm_title">이 섹션을 삭제할까요?</string>
     <string name="note_section_delete_confirm_text">내용이 영구적으로 삭제됩니다.</string>
@@ -455,6 +477,9 @@
     <string name="person_categories_dialog_title">카테고리</string>
     <string name="person_category_new">새 카테고리</string>
     <string name="person_categories_empty">아직 카테고리가 없습니다. 하나 만들어 시작하세요.</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">카테고리 검색…</string>
+    <string name="person_categories_no_results">검색과 일치하는 카테고리가 없습니다</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">확인 필요</string>
     <string name="person_relation_linked_cd">연결된 연락처</string>
@@ -498,4 +523,23 @@
     <plurals name="backup_import_success">
         <item quantity="other">백업 복원됨 (연락처 %1$d명)</item>
     </plurals>
+    <!-- v7.1.28 — 설정에서 연락처 가져오기 -->
+    <string name="settings_section_contacts">연락처</string>
+    <string name="settings_import_contacts_title">휴대폰에서 가져오기</string>
+    <string name="settings_import_contacts_subtitle">휴대폰 연락처를 JTR에 추가</string>
+    <string name="settings_contacts_rationale_title">연락처 가져오기</string>
+    <string name="settings_contacts_rationale_message">JTR이 휴대폰 연락처를 읽어 가져올 항목을 선택할 수 있도록 합니다. 연락처는 기기에 저장되며 업로드되지 않습니다.</string>
+    <string name="settings_contacts_blocked_title">연락처 접근 차단됨</string>
+    <string name="settings_contacts_blocked_message">연락처 권한이 꺼져 있습니다. 설정을 열어 JTR이 연락처를 가져올 수 있도록 허용하세요.</string>
+    <string name="import_contacts_done_title">가져오기 완료</string>
+    <string name="import_contacts_done_message">%1$d개 가져옴 · %2$d개 건너뜀 (이미 JTR에 있음)</string>
+    <!-- v7.1.42 (B7) — 중복 처리 선택 -->
+    <string name="import_strategy_title">이미 JTR에 있나요?</string>
+    <string name="import_strategy_message">이미 JTR에 있는 연락처(전화 또는 이메일로 일치)를 어떻게 할지 선택하세요.</string>
+    <string name="import_strategy_skip">건너뛰기</string>
+    <string name="import_strategy_update">기존 업데이트</string>
+    <string name="import_strategy_import_anyway">무시하고 가져오기</string>
+    <string name="import_contacts_done_message_updated">%1$d개 가져옴 · %2$d개 업데이트 · %3$d개 건너뜀</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">생일은 미래일 수 없습니다</string>
 </resources>

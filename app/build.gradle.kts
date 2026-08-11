@@ -1,9 +1,20 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp") version "2.1.0-1.0.29"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.1.0"
+}
+
+// Signature de release : les mots de passe vivent dans keystore.properties (racine,
+// git-ignoré) — JAMAIS suivis par Git. Si le fichier est absent (CI, clone frais),
+// signingConfig reste vide et seul le build debug fonctionne.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -14,10 +25,38 @@ android {
         applicationId = "com.jtr.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 81
-        versionName = "7.1.27"
+        versionCode = 119
+        versionName = "7.1.65"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            // INSTALL PARALLÈLE : le build de test s'installe sous com.jtr.app.debug et
+            // cohabite avec la production (com.jtr.app) — données réelles jamais touchées,
+            // ni par une réinstallation ni par un `connectedAndroidTest` (qui désinstalle
+            // l'app sous test). L'autorité du FileProvider suit `${applicationId}`.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+        release {
+            signingConfig = signingConfigs.getByName("release")
+            // ⚠️ Pas de minification/R8 pour cette première release (éviter tout
+            // risque de comportement R8 juste avant la mise en ligne).
+            isMinifyEnabled = false
+        }
     }
 
     buildFeatures {

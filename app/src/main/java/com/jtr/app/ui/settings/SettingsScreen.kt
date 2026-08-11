@@ -14,7 +14,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -27,11 +30,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -58,6 +63,22 @@ import com.jtr.app.ui.theme.ThemePreset
 import com.jtr.app.utils.LocaleManager
 import com.jtr.app.utils.LocationUtils
 import kotlin.math.abs
+
+/**
+ * Fiche Play Store de JTR, jointe au message de « Partager JTR » (v7.1.55).
+ *
+ * ⚠️ L'identifiant est écrit EN DUR. Ni `BuildConfig.APPLICATION_ID` ni
+ * `context.packageName` : la variante de test porte le suffixe `.debug`
+ * (`com.jtr.app.debug`), et le lien partagé depuis un device de test pointerait
+ * alors vers une fiche INEXISTANTE — précisément là où on le vérifie.
+ *
+ * L'URL n'est pas traduisible : elle est concaténée ici plutôt qu'insérée dans les
+ * 13 `settings_share_text` (13 éditions et autant d'occasions de l'abîmer, pour rien).
+ * Tant que l'app est en test fermé, le lien renvoie une 404 : c'est ATTENDU, il
+ * s'activera à la publication sans nouvelle livraison.
+ */
+private const val PLAY_STORE_URL =
+    "https://play.google.com/store/apps/details?id=com.jtr.app"
 
 /** Tailles de police proposées (facteur → libellé) ; plafond strict = 1.30. */
 private val FONT_SCALE_OPTIONS: List<Pair<Float, Int>> = listOf(
@@ -99,6 +120,7 @@ fun SettingsScreen(
     fontScale: Float = 1f,
     onFontScaleChange: (Float) -> Unit = {},
     onNavigateToTrash: () -> Unit = {},
+    onNavigateToImportContacts: () -> Unit = {},
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
     var showPrivacySheet by remember { mutableStateOf(false) }
@@ -143,6 +165,9 @@ fun SettingsScreen(
     var showLocationRationale by remember { mutableStateOf(false) }
     var showLocationSettings by remember { mutableStateOf(false) }
     var showBackgroundRationale by remember { mutableStateOf(false) }
+    // Import contacts (v7.1.28) : divulgation (rationale) + redirection Réglages si bloqué.
+    var showContactsRationale by remember { mutableStateOf(false) }
+    var showContactsSettings by remember { mutableStateOf(false) }
 
     fun hasForegroundLocation(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -205,6 +230,34 @@ fun SettingsScreen(
             // < 33, ou permission accordée mais notifications bloquées au niveau
             // app/canal : seuls les Réglages système peuvent réactiver.
             else -> showNotifSettings = true
+        }
+    }
+
+    // ── CONTACTS : import depuis le téléphone (READ_CONTACTS) ───────────────────
+    // Divulgation AVANT toute demande (bonne pratique Play pour une permission
+    // sensible) : la VRAIE boîte système n'est lancée qu'après le dialogue
+    // d'explication. Permission accordée → on ouvre l'écran de sélection.
+    fun hasContactsPermission(): Boolean =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) ==
+            PackageManager.PERMISSION_GRANTED
+
+    val contactsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) onNavigateToImportContacts()
+        // Refus définitif → le système ne montrera plus sa boîte : Réglages de l'app.
+        else if (!shouldShowRationale(Manifest.permission.READ_CONTACTS)) showContactsSettings = true
+    }
+
+    fun importContactsFlow() {
+        val perm = Manifest.permission.READ_CONTACTS
+        when {
+            hasContactsPermission() -> onNavigateToImportContacts()
+            // Jamais demandé OU refus simple → on montre la divulgation, puis la boîte système.
+            !settingsViewModel.wasPermissionAsked(perm) || shouldShowRationale(perm) ->
+                showContactsRationale = true
+            // Refus définitif (jamais re-proposé par l'OS) → redirection Réglages.
+            else -> showContactsSettings = true
         }
     }
 
@@ -286,6 +339,7 @@ fun SettingsScreen(
             ?: R.string.settings_font_normal
     )
     val shareText = stringResource(R.string.settings_share_text)
+    val appName = stringResource(R.string.app_name)
 
     // Persiste le choix puis recrée l'Activity → attachBaseContext applique la
     // locale et TOUT le texte change immédiatement (fiable sur toutes versions).
@@ -298,7 +352,11 @@ fun SettingsScreen(
     fun shareApp() {
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, shareText)
+            // Argumentaire traduit + lien vers la fiche Play (v7.1.55) : le message
+            // seul ne disait pas OÙ trouver l'app.
+            putExtra(Intent.EXTRA_TEXT, "$shareText\n\n$PLAY_STORE_URL")
+            // Objet utilisé par les cibles qui en ont un (e-mail) ; ignoré ailleurs.
+            putExtra(Intent.EXTRA_SUBJECT, appName)
         }
         runCatching { context.startActivity(Intent.createChooser(intent, null)) }
     }
@@ -358,6 +416,16 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_font_size_title),
                     value = currentFontLabel,
                     onClick = { showFontPicker = true }
+                )
+            }
+
+            // ── Carte « Contacts » (v7.1.28) : import depuis le téléphone ──────
+            SettingsCard(title = stringResource(R.string.settings_section_contacts)) {
+                SettingsNavRow(
+                    icon = Icons.Default.Contacts,
+                    title = stringResource(R.string.settings_import_contacts_title),
+                    subtitle = stringResource(R.string.settings_import_contacts_subtitle),
+                    onClick = { importContactsFlow() }
                 )
             }
 
@@ -503,7 +571,11 @@ fun SettingsScreen(
     }
 
     if (showPrivacySheet) {
-        PrivacyPolicySheet(isDarkMode = isDarkMode, onDismiss = { showPrivacySheet = false })
+        PrivacyPolicySheet(
+            isDarkMode = isDarkMode,
+            preset = selectedPreset,
+            onDismiss = { showPrivacySheet = false }
+        )
     }
 
     if (showBackupDialog) {
@@ -567,6 +639,30 @@ fun SettingsScreen(
             message = stringResource(R.string.settings_notif_blocked_message),
             onOpen = { showNotifSettings = false; openSettings(notificationSettingsIntent()) },
             onDismiss = { showNotifSettings = false }
+        )
+    }
+    // Contacts — divulgation AVANT la demande système (Play : permission sensible).
+    if (showContactsRationale) {
+        PermissionRationaleDialog(
+            icon = Icons.Default.Contacts,
+            title = stringResource(R.string.settings_contacts_rationale_title),
+            message = stringResource(R.string.settings_contacts_rationale_message),
+            onContinue = {
+                showContactsRationale = false
+                settingsViewModel.markPermissionAsked(Manifest.permission.READ_CONTACTS)
+                contactsLauncher.launch(Manifest.permission.READ_CONTACTS)
+            },
+            onDismiss = { showContactsRationale = false }
+        )
+    }
+    // Contacts — refus définitif / bloqué : redirection Réglages de l'app.
+    if (showContactsSettings) {
+        PermissionSettingsDialog(
+            icon = Icons.Default.Contacts,
+            title = stringResource(R.string.settings_contacts_blocked_title),
+            message = stringResource(R.string.settings_contacts_blocked_message),
+            onOpen = { showContactsSettings = false; openSettings(appDetailsIntent()) },
+            onDismiss = { showContactsSettings = false }
         )
     }
     // Localisation — refusée une fois : explication puis VRAIE boîte système.
@@ -644,7 +740,15 @@ private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> U
     }
 }
 
-/** Ligne avec interrupteur (Switch Material 3). */
+/**
+ * Ligne avec interrupteur (Switch Material 3).
+ *
+ * v7.1.65 — TOUTE LA LIGNE est bascule (même patron que `CategoryCheckRow`) : sans cela,
+ * le `Switch` était un arrêt de focus SÉPARÉ de son libellé et TalkBack annonçait
+ * « activé, interrupteur » sans dire QUEL réglage. `Modifier.toggleable` fusionne la
+ * sémantique des descendants ⇒ un seul nœud « titre, sous-titre, état, interrupteur ».
+ * Effet de bord voulu : la cible tactile passe de l'interrupteur à la ligne entière.
+ */
 @Composable
 private fun SettingsToggleRow(
     icon: ImageVector,
@@ -655,6 +759,12 @@ private fun SettingsToggleRow(
     onCheckedChange: (Boolean) -> Unit
 ) {
     ListItem(
+        modifier = Modifier.toggleable(
+            value = checked,
+            enabled = enabled,
+            role = Role.Switch,
+            onValueChange = onCheckedChange
+        ),
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         leadingContent = {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -664,7 +774,18 @@ private fun SettingsToggleRow(
             { Text(it, style = MaterialTheme.typography.bodySmall) }
         },
         trailingContent = {
-            Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+            // Le rôle/clic est porté par la ligne → l'interrupteur ne re-gère pas l'événement.
+            // ⚠️ `minimumInteractiveComponentSize()` est REQUIS : sans `onCheckedChange`, Compose
+            // n'applique plus la cible tactile minimale de 48 dp, la boîte de l'interrupteur
+            // rétrécit, et sur un ListItem à TROIS lignes (contenu de fin aligné en HAUT) il
+            // remonterait d'une douzaine de pixels. On le réserve donc explicitement : rendu
+            // strictement identique à avant.
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+                enabled = enabled,
+                modifier = Modifier.minimumInteractiveComponentSize()
+            )
         }
     )
 }
@@ -807,25 +928,50 @@ private fun LanguagePickerSheet(
     onSelect: (String?) -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // v7.1.51 — Sans plafond, les 14 langues empilées dans une Column NON scrollable
+    // dépassaient la hauteur de l'écran (~814 dp mesurés > 800 dp sur S21) : la feuille
+    // montait en PLEIN écran et la dernière entrée (한국어) était purement INATTEIGNABLE,
+    // rien ne défilant. On borne donc la feuille ENTIÈRE (et non la seule liste) à ~55 %
+    // de l'écran — même recette de plafond que [PrivacyPolicySheet] — et on rend la liste
+    // scrollable.
+    //
+    // ⚠️ Deux détails mesurés à l'écran, pas déductibles du code :
+    //  - plafonner la LISTE seule ne suffit pas : titre + poignée s'ajoutent par-dessus,
+    //    la feuille dépasse le point d'ancrage et sa dernière ligne se dessine SOUS la
+    //    barre de navigation. C'est la hauteur TOTALE qu'il faut borner, la liste prenant
+    //    le reste via `weight(1f, fill = false)` (elle s'adapte donc aux grandes polices).
+    //  - `skipPartiallyExpanded = true` est alors REQUIS : l'ancrage « à moitié » vaut
+    //    exactement 50 % de l'écran, soit un peu moins que la feuille (~55 %), et cachait
+    //    à nouveau une ligne hors écran. Déployée d'emblée, la feuille fait exactement sa
+    //    hauteur de contenu : tout est visible et le seul défilement est celui de la liste.
+    val maxSheetHeight = LocalConfiguration.current.screenHeightDp.dp * 0.55f
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(max = maxSheetHeight)
                 .padding(bottom = 16.dp)
+                // HORS du scroll : l'inset de la barre de navigation ne doit pas défiler
+                // avec les lignes.
                 .navigationBarsPadding()
         ) {
+            // Titre FIXE (hors zone scrollable) : il reste visible pendant le défilement.
             Text(
                 text = stringResource(R.string.settings_language_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
             )
-            LANGUAGE_OPTIONS.forEach { (tag, labelRes) ->
-                PickerOptionRow(
-                    label = stringResource(labelRes),
-                    selected = tag == currentTag,
-                    onClick = { onSelect(tag) }
-                )
+            LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+                items(LANGUAGE_OPTIONS) { (tag, labelRes) ->
+                    PickerOptionRow(
+                        label = stringResource(labelRes),
+                        selected = tag == currentTag,
+                        onClick = { onSelect(tag) }
+                    )
+                }
             }
         }
     }
@@ -1043,17 +1189,97 @@ private fun ColorDot(color: Color, size: Int) {
 
 // ── Politique de confidentialité ─────────────────────────────────────────────
 
+/** `#RRGGBB` d'une couleur Compose, pour l'injecter dans une feuille de style. */
+private fun Color.toCssHex(): String =
+    String.format("#%06X", toArgb() and 0xFFFFFF)
+
+/**
+ * Feuille de style INJECTÉE (v7.1.52) : la politique de confidentialité suit la palette
+ * choisie dans « Palette de couleurs » au lieu du bleu figé d'origine.
+ *
+ * Les 13 traductions (`res/raw-xx`, un `privacy_policy.html` chacune) portent un `<style>` STRICTEMENT
+ * identique où TOUTE couleur passe par une variable CSS — on se contente donc de surcharger
+ * ces variables, sans toucher à un seul fichier HTML (zéro risque de divergence entre
+ * langues). On surcharge `:root` ET `html.dark` avec les mêmes valeurs : les couleurs
+ * viennent de `MaterialTheme`, donc déjà celles du mode courant.
+ *
+ * ⚠️ Uniquement des rôles EXPLICITEMENT définis par les presets : `outline`,
+ * `outlineVariant`, `tertiary` et `error` ne le sont pas et retomberaient sur la baseline
+ * Material (violet) — d'où `surfaceVariant` pour les cartes ET les bordures.
+ *
+ * `--ok` / `--warn` suivent eux aussi la primaire : un vert fixe jurait sur un thème violet
+ * et se confondait avec un thème émeraude. Le SENS reste porté par le **glyphe** « ✓ », pas
+ * par la teinte — y compris sur « JTR Signature », dont la primaire monochrome rend les ✓
+ * quasi noirs (clair) / blancs (sombre), ce qui est le rendu voulu. Aucune couleur fixe ne
+ * subsiste dans la page.
+ */
+private fun privacyThemeCss(
+    accent: String,
+    onAccent: String,
+    chipBg: String,
+    chipFg: String,
+    bg: String,
+    surface: String,
+    textPrimary: String,
+    textMuted: String
+): String = """
+<style>
+  :root, html.dark {
+    --accent: $accent;
+    --chip-bg: $chipBg;
+    --chip-fg: $chipFg;
+    --bg: $bg;
+    --surface: $surface;
+    --border: $surface;
+    --text-primary: $textPrimary;
+    --text-muted: $textMuted;
+    --on-accent: $onAccent;
+    --ok: $accent;
+    --warn: $accent;
+  }
+  /* Un lien doit rester repérable SANS la couleur : le preset « JTR Signature » a une
+     primaire quasi noire (clair) / quasi blanche (sombre), un lien seulement coloré y
+     serait indiscernable du texte courant (et WCAG 1.4.1 l'interdit). */
+  a { text-decoration: underline; }
+  /* Pastille numérotée : le texte posé SUR la primaire doit être `onPrimary`, seule
+     couleur dont M3 garantit le contraste (le HTML utilisait le fond de page). */
+  h2 .num { color: var(--on-accent); }
+</style>
+"""
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PrivacyPolicySheet(isDarkMode: Boolean, onDismiss: () -> Unit) {
+private fun PrivacyPolicySheet(
+    isDarkMode: Boolean,
+    preset: ThemePreset,
+    onDismiss: () -> Unit
+) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+
+    val scheme = MaterialTheme.colorScheme
+    // `--bg` = couleur RÉELLE du conteneur de la feuille (et non `surface`) : la WebView se
+    // fond alors dans la feuille, sans couture visible sous la poignée.
+    val sheetContainer = BottomSheetDefaults.ContainerColor
+    val themeCss = privacyThemeCss(
+        accent = scheme.primary.toCssHex(),
+        onAccent = scheme.onPrimary.toCssHex(),
+        chipBg = scheme.primaryContainer.toCssHex(),
+        chipFg = scheme.onPrimaryContainer.toCssHex(),
+        bg = sheetContainer.toCssHex(),
+        surface = scheme.surfaceVariant.toCssHex(),
+        textPrimary = scheme.onSurface.toCssHex(),
+        textMuted = scheme.onSurfaceVariant.toCssHex()
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
     ) {
+        // `factory` ne s'exécute qu'à la création de la vue : on la clé sur le thème pour
+        // que la WebView soit RECONSTRUITE avec le CSS courant si la palette change.
+        key(preset, isDarkMode) {
         AndroidView(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1088,12 +1314,15 @@ private fun PrivacyPolicySheet(isDarkMode: Boolean, onDismiss: () -> Unit) {
                     }
                     val raw = ctx.resources.openRawResource(R.raw.privacy_policy)
                         .bufferedReader().use { it.readText() }
-                    val themed = if (isDarkMode)
+                    val darkened = if (isDarkMode)
                         raw.replace("<html ", "<html class=\"dark\" ")
                     else raw
+                    // Injecté APRÈS le <style> d'origine → gagne par ordre de cascade.
+                    val themed = darkened.replace("</head>", "$themeCss</head>")
                     loadDataWithBaseURL(null, themed, "text/html", "UTF-8", null)
                 }
             }
         )
+        }
     }
 }

@@ -74,4 +74,75 @@ class DateCanonicalTest {
         assertThat(DateCanonical.legacyRawDigitsToIso("123", DateOrder.DMY)).isNull()
         assertThat(DateCanonical.legacyRawDigitsToIso("abcdabcd", DateOrder.DMY)).isNull()
     }
+
+    // ── B3b (v7.1.37) : dates SANS année « --MM-dd » ──────────────────────────
+
+    @Test
+    fun isMonthDay_detectsYearLessForm() {
+        assertThat(DateCanonical.isMonthDay("--06-25")).isTrue()
+        assertThat(DateCanonical.isMonthDay("--02-29")).isTrue()
+        assertThat(DateCanonical.isMonthDay("1995-06-25")).isFalse() // ISO complet ≠ year-less
+        assertThat(DateCanonical.isMonthDay("06-25")).isFalse()
+        assertThat(DateCanonical.isMonthDay("")).isFalse()
+    }
+
+    @Test
+    fun monthDayOf_parsesValidAndRejectsImpossible() {
+        assertThat(DateCanonical.monthDayOf("--06-25")).isEqualTo(6 to 25)
+        assertThat(DateCanonical.monthDayOf("--02-29")).isEqualTo(2 to 29) // année non fixée → 29/02 OK
+        assertThat(DateCanonical.monthDayOf("--13-01")).isNull()           // mois invalide
+        assertThat(DateCanonical.monthDayOf("--02-30")).isNull()           // jour invalide
+        assertThat(DateCanonical.monthDayOf("1995-06-25")).isNull()        // pas un « --MM-dd »
+    }
+
+    @Test
+    fun strictIsoFunctions_ignoreYearLess_noRegression() {
+        // Garde-fou B3b : les fonctions ISO STRICTES ne traitent JAMAIS un « --MM-dd ».
+        assertThat(DateCanonical.isIso("--06-25")).isFalse()
+        assertThat(DateCanonical.isoToMillis("--06-25")).isNull()
+        // …et les dates existantes restent EXACTEMENT inchangées.
+        assertThat(DateCanonical.isIso("1995-12-25")).isTrue()
+        assertThat(DateCanonical.isoToMillis("1995-12-25")).isNotNull()
+    }
+
+    @Test
+    fun nextOccurrenceMillis_thisYearWhenDayNotPassed() {
+        val from = Calendar.getInstance().apply { clear(); set(2026, Calendar.JANUARY, 1, 9, 0, 0) }.timeInMillis
+        val cal = Calendar.getInstance().apply { timeInMillis = DateCanonical.nextOccurrenceMillis("--06-25", from)!! }
+        assertThat(cal.get(Calendar.YEAR)).isEqualTo(2026)
+        assertThat(cal.get(Calendar.MONTH)).isEqualTo(Calendar.JUNE)
+        assertThat(cal.get(Calendar.DAY_OF_MONTH)).isEqualTo(25)
+    }
+
+    @Test
+    fun nextOccurrenceMillis_nextYearWhenDayPassed() {
+        val from = Calendar.getInstance().apply { clear(); set(2026, Calendar.DECEMBER, 1, 9, 0, 0) }.timeInMillis
+        val cal = Calendar.getInstance().apply { timeInMillis = DateCanonical.nextOccurrenceMillis("--06-25", from)!! }
+        assertThat(cal.get(Calendar.YEAR)).isEqualTo(2027)
+        assertThat(cal.get(Calendar.DAY_OF_MONTH)).isEqualTo(25)
+    }
+
+    @Test
+    fun nextOccurrenceMillis_todayCountsAsNotPassed() {
+        // Occurrence le jour même : retenue (comparaison au DÉBUT du jour, pas à l'heure courante).
+        val from = Calendar.getInstance().apply { clear(); set(2026, Calendar.JUNE, 25, 15, 0, 0) }.timeInMillis
+        val cal = Calendar.getInstance().apply { timeInMillis = DateCanonical.nextOccurrenceMillis("--06-25", from)!! }
+        assertThat(cal.get(Calendar.YEAR)).isEqualTo(2026)
+        assertThat(cal.get(Calendar.DAY_OF_MONTH)).isEqualTo(25)
+    }
+
+    @Test
+    fun nextOccurrenceMillis_feb29ClampedInNonLeapYear() {
+        val from = Calendar.getInstance().apply { clear(); set(2025, Calendar.MARCH, 1, 9, 0, 0) }.timeInMillis
+        val cal = Calendar.getInstance().apply { timeInMillis = DateCanonical.nextOccurrenceMillis("--02-29", from)!! }
+        assertThat(cal.get(Calendar.YEAR)).isEqualTo(2026)            // 2025-02 déjà passé
+        assertThat(cal.get(Calendar.MONTH)).isEqualTo(Calendar.FEBRUARY)
+        assertThat(cal.get(Calendar.DAY_OF_MONTH)).isEqualTo(28)      // 2026 non bissextile → coerce 28
+    }
+
+    @Test
+    fun nextOccurrenceMillis_rejectsNonMonthDay() {
+        assertThat(DateCanonical.nextOccurrenceMillis("1995-06-25", 0L)).isNull()
+        assertThat(DateCanonical.nextOccurrenceMillis("--13-01", 0L)).isNull()
+    }
 }

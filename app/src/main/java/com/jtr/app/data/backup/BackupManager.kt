@@ -288,7 +288,10 @@ class BackupManager(context: Context) {
                 try {
                     db.withTransaction {
                         groups.forEach { db.categoryGroupDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt))) }
-                        categories.forEach { db.categoryDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt))) }
+                        // v7.1.48 : `updatedAt` reçoit le MÊME traitement que `createdAt` — une
+                        // archive antérieure à v22 ne porte pas le champ, Gson le laisse à 0 et
+                        // la fiche afficherait « 1 janvier 1970 » en « Dernière modification ».
+                        categories.forEach { db.categoryDao().insert(it.copy(imagePath = rewrite(it.imagePath, false), createdAt = orRestore(it.createdAt), updatedAt = orRestore(it.updatedAt))) }
                         // v7.1.0 — normalise les dates des sauvegardes ANCIENNES (chiffres bruts
                         // locale-dépendants) vers l'ISO canonique : round-trip sûr, locale-libre.
                         persons.forEach {
@@ -333,7 +336,9 @@ class BackupManager(context: Context) {
         val tieBreak = DateCanonical.currentOrder(Locale.getDefault())
         var birthdayUsed = false
         val normalized = lines.map { line ->
-            if (line.value.isBlank() || DateCanonical.isIso(line.value)) return@map line
+            // v7.1.37 (B3b) — `--MM-dd` (date sans année) est DÉJÀ canonique → round-trip intact.
+            if (line.value.isBlank() || DateCanonical.isIso(line.value) ||
+                DateCanonical.isMonthDay(line.value)) return@map line
             // « birthday » : const FieldTypes.DATE_BIRTHDAY (literal pour découpler du module UI).
             val iso = if (line.label == "birthday" && !birthdayUsed && p.birthdate != null) {
                 birthdayUsed = true

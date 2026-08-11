@@ -25,7 +25,6 @@
     <string name="common_photo">صورة</string>
     <string name="common_name_label">الاسم</string>
     <string name="common_color_label">اللون</string>
-    <string name="separator_and">" و "</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">جهات الاتصال JTR</string>
@@ -139,6 +138,7 @@
     <string name="trash_empty_cd">إفراغ السلة</string>
     <string name="trash_empty_dialog_title">إفراغ سلة المهملات؟</string>
     <string name="trash_empty_dialog_text">هذا الإجراء لا يمكن التراجع عنه.\nسيتم حذف %1$s نهائيًا.</string>
+    <string name="trash_empty_dialog_text_both">هذا الإجراء لا يمكن التراجع عنه.\nسيتم حذف %1$s و%2$s نهائيًا.</string>
     <string name="trash_empty_confirm">إفراغ نهائي</string>
     <string name="trash_delete_dialog_title">حذف نهائي؟</string>
     <string name="trash_delete_category_with_contacts">ستفقد الفئة «%1$s» و%2$d جهة اتصال بداخلها.</string>
@@ -219,12 +219,32 @@
     <string name="date_value_label">التاريخ</string>
     <string name="relation_type_mother">الأم</string>
     <string name="relation_type_father">الأب</string>
+    <string name="relation_type_parent">أحد الوالدين</string>
     <string name="relation_type_brother">الأخ</string>
     <string name="relation_type_sister">الأخت</string>
     <string name="relation_type_spouse">الزوج/الزوجة</string>
     <string name="relation_type_child">الابن/الابنة</string>
     <string name="relation_type_friend">صديق</string>
     <string name="relation_type_manager">المدير</string>
+    <string name="relation_type_employee">موظف</string>
+    <string name="relation_type_colleague">زميل</string>
+    <string name="relation_type_teacher">معلم</string>
+    <string name="relation_type_student">طالب</string>
+    <string name="relation_type_mentor">مرشد</string>
+    <string name="relation_type_mentee">متدرب</string>
+    <string name="relation_type_coach">مدرب</string>
+    <string name="relation_type_player">لاعب</string>
+    <string name="relation_type_doctor">طبيب</string>
+    <string name="relation_type_patient">مريض</string>
+    <string name="relation_type_consultant">مستشار</string>
+    <string name="relation_type_client">عميل</string>
+    <string name="relation_type_partner">شريك</string>
+    <string name="relation_type_best_friend">أفضل صديق</string>
+    <string name="relation_type_classmate">زميل دراسة</string>
+    <string name="relation_type_neighbor">جار</string>
+    <string name="relation_group_family">العائلة</string>
+    <string name="relation_group_professional">المهني</string>
+    <string name="relation_group_social">الاجتماعي</string>
     <string name="section_phones">الهواتف</string>
     <string name="section_emails">رسائل البريد الإلكتروني</string>
     <string name="section_dates">التواريخ المهمة</string>
@@ -232,6 +252,7 @@
     <string name="add_phone">إضافة هاتف</string>
     <string name="add_email">إضافة بريد إلكتروني</string>
     <string name="add_date">إضافة تاريخ</string>
+    <string name="date_no_year">بدون سنة</string>
     <string name="add_relation">إضافة علاقة</string>
     <string name="name_details_title">تفاصيل الاسم</string>
     <string name="name_details_show">عرض تفاصيل الاسم</string>
@@ -444,6 +465,7 @@
     <!-- v7.0.3 — أقسام ملاحظات قابلة للتخصيص -->
     <string name="note_section_add">إضافة قسم</string>
     <string name="note_section_default_notes">ملاحظات</string>
+    <string name="note_section_address">العنوان</string>
     <string name="note_section_title_hint">عنوان القسم</string>
     <string name="note_section_content_hint">اكتب شيئًا…</string>    <string name="note_section_delete_confirm_title">حذف هذا القسم؟</string>
     <string name="note_section_delete_confirm_text">سيُحذف محتواه نهائيًا.</string>
@@ -455,6 +477,9 @@
     <string name="person_categories_dialog_title">الفئات</string>
     <string name="person_category_new">فئة جديدة</string>
     <string name="person_categories_empty">لا توجد فئات بعد. أنشئ واحدة للبدء.</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">ابحث عن فئة…</string>
+    <string name="person_categories_no_results">لا توجد فئة تطابق بحثك</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">للتحقق</string>
     <string name="person_relation_linked_cd">جهة اتصال مرتبطة</string>
@@ -553,4 +578,23 @@
         <item quantity="many">تمت استعادة النسخة الاحتياطية (%1$d جهة اتصال)</item>
         <item quantity="other">تمت استعادة النسخة الاحتياطية (%1$d جهة اتصال)</item>
     </plurals>
+    <!-- v7.1.28 — استيراد جهات الاتصال من الإعدادات -->
+    <string name="settings_section_contacts">جهات الاتصال</string>
+    <string name="settings_import_contacts_title">استيراد من الهاتف</string>
+    <string name="settings_import_contacts_subtitle">أضف جهات اتصال هاتفك إلى JTR</string>
+    <string name="settings_contacts_rationale_title">استيراد جهات اتصالك</string>
+    <string name="settings_contacts_rationale_message">سيقرأ JTR جهات اتصال هاتفك لتختار أيها تريد استيراده. تُخزَّن على جهازك ولا تُرفع أبدًا.</string>
+    <string name="settings_contacts_blocked_title">تم حظر الوصول إلى جهات الاتصال</string>
+    <string name="settings_contacts_blocked_message">إذن جهات الاتصال معطَّل. افتح الإعدادات للسماح لـ JTR باستيراد جهات اتصالك.</string>
+    <string name="import_contacts_done_title">اكتمل الاستيراد</string>
+    <string name="import_contacts_done_message">%1$d مستورد · %2$d متجاوَز (موجود بالفعل في JTR)</string>
+    <!-- v7.1.42 (B7) — اختيار معالجة التكرارات -->
+    <string name="import_strategy_title">موجود بالفعل في JTR؟</string>
+    <string name="import_strategy_message">اختر ما تريد فعله بجهات الاتصال الموجودة بالفعل في JTR (تُطابَق عبر الهاتف أو البريد الإلكتروني).</string>
+    <string name="import_strategy_skip">تجاوز</string>
+    <string name="import_strategy_update">تحديث الموجود</string>
+    <string name="import_strategy_import_anyway">استيراد على أي حال</string>
+    <string name="import_contacts_done_message_updated">%1$d مستورد · %2$d محدَّث · %3$d متجاوَز</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">لا يمكن أن يكون تاريخ الميلاد في المستقبل</string>
 </resources>

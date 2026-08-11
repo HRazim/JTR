@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> Un carnet de contacts Android **100 % local** qui se souvient du contexte humain de vos relations. · Version **7.1.27**
+> Un carnet de contacts Android **100 % local** qui se souvient du contexte humain de vos relations. · Version **7.1.55**
 
 JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde une **mémoire sociale** de chaque personne (goûts, anniversaires, ville, notes, réseaux sociaux, relations) et vous rappelle proactivement les dates importantes ainsi que les contacts dont vous êtes physiquement proche.
 
@@ -21,8 +21,8 @@ JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde un
 
 ## Présentation
 
-- **100 % local, privé par conception** : aucune donnée n'est envoyée à un serveur, **aucun compte**, **aucune publicité**, aucun traceur. Tout vit sur l'appareil (base SQLite via Room, photos dans le stockage interne).
-- **Seules sorties réseau, sans clé API et sans donnée personnelle** : le **géocodage Nominatim** (nom de ville → coordonnées) et l'affichage des fonds de carte **OpenFreeMap** (OpenStreetMap).
+- **100 % local, privé par conception** : vos **données de contact ne quittent jamais l'appareil**, **aucun compte**, **aucune publicité**, aucun traceur, aucun SDK d'analyse. Tout vit sur l'appareil (base SQLite via Room, photos dans le stockage interne).
+- **Seules sorties réseau, sans clé API** : le **géocodage Nominatim** (nom de ville → coordonnées) et les fonds de carte **OpenFreeMap** (OpenStreetMap) — ils reçoivent un nom de ville / des coordonnées, la zone affichée et votre adresse IP, **jamais vos données de contact**.
 - **Internationalisé** : 13 langues, dont l'**arabe en RTL complet** — toutes **embarquées dans l'APK de base** (`bundle { language { enableSplit = false } }`) pour une **bascule de langue in-app fiable sur App Bundle**.
 - **`minSdk 26` (Android 8.0+)**, cible Android 16 (`targetSdk 36`, conformité Google Play).
 
@@ -33,12 +33,20 @@ JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde un
 ### Contacts & profils
 - Profil riche façon « Contacts Google » : téléphones, e-mails, dates et relations **multiples** (listes dynamiques), détails de nom (préfixe, second prénom, suffixe, phonétique, surnom) et informations professionnelles.
 - **Liens de réseaux sociaux** avec icônes aux couleurs de marque, ouvrant l'application native ou le navigateur.
-- **Relations miroirs** synchronisées automatiquement (ajouter « frère » crée la relation réciproque) ; la propagation d'un changement de nom est réactive.
+- **Relations miroirs** synchronisées automatiquement (ajouter « frère » crée la relation réciproque, avec le **rôle inverse correct** — « mère » ↦ « fils/fille » selon le contact) ; la propagation d'un changement de nom est réactive.
+- **Catalogue de 25 rôles de relation** (+ « Personnalisé »), groupés **Famille / Pro / Social** dans le sélecteur.
 - Édition **en place** (double-tap), visionneuse photo plein écran (zoom/pan, double-tap ancré).
+- **Recherche globale unifiée** : un seul moteur tokenisé (multi-mots, insensible à la casse et aux accents, sûr en arabe) sur tous les écrans — accueil, catégories, dossiers, relations, sélecteurs.
+
+### Import des contacts du téléphone
+- **Import depuis les Paramètres** (permission `READ_CONTACTS`) : les contacts importés **restent locaux**, rien n'est renvoyé nulle part.
+- Reprend **tout ce que l'agenda Android expose** : noms complets (préfixe, second prénom, suffixe, phonétique, **surnom**), **poste / entreprise / département**, photo **pleine résolution**, **types et libellés** des téléphones et e-mails, **événements** (y compris les dates **sans année**), **notes → sections**, site web → liens sociaux, adresse postale → ville + section, et **relations** (résolues en second passage vers l'identifiant du contact lié).
+- **Aperçu par contact** avant import (chips des données disponibles) et **dédoublonnage** par téléphone/e-mail : **Ignorer · Mettre à jour · Importer quand même** (une mise à jour n'écrase jamais une valeur existante par du vide).
 
 ### Catégories & organisation
-- Catégories **plusieurs-à-plusieurs** et **dossiers récursifs** (sous-groupes).
+- Catégories **plusieurs-à-plusieurs** et **dossiers récursifs** (sous-groupes), avec **couleur** et **image de couverture** (visionneuse plein écran, remplacement / retrait) et **dates de création / modification**.
 - Favoris, **glisser-déposer** (fusion / déplacement), mode sélection multiple « façon Galerie ».
+- **Assignation depuis la fiche** d'un contact : feuille montante avec **recherche repliable**, création rapide, compteur de sélection et **dossiers repliables** (tout replié à l'ouverture, la recherche court-circuitant le repli).
 - **3 modes d'affichage** persistés : Liste · Détails · Grille.
 - **Tri à deux axes** : critère (Nom · Date de modification · Date de création) + sens **croissant/décroissant**, partagé par l'accueil et les catégories ; les favoris restent épinglés en tête.
 
@@ -52,13 +60,15 @@ JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde un
 - Écran de verrouillage au démarrage à froid et au retour d'arrière-plan, avec temporisation anti-force-brute.
 
 ### Personnalisation
-- **6 thèmes** (JTR · Azure · Emerald · Coral · Violet · Rose) + **mode sombre**, surfaces accordées à la palette.
-- **Taille de police** réglable (plafonnée) et **langue de l'application** indépendante du système.
+- **6 thèmes** (JTR · Azure · Emerald · Coral · Violet · Rose) + **mode sombre**, surfaces accordées à la palette **en clair comme en sombre** — feuilles, dialogues, menus et cartes suivent le preset choisi.
+- **Taille de police** réglable (plafonnée) et **langue de l'application** indépendante du système (sélecteur borné et défilable : les 13 langues sont toutes atteignables).
 
 ### Médias & données
 - **Sélecteur de photos intégré** (lecture du MediaStore par albums, style galerie), sans quitter l'app, avec **recadrage** (cercle/rectangle).
 - **Sauvegarde / restauration** complète dans un fichier `.jtr` (profils, catégories, dossiers, liens, photos) via un partage de fichier sécurisé.
-- **Carte MapLibre** native pour choisir/valider une ville, avec géocodage Nominatim.
+- **Partage d'un ou plusieurs profils** en **texte**, **image PNG** ou **document PDF** (fiches complètes, photo incrustée), via un `FileProvider` à URI révocable et des fichiers temporaires purgés à chaque partage.
+- **Corbeille** : les contacts supprimés y restent **30 jours** (restauration unitaire ou globale) avant purge automatique.
+- **Carte MapLibre** native pour choisir/valider une ville, avec géocodage Nominatim (sélection de résultat déterministe, adresses complètes).
 
 ---
 
@@ -74,9 +84,9 @@ UI (Jetpack Compose) ─► ViewModel (StateFlow) ─► Repository ─► Room 
 
 | Domaine | Technologies |
 |--------|--------------|
-| Langage / SDK | Kotlin 2.1.0 · JVM 17 · AGP 8.13.2 · `minSdk 26` · `compile/targetSdk 36` · `versionName 7.1.27` / `versionCode 81` |
+| Langage / SDK | Kotlin 2.1.0 · JVM 17 · AGP 8.13.2 · `minSdk 26` · `compile/targetSdk 36` · `versionName 7.1.55` / `versionCode 109` |
 | UI | Jetpack Compose (BOM 2024.12.01) · Material 3 · Navigation Compose · listes réordonnables (`sh.calvin.reorderable` 2.4.3) |
-| Persistance | Room 2.6.1 (via **KSP**) — base **v21** · DataStore · EncryptedSharedPreferences |
+| Persistance | Room 2.6.1 (via **KSP**) — base **v22** · DataStore · EncryptedSharedPreferences |
 | Tâches de fond | WorkManager · `AlarmManager` (alarmes exactes) · `ProcessLifecycleOwner` |
 | Carte & réseau | MapLibre 11.5 · Retrofit / OkHttp · kotlinx.serialization (Nominatim) |
 | Localisation | Play Services Location (FusedLocation + Geofencing) |
@@ -84,7 +94,7 @@ UI (Jetpack Compose) ─► ViewModel (StateFlow) ─► Repository ─► Room 
 | Images | Coil |
 | Tests | JUnit · MockK · Turbine · Truth · `room-testing` (test de migration) |
 
-> ⚠️ La base Room est en **v21**. Toutes les évolutions de schéma sont couvertes par des **migrations explicites** (`MIGRATION_11_12` → `MIGRATION_20_21`, non destructives) ; `fallbackToDestructiveMigration()` n'est qu'un **filet de sécurité jamais atteint**. Toute future évolution **doit** fournir sa `Migration` explicite (sinon perte de données utilisateur).
+> ⚠️ La base Room est en **v22**. Toutes les évolutions de schéma sont couvertes par des **migrations explicites** (`MIGRATION_11_12` → `MIGRATION_21_22`, non destructives) ; `fallbackToDestructiveMigration()` n'est qu'un **filet de sécurité jamais atteint**. Toute future évolution **doit** fournir sa `Migration` explicite (sinon perte de données utilisateur).
 
 ---
 
@@ -113,7 +123,7 @@ Ou ouvrir le dossier dans Android Studio puis **Run ▶** sur un appareil/émula
 app/src/main/java/com/jtr/app/
 ├── domain/model/      # Entités Room (Person, Category, CategoryGroup, joins, SocialLink)
 ├── data/
-│   ├── local/         # AppDatabase (v21) + DAOs
+│   ├── local/         # AppDatabase (v22) + DAOs
 │   ├── remote/        # Nominatim (Retrofit)
 │   ├── repository/    # Person / Category / Geocoding…
 │   ├── backup/        # Sauvegarde & restauration .jtr
@@ -129,7 +139,7 @@ app/src/main/java/com/jtr/app/
 
 ## Historique des versions
 
-> Faits marquants par cycle. Versions taguées : `v5.5.1`, `v6.3.1`, `v7.0.7`, `v7.1.4`, `v7.1.8`, `v7.1.10`, `v7.1.15`, `v7.1.20`, `v7.1.24`, `v7.1.26`. Jalon courant : **`versionName 7.1.27` · `versionCode 81` · `targetSdk 36` · Room v21**.
+> Faits marquants par cycle. Versions taguées : `v5.5.1`, `v6.3.1`, `v7.0.7`, `v7.1.4`, `v7.1.8`, `v7.1.10`, `v7.1.15`, `v7.1.20`, `v7.1.24`, `v7.1.26`, `v7.1.27`. Jalon courant : **`versionName 7.1.55` · `versionCode 109` · `targetSdk 36` · Room v22**.
 
 ### Cycle v7.1.x — Robustesse de la saisie, intégrité & sécurité des données, polish UX & packaging
 
@@ -163,6 +173,30 @@ app/src/main/java/com/jtr/app/
 - **v7.1.27 — Identité de marque des fichiers exportés.** Les exports sont nommés **`JTR_Backup_<yyyy-MM-dd>_<HHmmss>.jtr`** et embarquent un **en-tête de marque** `manifest.json` (`{"_jtr":{"magic":"JTR-EXPORT", …}}`) en tête de l'archive ZIP, qui sert aussi de **validation par contenu** à l'import. **Association de fichier `.jtr`** best-effort et **scopée** (intent-filter `VIEW` couplant `application/octet-stream` à `pathPattern .jtr`, **jamais de catch-all**) : l'URI entrante **pré-arme le dialogue de confirmation** après déverrouillage (aucune écriture directe). **Rétrocompatibilité totale** — les anciens exports (sans `manifest.json`) suivent le chemin *legacy* inchangé — grâce au **versionnement dissocié** `FORMAT_VERSION` (schéma de données, =1) vs `ENVELOPE_VERSION` (marque, =2), l'app n'ayant jamais refusé ses propres fichiers. Limites Android documentées : icône/vignette JTR *sur* le fichier impossible ; association `content://` best-effort.
 
 > 🛡️ **Intégrité des données** — l'incident de perte de données est clos : la base est désormais à la fois **protégée de tout écrasement par l'OS** (v7.1.7) **et** ses sauvegardes `.jtr` sont de nouveau **réellement restaurables** (v7.1.8).
+
+### Cycle v7.1.28 → v7.1.55 — Import des contacts, relations justes, catégories & carte, cohérence du thème
+
+- **v7.1.28 — Import des contacts depuis les Paramètres.** L'import, jusque-là réservé à l'accueil de bienvenue, devient une entrée permanente des Paramètres, avec **dédoublonnage SKIP** (un contact déjà présent n'est pas réimporté).
+- **v7.1.29 — Dates futures & récurrence.** Le plafond d'année est levé : une date **passée** devient un rappel **annuel**, une date **future** un rappel **unique**.
+- **v7.1.30 — Dates « collées » à l'ancienne langue.** Revenir sur « Langue du système » ne réinitialisait pas `Locale.setDefault` → les dates restaient formatées dans la langue précédente. Corrigé dans `LocaleManager.wrap`.
+- **v7.1.31 — OSM : doublons et langue des lieux.** Dédoublonnage par `display_name` normalisé + intercepteur `Accept-Language` → les noms de lieux suivent la langue de JTR.
+- **v7.1.32 — Adresses OSM complètes.** Fin du « numéro de rue seul » : l'étiquette est reconstruite depuis `address` (rue d'abord, numéro jamais isolé), `addressdetails` demandé aussi sur le *reverse*.
+- **v7.1.33 — Titre de section de notes.** Fin du « Notes » prérempli : la nouvelle section naît avec un titre **vide** et un placeholder Material 3.
+- **v7.1.34 → v7.1.42 — Import des contacts, série B1→B7.** Sept briques successives, **sans aucune migration**, réutilisant l'importateur existant : **B1** noms complets, surnom, poste/département, photo pleine résolution ; **B2** types et libellés des téléphones/e-mails ; **B3** événements → dates du contact (un anniversaire importé programme d'office son rappel) ; **B3b** dates **sans année** (`--MM-dd`) jusque dans le socle ; **B4** note → sections, site web → liens sociaux, adresse postale → ville + section ; **B5** relations → `relationLines` puis **2ᵉ passe** de résolution vers `linkedPersonId` ; **B6** aperçu des capacités par contact (chips, une seule requête) ; **B7** dédoublonnage **Ignorer / Mettre à jour / Importer quand même** par téléphone ou e-mail, la mise à jour n'écrasant jamais une valeur par du vide.
+- **v7.1.38 — Saisie manuelle des dates sans année.** Édition directe du format `--MM-dd` ; les chiffres sont canonisés en `Locale.ROOT` (la saisie en arabe cassait la détection ISO).
+- **v7.1.43 — Inversion correcte des relations (P1).** Un module dédié (`domain/relations/RelationRoles`) calcule l'inverse **neutre** et propose la **classe d'équivalence genrée** : « mère » ↦ « fils/fille » et non plus « mère ». Corrige aussi un bug latent où changer « mère » en « père » détruisait le miroir. Sans migration ni backfill.
+- **v7.1.44 — Catalogue de relations étendu (P2).** 15 rôles supplémentaires (paires involutives et symétriques) portant le catalogue à **25 rôles + « Personnalisé »**, présentés **groupés** Famille / Pro / Social ; les catalogues téléphone/e-mail/date restent inchangés.
+- **v7.1.45 — Corbeille : « categoriesand10 ».** AAPT **rogne les espaces** d'un `<string>` non guillemeté : la concaténation du dialogue « vider la corbeille » collait les mots. Remplacée par trois chaînes complètes dans les 13 langues.
+- **v7.1.46 — Géocodage déterministe.** Tri **localité → importance → `osm_id`** (⚠️ `place_id` varie d'une requête à l'autre) et zoom de la mini-carte ajusté : le repère d'une ville ne saute plus d'un quartier à l'autre selon la langue.
+- **v7.1.47 — Carte : bouton Enregistrer toujours accessible.** Le bandeau n'est visible que **clavier fermé** (`WindowInsets.ime`), `imePadding()` sur la seule `Surface` (jamais le `Scaffold`, qui redimensionnerait la `MapView`) + `consumeWindowInsets` pour ne pas compter l'inset de navigation deux fois.
+- **v7.1.48 — Métadonnées de catégorie (Room v21 → v22).** Ajout de `Category.updatedAt` (**`MIGRATION_21_22`**, *backfill* = `createdAt` et non « maintenant »), source unique de date pour le tri **et** le dialogue « Informations », round-trip `.jtr`, et formatage date-heure conforme à la locale.
+- **v7.1.49 — Image de catégorie interactive.** La couverture s'ouvre en **visionneuse plein écran** (`PhotoZoomDialog` extrait et rendu réutilisable) avec Remplacer / Retirer. ⚠️ Les insets valent 0 dans une fenêtre de `Dialog` → ils sont lus sur la fenêtre de l'**activité**.
+- **v7.1.50 — Sélecteur de catégories en feuille montante.** `AlertDialog` → `ModalBottomSheet` : **recherche en loupe repliable**, « + » remonté dans l'en-tête, compteur de sélection, étoiles des favoris, chips en `FlowRow`. Recette clavier : `imePadding()` **et** `weight(1f, fill = false)` sur la liste, sinon « Terminé » est rogné.
+- **v7.1.51 — Le coréen enfin sélectionnable.** Les 14 entrées de langue dans une `Column` non défilable dépassaient la hauteur d'écran : la dernière était **littéralement inatteignable**. Plafond sur la feuille + liste défilable + `skipPartiallyExpanded`.
+- **v7.1.52 — Politique de confidentialité aux couleurs du thème.** Un `<style>` injecté avant `</head>` **surcharge les variables CSS** du HTML — les 13 traductions restent intactes ; fond aligné sur le conteneur réel de la feuille (pas de couture), liens **soulignés** (le preset Signature a une primaire quasi noire), **zéro couleur fixe**.
+- **v7.1.53 — Fin du fond lavande en thème clair.** Les 5 rôles `surfaceContainer*` n'étaient définis que dans les schémas **sombres** : en clair, feuilles, **28 `AlertDialog`**, menus et cartes retombaient sur la baseline Material mauve, quel que soit le preset. Un helper unique **dérive** l'échelle des surfaces déjà choisies par chaque preset — aucune couleur inventée.
+- **v7.1.54 — Dossiers repliables dans le sélecteur de catégories.** Tout part **replié** ; le repli est **récursif par construction** (on s'arrête au dossier fermé, donc son sous-arbre entier disparaît) et la **recherche court-circuite le repli** — une catégorie enfouie à deux niveaux reste trouvable. État local à la feuille, sans persistance.
+- **v7.1.55 — Partage recentré + lien Play Store.** Le partage de **catégorie** est retiré (il n'exportait qu'un nom et un compteur, et le faire complètement reviendrait à exporter en masse les données de plusieurs contacts) ; le partage de **profil** — une fiche à la fois, choix délibéré — est conservé intact. « Partager JTR » joint désormais le **lien Play Store** (identifiant écrit en dur : la variante de test aurait produit un lien mort).
 
 ### Évolution par version
 
@@ -200,12 +234,37 @@ app/src/main/java/com/jtr/app/
 | v7.1.25 | Proximité **par contact** : redirection Réglages (Android 11+) via **helper partagé** ; politique in-app corrigée + `docs/privacy.html` hébergeable. |
 | v7.1.26 | **Politique de confidentialité dans les 13 langues** (RTL arabe, repli anglais). |
 | v7.1.27 | **Identité de marque des exports `.jtr`** : nommage `JTR_Backup_<date>_<heure>`, en-tête `manifest.json` (magic `JTR-EXPORT`) + validation par contenu, association `.jtr` scopée best-effort, rétrocompat *legacy* préservée. |
+| v7.1.28 | **Import des contacts depuis les Paramètres** (+ dédoublonnage SKIP). |
+| v7.1.29 | Dates **futures** autorisées ; récurrence passé → annuel / futur → unique. |
+| v7.1.30 | i18n : les dates suivent la langue active après retour sur « Langue du système ». |
+| v7.1.31 | OSM : **dédoublonnage** des résultats + noms de lieux dans la langue de JTR. |
+| v7.1.32 | OSM : **adresses complètes** (fin du numéro de rue isolé). |
+| v7.1.33 | Notes : titre de section **vide** à la création (placeholder M3). |
+| v7.1.34 – v7.1.42 | **Import des contacts, série B1→B7** : noms complets & photo pleine résolution · types/libellés tél-e-mail · événements → dates (dont **sans année**) · notes/site/adresse · **relations** (2ᵉ passe par identifiant) · aperçu par chips · **dédoublonnage Ignorer/Mettre à jour/Importer quand même**. Aucune migration. |
+| v7.1.38 | Saisie manuelle des dates **sans année** + chiffres canoniques `Locale.ROOT` (arabe). |
+| v7.1.43 | **Inversion correcte des relations** (P1) : « mère » ↦ « fils/fille », miroir préservé au changement de rôle. |
+| v7.1.44 | **Catalogue de 25 rôles** de relation (+ « Personnalisé »), sélecteur groupé Famille/Pro/Social. |
+| v7.1.45 | Corbeille : mots collés corrigés (**AAPT rogne les espaces** d'un `<string>` non guillemeté). |
+| v7.1.46 | **Géocodage déterministe** (tri localité → importance → `osm_id`) + zoom de la mini-carte. |
+| v7.1.47 | Carte : bouton **Enregistrer** toujours accessible face au clavier (sans redimensionner la `MapView`). |
+| v7.1.48 | **Métadonnées de catégorie** : `updatedAt` + **`MIGRATION_21_22`** (Room **v22**), tri et « Informations » sur une source unique. |
+| v7.1.49 | **Image de catégorie interactive** : visionneuse plein écran réutilisable (Remplacer / Retirer). |
+| v7.1.50 | **Sélecteur de catégories en feuille montante** : recherche repliable, « + » en en-tête, compteur, favoris. |
+| v7.1.51 | Sélecteur de langues **borné et défilable** : le **coréen** redevient atteignable. |
+| v7.1.52 | **Politique de confidentialité aux couleurs du thème** (surcharge CSS injectée, 13 traductions intactes). |
+| v7.1.53 | **Fin du fond lavande en thème clair** : `surfaceContainer*` dérivés pour les 6 presets (feuilles, 28 dialogues, menus, cartes). |
+| v7.1.54 | **Dossiers repliables** dans le sélecteur de catégories (repli récursif, la recherche prime). |
+| v7.1.55 | **Partage recentré** : partage de catégorie retiré, partage de profil conservé ; « Partager JTR » joint le **lien Play Store**. |
 
 ---
 
 ## Confidentialité
 
-JTR est **local-first** : vos données restent sur votre appareil et sont **définitivement supprimées** à la désinstallation. La base est en outre **exclue de toute sauvegarde ou transfert du système** (`allowBackup="false"` + règles d'extraction de données) : aucun instantané de l'OS ne peut écraser vos données — l'**export `.jtr` manuel** est l'unique moyen de migrer d'un appareil à l'autre. Les seules requêtes réseau concernent le géocodage de ville (Nominatim) et les fonds de carte (OpenFreeMap), **sans transmettre de donnée personnelle**. Les permissions (notifications, localisation, photos) sont demandées **à l'usage** et révocables à tout moment. La politique complète est consultable dans l'app : **Paramètres → Politique de confidentialité**.
+JTR est **local-first** : vos **données de contact ne quittent jamais l'appareil**, et elles sont **définitivement supprimées** à la désinstallation. La base est en outre **exclue de toute sauvegarde ou transfert du système** (`allowBackup="false"` + règles d'extraction de données) : aucun instantané de l'OS ne peut écraser vos données — l'**export `.jtr` manuel** est l'unique moyen de migrer d'un appareil à l'autre.
+
+Les **seules connexions réseau** servent aux fonctions de lieu : le **géocodage** (OpenStreetMap Nominatim) et les **fonds de carte** (OpenFreeMap). Leur sont transmis un **nom de ville / des coordonnées**, la **zone affichée** et votre **adresse IP** — **jamais vos données de contact**. **Aucun compte, aucune publicité, aucun outil d'analyse**, aucun SDK de rapport de plantage.
+
+Les permissions (contacts, notifications, localisation, photos) sont demandées **à l'usage** et révocables à tout moment ; les contacts importés depuis le téléphone **restent locaux**. La politique complète est consultable dans l'app : **Paramètres → Politique de confidentialité**.
 
 ---
 
@@ -217,4 +276,4 @@ Données cartographiques © [OpenStreetMap contributors](https://www.openstreetm
 
 ---
 
-<sub>**JTR v7.1.27** · Room v21 · `targetSdk 36` · `versionCode 81` — carnet de contacts 100 % local.</sub>
+<sub>**JTR v7.1.55** · Room v22 · `targetSdk 36` · `versionCode 109` — carnet de contacts 100 % local.</sub>

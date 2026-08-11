@@ -16,6 +16,7 @@ import com.jtr.app.ui.category.sortPersonsBy
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.person.FieldTypes
 import com.jtr.app.ui.person.storedDateToMillis
+import com.jtr.app.utils.DateCanonical
 import com.jtr.app.utils.LocationUtils
 import com.jtr.app.utils.matchesSearch
 import com.jtr.app.utils.normalizeForSearch
@@ -141,15 +142,28 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             val dates: List<Pair<Long, String>> =
                 person.dateLines?.takeIf { it.isNotEmpty() }
                     ?.mapNotNull { line ->
-                        // Interprétation LOCALE-LIBRE (ISO canonique), repli hérité géré.
-                        storedDateToMillis(line.value)?.let { it to line.label }
+                        // v7.1.37 (B3b) — date SANS année (`--MM-dd`) : prochaine occurrence
+                        // (jour/mois) — déjà ≥ aujourd'hui, donc traitée comme date à venir par
+                        // le calcul ci-dessous. Sinon : interprétation LOCALE-LIBRE (ISO).
+                        val millis = if (DateCanonical.isMonthDay(line.value))
+                            DateCanonical.nextOccurrenceMillis(line.value, System.currentTimeMillis())
+                        else
+                            storedDateToMillis(line.value)
+                        millis?.let { it to line.label }
                     }
                     ?: person.birthdate?.let { listOf(it to FieldTypes.DATE_BIRTHDAY) }.orEmpty()
             dates.forEach { (millis, label) ->
                 val cal = Calendar.getInstance().apply { timeInMillis = millis }
-                val next = nextOccurrence(
-                    today, cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH)
-                ) ?: return@forEach
+                val month = cal.get(Calendar.MONTH) + 1
+                val day = cal.get(Calendar.DAY_OF_MONTH)
+                val storedDate = runCatching { LocalDate.of(cal.get(Calendar.YEAR), month, day) }.getOrNull()
+                // v7.1.29 — critère PASSÉ/FUTUR (indépendant du type) : date révolue → prochaine
+                // occurrence annuelle (jour/mois) ; date à venir → la vraie date (année incluse).
+                val next = if (storedDate == null || storedDate.isBefore(today)) {
+                    nextOccurrence(today, month, day)
+                } else {
+                    storedDate
+                } ?: return@forEach
                 val days = ChronoUnit.DAYS.between(today, next).toInt()
                 if (days in 0..UPCOMING_WINDOW_DAYS) {
                     events.add(UpcomingEvent(person, label, days))

@@ -25,7 +25,6 @@
     <string name="common_photo">Fotoğraf</string>
     <string name="common_name_label">Ad</string>
     <string name="common_color_label">Renk</string>
-    <string name="separator_and">" ve "</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Kişiler</string>
@@ -139,6 +138,7 @@
     <string name="trash_empty_cd">Çöp kutusunu boşalt</string>
     <string name="trash_empty_dialog_title">Çöp kutusu boşaltılsın mı?</string>
     <string name="trash_empty_dialog_text">Bu işlem geri alınamaz.\n%1$s kalıcı olarak silinecek.</string>
+    <string name="trash_empty_dialog_text_both">Bu işlem geri alınamaz.\n%1$s ve %2$s kalıcı olarak silinecek.</string>
     <string name="trash_empty_confirm">Kalıcı olarak boşalt</string>
     <string name="trash_delete_dialog_title">Kalıcı olarak silinsin mi?</string>
     <string name="trash_delete_category_with_contacts">“%1$s” kategorisi ve içindeki %2$d kişi kaybolacak.</string>
@@ -219,12 +219,32 @@
     <string name="date_value_label">Tarih</string>
     <string name="relation_type_mother">Anne</string>
     <string name="relation_type_father">Baba</string>
+    <string name="relation_type_parent">Ebeveyn</string>
     <string name="relation_type_brother">Erkek kardeş</string>
     <string name="relation_type_sister">Kız kardeş</string>
     <string name="relation_type_spouse">Eş</string>
     <string name="relation_type_child">Çocuk</string>
     <string name="relation_type_friend">Arkadaş</string>
     <string name="relation_type_manager">Yönetici</string>
+    <string name="relation_type_employee">Çalışan</string>
+    <string name="relation_type_colleague">Meslektaş</string>
+    <string name="relation_type_teacher">Öğretmen</string>
+    <string name="relation_type_student">Öğrenci</string>
+    <string name="relation_type_mentor">Mentor</string>
+    <string name="relation_type_mentee">Menti</string>
+    <string name="relation_type_coach">Antrenör</string>
+    <string name="relation_type_player">Oyuncu</string>
+    <string name="relation_type_doctor">Doktor</string>
+    <string name="relation_type_patient">Hasta</string>
+    <string name="relation_type_consultant">Danışman</string>
+    <string name="relation_type_client">Müşteri</string>
+    <string name="relation_type_partner">Partner</string>
+    <string name="relation_type_best_friend">En iyi arkadaş</string>
+    <string name="relation_type_classmate">Sınıf arkadaşı</string>
+    <string name="relation_type_neighbor">Komşu</string>
+    <string name="relation_group_family">Aile</string>
+    <string name="relation_group_professional">İş</string>
+    <string name="relation_group_social">Sosyal</string>
     <string name="section_phones">Telefonlar</string>
     <string name="section_emails">E-postalar</string>
     <string name="section_dates">Önemli tarihler</string>
@@ -232,6 +252,7 @@
     <string name="add_phone">Telefon ekle</string>
     <string name="add_email">E-posta ekle</string>
     <string name="add_date">Tarih ekle</string>
+    <string name="date_no_year">Yıl yok</string>
     <string name="add_relation">İlişki ekle</string>
     <string name="name_details_title">Ad ayrıntıları</string>
     <string name="name_details_show">Ad ayrıntılarını göster</string>
@@ -444,6 +465,7 @@
     <!-- v7.0.3 — özelleştirilebilir not bölümleri -->
     <string name="note_section_add">Bölüm ekle</string>
     <string name="note_section_default_notes">Notlar</string>
+    <string name="note_section_address">Adres</string>
     <string name="note_section_title_hint">Bölüm başlığı</string>
     <string name="note_section_content_hint">Bir şeyler yaz…</string>    <string name="note_section_delete_confirm_title">Bu bölüm silinsin mi?</string>
     <string name="note_section_delete_confirm_text">İçeriği kalıcı olarak silinecek.</string>
@@ -455,6 +477,9 @@
     <string name="person_categories_dialog_title">Kategoriler</string>
     <string name="person_category_new">Yeni kategori</string>
     <string name="person_categories_empty">Henüz kategori yok. Başlamak için bir tane oluşturun.</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">Kategori ara…</string>
+    <string name="person_categories_no_results">Aramanızla eşleşen kategori yok</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">Doğrulanmalı</string>
     <string name="person_relation_linked_cd">Bağlı kişi</string>
@@ -509,4 +534,23 @@
         <item quantity="one">Yedek geri yüklendi (%1$d kişi)</item>
         <item quantity="other">Yedek geri yüklendi (%1$d kişi)</item>
     </plurals>
+    <!-- v7.1.28 — Ayarlar'dan kişileri içe aktarma -->
+    <string name="settings_section_contacts">Kişiler</string>
+    <string name="settings_import_contacts_title">Telefondan içe aktar</string>
+    <string name="settings_import_contacts_subtitle">Telefon kişilerini JTR\'ye ekle</string>
+    <string name="settings_contacts_rationale_title">Kişilerini içe aktar</string>
+    <string name="settings_contacts_rationale_message">JTR, hangilerini içe aktaracağını seçebilmen için telefon kişilerini okur. Kişiler cihazında saklanır ve asla yüklenmez.</string>
+    <string name="settings_contacts_blocked_title">Kişi erişimi engellendi</string>
+    <string name="settings_contacts_blocked_message">Kişiler izni kapalı. JTR\'nin kişilerini içe aktarmasına izin vermek için ayarları aç.</string>
+    <string name="import_contacts_done_title">İçe aktarma tamamlandı</string>
+    <string name="import_contacts_done_message">%1$d içe aktarıldı · %2$d atlandı (zaten JTR\'de)</string>
+    <!-- v7.1.42 (B7) — yinelenenleri yönetme seçici -->
+    <string name="import_strategy_title">Zaten JTR\'de mi?</string>
+    <string name="import_strategy_message">JTR\'de zaten bulunan kişiler için ne yapılacağını seçin (telefon veya e-posta ile eşleştirilir).</string>
+    <string name="import_strategy_skip">Atla</string>
+    <string name="import_strategy_update">Mevcut olanı güncelle</string>
+    <string name="import_strategy_import_anyway">Yine de içe aktar</string>
+    <string name="import_contacts_done_message_updated">%1$d içe aktarıldı · %2$d güncellendi · %3$d atlandı</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">Doğum tarihi gelecekte olamaz</string>
 </resources>

@@ -58,6 +58,7 @@ import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.ui.components.FavoriteStar
+import com.jtr.app.ui.components.PhotoZoomDialog
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
@@ -65,10 +66,6 @@ import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.components.rememberGalleryImagePicker
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
-import com.jtr.app.ui.share.CategoriesSharePreview
-import com.jtr.app.ui.share.ShareCategoryItem
-import com.jtr.app.ui.share.ShareFormatSheet
-import com.jtr.app.ui.share.ShareUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -226,8 +223,9 @@ fun CategoriesScreen(
             .groupBy { it.parentGroupId!! }
         val subByParent = groups.filter { it.parentGroupId != null }
             .groupBy { it.parentGroupId!! }
-        // Activité d'une catégorie : la valeur calculée, sinon sa date de création.
-        fun activityOf(c: Category) = categoryActivity[c.id] ?: c.createdAt
+        // Dernière modification d'une catégorie — formule PARTAGÉE avec le dialogue
+        // « Informations » (v7.1.48) : contenu (updatedAt) ∪ activité des membres.
+        fun activityOf(c: Category) = categoryLastModified(c, categoryActivity[c.id])
         // À la racine : seulement les groupes de PREMIER NIVEAU (parentGroupId == null).
         val folders = groups.filter { it.parentGroupId == null }.map { g ->
             val memberCats = membersByGroup[g.id]?.sortedBy { it.name.lowercase() } ?: emptyList()
@@ -405,17 +403,6 @@ fun CategoriesScreen(
         )
     }
 
-    // Partage contextuel : instantané de la sélection (catégories + dossiers).
-    var shareItems by remember { mutableStateOf<List<ShareCategoryItem>?>(null) }
-    shareItems?.let { items ->
-        ShareFormatSheet(
-            onDismiss = { shareItems = null },
-            buildText = { ShareUtils.buildCategoriesShareText(screenContext, items) },
-            writePdf = { ShareUtils.writeCategoriesPdf(screenContext, items) },
-            preview = { CategoriesSharePreview(items) }
-        )
-    }
-
     Scaffold(
         topBar = {
             if (isSelectionActive) {
@@ -523,30 +510,6 @@ fun CategoriesScreen(
                     },
                     canDelete = totalSelected >= 1,
                     onDelete = { showBulkDeleteDialog = true },
-                    canShare = totalSelected >= 1,
-                    onShare = {
-                        // Dossiers : noms des catégories membres (via topEntries) ;
-                        // catégories : compteur de contacts.
-                        val folderEntries = topEntries.filterIsInstance<TopEntry.Folder>()
-                        shareItems = buildList {
-                            selectedGroups.forEach { g ->
-                                val entry = folderEntries.firstOrNull { it.group.id == g.id }
-                                add(ShareCategoryItem(
-                                    name = g.name,
-                                    isFolder = true,
-                                    memberNames = entry?.members?.map { it.name } ?: emptyList(),
-                                    subGroupCount = entry?.subGroupCount ?: 0
-                                ))
-                            }
-                            selectedCategories.forEach { c ->
-                                add(ShareCategoryItem(
-                                    name = c.name,
-                                    isFolder = false,
-                                    personCount = personCountByCategory[c.id] ?: 0
-                                ))
-                            }
-                        }
-                    },
                     canRename = totalSelected == 1,
                     onRename = {
                         val cat = selectedCategories.singleOrNull()
@@ -1145,6 +1108,12 @@ private fun EntryCompactRow(
 /**
  * Footer contextuel (barre basse) du mode sélection. 4 actions dont l'activation
  * dépend strictement du nombre de catégories cochées.
+ *
+ * v7.1.55 — le partage de catégories a été RETIRÉ (il n'exportait qu'un nom et un
+ * compteur, et le mode sélection en faisait un export de masse mal cadré). Le
+ * partage de PROFILS, lui, est conservé (HomeScreen). Les 4 actions restantes se
+ * répartissent d'elles-mêmes : chaque `Box` porte `weight(1f)`, donc un quart de la
+ * barre chacune — rien à recalculer.
  */
 @Composable
 internal fun SelectionFooter(
@@ -1163,9 +1132,7 @@ internal fun SelectionFooter(
     canChangeImage: Boolean,
     onChangeImage: () -> Unit,
     canMoveOut: Boolean = false,
-    onMoveOut: (() -> Unit)? = null,
-    canShare: Boolean = false,
-    onShare: () -> Unit = {}
+    onMoveOut: (() -> Unit)? = null
 ) {
     var folderMenu by remember { mutableStateOf(false) }
     var overflowMenu by remember { mutableStateOf(false) }
@@ -1207,11 +1174,6 @@ internal fun SelectionFooter(
                     }
                 }
             }
-        }
-        // Partager (texte / image / PDF) la sélection.
-        Box(Modifier.weight(1f).fillMaxHeight()) {
-            FooterActionColumn(Icons.Default.Share, stringResource(R.string.share_action),
-                canShare, onShare)
         }
         // Supprimer — rouge vif d'alerte (action destructive sur la sélection).
         Box(Modifier.weight(1f).fillMaxHeight()) {
@@ -2171,9 +2133,28 @@ private fun CategoryFormDialog(
     var selectedColor by remember { mutableStateOf(initialColor) }
     var imagePath by remember { mutableStateOf(initialImagePath) }
     var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
+    // v7.1.49 — visionneuse plein écran de l'image de catégorie (même composant que
+    // l'avatar de contact), ouverte PAR-DESSUS ce formulaire (Dialog sur Dialog).
+    var showImageZoom by remember { mutableStateOf(false) }
 
     // Galerie IN-APP par ALBUMS (v5.5).
     val photoPicker = rememberGalleryImagePicker { uri -> pendingCropUri = uri }
+
+    // Le formulaire RESTE en composition sous la visionneuse (Dialog empilé) : `name`,
+    // `selectedColor` et `imagePath` sont des `remember` de CE composable, donc fermer la
+    // visionneuse ne recompose rien — le brouillon d'édition est préservé par construction.
+    if (showImageZoom) {
+        imagePath?.let { current ->
+            PhotoZoomDialog(
+                photoUri = current,
+                onDismiss = { showImageZoom = false },
+                // ⚠️ On ferme la visionneuse AVANT d'ouvrir le sélecteur : sans cela le
+                // crop viendrait s'empiler en 3e dialogue au-dessus d'elle.
+                onReplace = { showImageZoom = false; photoPicker() },
+                onRemove = { showImageZoom = false; imagePath = null }
+            )
+        }
+    }
 
     pendingCropUri?.let { uri ->
         ImageCropDialog(
@@ -2205,7 +2186,9 @@ private fun CategoryFormDialog(
                         .size(96.dp)
                         .clip(CircleShape)
                         .background(rememberCategoryColor(selectedColor))
-                        .clickable { photoPicker() },
+                        // Image présente → on la MONTRE en grand (Remplacer/Retirer y sont
+                        // proposés) ; image absente → rien à zoomer, on va droit au picker.
+                        .clickable { if (imagePath != null) showImageZoom = true else photoPicker() },
                     contentAlignment = Alignment.Center
                 ) {
                     if (imagePath != null) {
@@ -2236,15 +2219,9 @@ private fun CategoryFormDialog(
                     }
                 }
 
-                if (imagePath != null) {
-                    TextButton(onClick = { imagePath = null }) {
-                        Text(stringResource(R.string.categories_remove_photo),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.labelSmall)
-                    }
-                } else {
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
+                // Aucun bouton « Retirer » ICI : taper le cercle ouvre la visionneuse, qui
+                // porte déjà Remplacer/Retirer (v7.1.49). Simple respiration avant le nom.
+                Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedTextField(
                     value = name,

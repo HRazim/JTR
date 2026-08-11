@@ -1,7 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Indonésien. Dossier en BCP-47 `b+id` (et non `values-id`) : à l'exécution
-     Locale.forLanguageTag("id") normalise la langue en code legacy "in" (héritage
-     Java) ; le qualificatif `b+id` reste résolu de façon fiable sur API 26+. -->
+<!-- Indonésien. Dossier `values-in` — code LEGACY, et surtout PAS `values-b+id`
+     (v7.1.64) : ce dernier ne se résolvait JAMAIS et l'app retombait en anglais,
+     alors que les dates s'affichaient bien en indonésien (les formateurs lisent la
+     Locale, pas les ressources).
+
+     Mécanique vérifiée sur émulateur API 36 : la table de ressources native
+     apparie l'indonésien sur le code hérité `in`, quoi que renvoie le Java
+     `Locale.getLanguage()` (qui vaut d'ailleurs "id" sur API 35+, et non "in").
+     `values-b+id` était compilé sous le qualificatif `id` ⇒ jamais apparié.
+     Preuve à l'appui : les libs AndroidX livrent `values-in` et s'affichaient,
+     elles, correctement en indonésien.
+
+     ⚠️ NE PAS « moderniser » en `values-id` ni `values-b+id` : le tag `id` reste
+     correct côté LocaleManager et locales_config.xml, seul le DOSSIER doit rester
+     en `in`. -->
+
+<!-- Indonesian. Folder MUST stay `values-in` (legacy code), never `values-b+id`:
+     the native resource table matches Indonesian on the legacy `in` code. -->
 <resources>
     <string name="app_name">JTR</string>
 
@@ -28,7 +43,6 @@
     <string name="common_photo">Foto</string>
     <string name="common_name_label">Nama</string>
     <string name="common_color_label">Warna</string>
-    <string name="separator_and">" dan "</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">Kontak JTR</string>
@@ -142,6 +156,7 @@
     <string name="trash_empty_cd">Kosongkan sampah</string>
     <string name="trash_empty_dialog_title">Kosongkan sampah?</string>
     <string name="trash_empty_dialog_text">Tindakan ini tidak dapat dibatalkan.\n%1$s akan dihapus permanen.</string>
+    <string name="trash_empty_dialog_text_both">Tindakan ini tidak dapat dibatalkan.\n%1$s dan %2$s akan dihapus permanen.</string>
     <string name="trash_empty_confirm">Kosongkan permanen</string>
     <string name="trash_delete_dialog_title">Hapus permanen?</string>
     <string name="trash_delete_category_with_contacts">Kategori “%1$s” dan %2$d kontaknya akan hilang.</string>
@@ -222,12 +237,32 @@
     <string name="date_value_label">Tanggal</string>
     <string name="relation_type_mother">Ibu</string>
     <string name="relation_type_father">Ayah</string>
+    <string name="relation_type_parent">Orang tua</string>
     <string name="relation_type_brother">Saudara laki-laki</string>
     <string name="relation_type_sister">Saudara perempuan</string>
     <string name="relation_type_spouse">Pasangan</string>
     <string name="relation_type_child">Anak</string>
     <string name="relation_type_friend">Teman</string>
     <string name="relation_type_manager">Atasan</string>
+    <string name="relation_type_employee">Bawahan</string>
+    <string name="relation_type_colleague">Rekan kerja</string>
+    <string name="relation_type_teacher">Guru</string>
+    <string name="relation_type_student">Murid</string>
+    <string name="relation_type_mentor">Mentor</string>
+    <string name="relation_type_mentee">Mentee</string>
+    <string name="relation_type_coach">Pelatih</string>
+    <string name="relation_type_player">Pemain</string>
+    <string name="relation_type_doctor">Dokter</string>
+    <string name="relation_type_patient">Pasien</string>
+    <string name="relation_type_consultant">Konsultan</string>
+    <string name="relation_type_client">Klien</string>
+    <string name="relation_type_partner">Pasangan</string>
+    <string name="relation_type_best_friend">Sahabat</string>
+    <string name="relation_type_classmate">Teman sekelas</string>
+    <string name="relation_type_neighbor">Tetangga</string>
+    <string name="relation_group_family">Keluarga</string>
+    <string name="relation_group_professional">Profesional</string>
+    <string name="relation_group_social">Sosial</string>
     <string name="section_phones">Telepon</string>
     <string name="section_emails">Email</string>
     <string name="section_dates">Tanggal penting</string>
@@ -235,6 +270,7 @@
     <string name="add_phone">Tambah telepon</string>
     <string name="add_email">Tambah email</string>
     <string name="add_date">Tambah tanggal</string>
+    <string name="date_no_year">Tanpa tahun</string>
     <string name="add_relation">Tambah hubungan</string>
     <string name="name_details_title">Detail nama</string>
     <string name="name_details_show">Tampilkan detail nama</string>
@@ -447,6 +483,7 @@
     <!-- v7.0.3 — bagian catatan yang dapat disesuaikan -->
     <string name="note_section_add">Tambah bagian</string>
     <string name="note_section_default_notes">Catatan</string>
+    <string name="note_section_address">Alamat</string>
     <string name="note_section_title_hint">Judul bagian</string>
     <string name="note_section_content_hint">Tulis sesuatu…</string>    <string name="note_section_delete_confirm_title">Hapus bagian ini?</string>
     <string name="note_section_delete_confirm_text">Isinya akan dihapus permanen.</string>
@@ -458,6 +495,9 @@
     <string name="person_categories_dialog_title">Kategori</string>
     <string name="person_category_new">Kategori baru</string>
     <string name="person_categories_empty">Belum ada kategori. Buat satu untuk memulai.</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">Cari kategori…</string>
+    <string name="person_categories_no_results">Tidak ada kategori yang cocok</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">Perlu diperiksa</string>
     <string name="person_relation_linked_cd">Kontak tertaut</string>
@@ -501,4 +541,23 @@
     <plurals name="backup_import_success">
         <item quantity="other">Cadangan dipulihkan (%1$d kontak)</item>
     </plurals>
+    <!-- v7.1.28 — impor kontak dari Pengaturan -->
+    <string name="settings_section_contacts">Kontak</string>
+    <string name="settings_import_contacts_title">Impor dari ponsel</string>
+    <string name="settings_import_contacts_subtitle">Tambahkan kontak ponselmu ke JTR</string>
+    <string name="settings_contacts_rationale_title">Impor kontakmu</string>
+    <string name="settings_contacts_rationale_message">JTR akan membaca kontak ponselmu agar kamu bisa memilih yang akan diimpor. Kontak disimpan di perangkatmu dan tidak pernah diunggah.</string>
+    <string name="settings_contacts_blocked_title">Akses kontak diblokir</string>
+    <string name="settings_contacts_blocked_message">Izin Kontak dinonaktifkan. Buka pengaturan agar JTR bisa mengimpor kontakmu.</string>
+    <string name="import_contacts_done_title">Impor selesai</string>
+    <string name="import_contacts_done_message">%1$d diimpor · %2$d dilewati (sudah ada di JTR)</string>
+    <!-- v7.1.42 (B7) — pemilih penanganan duplikat -->
+    <string name="import_strategy_title">Sudah di JTR?</string>
+    <string name="import_strategy_message">Pilih tindakan untuk kontak yang sudah ada di JTR (dicocokkan berdasarkan telepon atau email).</string>
+    <string name="import_strategy_skip">Lewati</string>
+    <string name="import_strategy_update">Perbarui yang ada</string>
+    <string name="import_strategy_import_anyway">Tetap impor</string>
+    <string name="import_contacts_done_message_updated">%1$d diimpor · %2$d diperbarui · %3$d dilewati</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">Tanggal lahir tidak boleh di masa depan</string>
 </resources>

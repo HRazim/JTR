@@ -54,6 +54,25 @@ internal fun categorySortCriteria(
         defaultDescending = true, onSelect = onSelect),
 )
 
+/**
+ * « Dernière modification » d'une catégorie — SOURCE UNIQUE (v7.1.48).
+ *
+ * `max` entre l'édition du CONTENU (`Category.updatedAt`, posé par
+ * [com.jtr.app.data.repository.CategoryRepository.update]) et l'ACTIVITÉ DES MEMBRES
+ * ([com.jtr.app.data.repository.CategoryRepository.getCategoryLastActivity] : ajout ou
+ * édition d'un membre, dérivée à la lecture). Repli sur `createdAt` quand `updatedAt` vaut 0
+ * (archives .jtr d'avant v22 — même motif que Person).
+ *
+ * Utilisée par le TRI « Dernière modification » (listes racine et dossier) ET par le dialogue
+ * « Informations » : une seule formule, donc jamais d'écart entre la position d'une catégorie
+ * dans la liste et la date affichée sur sa fiche. Avant v7.1.48 le tri ne voyait QUE les
+ * membres : un renommage remontait dans le dialogue mais pas dans la liste.
+ */
+internal fun categoryLastModified(category: Category, memberActivity: Long?): Long {
+    val content = category.updatedAt.takeIf { it > 0L } ?: category.createdAt
+    return maxOf(content, memberActivity ?: 0L)
+}
+
 /** Applique [order] à des entrées mixtes (dossiers + catégories indépendantes). */
 internal fun sortTopEntries(entries: List<TopEntry>, order: CategorySortOrder): List<TopEntry> {
     val base = when (order) {

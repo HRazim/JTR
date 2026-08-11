@@ -86,8 +86,9 @@ class CategoryGroupDetailViewModel(
     ) { cats, grps, activity, query, order ->
         val membersByGroup = cats.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
         val subByParent = grps.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
-        // Activité d'une catégorie : la valeur calculée, sinon sa date de création.
-        fun activityOf(c: Category) = activity[c.id] ?: c.createdAt
+        // Dernière modification d'une catégorie — MÊME formule que la liste racine et le
+        // dialogue « Informations » (v7.1.48) : contenu (updatedAt) ∪ activité des membres.
+        fun activityOf(c: Category) = categoryLastModified(c, activity[c.id])
         val folders = grps.filter { it.parentGroupId == groupId }.map { sg ->
             val memberCats = membersByGroup[sg.id] ?: emptyList()
             val sgActivity = memberCats.fold(sg.createdAt) { acc, c -> maxOf(acc, activityOf(c)) }

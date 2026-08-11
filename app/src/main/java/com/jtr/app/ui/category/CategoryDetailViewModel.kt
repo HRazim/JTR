@@ -135,6 +135,22 @@ class CategoryDetailViewModel(
         else categoryDao.observeById(categoryId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /**
+     * « Dernière modification » AFFICHÉE (v7.1.48) = max entre l'édition du CONTENU
+     * (`Category.updatedAt`, estampillé par le repository) et l'ACTIVITÉ DES MEMBRES
+     * (`getCategoryLastActivity` : ajout d'un membre ou édition d'un membre, dérivée à la
+     * lecture — aucune écriture par membre) : [categoryLastModified], la MÊME fonction que le
+     * tri « Dernière modification » des listes → aucun écart entre la liste et la fiche.
+     *
+     * Repli des valeurs à 0 sur `createdAt` (archives .jtr d'avant v22 — cf. Person, motif
+     * identique) ; `null` si même `createdAt` vaut 0 → la ligne est MASQUÉE côté écran.
+     */
+    val lastModified: StateFlow<Long?> =
+        if (isVirtualFavorites) MutableStateFlow(null)
+        else combine(category, categoryRepo.getCategoryLastActivity()) { cat, activity ->
+            cat?.let { categoryLastModified(it, activity[categoryId]).takeIf { v -> v > 0L } }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     val categoryName: StateFlow<String> =
         if (isVirtualFavorites) {
             MutableStateFlow(application.getString(R.string.favorites_category))

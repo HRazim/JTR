@@ -16,6 +16,10 @@ interface SocialLinkDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(link: SocialLinkEntity)
 
+    /** v7.1.39 (B4) — insertion GROUPÉE (import contacts : 1 appel par lot, pas N). */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(links: List<SocialLinkEntity>)
+
     @Query("DELETE FROM social_links WHERE id = :id")
     suspend fun deleteById(id: String)
 

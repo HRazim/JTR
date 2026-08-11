@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.data.contacts.ContactsImporter
 import com.jtr.app.data.contacts.DeviceContact
+import com.jtr.app.data.contacts.DuplicateStrategy
 import com.jtr.app.utils.matchesAllTokens
 import com.jtr.app.utils.searchTokens
 import kotlinx.coroutines.Dispatchers
@@ -84,16 +85,23 @@ class WelcomeViewModel(application: Application) : AndroidViewModel(application)
     /**
      * Lance l'importation native (permission READ_CONTACTS déjà accordée).
      * @param selectedIds restreint l'import aux contacts cochés ; null = tout.
+     * @param strategy comportement sur doublon (B7) ; défaut SKIP — à l'onboarding la base
+     *   est vierge, donc sans effet, mais l'écran de sélection peut tout de même le fournir.
      */
-    fun startImport(selectedIds: Set<Long>? = null) {
+    fun startImport(
+        selectedIds: Set<Long>? = null,
+        strategy: DuplicateStrategy = DuplicateStrategy.SKIP
+    ) {
         if (_state.value is WelcomeUiState.Importing) return
         _state.value = WelcomeUiState.Importing(0, 0)
         viewModelScope.launch {
-            importer.import(selectedIds) { done, total ->
+            importer.import(selectedIds, strategy) { done, total ->
                 _state.value = WelcomeUiState.Importing(done, total)
-            }.onSuccess { count ->
+            }.onSuccess { result ->
                 markOnboardingComplete()
-                _state.value = WelcomeUiState.Done(count)
+                // Onboarding : la base est vierge au premier lancement → `skipped` vaut 0 ;
+                // on n'expose que le nombre importé (UX d'accueil inchangée).
+                _state.value = WelcomeUiState.Done(result.imported)
             }.onFailure {
                 _state.value = WelcomeUiState.Error
             }

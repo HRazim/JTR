@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.ui.components.FavoriteStar
+import com.jtr.app.ui.components.PhotoZoomDialog
 import com.jtr.app.ui.components.rememberGalleryImagePicker
 import com.jtr.app.utils.DateCanonical
 import com.jtr.app.utils.LocationUtils
@@ -98,11 +99,10 @@ import com.jtr.app.utils.SocialLink
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
-import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.abs
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) // FlowRow (badges de catégories)
 @Composable
 fun PersonDetailScreen(
     person: Person?,
@@ -201,8 +201,18 @@ fun PersonDetailScreen(
     val dateSpec = remember { resolveDateFormatSpec(java.util.Locale.getDefault()) }
     // État du mode réordonnancement des notes, hissé pour rendre le footer au niveau écran.
     val noteReorderState = rememberNoteReorderState()
-    // Sortie du mode édition → réinitialise le footer de réordonnancement.
-    LaunchedEffect(isEditing) { if (!isEditing) noteReorderState.reset() }
+    // v7.1.58 — le ScrollState était créé EN LIGNE : rien ne pouvait le piloter. Nommé ici, il
+    // alimente le défilement auto de « plus / moins d'informations » (cf. MoreInfoScrollState).
+    val scrollState = rememberScrollState()
+    val moreInfoScroll = rememberMoreInfoScroll(scrollState)
+    // Sortie du mode édition → réinitialise le footer de réordonnancement ET le pilote de
+    // défilement : ProfileFormFields quitte la composition, son `showMore` local repart à false.
+    LaunchedEffect(isEditing) {
+        if (!isEditing) {
+            noteReorderState.reset()
+            moreInfoScroll.reset()
+        }
+    }
     // Verrou proximité : la notif de proximité n'est activable que si les
     // notifications globales ET la proximité sont actives dans les paramètres.
     val proximityAllowed = remember {
@@ -321,7 +331,7 @@ fun PersonDetailScreen(
                             when {
                                 vmFirstName.isBlank() ->
                                     scope.launch { snackbarHostState.showSnackbar(firstNameRequiredMsg) }
-                                vmDateLines.any { !isDateLineValid(it.value, dateSpec) } ->
+                                vmDateLines.any { !isDateLineValid(it.value, dateSpec, it.label) } ->
                                     scope.launch { snackbarHostState.showSnackbar(dateInvalidMsg) }
                             }
                             editVm.commitAllEdits()
@@ -430,7 +440,10 @@ fun PersonDetailScreen(
                 // clavier. PAS de imePadding/consumeWindowInsets ici (sinon double inset = vide).
                 // L'auto-scroll repose sur BringIntoView (focus + curseur du TextField).
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
+                // v7.1.58 — AVANT verticalScroll : le nœud reste HORS du défilement, il mesure
+                // donc le VIEWPORT (référence fixe) et non le contenu qui glisse.
+                .then(moreInfoScroll.viewportModifier)
+                .verticalScroll(scrollState)
                 .pointerInput(isEditing) {
                     if (!isEditing) detectTapGestures(onDoubleTap = { editVm.enterEditMode() })
                 }
@@ -525,7 +538,17 @@ fun PersonDetailScreen(
 
             if (categoryChips.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // FlowRow (v7.1.50) : au-delà de ~3 catégories, une `Row` simple poussait les
+                // badges HORS de l'écran (ni retour à la ligne, ni scroll) — le contact
+                // paraissait n'appartenir qu'aux premières. Ils se replient désormais sur
+                // autant de lignes que nécessaire. Alignement au DÉBUT (et non centré) :
+                // centrer chaque rangée indépendamment donnait une pyramide, la dernière
+                // rangée, plus courte, se retrouvant décalée par rapport aux précédentes.
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     // Badges INTERACTIFS (v5.3.4) : un tap ouvre le détail de la catégorie.
                     // Source RÉACTIVE (v7.1.5) → ajout/retrait depuis le sélecteur reflété ici.
                     categoryChips.forEach { (categoryId, name) ->
@@ -588,7 +611,9 @@ fun PersonDetailScreen(
                     onDepartmentChange = { editVm.onDepartmentChanged(it) },
                     company = vmCompany,
                     onCompanyChange = { editVm.onCompanyChanged(it) },
-                    noteReorderState = noteReorderState
+                    noteReorderState = noteReorderState,
+                    onExpandedChange = moreInfoScroll.onExpandedChange,
+                    onToggleTopInRoot = moreInfoScroll.onToggleTopInRoot
                 )
             } else {
                 // ── Mode lecture : ordre IDENTIQUE au formulaire ─────────────────
@@ -785,7 +810,11 @@ fun PersonDetailScreen(
     }
 
     if (showInfoDialog && person != null) {
-        val df = remember { SimpleDateFormat("d MMMM yyyy, HH:mm", Locale.getDefault()) }
+        // v7.1.30 — keyé sur la locale courante (cf. DatesBlock) : jamais de format périmé.
+        // v7.1.48 — formatage délégué à [formatDateTimeLong] (squelettes OS « yMMMMd » + « jm ») :
+        // l'ancien pattern en dur « d MMMM yyyy, HH:mm » imposait l'ordre jour-mois-année et le
+        // 24 h à TOUTES les langues (« 14 June 2026 » en anglais, ordre faux en japonais).
+        val infoLocale = Locale.getDefault()
         AlertDialog(
             onDismissRequest = { showInfoDialog = false },
             icon = { Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary) },
@@ -796,14 +825,16 @@ fun PersonDetailScreen(
                         Text(stringResource(R.string.person_info_created),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(df.format(Date(person.createdAt)),
+                        Text(formatDateTimeLong(person.createdAt, infoLocale),
                             style = MaterialTheme.typography.bodyLarge)
                     }
                     Column {
                         Text(stringResource(R.string.person_info_updated),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(df.format(Date(person.updatedAt.takeIf { it > 0 } ?: person.createdAt)),
+                        Text(
+                            formatDateTimeLong(
+                                person.updatedAt.takeIf { it > 0 } ?: person.createdAt, infoLocale),
                             style = MaterialTheme.typography.bodyLarge)
                     }
                 }
@@ -838,294 +869,6 @@ fun PersonDetailScreen(
 }
 
 
-@Composable
-private fun PhotoZoomDialog(photoUri: Any, onDismiss: () -> Unit) {
-    val scope = rememberCoroutineScope()
-    // Échelle/translation ANIMABLES → double-tap zoom doux + recentrage fluide.
-    val scale = remember { Animatable(1f) }
-    val offsetX = remember { Animatable(0f) }
-    val offsetY = remember { Animatable(0f) }
-    // Translation de FERMETURE par glissement (façon Instagram), distincte du pan de
-    // zoom : à l'échelle de base, la photo suit le doigt puis revient en ressort.
-    val dismissX = remember { Animatable(0f) }
-    val dismissY = remember { Animatable(0f) }
-    var containerSize by remember { mutableStateOf(IntSize.Zero) }
-    // Taille intrinsèque de l'image chargée → dimensions réellement affichées (Fit).
-    var intrinsicSize by remember { mutableStateOf<Size?>(null) }
-    val density = LocalDensity.current
-    // Rayon MAX des coins arrondis au plein glissement de fermeture (« carte flottante »),
-    // converti en px UNE fois (pas de dp.toPx() par frame dans le graphicsLayer).
-    val dismissCornerPx = with(density) { 24.dp.toPx() }
-
-    // Rectangle réellement occupé par la photo (mode Fit, à l'échelle 1) — base du
-    // dimensionnement de la zone tactile « photo » (le reste = noir/letterbox).
-    fun dispSize(): Size {
-        val c = containerSize
-        if (c == IntSize.Zero) return Size.Zero
-        val i = intrinsicSize
-        return if (i != null && i.width > 0f && i.height > 0f) {
-            val fit = minOf(c.width / i.width, c.height / i.height)
-            Size(i.width * fit, i.height * fit)
-        } else {
-            Size(c.width.toFloat(), c.height.toFloat())
-        }
-    }
-
-    // Barrières géométriques du pan à une échelle donnée : l'image ne peut JAMAIS
-    // être traînée hors écran (révéler du fond noir).
-    fun maxPanAt(s: Float): Offset {
-        val c = containerSize
-        if (c == IntSize.Zero) return Offset.Zero
-        val d = dispSize()
-        return Offset(
-            ((d.width * s - c.width) / 2f).coerceAtLeast(0f),
-            ((d.height * s - c.height) / 2f).coerceAtLeast(0f)
-        )
-    }
-
-    // Progression du glissement de fermeture (0 = repos, 1 = plein effet), basée sur la
-    // distance verticale rapportée à ~30 % de la hauteur écran. Pilote l'estompage du
-    // fond noir et le léger rétrécissement de la photo (lue en phase de dessin).
-    fun dismissFraction(): Float {
-        val h = containerSize.height
-        if (h <= 0) return 0f
-        return (abs(dismissY.value) / (h * 0.30f)).coerceIn(0f, 1f)
-    }
-
-    val backSpring = spring<Float>(dampingRatio = Spring.DampingRatioMediumBouncy)
-
-    // Retour élastique : la photo reprend sa place (translation de fermeture → 0).
-    fun springBackDismiss() {
-        scope.launch { dismissX.animateTo(0f, backSpring) }
-        scope.launch { dismissY.animateTo(0f, backSpring) }
-    }
-
-    // Fermeture confirmée : la photo poursuit sa sortie dans le sens du doigt (fond
-    // déjà estompé via dismissFraction), puis on referme le visualiseur.
-    fun animateOutAndDismiss() {
-        scope.launch {
-            val h = containerSize.height.toFloat().takeIf { it > 0f } ?: 2000f
-            val dir = if (dismissY.value < 0f) -1f else 1f
-            dismissY.animateTo(dir * h, tween(durationMillis = 200, easing = FastOutSlowInEasing))
-            onDismiss()
-        }
-    }
-
-    // Double-tap ANIMÉ (~280 ms, easing doux) : zoom 1× → 2.5× ANCRÉ sur le point
-    // touché (le point sous le doigt y reste), ou dézoom centré si déjà zoomée.
-    // Ancrage identique au pinch : offset' = d·(1−k) + offset·k, d = point − centre.
-    fun animateZoomToPoint(point: Offset) {
-        scope.launch {
-            val spec = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
-            if (scale.value > 1f) {
-                launch { scale.animateTo(1f, spec) }
-                launch { offsetX.animateTo(0f, spec) }
-                launch { offsetY.animateTo(0f, spec) }
-            } else {
-                val target = 2.5f
-                val k = target / scale.value
-                val d = dispSize()
-                val dx = point.x - d.width / 2f
-                val dy = point.y - d.height / 2f
-                val max = maxPanAt(target)
-                val newOffX = (dx * (1f - k) + offsetX.value * k).coerceIn(-max.x, max.x)
-                val newOffY = (dy * (1f - k) + offsetY.value * k).coerceIn(-max.y, max.y)
-                launch { scale.animateTo(target, spec) }
-                launch { offsetX.animateTo(newOffX, spec) }
-                launch { offsetY.animateTo(newOffY, spec) }
-            }
-        }
-    }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-      // RTL : la visionneuse opère en pixels (zoom/pan via graphicsLayer, ancrage
-      // double-tap en coordonnées locales) → on force LTR pour rester direction-
-      // agnostique (gestes identiques en arabe).
-      CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .onSizeChanged { containerSize = it },
-            contentAlignment = Alignment.Center
-        ) {
-            // FOND noir / letterbox : s'estompe à mesure du glissement de fermeture
-            // (alpha lu en phase de dessin → pas de recomposition). Tap simple =
-            // fermeture IMMÉDIATE (aucun onDoubleTap ici → fermeture snappy).
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .graphicsLayer { alpha = 1f - dismissFraction() }
-                    .background(Color.Black.copy(alpha = 0.92f))
-                    .pointerInput(Unit) { detectTapGestures { onDismiss() } }
-            )
-
-            // ZONE PHOTO : dimensionnée au rectangle Fit ; le graphicsLayer applique
-            // zoom/pan ET fait suivre la zone tactile à l'image agrandie.
-            val disp = dispSize()
-            val photoModifier = if (disp != Size.Zero) {
-                Modifier.size(
-                    with(density) { disp.width.toDp() },
-                    with(density) { disp.height.toDp() }
-                )
-            } else {
-                Modifier.fillMaxSize()
-            }
-            Box(
-                modifier = photoModifier
-                    .align(Alignment.Center)
-                    .graphicsLayer {
-                        // TOUT dérive de la MÊME progression de glissement p (source unique
-                        // que l'alpha du fond) → fond, échelle et coins restent synchronisés ;
-                        // p=0 au repos ET quand l'image est zoomée (dismissY reste 0 en mode
-                        // pan/zoom) → aucun coin ni rétrécissement parasite. Lu en phase de
-                        // DESSIN (pas de recomposition, pas de retard derrière le doigt).
-                        val p = dismissFraction()
-                        // Échelle = zoom × léger rétrécissement de fermeture (jusqu'à ~0.85) ;
-                        // translation = pan de zoom + suivi du doigt.
-                        val ds = 1f - 0.15f * p
-                        scaleX = scale.value * ds
-                        scaleY = scale.value * ds
-                        translationX = offsetX.value + dismissX.value
-                        translationY = offsetY.value + dismissY.value
-                        // Coins arrondis progressifs « carte flottante » : 0 → 24dp pilotés
-                        // par p. Clip sur le render node (GPU). Au repos/zoom (p=0) : clip
-                        // désactivé + RectangleShape (singleton, zéro allocation) → rendu et
-                        // gestes inchangés. Au retour (drag annulé), p suit le ressort de
-                        // dismissY → les coins reviennent à 0 EN SYNCHRO avec échelle/fond.
-                        clip = p > 0f
-                        shape = if (p > 0f) RoundedCornerShape(dismissCornerPx * p) else RectangleShape
-                    }
-                    // Geste unifié : pinch/pan quand la photo est zoomée (>1×), sinon
-                    // glisser-pour-fermer à l'échelle de base. Les taps restent gérés
-                    // par le detectTapGestures ci-dessous (cohabitation par slop).
-                    .pointerInput(Unit) {
-                        awaitEachGesture {
-                            awaitFirstDown(requireUnconsumed = false)
-                            var acting = false
-                            var mode = 0            // 1 = zoom/pan, 2 = fermeture
-                            var dismissing = false
-                            var slop = Offset.Zero
-                            var canceled = false
-                            val touchSlop = viewConfiguration.touchSlop
-                            val velocityTracker = VelocityTracker()
-
-                            do {
-                                val event = awaitPointerEvent()
-                                canceled = event.changes.any { it.isConsumed }
-                                if (!canceled) {
-                                    val pressed = event.changes.count { it.pressed }
-                                    val zoom = event.calculateZoom()
-                                    val pan = event.calculatePan()
-
-                                    // Détermination du mode au franchissement du slop :
-                                    // 2 doigts OU déjà zoomée → zoom/pan ; sinon fermeture.
-                                    if (!acting) {
-                                        if (pressed >= 2) {
-                                            acting = true; mode = 1
-                                        } else {
-                                            slop += pan
-                                            if (slop.getDistance() > touchSlop) {
-                                                acting = true
-                                                mode = if (scale.value > 1f) 1 else 2
-                                                dismissing = mode == 2
-                                            }
-                                        }
-                                    }
-
-                                    if (acting) {
-                                        // 2e doigt pendant la fermeture → bascule en zoom.
-                                        if (mode == 2 && pressed >= 2) {
-                                            springBackDismiss()
-                                            dismissing = false
-                                            mode = 1
-                                        }
-                                        if (mode == 1) {
-                                            // snapTo lancés sur le scope de composition :
-                                            // l'AwaitPointerEventScope est suspendu restreint.
-                                            scope.launch {
-                                                scale.snapTo((scale.value * zoom).coerceIn(1f, 5f))
-                                                val max = maxPanAt(scale.value)
-                                                offsetX.snapTo((offsetX.value + pan.x).coerceIn(-max.x, max.x))
-                                                offsetY.snapTo((offsetY.value + pan.y).coerceIn(-max.y, max.y))
-                                            }
-                                        } else {
-                                            event.changes.firstOrNull { it.pressed }
-                                                ?.let { velocityTracker.addPointerInputChange(it) }
-                                            scope.launch {
-                                                dismissX.snapTo(dismissX.value + pan.x)
-                                                dismissY.snapTo(dismissY.value + pan.y)
-                                            }
-                                        }
-                                        event.changes.forEach { if (it.pressed) it.consume() }
-                                    }
-                                }
-                            } while (!canceled && event.changes.any { it.pressed })
-
-                            // Relâchement : seuil de distance (20 % hauteur) OU de vélocité
-                            // → fermeture fluide ; sinon retour élastique à l'origine.
-                            if (dismissing) {
-                                if (canceled) {
-                                    springBackDismiss()
-                                } else {
-                                    val v = velocityTracker.calculateVelocity()
-                                    val h = containerSize.height
-                                    val farEnough = h > 0 && abs(dismissY.value) > h * 0.20f
-                                    val fastEnough = abs(v.y) > 1200f
-                                    if (farEnough || fastEnough) animateOutAndDismiss()
-                                    else springBackDismiss()
-                                }
-                            }
-                        }
-                    }
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            // Tap sur la photo : dézoom (animé) si zoomée, sinon ferme.
-                            onTap = { if (scale.value > 1f) animateZoomToPoint(it) else onDismiss() },
-                            // Double-tap : zoom DOUX animé, ancré sur le point touché.
-                            onDoubleTap = { animateZoomToPoint(it) }
-                        )
-                    }
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(photoUri).crossfade(200).build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    onState = { state ->
-                        if (state is AsyncImagePainter.State.Success) {
-                            intrinsicSize = state.painter.intrinsicSize
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            // Croix sur un scrim sombre circulaire → TOUJOURS visible, même sur une
-            // photo claire/blanche.
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-                    // S'estompe avec le glissement de fermeture (contrôles masqués).
-                    .graphicsLayer { alpha = 1f - dismissFraction() }
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.45f))
-            ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = stringResource(R.string.common_close),
-                    tint = Color.White
-                )
-            }
-        }
-      }
-    }
-}
 
 @Composable
 private fun EditPhotoOverlay(isEditing: Boolean, onClick: () -> Unit) {
@@ -1337,6 +1080,19 @@ private fun CityDetailRow(city: String, cityLat: Double?, cityLng: Double?) {
     }
 }
 
+/**
+ * v7.1.46 — Zoom de la mini-carte, à l'ÉCHELLE DE LA VILLE. Il était figé à 12,0, soit ~32 m/px :
+ * à ce niveau, le décalage kilométrique NORMAL entre le point renvoyé par Nominatim et le centre
+ * perçu d'une ville suffit à poser le repère sur un quartier, dont l'étiquette se lit alors à la
+ * place du nom de la ville (« Lakhssassi » au lieu de « Safi », à 1,2 km). À 11,0 (~65 m/px) le
+ * même écart devient négligeable et c'est le toponyme de la ville qui s'affiche sous le repère.
+ *
+ * `MapViewModel.zoomForResult()` n'est pas réutilisable ici : il se déduit de `addresstype`, or
+ * seules les coordonnées sont persistées (aucun type de lieu en base). On retient donc la valeur
+ * de sa tranche « ville », arrondie vers le bas pour la marge.
+ */
+private const val CITY_MAP_ZOOM = 11.0
+
 @Composable
 private fun MapLibreMiniMap(lat: Double, lng: Double, cityName: String, modifier: Modifier) {
     val context = LocalContext.current
@@ -1390,7 +1146,7 @@ private fun MapLibreMiniMap(lat: Double, lng: Double, cityName: String, modifier
                 map.setStyle("https://tiles.openfreemap.org/styles/liberty") {
                     map.uiSettings.isScrollGesturesEnabled = true
                     map.uiSettings.isZoomGesturesEnabled = true
-                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), 12.0))
+                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), CITY_MAP_ZOOM))
                     @Suppress("DEPRECATION")
                     map.addMarker(org.maplibre.android.annotations.MarkerOptions()
                         .position(LatLng(lat, lng)).title(cityName))
@@ -1483,11 +1239,14 @@ private fun ContactLinesBlock(
 @Composable
 private fun DatesBlock(lines: List<DynamicLine>) {
     // Affichage localisé (d MMMM yyyy) à partir d'une valeur STOCKÉE locale-libre (ISO).
-    val formatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.getDefault()) }
-    val rendered = remember(lines) {
+    // v7.1.30 — formateur ET rendu keyés sur la locale courante : un changement de langue
+    // sans recreate() ne laisse jamais un formateur/texte périmé en cache.
+    val locale = Locale.getDefault()
+    val rendered = remember(lines, locale) {
         lines.mapNotNull { line ->
-            val millis = storedDateToMillis(line.value) ?: return@mapNotNull null
-            Triple(line.label, formatter.format(Date(millis)), line.notify)
+            // v7.1.37 (B3b) — formatStoredDateLong gère l'ISO complet ET le year-less
+            // `--MM-dd` (« 15 mars » localisé) ; null = valeur non affichable → ignorée.
+            formatStoredDateLong(line.value, locale)?.let { Triple(line.label, it, line.notify) }
         }
     }
     if (rendered.isEmpty()) return
@@ -1556,9 +1315,14 @@ fun DetailTextBlock(icon: ImageVector, label: String, value: String) {
             tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(16.dp))
         Column {
-            Text(label, style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(4.dp))
+            // Titre VIDE possible depuis v7.1.33 (section laissée sans titre) : on MASQUE la ligne
+            // de libellé plutôt que d'afficher un vide ou de réinjecter « Notes » → bloc cohérent
+            // (icône + contenu). Sans effet sur les sections titrées (label non vide → inchangé).
+            if (label.isNotBlank()) {
+                Text(label, style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(4.dp))
+            }
             Text(value, style = MaterialTheme.typography.bodyLarge)
         }
     }

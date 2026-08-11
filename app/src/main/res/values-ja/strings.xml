@@ -25,7 +25,6 @@
     <string name="common_photo">写真</string>
     <string name="common_name_label">名前</string>
     <string name="common_color_label">カラー</string>
-    <string name="separator_and">と</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR 連絡先</string>
@@ -134,6 +133,7 @@
     <string name="trash_empty_cd">ゴミ箱を空にする</string>
     <string name="trash_empty_dialog_title">ゴミ箱を空にしますか？</string>
     <string name="trash_empty_dialog_text">この操作は取り消せません。\n%1$sが完全に削除されます。</string>
+    <string name="trash_empty_dialog_text_both">この操作は取り消せません。\n%1$sと%2$sが完全に削除されます。</string>
     <string name="trash_empty_confirm">完全に空にする</string>
     <string name="trash_delete_dialog_title">完全に削除しますか？</string>
     <string name="trash_delete_category_with_contacts">カテゴリー\"%1$s\"と%2$d件の連絡先が失われます。</string>
@@ -210,12 +210,32 @@
     <string name="date_value_label">日付</string>
     <string name="relation_type_mother">母</string>
     <string name="relation_type_father">父</string>
+    <string name="relation_type_parent">親</string>
     <string name="relation_type_brother">兄弟</string>
     <string name="relation_type_sister">姉妹</string>
     <string name="relation_type_spouse">配偶者</string>
     <string name="relation_type_child">子供</string>
     <string name="relation_type_friend">友人</string>
     <string name="relation_type_manager">上司</string>
+    <string name="relation_type_employee">部下</string>
+    <string name="relation_type_colleague">同僚</string>
+    <string name="relation_type_teacher">先生</string>
+    <string name="relation_type_student">生徒</string>
+    <string name="relation_type_mentor">メンター</string>
+    <string name="relation_type_mentee">メンティー</string>
+    <string name="relation_type_coach">コーチ</string>
+    <string name="relation_type_player">選手</string>
+    <string name="relation_type_doctor">医師</string>
+    <string name="relation_type_patient">患者</string>
+    <string name="relation_type_consultant">コンサルタント</string>
+    <string name="relation_type_client">顧客</string>
+    <string name="relation_type_partner">パートナー</string>
+    <string name="relation_type_best_friend">親友</string>
+    <string name="relation_type_classmate">同級生</string>
+    <string name="relation_type_neighbor">隣人</string>
+    <string name="relation_group_family">家族</string>
+    <string name="relation_group_professional">仕事</string>
+    <string name="relation_group_social">交友</string>
     <string name="section_phones">電話</string>
     <string name="section_emails">メール</string>
     <string name="section_dates">重要な日付</string>
@@ -223,6 +243,7 @@
     <string name="add_phone">電話を追加</string>
     <string name="add_email">メールを追加</string>
     <string name="add_date">日付を追加</string>
+    <string name="date_no_year">年なし</string>
     <string name="add_relation">関係を追加</string>
     <string name="name_details_title">名前の詳細</string>
     <string name="name_details_show">名前の詳細を表示</string>
@@ -455,6 +476,7 @@
     <!-- v7.0.3 — カスタマイズ可能なメモのセクション -->
     <string name="note_section_add">セクションを追加</string>
     <string name="note_section_default_notes">メモ</string>
+    <string name="note_section_address">住所</string>
     <string name="note_section_title_hint">セクションのタイトル</string>
     <string name="note_section_content_hint">入力してください…</string>    <string name="note_section_delete_confirm_title">このセクションを削除しますか？</string>
     <string name="note_section_delete_confirm_text">内容は完全に削除されます。</string>
@@ -466,6 +488,9 @@
     <string name="person_categories_dialog_title">カテゴリー</string>
     <string name="person_category_new">新しいカテゴリー</string>
     <string name="person_categories_empty">カテゴリーがまだありません。作成して始めましょう。</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">カテゴリーを検索…</string>
+    <string name="person_categories_no_results">検索に一致するカテゴリーがありません</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">要確認</string>
     <string name="person_relation_linked_cd">リンクされた連絡先</string>
@@ -509,4 +534,23 @@
     <plurals name="backup_import_success">
         <item quantity="other">バックアップを復元しました（%1$d 件）</item>
     </plurals>
+    <!-- v7.1.28 — 設定から連絡先をインポート -->
+    <string name="settings_section_contacts">連絡先</string>
+    <string name="settings_import_contacts_title">電話からインポート</string>
+    <string name="settings_import_contacts_subtitle">電話の連絡先をJTRに追加</string>
+    <string name="settings_contacts_rationale_title">連絡先をインポート</string>
+    <string name="settings_contacts_rationale_message">JTRは電話の連絡先を読み取り、インポートする連絡先を選べるようにします。データは端末内に保存され、アップロードされることはありません。</string>
+    <string name="settings_contacts_blocked_title">連絡先へのアクセスがブロックされています</string>
+    <string name="settings_contacts_blocked_message">連絡先の権限が無効です。設定を開いて、JTRが連絡先をインポートできるようにしてください。</string>
+    <string name="import_contacts_done_title">インポート完了</string>
+    <string name="import_contacts_done_message">%1$d 件をインポート · %2$d 件をスキップ（すでにJTRにあります）</string>
+    <!-- v7.1.42 (B7) — 重複の処理方法を選択 -->
+    <string name="import_strategy_title">すでにJTRにありますか？</string>
+    <string name="import_strategy_message">すでにJTRにある連絡先（電話またはメールで照合）の処理方法を選択してください。</string>
+    <string name="import_strategy_skip">スキップ</string>
+    <string name="import_strategy_update">既存を更新</string>
+    <string name="import_strategy_import_anyway">それでもインポート</string>
+    <string name="import_contacts_done_message_updated">%1$d 件をインポート · %2$d 件を更新 · %3$d 件をスキップ</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">誕生日を未来の日付にはできません</string>
 </resources>

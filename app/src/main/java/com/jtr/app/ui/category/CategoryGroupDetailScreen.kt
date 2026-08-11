@@ -41,10 +41,6 @@ import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.components.rememberGalleryImagePicker
 import com.jtr.app.ui.person.CropShape
 import com.jtr.app.ui.person.ImageCropDialog
-import com.jtr.app.ui.share.CategoriesSharePreview
-import com.jtr.app.ui.share.ShareCategoryItem
-import com.jtr.app.ui.share.ShareFormatSheet
-import com.jtr.app.ui.share.ShareUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -106,16 +102,6 @@ fun CategoryGroupDetailScreen(
     // Sortie d'écran → réinitialisation du filtre (aucune query fantôme au retour).
     DisposableEffect(Unit) { onDispose { viewModel.clearSearch() } }
 
-    // Partage contextuel : instantané de la sélection (sous-catégories + sous-groupes).
-    var shareItems by remember { mutableStateOf<List<ShareCategoryItem>?>(null) }
-    shareItems?.let { items ->
-        ShareFormatSheet(
-            onDismiss = { shareItems = null },
-            buildText = { ShareUtils.buildCategoriesShareText(ctx, items) },
-            writePdf = { ShareUtils.writeCategoriesPdf(ctx, items) },
-            preview = { CategoriesSharePreview(items) }
-        )
-    }
     fun exitSelection() {
         isSelectionActive = false; selectedIds.clear(); selectedGroupIds.clear()
     }
@@ -432,28 +418,6 @@ fun CategoryGroupDetailScreen(
                     },
                     canDelete = totalSelected >= 1,
                     onDelete = { showBulkDelete = true },
-                    canShare = totalSelected >= 1,
-                    onShare = {
-                        val folderEntries = topEntries.filterIsInstance<TopEntry.Folder>()
-                        shareItems = buildList {
-                            selectedGroups.forEach { g ->
-                                val entry = folderEntries.firstOrNull { it.group.id == g.id }
-                                add(ShareCategoryItem(
-                                    name = g.name,
-                                    isFolder = true,
-                                    memberNames = entry?.members?.map { it.name } ?: emptyList(),
-                                    subGroupCount = entry?.subGroupCount ?: 0
-                                ))
-                            }
-                            selectedCategories.forEach { c ->
-                                add(ShareCategoryItem(
-                                    name = c.name,
-                                    isFolder = false,
-                                    personCount = counts[c.id] ?: 0
-                                ))
-                            }
-                        }
-                    },
                     canRename = totalSelected == 1,
                     onRename = {
                         val cat = selectedCategories.singleOrNull()

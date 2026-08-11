@@ -47,6 +47,7 @@ import com.jtr.app.ui.category.CategoryDetailScreen
 import com.jtr.app.ui.category.CategoryGroupDetailScreen
 import com.jtr.app.ui.category.SelectContactsScreen
 import com.jtr.app.ui.components.JtrBottomBarTransitions
+import com.jtr.app.ui.contacts.ImportContactsScreen
 import com.jtr.app.ui.home.HomeScreen
 import com.jtr.app.ui.map.MapScreen
 import com.jtr.app.ui.person.*
@@ -73,6 +74,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val MAP_PICKER = "map_picker"
     const val TRASH = "trash"
+    const val IMPORT_CONTACTS = "import_contacts"
 
     fun personDetail(personId: String) = "person_detail/$personId"
     fun categoryDetail(categoryId: String) = "category_detail/$categoryId"
@@ -504,12 +506,25 @@ fun JTRMainScaffold(
                     onPresetSelected = onPresetSelected,
                     fontScale = fontScale,
                     onFontScaleChange = onFontScaleChange,
-                    onNavigateToTrash = { navController.navigate(Routes.TRASH) }
+                    onNavigateToTrash = { navController.navigate(Routes.TRASH) },
+                    onNavigateToImportContacts = { navController.navigate(Routes.IMPORT_CONTACTS) }
                 )
             }
 
             composable(Routes.TRASH) {
                 TrashScreen(onNavigateBack = { navController.popBackStack() })
+            }
+
+            // Import des contacts du téléphone depuis les Paramètres (v7.1.28) —
+            // transition latérale standard (drill-down), permission déjà accordée en amont.
+            composable(
+                route = Routes.IMPORT_CONTACTS,
+                enterTransition = { slideInHorizontally(initialOffsetX = { rtlSign * it }) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -rtlSign * it / 3 }) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -rtlSign * it / 3 }) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { rtlSign * it }) }
+            ) {
+                ImportContactsScreen(onNavigateBack = { navController.popBackStack() })
             }
         }
 

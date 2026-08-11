@@ -25,7 +25,6 @@
     <string name="common_photo">Фото</string>
     <string name="common_name_label">Имя</string>
     <string name="common_color_label">Цвет</string>
-    <string name="separator_and">" и "</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">Контакты JTR</string>
@@ -139,6 +138,7 @@
     <string name="trash_empty_cd">Очистить корзину</string>
     <string name="trash_empty_dialog_title">Очистить корзину?</string>
     <string name="trash_empty_dialog_text">Это действие необратимо.\n%1$s будут удалены навсегда.</string>
+    <string name="trash_empty_dialog_text_both">Это действие необратимо.\n%1$s и %2$s будут удалены навсегда.</string>
     <string name="trash_empty_confirm">Очистить навсегда</string>
     <string name="trash_delete_dialog_title">Удалить навсегда?</string>
     <string name="trash_delete_category_with_contacts">Категория «%1$s» и её %2$d контакт(ов) будут потеряны.</string>
@@ -219,12 +219,32 @@
     <string name="date_value_label">Дата</string>
     <string name="relation_type_mother">Мать</string>
     <string name="relation_type_father">Отец</string>
+    <string name="relation_type_parent">Родитель</string>
     <string name="relation_type_brother">Брат</string>
     <string name="relation_type_sister">Сестра</string>
     <string name="relation_type_spouse">Супруг(а)</string>
     <string name="relation_type_child">Ребёнок</string>
     <string name="relation_type_friend">Друг</string>
     <string name="relation_type_manager">Руководитель</string>
+    <string name="relation_type_employee">Сотрудник</string>
+    <string name="relation_type_colleague">Коллега</string>
+    <string name="relation_type_teacher">Учитель</string>
+    <string name="relation_type_student">Ученик</string>
+    <string name="relation_type_mentor">Наставник</string>
+    <string name="relation_type_mentee">Подопечный</string>
+    <string name="relation_type_coach">Тренер</string>
+    <string name="relation_type_player">Игрок</string>
+    <string name="relation_type_doctor">Врач</string>
+    <string name="relation_type_patient">Пациент</string>
+    <string name="relation_type_consultant">Консультант</string>
+    <string name="relation_type_client">Клиент</string>
+    <string name="relation_type_partner">Партнёр</string>
+    <string name="relation_type_best_friend">Лучший друг</string>
+    <string name="relation_type_classmate">Одноклассник</string>
+    <string name="relation_type_neighbor">Сосед</string>
+    <string name="relation_group_family">Семья</string>
+    <string name="relation_group_professional">Работа</string>
+    <string name="relation_group_social">Общение</string>
     <string name="section_phones">Телефоны</string>
     <string name="section_emails">Эл. почта</string>
     <string name="section_dates">Важные даты</string>
@@ -232,6 +252,7 @@
     <string name="add_phone">Добавить телефон</string>
     <string name="add_email">Добавить эл. почту</string>
     <string name="add_date">Добавить дату</string>
+    <string name="date_no_year">Без года</string>
     <string name="add_relation">Добавить связь</string>
     <string name="name_details_title">Детали имени</string>
     <string name="name_details_show">Показать детали имени</string>
@@ -444,6 +465,7 @@
     <!-- v7.0.3 — настраиваемые разделы заметок -->
     <string name="note_section_add">Добавить раздел</string>
     <string name="note_section_default_notes">Заметки</string>
+    <string name="note_section_address">Адрес</string>
     <string name="note_section_title_hint">Название раздела</string>
     <string name="note_section_content_hint">Напишите что-нибудь…</string>    <string name="note_section_delete_confirm_title">Удалить этот раздел?</string>
     <string name="note_section_delete_confirm_text">Его содержимое будет удалено навсегда.</string>
@@ -455,6 +477,9 @@
     <string name="person_categories_dialog_title">Категории</string>
     <string name="person_category_new">Новая категория</string>
     <string name="person_categories_empty">Категорий пока нет. Создайте, чтобы начать.</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">Поиск категории…</string>
+    <string name="person_categories_no_results">Нет категорий, соответствующих запросу</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">Требует проверки</string>
     <string name="person_relation_linked_cd">Связанный контакт</string>
@@ -531,4 +556,23 @@
         <item quantity="many">Копия восстановлена (контактов: %1$d)</item>
         <item quantity="other">Копия восстановлена (контактов: %1$d)</item>
     </plurals>
+    <!-- v7.1.28 — импорт контактов из настроек -->
+    <string name="settings_section_contacts">Контакты</string>
+    <string name="settings_import_contacts_title">Импорт с телефона</string>
+    <string name="settings_import_contacts_subtitle">Добавьте контакты телефона в JTR</string>
+    <string name="settings_contacts_rationale_title">Импорт контактов</string>
+    <string name="settings_contacts_rationale_message">JTR прочитает контакты вашего телефона, чтобы вы могли выбрать, какие импортировать. Они хранятся на вашем устройстве и никогда не загружаются в облако.</string>
+    <string name="settings_contacts_blocked_title">Доступ к контактам заблокирован</string>
+    <string name="settings_contacts_blocked_message">Разрешение на контакты отключено. Откройте настройки, чтобы разрешить JTR импортировать ваши контакты.</string>
+    <string name="import_contacts_done_title">Импорт завершён</string>
+    <string name="import_contacts_done_message">%1$d импортировано · %2$d пропущено (уже в JTR)</string>
+    <!-- v7.1.42 (B7) — выбор обработки дубликатов -->
+    <string name="import_strategy_title">Уже в JTR?</string>
+    <string name="import_strategy_message">Выберите, что делать с контактами, которые уже есть в JTR (определяются по телефону или эл. почте).</string>
+    <string name="import_strategy_skip">Пропустить</string>
+    <string name="import_strategy_update">Обновить существующий</string>
+    <string name="import_strategy_import_anyway">Всё равно импортировать</string>
+    <string name="import_contacts_done_message_updated">%1$d импортировано · %2$d обновлено · %3$d пропущено</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">Дата рождения не может быть в будущем</string>
 </resources>

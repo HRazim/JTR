@@ -25,7 +25,6 @@
     <string name="common_photo">照片</string>
     <string name="common_name_label">名称</string>
     <string name="common_color_label">颜色</string>
-    <string name="separator_and">和</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR 联系人</string>
@@ -134,6 +133,7 @@
     <string name="trash_empty_cd">清空回收站</string>
     <string name="trash_empty_dialog_title">清空回收站？</string>
     <string name="trash_empty_dialog_text">此操作不可撤销。\n%1$s 将被永久删除。</string>
+    <string name="trash_empty_dialog_text_both">此操作不可撤销。\n%1$s和%2$s将被永久删除。</string>
     <string name="trash_empty_confirm">永久清空</string>
     <string name="trash_delete_dialog_title">永久删除？</string>
     <string name="trash_delete_category_with_contacts">分类"%1$s"及其 %2$d 个联系人将被删除。</string>
@@ -210,12 +210,32 @@
     <string name="date_value_label">日期</string>
     <string name="relation_type_mother">母亲</string>
     <string name="relation_type_father">父亲</string>
+    <string name="relation_type_parent">父母</string>
     <string name="relation_type_brother">兄弟</string>
     <string name="relation_type_sister">姐妹</string>
     <string name="relation_type_spouse">配偶</string>
     <string name="relation_type_child">子女</string>
     <string name="relation_type_friend">朋友</string>
     <string name="relation_type_manager">上级</string>
+    <string name="relation_type_employee">下属</string>
+    <string name="relation_type_colleague">同事</string>
+    <string name="relation_type_teacher">老师</string>
+    <string name="relation_type_student">学生</string>
+    <string name="relation_type_mentor">导师</string>
+    <string name="relation_type_mentee">学员</string>
+    <string name="relation_type_coach">教练</string>
+    <string name="relation_type_player">队员</string>
+    <string name="relation_type_doctor">医生</string>
+    <string name="relation_type_patient">患者</string>
+    <string name="relation_type_consultant">顾问</string>
+    <string name="relation_type_client">客户</string>
+    <string name="relation_type_partner">伴侣</string>
+    <string name="relation_type_best_friend">挚友</string>
+    <string name="relation_type_classmate">同学</string>
+    <string name="relation_type_neighbor">邻居</string>
+    <string name="relation_group_family">家人</string>
+    <string name="relation_group_professional">职业</string>
+    <string name="relation_group_social">社交</string>
     <string name="section_phones">电话</string>
     <string name="section_emails">邮箱</string>
     <string name="section_dates">重要日期</string>
@@ -223,6 +243,7 @@
     <string name="add_phone">添加电话</string>
     <string name="add_email">添加邮箱</string>
     <string name="add_date">添加日期</string>
+    <string name="date_no_year">无年份</string>
     <string name="add_relation">添加关系</string>
     <string name="name_details_title">姓名详情</string>
     <string name="name_details_show">显示姓名详情</string>
@@ -455,6 +476,7 @@
     <!-- v7.0.3 — 可自定义的备注分区 -->
     <string name="note_section_add">添加分区</string>
     <string name="note_section_default_notes">备注</string>
+    <string name="note_section_address">地址</string>
     <string name="note_section_title_hint">分区标题</string>
     <string name="note_section_content_hint">写点什么…</string>    <string name="note_section_delete_confirm_title">删除此分区？</string>
     <string name="note_section_delete_confirm_text">其内容将被永久删除。</string>
@@ -466,6 +488,9 @@
     <string name="person_categories_dialog_title">分类</string>
     <string name="person_category_new">新建分类</string>
     <string name="person_categories_empty">暂无分类。创建一个开始吧。</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">搜索分类…</string>
+    <string name="person_categories_no_results">没有匹配的分类</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">待核对</string>
     <string name="person_relation_linked_cd">已关联联系人</string>
@@ -509,4 +534,23 @@
     <plurals name="backup_import_success">
         <item quantity="other">备份已恢复（%1$d 位联系人）</item>
     </plurals>
+    <!-- v7.1.28 — 从设置导入联系人 -->
+    <string name="settings_section_contacts">联系人</string>
+    <string name="settings_import_contacts_title">从手机导入</string>
+    <string name="settings_import_contacts_subtitle">将手机联系人添加到 JTR</string>
+    <string name="settings_contacts_rationale_title">导入您的联系人</string>
+    <string name="settings_contacts_rationale_message">JTR 将读取您的手机联系人，以便您选择要导入的联系人。它们存储在您的设备上，绝不会上传。</string>
+    <string name="settings_contacts_blocked_title">联系人访问被阻止</string>
+    <string name="settings_contacts_blocked_message">联系人权限已关闭。请打开设置以允许 JTR 导入您的联系人。</string>
+    <string name="import_contacts_done_title">导入完成</string>
+    <string name="import_contacts_done_message">%1$d 已导入 · %2$d 已跳过（已在 JTR 中）</string>
+    <!-- v7.1.42 (B7) — 重复处理选择 -->
+    <string name="import_strategy_title">已在 JTR 中？</string>
+    <string name="import_strategy_message">选择如何处理已在 JTR 中的联系人（通过电话或邮箱匹配）。</string>
+    <string name="import_strategy_skip">跳过</string>
+    <string name="import_strategy_update">更新现有</string>
+    <string name="import_strategy_import_anyway">仍然导入</string>
+    <string name="import_contacts_done_message_updated">%1$d 已导入 · %2$d 已更新 · %3$d 已跳过</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">生日不能是未来的日期</string>
 </resources>

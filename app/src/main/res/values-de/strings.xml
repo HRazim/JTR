@@ -25,7 +25,6 @@
     <string name="common_photo">Foto</string>
     <string name="common_name_label">Name</string>
     <string name="common_color_label">Farbe</string>
-    <string name="separator_and">" und "</string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Kontakte</string>
@@ -139,6 +138,7 @@
     <string name="trash_empty_cd">Papierkorb leeren</string>
     <string name="trash_empty_dialog_title">Papierkorb leeren?</string>
     <string name="trash_empty_dialog_text">Diese Aktion ist unwiderruflich.\n%1$s werden endgültig gelöscht.</string>
+    <string name="trash_empty_dialog_text_both">Diese Aktion ist unwiderruflich.\n%1$s und %2$s werden endgültig gelöscht.</string>
     <string name="trash_empty_confirm">Endgültig leeren</string>
     <string name="trash_delete_dialog_title">Endgültig löschen?</string>
     <string name="trash_delete_category_with_contacts">Kategorie „%1$s“ und ihre %2$d Kontakt(e) gehen verloren.</string>
@@ -219,12 +219,32 @@
     <string name="date_value_label">Datum</string>
     <string name="relation_type_mother">Mutter</string>
     <string name="relation_type_father">Vater</string>
+    <string name="relation_type_parent">Elternteil</string>
     <string name="relation_type_brother">Bruder</string>
     <string name="relation_type_sister">Schwester</string>
     <string name="relation_type_spouse">Ehepartner</string>
     <string name="relation_type_child">Kind</string>
     <string name="relation_type_friend">Freund</string>
     <string name="relation_type_manager">Vorgesetzter</string>
+    <string name="relation_type_employee">Mitarbeiter</string>
+    <string name="relation_type_colleague">Kollege</string>
+    <string name="relation_type_teacher">Lehrer</string>
+    <string name="relation_type_student">Schüler</string>
+    <string name="relation_type_mentor">Mentor</string>
+    <string name="relation_type_mentee">Mentee</string>
+    <string name="relation_type_coach">Trainer</string>
+    <string name="relation_type_player">Spieler</string>
+    <string name="relation_type_doctor">Arzt</string>
+    <string name="relation_type_patient">Patient</string>
+    <string name="relation_type_consultant">Berater</string>
+    <string name="relation_type_client">Kunde</string>
+    <string name="relation_type_partner">Partner</string>
+    <string name="relation_type_best_friend">Bester Freund</string>
+    <string name="relation_type_classmate">Mitschüler</string>
+    <string name="relation_type_neighbor">Nachbar</string>
+    <string name="relation_group_family">Familie</string>
+    <string name="relation_group_professional">Beruflich</string>
+    <string name="relation_group_social">Sozial</string>
     <string name="section_phones">Telefonnummern</string>
     <string name="section_emails">E-Mail-Adressen</string>
     <string name="section_dates">Wichtige Termine</string>
@@ -232,6 +252,7 @@
     <string name="add_phone">Telefon hinzufügen</string>
     <string name="add_email">E-Mail hinzufügen</string>
     <string name="add_date">Datum hinzufügen</string>
+    <string name="date_no_year">Ohne Jahr</string>
     <string name="add_relation">Beziehung hinzufügen</string>
     <string name="name_details_title">Namensdetails</string>
     <string name="name_details_show">Namensdetails anzeigen</string>
@@ -444,6 +465,7 @@
     <!-- v7.0.3 — anpassbare Notiz-Abschnitte -->
     <string name="note_section_add">Abschnitt hinzufügen</string>
     <string name="note_section_default_notes">Notizen</string>
+    <string name="note_section_address">Adresse</string>
     <string name="note_section_title_hint">Abschnittstitel</string>
     <string name="note_section_content_hint">Schreibe etwas…</string>    <string name="note_section_delete_confirm_title">Diesen Abschnitt löschen?</string>
     <string name="note_section_delete_confirm_text">Sein Inhalt wird endgültig entfernt.</string>
@@ -455,6 +477,9 @@
     <string name="person_categories_dialog_title">Kategorien</string>
     <string name="person_category_new">Neue Kategorie</string>
     <string name="person_categories_empty">Noch keine Kategorien. Erstelle eine, um zu beginnen.</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">Kategorie suchen…</string>
+    <string name="person_categories_no_results">Keine Kategorie entspricht deiner Suche</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">Zu prüfen</string>
     <string name="person_relation_linked_cd">Verknüpfter Kontakt</string>
@@ -509,4 +534,23 @@
         <item quantity="one">Sicherung wiederhergestellt (%1$d Kontakt)</item>
         <item quantity="other">Sicherung wiederhergestellt (%1$d Kontakte)</item>
     </plurals>
+    <!-- v7.1.28 — Kontakte aus den Einstellungen importieren -->
+    <string name="settings_section_contacts">Kontakte</string>
+    <string name="settings_import_contacts_title">Vom Telefon importieren</string>
+    <string name="settings_import_contacts_subtitle">Telefonkontakte zu JTR hinzufügen</string>
+    <string name="settings_contacts_rationale_title">Kontakte importieren</string>
+    <string name="settings_contacts_rationale_message">JTR liest deine Telefonkontakte, damit du auswählen kannst, welche importiert werden. Sie werden auf deinem Gerät gespeichert und nie hochgeladen.</string>
+    <string name="settings_contacts_blocked_title">Kontaktzugriff blockiert</string>
+    <string name="settings_contacts_blocked_message">Die Kontaktberechtigung ist deaktiviert. Öffne die Einstellungen, damit JTR deine Kontakte importieren kann.</string>
+    <string name="import_contacts_done_title">Import abgeschlossen</string>
+    <string name="import_contacts_done_message">%1$d importiert · %2$d übersprungen (bereits in JTR)</string>
+    <!-- v7.1.42 (B7) — Auswahl zur Dublettenbehandlung -->
+    <string name="import_strategy_title">Schon in JTR?</string>
+    <string name="import_strategy_message">Wählen Sie, was mit Kontakten geschehen soll, die bereits in JTR sind (per Telefon oder E-Mail erkannt).</string>
+    <string name="import_strategy_skip">Überspringen</string>
+    <string name="import_strategy_update">Vorhandene aktualisieren</string>
+    <string name="import_strategy_import_anyway">Trotzdem importieren</string>
+    <string name="import_contacts_done_message_updated">%1$d importiert · %2$d aktualisiert · %3$d übersprungen</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">Ein Geburtstag kann nicht in der Zukunft liegen</string>
 </resources>

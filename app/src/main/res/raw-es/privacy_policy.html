@@ -86,7 +86,7 @@
 
   <div class="header">
     <h1>Política de privacidad</h1>
-    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; Última actualización: mayo de 2025</p>
+    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; Última actualización: agosto de 2026</p>
   </div>
 
   <div class="summary">
@@ -96,12 +96,17 @@
   <h2><span class="num">1</span>Datos recopilados</h2>
   <p>La aplicación almacena la siguiente información <strong>únicamente para gestionar sus contactos</strong>:</p>
   <ul>
-    <li>Nombre, apellido, género</li>
-    <li>Fecha de cumpleaños</li>
+    <li>Nombre, apellidos, género</li>
+    <li>Cumpleaños y otras fechas importantes</li>
+    <li>Números de teléfono</li>
+    <li>Direcciones de correo electrónico</li>
+    <li>Puesto, empresa y departamento</li>
     <li>Ciudad de residencia y coordenadas GPS asociadas</li>
     <li>Enlaces a perfiles de redes sociales</li>
-    <li>Origen, intereses y notas personales</li>
-    <li>Foto de perfil (almacenada localmente)</li>
+    <li>Relaciones entre tus contactos</li>
+    <li>Categorías y carpetas que creas</li>
+    <li>Origen, intereses, notas y secciones de notas</li>
+    <li>Foto de perfil e imágenes de portada de las categorías (almacenadas localmente)</li>
   </ul>
 
   <h2><span class="num">2</span>Almacenamiento de datos</h2>
@@ -121,7 +126,17 @@
     <p style="margin-top:8px;font-size:12px;">La detección de ubicación y el geofencing se basan en los <strong>servicios de Google Play</strong>, que pueden usar sus propios mecanismos de ubicación (comportamiento del sistema Android/Google), independientemente de JTR.</p>
   </div>
 
-  <h2><span class="num">4</span>Servicios de terceros</h2>
+  <h2><span class="num">4</span>Acceso a las fotos</h2>
+  <p>El acceso a las fotos (<em>READ_MEDIA_IMAGES</em> en Android 13+, o acceso parcial a «fotos seleccionadas» en Android 14+) se solicita <strong>solo</strong> cuando eliges una foto de perfil o una imagen de portada:</p>
+  <ul>
+    <li>El selector integrado lee tu galería localmente para mostrar tus álbumes y fotos</li>
+    <li>La imagen que seleccionas se recorta y se almacena <strong>solo en tu dispositivo</strong></li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> <strong>Ninguna foto ni dato de la galería</strong> se sube ni se comparte. Puedes conceder acceso a todas las fotos, solo a las seleccionadas, o a ninguna.</p>
+  </div>
+
+  <h2><span class="num">5</span>Servicios de terceros</h2>
   <div class="card">
     <span class="badge">Nominatim (OpenStreetMap)</span>
     <p>Al buscar/seleccionar una ciudad (o tocar un punto en el mapa), se envía el <strong>nombre de la ciudad o las coordenadas</strong> a <code>nominatim.openstreetmap.org</code> para la geocodificación. Se transmiten: el término de búsqueda y su <strong>dirección IP</strong> — <strong>ningún dato de contacto</strong>, sin identificador, sin cuenta.</p>
@@ -134,14 +149,33 @@
   </div>
   <p><span class="ok">✓</span> <strong>No se integra ningún SDK de analítica, publicidad o informes de errores</strong>. La única biblioteca de Google es Play Services Location, usada para la función de proximidad opcional.</p>
 
-  <h2><span class="num">5</span>Notificaciones</h2>
+  <h2><span class="num">6</span>Notificaciones</h2>
   <p>Las notificaciones de JTR son <strong>totalmente locales</strong> y no pasan por ningún servidor:</p>
   <ul>
     <li><strong>Recordatorios de cumpleaños</strong> — activados localmente el día correspondiente</li>
     <li><strong>Recordatorios de proximidad</strong> — activados localmente mediante WorkManager o Geofencing</li>
   </ul>
 
-  <h2><span class="num">6</span>Sus derechos</h2>
+  <h2><span class="num">7</span>Bloqueo de la aplicación (opcional)</h2>
+  <p>JTR ofrece un <strong>bloqueo local opcional</strong>: un patrón de desbloqueo con código de recuperación, además de desbloqueo biométrico opcional:</p>
+  <div class="card">
+    <p><span class="ok">✓</span> Solo se conservan <strong>huellas con sal (hashes)</strong> de tu patrón y de tu código de recuperación, <strong>cifradas en tu dispositivo</strong> (EncryptedSharedPreferences mediante el Android Keystore). El patrón y el código en sí <strong>nunca se almacenan en texto claro ni se transmiten</strong>.</p>
+    <p style="margin-top:8px;"><span class="ok">✓</span> La aplicación <strong>no lee ni almacena ningún dato biométrico</strong>: la autenticación biométrica la gestiona íntegramente el sistema Android.</p>
+  </div>
+
+  <h2><span class="num">8</span>Importación desde el teléfono (opcional)</h2>
+  <p>Si decides importar contactos, JTR solicita permiso para leer la agenda del dispositivo (<em>READ_CONTACTS</em>) y copia <strong>únicamente las entradas que selecciones</strong>.</p>
+  <div class="card">
+    <p><span class="ok">✓</span> La información importada se almacena <strong>localmente en JTR</strong>, igual que la que introduces tú mismo, y <strong>no se envía a ninguna parte</strong>. Puedes denegar este permiso o revocarlo en cualquier momento en los ajustes de Android.</p>
+  </div>
+
+  <h2><span class="num">9</span>Compartir y copia de seguridad (solo cuando tú actúas)</h2>
+  <p>Puedes compartir la ficha de un contacto como <strong>texto, imagen o PDF</strong>, y exportar todos tus datos a un <strong>archivo de copia de seguridad <code>.jtr</code></strong>.</p>
+  <div class="card">
+    <p><span class="ok">✓</span> En todos los casos, la información va <strong>únicamente a la aplicación o al destino que elijas</strong>, y <strong>solo cuando tú inicias la acción</strong>. JTR nunca comparte, sube ni sincroniza tus datos por su cuenta.</p>
+  </div>
+
+  <h2><span class="num">10</span>Sus derechos</h2>
   <ul>
     <li><strong>Acceso y modificación</strong> — todos sus datos son visibles y editables en la aplicación</li>
     <li><strong>Eliminación</strong> — cualquier contacto o categoría puede eliminarse (papelera de 30 días)</li>
@@ -149,17 +183,17 @@
     <li><strong>Control de permisos</strong> — ubicación y notificaciones pueden revocarse en cualquier momento en los ajustes de Android</li>
   </ul>
 
-  <h2><span class="num">7</span>Menores</h2>
+  <h2><span class="num">11</span>Menores</h2>
   <p>JTR no recopila conscientemente datos de personas menores de 13 años y no está dirigida a este público.</p>
 
-  <h2><span class="num">8</span>Contacto</h2>
+  <h2><span class="num">12</span>Contacto</h2>
   <p>Para cualquier pregunta sobre esta política:</p>
   <p><a href="mailto:justtorememberjtr@gmail.com">justtorememberjtr@gmail.com</a></p>
 
   <hr>
 
   <footer>
-    <p>JTR — Just To Remember &nbsp;·&nbsp; Versión 4.1</p>
+    <p>JTR — Just To Remember &nbsp;·&nbsp; Versión 7.1.56</p>
     <p>Esta política puede actualizarse. La versión aplicable es la disponible en la aplicación.</p>
   </footer>
 

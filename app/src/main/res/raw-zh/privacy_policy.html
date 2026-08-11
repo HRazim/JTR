@@ -86,7 +86,7 @@
 
   <div class="header">
     <h1>隐私政策</h1>
-    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; 最后更新：2025年5月</p>
+    <p class="date">JTR — Just To Remember &nbsp;·&nbsp; 最后更新：2026年8月</p>
   </div>
 
   <div class="summary">
@@ -97,11 +97,16 @@
   <p>应用程序存储以下信息，<strong>仅用于管理您的联系人</strong>：</p>
   <ul>
     <li>名字、姓氏、性别</li>
-    <li>生日</li>
+    <li>生日及其他重要日期</li>
+    <li>电话号码</li>
+    <li>电子邮件地址</li>
+    <li>职位、公司和部门</li>
     <li>居住城市及关联的 GPS 坐标</li>
-    <li>社交网络个人资料链接</li>
-    <li>籍贯、兴趣爱好和个人备注</li>
-    <li>头像照片（本地存储）</li>
+    <li>社交网络主页链接</li>
+    <li>联系人之间的关系</li>
+    <li>你创建的分类和文件夹</li>
+    <li>籍贯、兴趣、备注及备注分节</li>
+    <li>头像及分类封面图片（保存在本地）</li>
   </ul>
 
   <h2><span class="num">2</span>数据存储</h2>
@@ -121,7 +126,17 @@
     <p style="margin-top:8px;font-size:12px;">位置检测和地理围栏依赖于<strong>Google Play 服务</strong>，其可能使用自身的位置机制（Android/Google 系统行为），与 JTR 无关。</p>
   </div>
 
-  <h2><span class="num">4</span>第三方服务</h2>
+  <h2><span class="num">4</span>照片访问</h2>
+  <p>只有在你选择头像或封面图片时，才会请求照片访问权限（Android 13+ 的 <em>READ_MEDIA_IMAGES</em>，或 Android 14+ 的“已选照片”部分访问）：</p>
+  <ul>
+    <li>应用内的选择器在本地读取相册，以显示你的相册和照片</li>
+    <li>你选择的图片会被裁剪并<strong>仅保存在你的设备上</strong></li>
+  </ul>
+  <div class="card">
+    <p><span class="ok">✓</span> <strong>不会上传或分享任何照片或相册数据</strong>。你可以授予全部照片、仅所选照片或不授予任何访问权限。</p>
+  </div>
+
+  <h2><span class="num">5</span>第三方服务</h2>
   <div class="card">
     <span class="badge">Nominatim（OpenStreetMap）</span>
     <p>搜索/选择城市（或点按地图上的某点）时，<strong>城市名称或坐标</strong>会发送至 <code>nominatim.openstreetmap.org</code> 进行地理编码。传输内容：搜索词和您的 <strong>IP 地址</strong> — <strong>不含联系人数据</strong>、无标识符、无账户。</p>
@@ -134,14 +149,33 @@
   </div>
   <p><span class="ok">✓</span> 未集成<strong>任何分析、广告或崩溃报告 SDK</strong>。唯一的 Google 库是 Play Services Location，用于可选的邻近功能。</p>
 
-  <h2><span class="num">5</span>通知</h2>
+  <h2><span class="num">6</span>通知</h2>
   <p>JTR 的通知<strong>完全在本地产生</strong>，不经过任何服务器：</p>
   <ul>
     <li><strong>生日提醒</strong> — 在当天本地触发</li>
     <li><strong>邻近提醒</strong> — 通过 WorkManager 或 Geofencing 在本地触发</li>
   </ul>
 
-  <h2><span class="num">6</span>您的权利</h2>
+  <h2><span class="num">7</span>应用锁（可选）</h2>
+  <p>JTR 提供<strong>可选的本地锁</strong>——带恢复码的图案解锁，以及可选的生物识别解锁：</p>
+  <div class="card">
+    <p><span class="ok">✓</span> 仅保留图案和恢复码的<strong>加盐指纹（哈希）</strong>，并<strong>在你的设备上加密存储</strong>（通过 Android Keystore 的 EncryptedSharedPreferences）。图案和恢复码本身<strong>绝不会以明文存储或传输</strong>。</p>
+    <p style="margin-top:8px;"><span class="ok">✓</span> 应用<strong>不会读取或存储任何生物识别数据</strong>——生物识别验证完全由 Android 系统处理。</p>
+  </div>
+
+  <h2><span class="num">8</span>从手机导入（可选）</h2>
+  <p>如果你选择导入联系人，JTR 会请求读取设备通讯录的权限（<em>READ_CONTACTS</em>），并且<strong>只复制你所选择的条目</strong>。</p>
+  <div class="card">
+    <p><span class="ok">✓</span> 导入的信息与你自己输入的数据一样<strong>保存在 JTR 本地</strong>，<strong>不会发送到任何地方</strong>。你可以拒绝该权限，也可以随时在 Android 设置中撤销。</p>
+  </div>
+
+  <h2><span class="num">9</span>分享与备份（仅在你操作时）</h2>
+  <p>你可以将联系人卡片以<strong>文本、图片或 PDF</strong> 形式分享，也可以把全部数据导出为 <strong><code>.jtr</code> 备份文件</strong>。</p>
+  <div class="card">
+    <p><span class="ok">✓</span> 无论哪种情况，信息都<strong>只会发送到你选择的应用或目标位置</strong>，且<strong>仅在你触发该操作时</strong>。JTR 绝不会自行分享、上传或同步你的数据。</p>
+  </div>
+
+  <h2><span class="num">10</span>您的权利</h2>
   <ul>
     <li><strong>访问和修改</strong> — 您的所有数据均可在应用程序中查看和编辑</li>
     <li><strong>删除</strong> — 任何联系人或分类均可删除（30 天回收站）</li>
@@ -149,17 +183,17 @@
     <li><strong>权限控制</strong> — 可随时在 Android 设置中撤销位置和通知权限</li>
   </ul>
 
-  <h2><span class="num">7</span>未成年人</h2>
+  <h2><span class="num">11</span>未成年人</h2>
   <p>JTR 不会故意收集 13 岁以下人员的数据，也不针对此类用户群体。</p>
 
-  <h2><span class="num">8</span>联系方式</h2>
+  <h2><span class="num">12</span>联系方式</h2>
   <p>如对本政策有任何疑问：</p>
   <p><a href="mailto:justtorememberjtr@gmail.com">justtorememberjtr@gmail.com</a></p>
 
   <hr>
 
   <footer>
-    <p>JTR — Just To Remember &nbsp;·&nbsp; 版本 4.1</p>
+    <p>JTR — Just To Remember &nbsp;·&nbsp; 版本 7.1.56</p>
     <p>本政策可能会更新。适用版本为应用程序中提供的版本。</p>
   </footer>
 

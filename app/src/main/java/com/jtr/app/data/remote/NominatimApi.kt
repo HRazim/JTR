@@ -28,6 +28,9 @@ interface NominatimApi {
     suspend fun reverseGeocode(
         @Query("lat") lat: Double,
         @Query("lon") lon: Double,
-        @Query("format") format: String = "json"
+        @Query("format") format: String = "json",
+        // v7.1.32 — explicite (le reverse l'a par défaut, mais on le garantit) : retourne le
+        // sous-objet `address` structuré → libellé complet (numéro + rue + localité + pays).
+        @Query("addressdetails") addressDetails: Int = 1
     ): GeocodingResult
 }

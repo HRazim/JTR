@@ -431,19 +431,29 @@ private fun EmptyTrashDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val separatorAnd = stringResource(R.string.separator_and)
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.DeleteForever, contentDescription = null) },
         title = { Text(stringResource(R.string.trash_empty_dialog_title)) },
         text = {
-            val parts = buildList {
-                if (categoryCount > 0)
-                    add(pluralStringResource(R.plurals.trash_empty_dialog_part_categories, categoryCount, categoryCount))
-                if (personCount > 0)
-                    add(pluralStringResource(R.plurals.trash_empty_dialog_part_contacts, personCount, personCount))
-            }
-            Text(stringResource(R.string.trash_empty_dialog_text, parts.joinToString(separatorAnd)))
+            // v7.1.45 — plus AUCUNE concaténation de fragments. L'ancien montage collait deux
+            // pluriels avec un connecteur `separator_and` ; or AAPT ROGNE les espaces de tête/fin
+            // d'un <string> non guillemeté, donc « ␣and␣ » devenait « and » ⇒ « categoriesand10 »
+            // (en/es/fr). Chaque langue reçoit désormais une PHRASE COMPLÈTE : elle maîtrise son
+            // connecteur, ses espaces ET l'ordre des deux quantités. Sélection explicite des 3 cas
+            // ⇒ le cas « les deux à 0 » (phrase à trou) n'est plus représentable.
+            val categories = pluralStringResource(
+                R.plurals.trash_empty_dialog_part_categories, categoryCount, categoryCount)
+            val contacts = pluralStringResource(
+                R.plurals.trash_empty_dialog_part_contacts, personCount, personCount)
+            Text(
+                when {
+                    categoryCount > 0 && personCount > 0 ->
+                        stringResource(R.string.trash_empty_dialog_text_both, categories, contacts)
+                    categoryCount > 0 -> stringResource(R.string.trash_empty_dialog_text, categories)
+                    else -> stringResource(R.string.trash_empty_dialog_text, contacts)
+                }
+            )
         },
         confirmButton = {
             TextButton(onClick = onConfirm,

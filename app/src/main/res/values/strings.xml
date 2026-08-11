@@ -25,7 +25,6 @@
     <string name="common_photo">Photo</string>
     <string name="common_name_label">Name</string>
     <string name="common_color_label">Color</string>
-    <string name="separator_and"> and </string>
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Contacts</string>
@@ -139,6 +138,7 @@
     <string name="trash_empty_cd">Empty trash</string>
     <string name="trash_empty_dialog_title">Empty trash?</string>
     <string name="trash_empty_dialog_text">This action is irreversible.\n%1$s will be permanently deleted.</string>
+    <string name="trash_empty_dialog_text_both">This action is irreversible.\n%1$s and %2$s will be permanently deleted.</string>
     <string name="trash_empty_confirm">Permanently empty</string>
     <string name="trash_delete_dialog_title">Delete permanently?</string>
     <string name="trash_delete_category_with_contacts">Category \"%1$s\" and its %2$d contact(s) will be lost.</string>
@@ -215,12 +215,32 @@
     <string name="date_value_label">Date</string>
     <string name="relation_type_mother">Mother</string>
     <string name="relation_type_father">Father</string>
+    <string name="relation_type_parent">Parent</string>
     <string name="relation_type_brother">Brother</string>
     <string name="relation_type_sister">Sister</string>
     <string name="relation_type_spouse">Spouse</string>
     <string name="relation_type_child">Child</string>
     <string name="relation_type_friend">Friend</string>
     <string name="relation_type_manager">Manager</string>
+    <string name="relation_type_employee">Employee</string>
+    <string name="relation_type_colleague">Colleague</string>
+    <string name="relation_type_teacher">Teacher</string>
+    <string name="relation_type_student">Student</string>
+    <string name="relation_type_mentor">Mentor</string>
+    <string name="relation_type_mentee">Mentee</string>
+    <string name="relation_type_coach">Coach</string>
+    <string name="relation_type_player">Player</string>
+    <string name="relation_type_doctor">Doctor</string>
+    <string name="relation_type_patient">Patient</string>
+    <string name="relation_type_consultant">Consultant</string>
+    <string name="relation_type_client">Client</string>
+    <string name="relation_type_partner">Partner</string>
+    <string name="relation_type_best_friend">Best friend</string>
+    <string name="relation_type_classmate">Classmate</string>
+    <string name="relation_type_neighbor">Neighbor</string>
+    <string name="relation_group_family">Family</string>
+    <string name="relation_group_professional">Professional</string>
+    <string name="relation_group_social">Social</string>
     <string name="section_phones">Phones</string>
     <string name="section_emails">Emails</string>
     <string name="section_dates">Important dates</string>
@@ -228,6 +248,7 @@
     <string name="add_phone">Add phone</string>
     <string name="add_email">Add email</string>
     <string name="add_date">Add date</string>
+    <string name="date_no_year">No year</string>
     <string name="add_relation">Add relation</string>
     <string name="name_details_title">Name details</string>
     <string name="name_details_show">Show name details</string>
@@ -470,6 +491,7 @@
     <!-- v7.0.3 — customizable note sections -->
     <string name="note_section_add">Add a section</string>
     <string name="note_section_default_notes">Notes</string>
+    <string name="note_section_address">Address</string>
     <string name="note_section_title_hint">Section title</string>
     <string name="note_section_content_hint">Write something…</string>    <string name="note_section_delete_confirm_title">Delete this section?</string>
     <string name="note_section_delete_confirm_text">Its content will be permanently removed.</string>
@@ -481,6 +503,9 @@
     <string name="person_categories_dialog_title">Categories</string>
     <string name="person_category_new">New category</string>
     <string name="person_categories_empty">No categories yet. Create one to get started.</string>
+    <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
+    <string name="person_categories_search_placeholder">Search a category…</string>
+    <string name="person_categories_no_results">No category matches your search</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">Needs review</string>
     <string name="person_relation_linked_cd">Linked contact</string>
@@ -535,4 +560,23 @@
         <item quantity="one">Backup restored (%1$d contact)</item>
         <item quantity="other">Backup restored (%1$d contacts)</item>
     </plurals>
+    <!-- v7.1.28 — import contacts depuis les Paramètres -->
+    <string name="settings_section_contacts">Contacts</string>
+    <string name="settings_import_contacts_title">Import from phone</string>
+    <string name="settings_import_contacts_subtitle">Add your phone contacts to JTR</string>
+    <string name="settings_contacts_rationale_title">Import your contacts</string>
+    <string name="settings_contacts_rationale_message">JTR will read your phone contacts so you can choose which ones to import. They are stored on your device and never uploaded.</string>
+    <string name="settings_contacts_blocked_title">Contacts access blocked</string>
+    <string name="settings_contacts_blocked_message">Contacts permission is turned off. Open settings to allow JTR to import your contacts.</string>
+    <string name="import_contacts_done_title">Import complete</string>
+    <string name="import_contacts_done_message">%1$d imported · %2$d skipped (already in JTR)</string>
+    <!-- v7.1.42 (B7) — duplicate handling chooser -->
+    <string name="import_strategy_title">Already in JTR?</string>
+    <string name="import_strategy_message">Choose what to do with contacts already in JTR (matched by phone or email).</string>
+    <string name="import_strategy_skip">Skip</string>
+    <string name="import_strategy_update">Update existing</string>
+    <string name="import_strategy_import_anyway">Import anyway</string>
+    <string name="import_contacts_done_message_updated">%1$d imported · %2$d updated · %3$d skipped</string>
+    <!-- v7.1.29 — anniversaire futur bloqué -->
+    <string name="person_birthday_future">A birthday cannot be in the future</string>
 </resources>

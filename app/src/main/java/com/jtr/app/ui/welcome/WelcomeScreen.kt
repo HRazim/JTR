@@ -106,9 +106,9 @@ fun WelcomeScreen(
             onSearchChange = { viewModel.setContactSearch(it) },
             onToggle = { viewModel.toggleContact(it) },
             onBack = { selecting = false },
-            onConfirm = {
+            onConfirm = { strategy ->
                 selecting = false
-                viewModel.startImport(selectedContactIds)
+                viewModel.startImport(selectedContactIds, strategy)
             }
         )
         return
