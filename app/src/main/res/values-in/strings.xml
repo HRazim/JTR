@@ -1,7 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Indonésien. Dossier en BCP-47 `b+id` (et non `values-id`) : à l'exécution
-     Locale.forLanguageTag("id") normalise la langue en code legacy "in" (héritage
-     Java) ; le qualificatif `b+id` reste résolu de façon fiable sur API 26+. -->
+<!-- Indonésien. Dossier `values-in` — code LEGACY, et surtout PAS `values-b+id`
+     (v7.1.64) : ce dernier ne se résolvait JAMAIS et l'app retombait en anglais,
+     alors que les dates s'affichaient bien en indonésien (les formateurs lisent la
+     Locale, pas les ressources).
+
+     Mécanique vérifiée sur émulateur API 36 : la table de ressources native
+     apparie l'indonésien sur le code hérité `in`, quoi que renvoie le Java
+     `Locale.getLanguage()` (qui vaut d'ailleurs "id" sur API 35+, et non "in").
+     `values-b+id` était compilé sous le qualificatif `id` ⇒ jamais apparié.
+     Preuve à l'appui : les libs AndroidX livrent `values-in` et s'affichaient,
+     elles, correctement en indonésien.
+
+     ⚠️ NE PAS « moderniser » en `values-id` ni `values-b+id` : le tag `id` reste
+     correct côté LocaleManager et locales_config.xml, seul le DOSSIER doit rester
+     en `in`. -->
+
+<!-- Indonesian. Folder MUST stay `values-in` (legacy code), never `values-b+id`:
+     the native resource table matches Indonesian on the legacy `in` code. -->
 <resources>
     <string name="app_name">JTR</string>
 
