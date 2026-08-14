@@ -1,6 +1,6 @@
 # 📱 JTR — Just To Remember
 
-> Un carnet de contacts Android **100 % local** qui se souvient du contexte humain de vos relations. · Version **7.1.55**
+> Un carnet de contacts Android **100 % local** qui se souvient du contexte humain de vos relations. · Version **7.1.65**
 
 JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde une **mémoire sociale** de chaque personne (goûts, anniversaires, ville, notes, réseaux sociaux, relations) et vous rappelle proactivement les dates importantes ainsi que les contacts dont vous êtes physiquement proche.
 
@@ -23,7 +23,7 @@ JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde un
 
 - **100 % local, privé par conception** : vos **données de contact ne quittent jamais l'appareil**, **aucun compte**, **aucune publicité**, aucun traceur, aucun SDK d'analyse. Tout vit sur l'appareil (base SQLite via Room, photos dans le stockage interne).
 - **Seules sorties réseau, sans clé API** : le **géocodage Nominatim** (nom de ville → coordonnées) et les fonds de carte **OpenFreeMap** (OpenStreetMap) — ils reçoivent un nom de ville / des coordonnées, la zone affichée et votre adresse IP, **jamais vos données de contact**.
-- **Internationalisé** : 13 langues, dont l'**arabe en RTL complet** — toutes **embarquées dans l'APK de base** (`bundle { language { enableSplit = false } }`) pour une **bascule de langue in-app fiable sur App Bundle**.
+- **Internationalisé** : 13 langues **réellement appliquées** (dont l'**indonésien**, corrigé en v7.1.65), avec l'**arabe en RTL complet** — toutes **embarquées dans l'APK de base** (`bundle { language { enableSplit = false } }`) pour une **bascule de langue in-app fiable sur App Bundle**.
 - **`minSdk 26` (Android 8.0+)**, cible Android 16 (`targetSdk 36`, conformité Google Play).
 
 ---
@@ -36,6 +36,7 @@ JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde un
 - **Relations miroirs** synchronisées automatiquement (ajouter « frère » crée la relation réciproque, avec le **rôle inverse correct** — « mère » ↦ « fils/fille » selon le contact) ; la propagation d'un changement de nom est réactive.
 - **Catalogue de 25 rôles de relation** (+ « Personnalisé »), groupés **Famille / Pro / Social** dans le sélecteur.
 - Édition **en place** (double-tap), visionneuse photo plein écran (zoom/pan, double-tap ancré).
+- **Sections « plus d'informations » repliables** : fermées par défaut, leur état est **mémorisé par type de section** d'un contact à l'autre, et le bouton **défile en douceur** jusqu'au contenu qu'il vient d'ouvrir ou de refermer.
 - **Recherche globale unifiée** : un seul moteur tokenisé (multi-mots, insensible à la casse et aux accents, sûr en arabe) sur tous les écrans — accueil, catégories, dossiers, relations, sélecteurs.
 
 ### Import des contacts du téléphone
@@ -52,6 +53,7 @@ JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde un
 
 ### Rappels (notifications locales)
 - **Anniversaires** et **dates importantes** : notification *heads-up* avec un **délai de rappel configurable par date** (le jour J · 10 min · 1 h · 1 jour · 1 semaine · personnalisé), déclenchée à la minute près via une **alarme exacte** ancrée à minuit du jour J, réarmée à la sauvegarde et au redémarrage.
+- **Plafond de 400 alarmes exactes** armées simultanément (Android 13+ en limite 500) : ce sont les **échéances les plus proches** qui sont armées, les suivantes le sont **au fur et à mesure** — aucune date n'est perdue.
 - **Moteur de proximité** : alerte lorsqu'on passe près d'un contact (Worker périodique + geofencing, rayon ~10 km, anti-spam 48 h, ouverture directe de la fiche au tap).
 
 ### Sécurité locale (optionnelle)
@@ -60,8 +62,12 @@ JTR (*Just To Remember*) va au-delà du répertoire téléphonique : il garde un
 - Écran de verrouillage au démarrage à froid et au retour d'arrière-plan, avec temporisation anti-force-brute.
 
 ### Personnalisation
-- **6 thèmes** (JTR · Azure · Emerald · Coral · Violet · Rose) + **mode sombre**, surfaces accordées à la palette **en clair comme en sombre** — feuilles, dialogues, menus et cartes suivent le preset choisi.
+- **6 thèmes** (JTR · Azure · Emerald · Coral · Violet · Rose) + **mode sombre**, **cohérence complète sur les 12 schémas** (6 presets × clair/sombre) : surfaces **et accents** (`tertiary*`, `outline*`) sont **dérivés du preset choisi** — feuilles, dialogues, menus, cartes et bordures ne retombent plus sur la palette Material par défaut.
 - **Taille de police** réglable (plafonnée) et **langue de l'application** indépendante du système (sélecteur borné et défilable : les 13 langues sont toutes atteignables).
+
+### Accessibilité
+- Cibles tactiles **≥ 48 dp** et `contentDescription` localisé sur les boutons-icônes isolés.
+- **Lignes à interrupteur annoncées par TalkBack avec leur libellé** : chaque réglage forme un **seul élément *toggleable*** (« Notifications, interrupteur, activé ») au lieu d'un texte muet suivi d'un interrupteur anonyme.
 
 ### Médias & données
 - **Sélecteur de photos intégré** (lecture du MediaStore par albums, style galerie), sans quitter l'app, avec **recadrage** (cercle/rectangle).
@@ -84,7 +90,7 @@ UI (Jetpack Compose) ─► ViewModel (StateFlow) ─► Repository ─► Room 
 
 | Domaine | Technologies |
 |--------|--------------|
-| Langage / SDK | Kotlin 2.1.0 · JVM 17 · AGP 8.13.2 · `minSdk 26` · `compile/targetSdk 36` · `versionName 7.1.55` / `versionCode 109` |
+| Langage / SDK | Kotlin 2.1.0 · JVM 17 · AGP 8.13.2 · `minSdk 26` · `compile/targetSdk 36` · `versionName 7.1.65` / `versionCode 119` |
 | UI | Jetpack Compose (BOM 2024.12.01) · Material 3 · Navigation Compose · listes réordonnables (`sh.calvin.reorderable` 2.4.3) |
 | Persistance | Room 2.6.1 (via **KSP**) — base **v22** · DataStore · EncryptedSharedPreferences |
 | Tâches de fond | WorkManager · `AlarmManager` (alarmes exactes) · `ProcessLifecycleOwner` |
@@ -92,9 +98,9 @@ UI (Jetpack Compose) ─► ViewModel (StateFlow) ─► Repository ─► Room 
 | Localisation | Play Services Location (FusedLocation + Geofencing) |
 | Sécurité | `androidx.security:security-crypto` · `androidx.biometric` |
 | Images | Coil |
-| Tests | JUnit · MockK · Turbine · Truth · `room-testing` (test de migration) |
+| Tests | JUnit · MockK · Turbine · Truth · `room-testing` (**les 11 migrations 11→22 couvertes**) |
 
-> ⚠️ La base Room est en **v22**. Toutes les évolutions de schéma sont couvertes par des **migrations explicites** (`MIGRATION_11_12` → `MIGRATION_21_22`, non destructives) ; `fallbackToDestructiveMigration()` n'est qu'un **filet de sécurité jamais atteint**. Toute future évolution **doit** fournir sa `Migration` explicite (sinon perte de données utilisateur).
+> ⚠️ La base Room est en **v22**. Toutes les évolutions de schéma sont couvertes par des **migrations explicites** (`MIGRATION_11_12` → `MIGRATION_21_22`, non destructives), et **les 11 sont couvertes par des tests instrumentés**. Depuis la **v7.1.63**, il n'y a **plus aucun fallback destructif** : un chemin de migration absent fait **échouer l'ouverture de la base** (crash au démarrage, donnée intacte) au lieu de l'effacer silencieusement. Toute future évolution **doit** donc fournir sa `Migration` explicite — sans elle, l'application devient indémarrable.
 
 ---
 
@@ -139,7 +145,7 @@ app/src/main/java/com/jtr/app/
 
 ## Historique des versions
 
-> Faits marquants par cycle. Versions taguées : `v5.5.1`, `v6.3.1`, `v7.0.7`, `v7.1.4`, `v7.1.8`, `v7.1.10`, `v7.1.15`, `v7.1.20`, `v7.1.24`, `v7.1.26`, `v7.1.27`. Jalon courant : **`versionName 7.1.55` · `versionCode 109` · `targetSdk 36` · Room v22**.
+> Faits marquants par cycle. Versions taguées : `v5.5.1`, `v6.3.1`, `v7.0.7`, `v7.1.4`, `v7.1.8`, `v7.1.10`, `v7.1.15`, `v7.1.20`, `v7.1.24`, `v7.1.26`, `v7.1.27`, `v7.1.65`. Jalon courant : **`versionName 7.1.65` · `versionCode 119` · `targetSdk 36` · Room v22**.
 
 ### Cycle v7.1.x — Robustesse de la saisie, intégrité & sécurité des données, polish UX & packaging
 
@@ -198,6 +204,19 @@ app/src/main/java/com/jtr/app/
 - **v7.1.54 — Dossiers repliables dans le sélecteur de catégories.** Tout part **replié** ; le repli est **récursif par construction** (on s'arrête au dossier fermé, donc son sous-arbre entier disparaît) et la **recherche court-circuite le repli** — une catégorie enfouie à deux niveaux reste trouvable. État local à la feuille, sans persistance.
 - **v7.1.55 — Partage recentré + lien Play Store.** Le partage de **catégorie** est retiré (il n'exportait qu'un nom et un compteur, et le faire complètement reviendrait à exporter en masse les données de plusieurs contacts) ; le partage de **profil** — une fiche à la fois, choix délibéré — est conservé intact. « Partager JTR » joint désormais le **lien Play Store** (identifiant écrit en dur : la variante de test aurait produit un lien mort).
 
+### Cycle v7.1.56 → v7.1.65 — Conformité, intégrité des données, i18n & accessibilité
+
+- **v7.1.56 — Politique de confidentialité mise à niveau (13 langues).** La politique **embarquée** passe de **8 à 12 sections** et déclare désormais explicitement la permission **`READ_CONTACTS`**, le **partage de fiche** (texte / PNG / PDF) et l'**export `.jtr`** — les seules voies par lesquelles des données peuvent sortir de l'appareil, toutes deux à l'initiative de l'utilisateur. Insertion par **position des `<h2>`** et renumérotation finale, dans les **13 traductions**.
+- **v7.1.57 — Durcissements de pré-publication (C2 · C4).** **Aucune PII en `logcat`** (noms, téléphones, e-mails, identifiants retirés des traces). **Plafond de 400 alarmes exactes** armées simultanément — Android 13+ en limite l'application à **500**, au-delà desquelles `setExactAndAllowWhileIdle` lève une exception : ce sont les **échéances les plus proches** qui sont armées, la sélection étant **stable** (deux recalculs sur les mêmes données donnent la même liste). La **replanification globale** résout désormais les contacts par `map` **totale** : plus aucune date ne peut être silencieusement omise.
+- **v7.1.58 → v7.1.59 — Défilement automatique du bouton « plus / moins d'informations ».** Ouvrir ou fermer une section fait **défiler l'écran jusqu'au contenu concerné**, en une animation **fluide** synchronisée avec l'expansion (ancrée en haut de la section, plafonnée en durée réelle — un écran à 120 Hz ne la raccourcit pas).
+- **v7.1.60 — Accordéons fermés par défaut, état mémorisé.** Les sections « plus d'informations » s'ouvrent **repliées** ; l'état est mémorisé **par type de section** (global, persisté), donc un utilisateur qui garde toujours « Téléphones » ouvert le retrouve ouvert sur **chaque** fiche.
+- **v7.1.61 — H1 — Feuille de partage : les formats toujours visibles.** À l'ouverture, la feuille s'ancrait à **mi-hauteur** et masquait le choix **texte / PNG / PDF** ; elle s'ouvre désormais **entièrement dépliée** (`skipPartiallyExpanded`) — ce n'était pas une question de hauteur de contenu.
+- **v7.1.62 — H5 — Fidélité du thème jusqu'aux accents.** Les rôles `tertiary*` et `outline*` restaient à la **baseline Material** (rose / mauve) sur les **12 schémas** (6 presets × clair-sombre) : ils sont désormais **dérivés du preset** — aucune couleur inventée. Les rôles `error*` restent volontairement à la baseline (le rouge d'erreur doit rester lisible comme tel).
+- **H4 — Les 11 migrations Room testées.** Les migrations `11→12` … `21→22` sont **toutes** couvertes par des tests instrumentés (`room-testing`), **sans aucun bump de schéma** : la version de la base reste **v22**.
+- **v7.1.63 — Retrait complet du fallback destructif (C3 clos).** `fallbackToDestructiveMigration()` disparaît du builder : **plus aucun effacement silencieux** possible. Un chemin de migration absent fait désormais **échouer l'ouverture de la base** — l'application refuse de démarrer, **les données restent intactes** — au lieu de les recréer à vide. Contrepartie assumée : toute future montée de schéma **doit** livrer sa `Migration`.
+- **v7.1.64 — L'indonésien ne s'appliquait jamais.** Les traductions vivaient dans `values-b+id/` alors que la **table de ressources native apparie sur le code hérité `in`** — les chaînes n'étaient donc **jamais** chargées et l'app retombait en anglais. Dossier renommé en **`values-in/`**. ⚠️ Le piège est contre-intuitif : `Locale.getLanguage()` renvoie bien `id` en API 35+, mais ce n'est **pas** ce que la résolution de ressources utilise — « moderniser » en `values-id` recasserait la langue.
+- **v7.1.65 — Accessibilité : les interrupteurs annoncés avec leur libellé.** TalkBack lisait le texte d'un réglage puis un interrupteur **anonyme** — sans jamais dire **quel** réglage il commandait. Les 7 lignes concernées (6 dans les Paramètres + la proximité) deviennent un **unique élément *toggleable*** portant libellé et état. ⚠️ Neutraliser l'interrupteur (`onCheckedChange = null`) lui retire sa **cible tactile de 48 dp** et remonte la ligne : `minimumInteractiveComponentSize()` est indispensable pour un rendu **strictement identique** au pixel près.
+
 ### Évolution par version
 
 | Version | Faits marquants |
@@ -255,6 +274,16 @@ app/src/main/java/com/jtr/app/
 | v7.1.53 | **Fin du fond lavande en thème clair** : `surfaceContainer*` dérivés pour les 6 presets (feuilles, 28 dialogues, menus, cartes). |
 | v7.1.54 | **Dossiers repliables** dans le sélecteur de catégories (repli récursif, la recherche prime). |
 | v7.1.55 | **Partage recentré** : partage de catégorie retiré, partage de profil conservé ; « Partager JTR » joint le **lien Play Store**. |
+| v7.1.56 | **Politique de confidentialité 8 → 12 sections** dans les 13 langues (déclare `READ_CONTACTS`, le partage de fiche et l'export `.jtr`). |
+| v7.1.57 | Durcissements de pré-publication : **PII retirée de `logcat`**, **plafond de 400 alarmes exactes** (limite Android 13+ = 500), replanification à résolution totale. |
+| v7.1.58 – v7.1.59 | Défilement automatique **fluide** au bouton « plus / moins d'informations » (synchronisé avec l'expansion). |
+| v7.1.60 | Accordéons « plus d'informations » **fermés par défaut** + **état mémorisé par type** de section. |
+| v7.1.61 | **H1** — feuille de partage : formats **texte / PNG / PDF** visibles dès l'ouverture (`skipPartiallyExpanded`). |
+| v7.1.62 | **H5** — fidélité du thème jusqu'aux **accents** : `tertiary*` / `outline*` dérivés du preset sur les **12 schémas**. |
+| (H4) | **Les 11 migrations Room 11→22 couvertes** par des tests instrumentés, **sans bump** de schéma (base toujours v22). |
+| v7.1.63 | **C3 clos** — **retrait complet du fallback destructif** : plus aucun effacement silencieux ; un chemin manquant fait échouer l'ouverture, données intactes. |
+| v7.1.64 | **Indonésien enfin appliqué** : `values-b+id` → **`values-in`** (la table de ressources apparie sur le code hérité `in`). |
+| v7.1.65 | **Accessibilité** : lignes à interrupteur rendues ***toggleable*** → TalkBack annonce enfin **quel** réglage est commandé (48 dp préservés). |
 
 ---
 
@@ -264,7 +293,9 @@ JTR est **local-first** : vos **données de contact ne quittent jamais l'apparei
 
 Les **seules connexions réseau** servent aux fonctions de lieu : le **géocodage** (OpenStreetMap Nominatim) et les **fonds de carte** (OpenFreeMap). Leur sont transmis un **nom de ville / des coordonnées**, la **zone affichée** et votre **adresse IP** — **jamais vos données de contact**. **Aucun compte, aucune publicité, aucun outil d'analyse**, aucun SDK de rapport de plantage.
 
-Les permissions (contacts, notifications, localisation, photos) sont demandées **à l'usage** et révocables à tout moment ; les contacts importés depuis le téléphone **restent locaux**. La politique complète est consultable dans l'app : **Paramètres → Politique de confidentialité**.
+Les permissions (contacts, notifications, localisation, photos) sont demandées **à l'usage** et révocables à tout moment ; les contacts importés depuis le téléphone **restent locaux**. Les **deux seules voies de sortie** des données sont **à votre initiative** et vers la destination que vous choisissez : le **partage d'une fiche** (texte / PNG / PDF) et l'**export `.jtr`** — JTR ne téléverse, ne synchronise et ne transmet jamais de lui-même.
+
+La politique complète est consultable **dans l'app** (**Paramètres → Politique de confidentialité**, 12 sections, 13 langues) et **en ligne** : <https://hrazim.github.io/JTR/privacy.html>.
 
 ---
 
@@ -276,4 +307,4 @@ Données cartographiques © [OpenStreetMap contributors](https://www.openstreetm
 
 ---
 
-<sub>**JTR v7.1.55** · Room v22 · `targetSdk 36` · `versionCode 109` — carnet de contacts 100 % local.</sub>
+<sub>**JTR v7.1.65** · Room v22 · `targetSdk 36` · `versionCode 119` — carnet de contacts 100 % local.</sub>
