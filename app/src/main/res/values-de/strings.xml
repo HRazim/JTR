@@ -4,6 +4,7 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">Abbrechen</string>
+    <string name="common_open_settings">Einstellungen öffnen</string>
     <string name="common_close">Schließen</string>
     <string name="crop_action">Zuschneiden</string>
     <string name="crop_hint">Zum Verschieben ziehen · zwei Finger zum Zoomen · Ecken zum Anpassen</string>
@@ -388,24 +389,8 @@
     <string name="permission_allow">Erlauben</string>
     <string name="welcome_select_button">Kontakte zum Importieren auswählen</string>
     <string name="contact_selection_title">Kontakte auswählen</string>
-    <string name="gallery_picker_title">Foto auswählen</string>
-    <string name="gallery_album_recents">Zuletzt verwendet</string>
-    <string name="gallery_album_dropdown_cd">Album auswählen</string>
-    <string name="gallery_empty">Keine Fotos in diesem Album</string>
-    <string name="gallery_permission_rationale">JTR benötigt Zugriff auf deine Fotos, damit du ein Bild auswählen kannst, ohne die App zu verlassen.</string>
-    <string name="gallery_permission_grant">Zugriff erlauben</string>
-    <string name="gallery_permission_settings">Einstellungen öffnen</string>
     <string name="settings_backup_subtitle">Exportiere oder stelle deine Daten wieder her (.jtr-Datei)</string>
     <string name="share_preview_loading">Bilder werden geladen…</string>
-    <string name="gallery_category_favorites">Favoriten</string>
-    <string name="gallery_category_photos">Fotos</string>
-    <string name="gallery_all_albums">Alle Alben</string>
-    <string name="gallery_select_album_title">Album auswählen</string>
-    <string name="gallery_albums_section">Alben</string>
-    <string name="gallery_see_all">Alle anzeigen</string>
-    <string name="gallery_see_less">Weniger anzeigen</string>
-    <string name="gallery_partial_access_message">Du hast nur Zugriff auf ausgewählte Fotos erlaubt.</string>
-    <string name="gallery_partial_access_manage">Mehr auswählen</string>
     <string name="settings_notif_rationale_title">Benachrichtigungen erlauben?</string>
     <string name="settings_notif_rationale_message">JTR sendet dir sanfte Erinnerungen an Geburtstage und wichtige Termine – direkt auf dein Telefon.</string>
     <string name="settings_notif_blocked_title">Benachrichtigungen sind deaktiviert</string>
@@ -501,10 +486,6 @@
     <plurals name="trash_empty_dialog_part_categories">
         <item quantity="one">%1$d Kategorie</item>
         <item quantity="other">%1$d Kategorien</item>
-    </plurals>
-    <plurals name="gallery_photo_count">
-        <item quantity="one">%1$d Foto</item>
-        <item quantity="other">%1$d Fotos</item>
     </plurals>
     <plurals name="home_selection_count">
         <item quantity="one">%1$d ausgewählt</item>

@@ -4,6 +4,7 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">Cancelar</string>
+    <string name="common_open_settings">Abrir ajustes</string>
     <string name="common_close">Cerrar</string>
     <string name="crop_action">Recortar</string>
     <string name="crop_hint">Arrastra para mover · pellizca para zoom · esquinas para redimensionar</string>
@@ -388,27 +389,9 @@
     <!-- v5.4.1 — importación selectiva de contactos nativos -->
     <string name="welcome_select_button">Elegir los contactos a importar</string>
     <string name="contact_selection_title">Elegir contactos</string>
-    <!-- v5.5 — galería integrada (estilo Instagram) -->
-    <string name="gallery_picker_title">Seleccionar una foto</string>
-    <string name="gallery_album_recents">Recientes</string>
-    <string name="gallery_album_dropdown_cd">Elegir un álbum</string>
-    <string name="gallery_empty">No hay fotos en este álbum</string>
-    <string name="gallery_permission_rationale">JTR necesita acceder a tus fotos para que puedas elegir una imagen sin salir de la aplicación.</string>
-    <string name="gallery_permission_grant">Permitir acceso</string>
-    <string name="gallery_permission_settings">Abrir ajustes</string>
     <!-- v5.5 — copia de seguridad reubicada en Ajustes > Datos -->
     <string name="settings_backup_subtitle">Exporta o restaura tus datos (archivo .jtr)</string>
     <string name="share_preview_loading">Cargando imágenes…</string>
-    <!-- v6.0.0 — selector estilo Instagram + confirmaciones de notificaciones -->
-    <string name="gallery_category_favorites">Favoritos</string>
-    <string name="gallery_category_photos">Fotos</string>
-    <string name="gallery_all_albums">Todos los álbumes</string>
-    <string name="gallery_select_album_title">Seleccionar un álbum</string>
-    <string name="gallery_albums_section">Álbumes</string>
-    <string name="gallery_see_all">Ver todo</string>
-    <string name="gallery_see_less">Ver menos</string>
-    <string name="gallery_partial_access_message">Solo has permitido el acceso a algunas fotos.</string>
-    <string name="gallery_partial_access_manage">Seleccionar más</string>
     <!-- v6.0.2 — flujo de permisos (gestionado por el sistema) -->
     <string name="settings_notif_rationale_title">¿Permitir notificaciones?</string>
     <string name="settings_notif_rationale_message">JTR te envía recordatorios suaves de cumpleaños y fechas importantes, directamente en tu teléfono.</string>
@@ -515,11 +498,6 @@
         <item quantity="one">%1$d categoría</item>
         <item quantity="many">%1$d categorías</item>
         <item quantity="other">%1$d categorías</item>
-    </plurals>
-    <plurals name="gallery_photo_count">
-        <item quantity="one">%1$d foto</item>
-        <item quantity="many">%1$d fotos</item>
-        <item quantity="other">%1$d fotos</item>
     </plurals>
     <plurals name="home_selection_count">
         <item quantity="one">%1$d seleccionado</item>

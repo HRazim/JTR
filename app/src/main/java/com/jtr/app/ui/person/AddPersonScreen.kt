@@ -38,7 +38,7 @@ import coil.compose.AsyncImage
 import com.jtr.app.R
 import com.jtr.app.domain.model.NOTE_ICON_NOTES
 import com.jtr.app.domain.model.NoteSection
-import com.jtr.app.ui.components.rememberGalleryImagePicker
+import com.jtr.app.ui.components.rememberSystemPhotoPicker
 import com.jtr.app.utils.LocationUtils
 import com.jtr.app.utils.getSocialIcon
 import kotlinx.coroutines.launch
@@ -196,12 +196,12 @@ fun AddPersonScreen(
         }
     }
 
-    // Galerie IN-APP par ALBUMS (v5.5) — l'utilisateur ne quitte pas l'application.
+    // Photo Picker système (v7.1.66) — aucune permission d'accès à la photothèque.
     // L'URI choisie passe TOUJOURS par le recadrage (cercle = photo de profil)
     // AVANT d'être appliquée. pendingCropUri (présence) arme le dialogue à chaque
-    // sélection, même URI identique ; la feuille s'est déjà fermée → pas de course.
+    // sélection, même URI identique ; le sélecteur s'est déjà fermé → pas de course.
     var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
-    val photoPicker = rememberGalleryImagePicker { uri -> pendingCropUri = uri }
+    val photoPicker = rememberSystemPhotoPicker { uri -> pendingCropUri = uri }
 
     Scaffold(
         topBar = {

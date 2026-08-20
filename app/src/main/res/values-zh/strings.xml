@@ -4,6 +4,7 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">取消</string>
+    <string name="common_open_settings">打开设置</string>
     <string name="common_close">关闭</string>
     <string name="crop_action">裁剪</string>
     <string name="crop_hint">拖动移动 · 双指缩放 · 边角调整大小</string>
@@ -388,27 +389,9 @@
     <!-- v5.4.1 — 选择性导入原生联系人 -->
     <string name="welcome_select_button">选择要导入的联系人</string>
     <string name="contact_selection_title">选择联系人</string>
-    <!-- v5.5 — 应用内相册选择器（Instagram 风格） -->
-    <string name="gallery_picker_title">选择照片</string>
-    <string name="gallery_album_recents">最近</string>
-    <string name="gallery_album_dropdown_cd">选择相册</string>
-    <string name="gallery_empty">此相册中没有照片</string>
-    <string name="gallery_permission_rationale">JTR 需要访问您的照片，以便您无需离开应用即可选择图片。</string>
-    <string name="gallery_permission_grant">允许访问</string>
-    <string name="gallery_permission_settings">打开设置</string>
     <!-- v5.5 — 备份已移至设置 > 数据 -->
     <string name="settings_backup_subtitle">导出或恢复您的数据（.jtr 文件）</string>
     <string name="share_preview_loading">正在加载图片…</string>
-    <!-- v6.0.0 — Instagram 风格选择器 + 通知确认 -->
-    <string name="gallery_category_favorites">收藏</string>
-    <string name="gallery_category_photos">照片</string>
-    <string name="gallery_all_albums">所有相册</string>
-    <string name="gallery_select_album_title">选择相册</string>
-    <string name="gallery_albums_section">相册</string>
-    <string name="gallery_see_all">查看全部</string>
-    <string name="gallery_see_less">收起</string>
-    <string name="gallery_partial_access_message">您仅允许访问部分照片。</string>
-    <string name="gallery_partial_access_manage">选择更多</string>
     <!-- v6.0.2 — 权限流程（由系统驱动） -->
     <string name="settings_notif_rationale_title">允许通知？</string>
     <string name="settings_notif_rationale_message">JTR 会在生日和重要日期向您发送温馨提醒，直接显示在手机上。</string>
@@ -509,9 +492,6 @@
     </plurals>
     <plurals name="trash_empty_dialog_part_categories">
         <item quantity="other">%1$d 个分类</item>
-    </plurals>
-    <plurals name="gallery_photo_count">
-        <item quantity="other">%1$d 张照片</item>
     </plurals>
     <plurals name="home_selection_count">
         <item quantity="other">已选 %1$d 个</item>

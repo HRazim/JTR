@@ -126,14 +126,14 @@
     <p style="margin-top:8px;font-size:12px;">Konum algılama ve geofencing, JTR'den bağımsız olarak kendi konum mekanizmalarını kullanabilen (bir Android/Google sistem davranışı) <strong>Google Play hizmetlerine</strong> dayanır.</p>
   </div>
 
-  <h2><span class="num">4</span>Fotoğraf erişimi</h2>
-  <p>Fotoğraf erişimi (Android 13+ üzerinde <em>READ_MEDIA_IMAGES</em> veya Android 14+ üzerinde kısmi “seçili fotoğraflar” erişimi) <strong>yalnızca</strong> bir profil veya kapak resmi seçtiğinizde istenir:</p>
+  <h2><span class="num">4</span>Fotoğraf seçme</h2>
+  <p>JTR <strong>hiçbir fotoğraf veya galeri izni istemez</strong>. Bir profil veya kapak resmi seçtiğinizde uygulama <strong>Android sistem fotoğraf seçicisini</strong> açar:</p>
   <ul>
-    <li>Uygulama içi seçici, albümlerinizi ve fotoğraflarınızı göstermek için galerinizi yerel olarak okur</li>
+    <li>Seçici sistem tarafından sağlanır: JTR galerinizi asla taramaz ve seçmediğiniz fotoğrafları göremez</li>
     <li>Seçtiğiniz görüntü kırpılır ve <strong>yalnızca cihazınızda</strong> saklanır</li>
   </ul>
   <div class="card">
-    <p><span class="ok">✓</span> <strong>Hiçbir fotoğraf veya galeri verisi</strong> yüklenmez veya paylaşılmaz. Tüm fotoğraflara, yalnızca seçilenlere veya hiçbirine erişim verebilirsiniz.</p>
+    <p><span class="ok">✓</span> <strong>Hiçbir fotoğraf veya galeri verisi</strong> yüklenmez veya paylaşılmaz. Uygulamaya yalnızca seçtiğiniz görüntü kopyalanır.</p>
   </div>
 
   <h2><span class="num">5</span>Üçüncü taraf hizmetleri</h2>

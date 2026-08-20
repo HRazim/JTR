@@ -4,6 +4,7 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">Отмена</string>
+    <string name="common_open_settings">Открыть настройки</string>
     <string name="common_close">Закрыть</string>
     <string name="crop_action">Обрезать</string>
     <string name="crop_hint">Перетащите, чтобы переместить · сведите пальцы для масштаба · углы для размера</string>
@@ -388,24 +389,8 @@
     <string name="permission_allow">Разрешить</string>
     <string name="welcome_select_button">Выбрать контакты для импорта</string>
     <string name="contact_selection_title">Выберите контакты</string>
-    <string name="gallery_picker_title">Выберите фото</string>
-    <string name="gallery_album_recents">Недавние</string>
-    <string name="gallery_album_dropdown_cd">Выберите альбом</string>
-    <string name="gallery_empty">В этом альбоме нет фото</string>
-    <string name="gallery_permission_rationale">JTR нужен доступ к вашим фото, чтобы выбрать изображение, не выходя из приложения.</string>
-    <string name="gallery_permission_grant">Разрешить доступ</string>
-    <string name="gallery_permission_settings">Открыть настройки</string>
     <string name="settings_backup_subtitle">Экспорт или восстановление данных (файл .jtr)</string>
     <string name="share_preview_loading">Загрузка изображений…</string>
-    <string name="gallery_category_favorites">Избранное</string>
-    <string name="gallery_category_photos">Фото</string>
-    <string name="gallery_all_albums">Все альбомы</string>
-    <string name="gallery_select_album_title">Выберите альбом</string>
-    <string name="gallery_albums_section">Альбомы</string>
-    <string name="gallery_see_all">Показать все</string>
-    <string name="gallery_see_less">Свернуть</string>
-    <string name="gallery_partial_access_message">Вы разрешили доступ только к выбранным фото.</string>
-    <string name="gallery_partial_access_manage">Выбрать ещё</string>
     <string name="settings_notif_rationale_title">Разрешить уведомления?</string>
     <string name="settings_notif_rationale_message">JTR присылает мягкие напоминания о днях рождения и важных датах — прямо на ваш телефон.</string>
     <string name="settings_notif_blocked_title">Уведомления отключены</string>
@@ -507,12 +492,6 @@
         <item quantity="few">%1$d категории</item>
         <item quantity="many">%1$d категорий</item>
         <item quantity="other">%1$d категории</item>
-    </plurals>
-    <plurals name="gallery_photo_count">
-        <item quantity="one">%1$d фото</item>
-        <item quantity="few">%1$d фото</item>
-        <item quantity="many">%1$d фото</item>
-        <item quantity="other">%1$d фото</item>
     </plurals>
     <plurals name="home_selection_count">
         <item quantity="one">Выбрано: %1$d</item>

@@ -4,6 +4,7 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">취소</string>
+    <string name="common_open_settings">설정 열기</string>
     <string name="common_close">닫기</string>
     <string name="crop_action">자르기</string>
     <string name="crop_hint">끌어서 이동 · 손가락을 벌려 확대 · 모서리로 크기 조절</string>
@@ -388,24 +389,8 @@
     <string name="permission_allow">허용</string>
     <string name="welcome_select_button">가져올 연락처 선택</string>
     <string name="contact_selection_title">연락처 선택</string>
-    <string name="gallery_picker_title">사진 선택</string>
-    <string name="gallery_album_recents">최근 항목</string>
-    <string name="gallery_album_dropdown_cd">앨범 선택</string>
-    <string name="gallery_empty">이 앨범에 사진이 없습니다</string>
-    <string name="gallery_permission_rationale">앱을 벗어나지 않고 이미지를 선택할 수 있도록 JTR이 사진에 접근해야 합니다.</string>
-    <string name="gallery_permission_grant">접근 허용</string>
-    <string name="gallery_permission_settings">설정 열기</string>
     <string name="settings_backup_subtitle">데이터 내보내기 또는 복원 (.jtr 파일)</string>
     <string name="share_preview_loading">이미지 로드 중…</string>
-    <string name="gallery_category_favorites">즐겨찾기</string>
-    <string name="gallery_category_photos">사진</string>
-    <string name="gallery_all_albums">모든 앨범</string>
-    <string name="gallery_select_album_title">앨범 선택</string>
-    <string name="gallery_albums_section">앨범</string>
-    <string name="gallery_see_all">모두 보기</string>
-    <string name="gallery_see_less">간략히 보기</string>
-    <string name="gallery_partial_access_message">선택한 사진에만 접근을 허용했습니다.</string>
-    <string name="gallery_partial_access_manage">더 선택</string>
     <string name="settings_notif_rationale_title">알림을 허용할까요?</string>
     <string name="settings_notif_rationale_message">JTR은 생일과 중요한 날짜에 대한 부드러운 알림을 휴대폰으로 바로 보내드립니다.</string>
     <string name="settings_notif_blocked_title">알림이 꺼져 있습니다</string>
@@ -498,9 +483,6 @@
     </plurals>
     <plurals name="trash_empty_dialog_part_categories">
         <item quantity="other">카테고리 %1$d개</item>
-    </plurals>
-    <plurals name="gallery_photo_count">
-        <item quantity="other">사진 %1$d장</item>
     </plurals>
     <plurals name="home_selection_count">
         <item quantity="other">%1$d개 선택됨</item>

@@ -17,14 +17,13 @@
     <!-- Lecture des contacts natifs (importation à l'onboarding, v5.3) -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
 
-    <!-- Galerie in-app (lecture du MediaStore) : READ_MEDIA_IMAGES sur API 33+,
-         READ_EXTERNAL_STORAGE en repli sur API < 33. VISUAL_USER_SELECTED permet
-         l'accès partiel « Sélectionner des photos » d'Android 14+. -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
+    <!-- v7.1.66 — CHOIX D'UNE PHOTO : AUCUNE permission d'accès aux médias.
+         La galerie in-app (v5.5) lisait le MediaStore et exigeait les permissions de
+         lecture des images (+ leur repli de stockage) : Google Play les refuse quand le
+         sélecteur système couvre le besoin. Cette galerie est remplacée
+         par le Photo Picker Android (ActivityResultContracts.PickVisualMedia), qui ne
+         donne accès qu'à l'image choisie — ces trois permissions sont donc RETIRÉES.
+         ⚠️ Ne pas les réintroduire : elles n'ont plus aucun appelant. -->
 
     <!-- Broadcast pour réveiller l'app après redémarrage -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -36,6 +35,18 @@
         android:name="android.permission.SCHEDULE_EXACT_ALARM"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- v7.1.66 — Visibilité de paquets (targetSdk 30+) : sans cette déclaration, le
+         contrat PickVisualMedia ne peut PAS voir le sélecteur de photos rétro-porté des
+         services Google Play sur les appareils où le sélecteur natif est absent (API < 30
+         et API 30-32 sans l'extension de SDK) et se replierait sur ACTION_OPEN_DOCUMENT,
+         c.-à-d. l'explorateur de documents au lieu d'une grille de photos.
+         N'accorde AUCUNE permission : rend seulement l'intent résolvable. -->
+    <queries>
+        <intent>
+            <action android:name="com.google.android.gms.provider.action.PICK_IMAGES" />
+        </intent>
+    </queries>
 
     <!-- v7.1.7 — INTÉGRITÉ DES DONNÉES : Auto Backup et transfert d'appareil DÉSACTIVÉS.
          JTR est 100 % local ; l'UNIQUE sauvegarde voulue est l'export `.jtr` manuel (mécanisme

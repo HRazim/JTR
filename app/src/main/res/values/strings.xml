@@ -4,6 +4,7 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">Cancel</string>
+    <string name="common_open_settings">Open settings</string>
     <string name="common_close">Close</string>
     <string name="crop_action">Crop</string>
     <string name="crop_hint">Drag to move · pinch to zoom · corners to resize</string>
@@ -393,27 +394,9 @@
     <!-- v5.4.1 — importation sélective des contacts natifs -->
     <string name="welcome_select_button">Choose contacts to import</string>
     <string name="contact_selection_title">Choose contacts</string>
-    <!-- v5.5 — in-app gallery picker (Instagram style) -->
-    <string name="gallery_picker_title">Select a photo</string>
-    <string name="gallery_album_recents">Recents</string>
-    <string name="gallery_album_dropdown_cd">Choose an album</string>
-    <string name="gallery_empty">No photos in this album</string>
-    <string name="gallery_permission_rationale">JTR needs access to your photos so you can pick an image without leaving the app.</string>
-    <string name="gallery_permission_grant">Allow access</string>
-    <string name="gallery_permission_settings">Open settings</string>
     <!-- v5.5 — backup relocated to Settings > Data -->
     <string name="settings_backup_subtitle">Export or restore your data (.jtr file)</string>
     <string name="share_preview_loading">Loading images…</string>
-    <!-- v6.0.0 — Instagram-style picker + notification confirmations -->
-    <string name="gallery_category_favorites">Favorites</string>
-    <string name="gallery_category_photos">Photos</string>
-    <string name="gallery_all_albums">All albums</string>
-    <string name="gallery_select_album_title">Select an album</string>
-    <string name="gallery_albums_section">Albums</string>
-    <string name="gallery_see_all">See all</string>
-    <string name="gallery_see_less">See less</string>
-    <string name="gallery_partial_access_message">You\'ve allowed access to selected photos only.</string>
-    <string name="gallery_partial_access_manage">Select more</string>
     <!-- v6.0.2 — permission flow (system-driven) -->
     <string name="settings_notif_rationale_title">Allow notifications?</string>
     <string name="settings_notif_rationale_message">JTR sends gentle reminders for birthdays and important dates — right on your phone.</string>
@@ -527,10 +510,6 @@
     <plurals name="trash_empty_dialog_part_categories">
         <item quantity="one">%1$d category</item>
         <item quantity="other">%1$d categories</item>
-    </plurals>
-    <plurals name="gallery_photo_count">
-        <item quantity="one">%1$d photo</item>
-        <item quantity="other">%1$d photos</item>
     </plurals>
     <plurals name="home_selection_count">
         <item quantity="one">%1$d selected</item>

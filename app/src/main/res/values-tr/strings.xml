@@ -4,6 +4,7 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">İptal</string>
+    <string name="common_open_settings">Ayarları aç</string>
     <string name="common_close">Kapat</string>
     <string name="crop_action">Kırp</string>
     <string name="crop_hint">Taşımak için sürükle · yakınlaştırmak için iki parmak · köşelerle boyutlandır</string>
@@ -388,24 +389,8 @@
     <string name="permission_allow">İzin ver</string>
     <string name="welcome_select_button">İçe aktarılacak kişileri seç</string>
     <string name="contact_selection_title">Kişileri seç</string>
-    <string name="gallery_picker_title">Fotoğraf seç</string>
-    <string name="gallery_album_recents">Son kullanılanlar</string>
-    <string name="gallery_album_dropdown_cd">Albüm seç</string>
-    <string name="gallery_empty">Bu albümde fotoğraf yok</string>
-    <string name="gallery_permission_rationale">JTR, uygulamadan çıkmadan bir görsel seçebilmen için fotoğraflarına erişmek ister.</string>
-    <string name="gallery_permission_grant">Erişime izin ver</string>
-    <string name="gallery_permission_settings">Ayarları aç</string>
     <string name="settings_backup_subtitle">Verilerini dışa aktar veya geri yükle (.jtr dosyası)</string>
     <string name="share_preview_loading">Görseller yükleniyor…</string>
-    <string name="gallery_category_favorites">Favoriler</string>
-    <string name="gallery_category_photos">Fotoğraflar</string>
-    <string name="gallery_all_albums">Tüm albümler</string>
-    <string name="gallery_select_album_title">Albüm seç</string>
-    <string name="gallery_albums_section">Albümler</string>
-    <string name="gallery_see_all">Tümünü gör</string>
-    <string name="gallery_see_less">Daha az gör</string>
-    <string name="gallery_partial_access_message">Yalnızca seçili fotoğraflara erişim izni verdin.</string>
-    <string name="gallery_partial_access_manage">Daha fazla seç</string>
     <string name="settings_notif_rationale_title">Bildirimlere izin verilsin mi?</string>
     <string name="settings_notif_rationale_message">JTR, doğum günleri ve önemli tarihler için nazik hatırlatmaları doğrudan telefonuna gönderir.</string>
     <string name="settings_notif_blocked_title">Bildirimler kapalı</string>
@@ -501,10 +486,6 @@
     <plurals name="trash_empty_dialog_part_categories">
         <item quantity="one">%1$d kategori</item>
         <item quantity="other">%1$d kategori</item>
-    </plurals>
-    <plurals name="gallery_photo_count">
-        <item quantity="one">%1$d fotoğraf</item>
-        <item quantity="other">%1$d fotoğraf</item>
     </plurals>
     <plurals name="home_selection_count">
         <item quantity="one">%1$d seçildi</item>

@@ -126,14 +126,14 @@
     <p style="margin-top:8px;font-size:12px;">位置の検出とジオフェンシングは<strong>Google Play開発者サービス</strong>に依存しており、JTRとは独立して独自の位置情報の仕組み（Android／Googleのシステムの動作）を利用する場合があります。</p>
   </div>
 
-  <h2><span class="num">4</span>写真へのアクセス</h2>
-  <p>写真へのアクセス（Android 13 以降の <em>READ_MEDIA_IMAGES</em>、または Android 14 以降の「選択した写真」への部分的アクセス）は、プロフィール写真またはカバー画像を選ぶときに<strong>のみ</strong>要求されます：</p>
+  <h2><span class="num">4</span>写真の選択</h2>
+  <p>JTR は<strong>写真やギャラリーの権限を一切要求しません</strong>。プロフィール写真またはカバー画像を選ぶとき、アプリは <strong>Android システムの写真ピッカー</strong>を開きます：</p>
   <ul>
-    <li>アプリ内のピッカーは、アルバムと写真を表示するためにギャラリーをローカルで読み取ります</li>
+    <li>ピッカーはシステムが提供します。JTR がギャラリーを閲覧することはなく、選択されなかった写真を見ることはできません</li>
     <li>選択した画像は切り抜かれ、<strong>お使いの端末にのみ</strong>保存されます</li>
   </ul>
   <div class="card">
-    <p><span class="ok">✓</span> <strong>写真やギャラリーのデータ</strong>がアップロードまたは共有されることはありません。すべての写真、選択した写真のみ、または一切許可しない、のいずれかを選べます。</p>
+    <p><span class="ok">✓</span> <strong>写真やギャラリーのデータ</strong>がアップロードまたは共有されることはありません。アプリにコピーされるのは、選択した画像だけです。</p>
   </div>
 
   <h2><span class="num">5</span>サードパーティサービス</h2>
