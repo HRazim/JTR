@@ -86,12 +86,15 @@ indépendamment de JTR.</div>
 <tr><th>Autorisation</th><th>Pourquoi</th><th>Quitte l'appareil ?</th></tr>
 <tr><td>Localisation (précise / approximative / arrière-plan)</td><td>Rappels de proximité (optionnels)</td><td>Non — traitée sur l'appareil</td></tr>
 <tr><td>Accès aux contacts (lecture) — <code>READ_CONTACTS</code></td><td>Import ponctuel, à votre demande, de contacts du téléphone vers la base locale de JTR</td><td>Non — copie locale</td></tr>
-<tr><td>Photos / médias</td><td>Choisir une photo de profil pour un contact</td><td>Non — copie locale</td></tr>
 <tr><td>Notifications</td><td>Afficher les rappels (anniversaires, dates, proximité)</td><td>Non</td></tr>
 <tr><td>Alarmes exactes</td><td>Déclencher les rappels à l'heure prévue</td><td>Non</td></tr>
 <tr><td>Démarrage du système</td><td>Replanifier les rappels après un redémarrage</td><td>Non</td></tr>
 <tr><td>Biométrie</td><td>Déverrouiller le verrou local de l'app (l'empreinte est gérée par le système, jamais lue par JTR)</td><td>Non</td></tr>
 </table>
+<div class="note"><strong>Photos : aucune autorisation n'est demandée.</strong> Pour choisir une photo de profil,
+JTR ouvre le <strong>sélecteur de photos d'Android</strong>. Ce sélecteur est fourni par le système : JTR ne parcourt
+jamais votre galerie et ne voit pas les photos que vous ne choisissez pas. Seule l'image sélectionnée est copiée sur
+votre appareil.</div>
 
 <h2>6. Ce que JTR ne fait pas</h2>
 <p>Aucun compte, aucune connexion, aucun identifiant publicitaire. <strong>Aucun</strong> SDK d'analyse, de publicité ou
@@ -168,12 +171,14 @@ location mechanisms (an Android/Google system behavior governed by
 <tr><th>Permission</th><th>Why</th><th>Leaves device?</th></tr>
 <tr><td>Location (fine / coarse / background)</td><td>Proximity reminders (optional)</td><td>No — processed on device</td></tr>
 <tr><td>Read contacts — <code>READ_CONTACTS</code></td><td>One-time, user-initiated import of phone contacts into JTR’s local database</td><td>No — local copy</td></tr>
-<tr><td>Photos / media</td><td>Pick a profile photo for a contact</td><td>No — local copy</td></tr>
 <tr><td>Notifications</td><td>Show reminders (birthdays, dates, proximity)</td><td>No</td></tr>
 <tr><td>Exact alarms</td><td>Fire reminders at the scheduled time</td><td>No</td></tr>
 <tr><td>Boot completed</td><td>Reschedule reminders after a restart</td><td>No</td></tr>
 <tr><td>Biometrics</td><td>Unlock the app’s local lock (the fingerprint is handled by the OS, never read by JTR)</td><td>No</td></tr>
 </table>
+<div class="note"><strong>Photos: no permission is requested.</strong> To pick a profile photo, JTR opens the
+<strong>Android photo picker</strong>. The picker is provided by the system: JTR never browses your gallery and cannot
+see the photos you do not choose. Only the selected image is copied to your device.</div>
 
 <h2>6. What JTR does not do</h2>
 <p>No account, no sign-in, no advertising identifier. <strong>No</strong> third-party analytics, advertising or
