@@ -126,14 +126,14 @@
     <p style="margin-top:8px;font-size:12px;">Standorterkennung und Geofencing nutzen die <strong>Google-Play-Dienste</strong>, die eigene Standortmechanismen verwenden können (ein Android-/Google-Systemverhalten), unabhängig von JTR.</p>
   </div>
 
-  <h2><span class="num">4</span>Fotozugriff</h2>
-  <p>Der Fotozugriff (<em>READ_MEDIA_IMAGES</em> auf Android 13+ oder partieller Zugriff auf „ausgewählte Fotos“ auf Android 14+) wird <strong>nur</strong> angefordert, wenn Sie ein Profil- oder Titelbild auswählen:</p>
+  <h2><span class="num">4</span>Ein Foto auswählen</h2>
+  <p>JTR fordert <strong>überhaupt keine Foto- oder Galerieberechtigung</strong> an. Wenn Sie ein Profil- oder Titelbild auswählen, öffnet die App die <strong>Android-Systemfotoauswahl</strong>:</p>
   <ul>
-    <li>Die integrierte Auswahl liest Ihre Galerie lokal, um Ihre Alben und Fotos anzuzeigen</li>
+    <li>Die Auswahl wird vom System bereitgestellt — JTR durchsucht Ihre Galerie nie und kann die Fotos, die Sie nicht auswählen, nicht sehen</li>
     <li>Das ausgewählte Bild wird zugeschnitten und <strong>nur auf Ihrem Gerät</strong> gespeichert</li>
   </ul>
   <div class="card">
-    <p><span class="ok">✓</span> <strong>Keine Foto- oder Galeriedaten</strong> werden hochgeladen oder geteilt. Sie können Zugriff auf alle Fotos, nur ausgewählte oder keine gewähren.</p>
+    <p><span class="ok">✓</span> <strong>Keine Foto- oder Galeriedaten</strong> werden hochgeladen oder geteilt. Nur das von Ihnen gewählte Bild wird in die App kopiert.</p>
   </div>
 
   <h2><span class="num">5</span>Drittanbieterdienste</h2>

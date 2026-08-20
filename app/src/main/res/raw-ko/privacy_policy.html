@@ -126,14 +126,14 @@
     <p style="margin-top:8px;font-size:12px;">위치 감지 및 지오펜싱은 <strong>Google Play 서비스</strong>에 의존하며, JTR과 독립적으로 자체 위치 메커니즘(Android/Google 시스템 동작)을 사용할 수 있습니다.</p>
   </div>
 
-  <h2><span class="num">4</span>사진 접근</h2>
-  <p>사진 접근(Android 13+의 <em>READ_MEDIA_IMAGES</em> 또는 Android 14+의 부분 “선택한 사진” 접근)은 프로필 또는 표지 이미지를 선택할 때<strong>만</strong> 요청됩니다:</p>
+  <h2><span class="num">4</span>사진 선택</h2>
+  <p>JTR은 <strong>사진이나 갤러리 권한을 전혀 요청하지 않습니다</strong>. 프로필 또는 표지 이미지를 선택할 때 앱은 <strong>Android 시스템 사진 선택 도구</strong>를 엽니다:</p>
   <ul>
-    <li>앱 내 선택 도구가 앨범과 사진을 표시하기 위해 갤러리를 로컬에서 읽습니다</li>
+    <li>선택 도구는 시스템이 제공합니다. JTR은 갤러리를 탐색하지 않으며 선택하지 않은 사진은 볼 수 없습니다</li>
     <li>선택한 이미지는 자르기 후 <strong>귀하의 기기에만</strong> 저장됩니다</li>
   </ul>
   <div class="card">
-    <p><span class="ok">✓</span> <strong>사진이나 갤러리 데이터</strong>는 업로드되거나 공유되지 않습니다. 모든 사진, 선택한 사진만, 또는 전혀 접근을 허용하지 않을 수 있습니다.</p>
+    <p><span class="ok">✓</span> <strong>사진이나 갤러리 데이터</strong>는 업로드되거나 공유되지 않습니다. 앱에 복사되는 것은 선택한 이미지뿐입니다.</p>
   </div>
 
   <h2><span class="num">5</span>제3자 서비스</h2>

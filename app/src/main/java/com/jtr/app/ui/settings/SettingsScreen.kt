@@ -1104,7 +1104,7 @@ private fun PermissionSettingsDialog(
         text = { Text(message) },
         confirmButton = {
             TextButton(onClick = onOpen) {
-                Text(stringResource(R.string.gallery_permission_settings))
+                Text(stringResource(R.string.common_open_settings))
             }
         },
         dismissButton = {

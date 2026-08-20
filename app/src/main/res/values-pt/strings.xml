@@ -4,6 +4,7 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">Cancelar</string>
+    <string name="common_open_settings">Abrir definições</string>
     <string name="common_close">Fechar</string>
     <string name="crop_action">Recortar</string>
     <string name="crop_hint">Arrasta para mover · aproxima os dedos para ampliar · cantos para redimensionar</string>
@@ -388,24 +389,8 @@
     <string name="permission_allow">Permitir</string>
     <string name="welcome_select_button">Escolher contactos a importar</string>
     <string name="contact_selection_title">Escolher contactos</string>
-    <string name="gallery_picker_title">Selecionar uma foto</string>
-    <string name="gallery_album_recents">Recentes</string>
-    <string name="gallery_album_dropdown_cd">Escolher um álbum</string>
-    <string name="gallery_empty">Sem fotos neste álbum</string>
-    <string name="gallery_permission_rationale">O JTR precisa de aceder às tuas fotos para poderes escolher uma imagem sem sair da aplicação.</string>
-    <string name="gallery_permission_grant">Permitir acesso</string>
-    <string name="gallery_permission_settings">Abrir definições</string>
     <string name="settings_backup_subtitle">Exporta ou restaura os teus dados (ficheiro .jtr)</string>
     <string name="share_preview_loading">A carregar imagens…</string>
-    <string name="gallery_category_favorites">Favoritos</string>
-    <string name="gallery_category_photos">Fotos</string>
-    <string name="gallery_all_albums">Todos os álbuns</string>
-    <string name="gallery_select_album_title">Selecionar um álbum</string>
-    <string name="gallery_albums_section">Álbuns</string>
-    <string name="gallery_see_all">Ver tudo</string>
-    <string name="gallery_see_less">Ver menos</string>
-    <string name="gallery_partial_access_message">Permitiste o acesso apenas às fotos selecionadas.</string>
-    <string name="gallery_partial_access_manage">Selecionar mais</string>
     <string name="settings_notif_rationale_title">Permitir notificações?</string>
     <string name="settings_notif_rationale_message">O JTR envia lembretes suaves de aniversários e datas importantes — diretamente para o teu telemóvel.</string>
     <string name="settings_notif_blocked_title">As notificações estão desativadas</string>
@@ -504,11 +489,6 @@
         <item quantity="one">%1$d categoria</item>
         <item quantity="many">%1$d categorias</item>
         <item quantity="other">%1$d categorias</item>
-    </plurals>
-    <plurals name="gallery_photo_count">
-        <item quantity="one">%1$d foto</item>
-        <item quantity="many">%1$d fotos</item>
-        <item quantity="other">%1$d fotos</item>
     </plurals>
     <plurals name="home_selection_count">
         <item quantity="one">%1$d selecionado</item>

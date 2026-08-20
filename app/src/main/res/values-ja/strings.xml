@@ -4,6 +4,7 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">キャンセル</string>
+    <string name="common_open_settings">設定を開く</string>
     <string name="common_close">閉じる</string>
     <string name="crop_action">切り抜く</string>
     <string name="crop_hint">ドラッグで移動 · ピンチでズーム · 角でサイズ変更</string>
@@ -388,27 +389,9 @@
     <!-- v5.4.1 — ネイティブ連絡先の選択インポート -->
     <string name="welcome_select_button">インポートする連絡先を選ぶ</string>
     <string name="contact_selection_title">連絡先を選択</string>
-    <!-- v5.5 — アプリ内ギャラリー（Instagram 風） -->
-    <string name="gallery_picker_title">写真を選択</string>
-    <string name="gallery_album_recents">最近</string>
-    <string name="gallery_album_dropdown_cd">アルバムを選択</string>
-    <string name="gallery_empty">このアルバムには写真がありません</string>
-    <string name="gallery_permission_rationale">アプリを離れずに画像を選べるよう、JTR は写真へのアクセスを必要とします。</string>
-    <string name="gallery_permission_grant">アクセスを許可</string>
-    <string name="gallery_permission_settings">設定を開く</string>
     <!-- v5.5 — バックアップを設定 > データへ移動 -->
     <string name="settings_backup_subtitle">データのエクスポート / 復元（.jtr ファイル）</string>
     <string name="share_preview_loading">画像を読み込み中…</string>
-    <!-- v6.0.0 — Instagram 風セレクター + 通知の確認 -->
-    <string name="gallery_category_favorites">お気に入り</string>
-    <string name="gallery_category_photos">写真</string>
-    <string name="gallery_all_albums">すべてのアルバム</string>
-    <string name="gallery_select_album_title">アルバムを選択</string>
-    <string name="gallery_albums_section">アルバム</string>
-    <string name="gallery_see_all">すべて表示</string>
-    <string name="gallery_see_less">表示を減らす</string>
-    <string name="gallery_partial_access_message">一部の写真へのアクセスのみを許可しています。</string>
-    <string name="gallery_partial_access_manage">さらに選択</string>
     <!-- v6.0.2 — 権限フロー（システム主導） -->
     <string name="settings_notif_rationale_title">通知を許可しますか？</string>
     <string name="settings_notif_rationale_message">JTR は誕生日や大切な日のリマインダーを、あなたのスマホに直接お届けします。</string>
@@ -509,9 +492,6 @@
     </plurals>
     <plurals name="trash_empty_dialog_part_categories">
         <item quantity="other">%1$dカテゴリー</item>
-    </plurals>
-    <plurals name="gallery_photo_count">
-        <item quantity="other">%1$d 枚の写真</item>
     </plurals>
     <plurals name="home_selection_count">
         <item quantity="other">%1$d件選択中</item>

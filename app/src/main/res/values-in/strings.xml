@@ -22,6 +22,7 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">Batal</string>
+    <string name="common_open_settings">Buka pengaturan</string>
     <string name="common_close">Tutup</string>
     <string name="crop_action">Pangkas</string>
     <string name="crop_hint">Seret untuk memindahkan · cubit untuk memperbesar · sudut untuk mengubah ukuran</string>
@@ -406,24 +407,8 @@
     <string name="permission_allow">Izinkan</string>
     <string name="welcome_select_button">Pilih kontak untuk diimpor</string>
     <string name="contact_selection_title">Pilih kontak</string>
-    <string name="gallery_picker_title">Pilih foto</string>
-    <string name="gallery_album_recents">Terbaru</string>
-    <string name="gallery_album_dropdown_cd">Pilih album</string>
-    <string name="gallery_empty">Tidak ada foto di album ini</string>
-    <string name="gallery_permission_rationale">JTR perlu mengakses fotomu agar kamu bisa memilih gambar tanpa keluar dari aplikasi.</string>
-    <string name="gallery_permission_grant">Izinkan akses</string>
-    <string name="gallery_permission_settings">Buka pengaturan</string>
     <string name="settings_backup_subtitle">Ekspor atau pulihkan datamu (file .jtr)</string>
     <string name="share_preview_loading">Memuat gambar…</string>
-    <string name="gallery_category_favorites">Favorit</string>
-    <string name="gallery_category_photos">Foto</string>
-    <string name="gallery_all_albums">Semua album</string>
-    <string name="gallery_select_album_title">Pilih album</string>
-    <string name="gallery_albums_section">Album</string>
-    <string name="gallery_see_all">Lihat semua</string>
-    <string name="gallery_see_less">Lihat lebih sedikit</string>
-    <string name="gallery_partial_access_message">Kamu hanya mengizinkan akses ke foto tertentu.</string>
-    <string name="gallery_partial_access_manage">Pilih lebih banyak</string>
     <string name="settings_notif_rationale_title">Izinkan notifikasi?</string>
     <string name="settings_notif_rationale_message">JTR mengirimkan pengingat lembut untuk ulang tahun dan tanggal penting — langsung ke ponselmu.</string>
     <string name="settings_notif_blocked_title">Notifikasi dinonaktifkan</string>
@@ -516,9 +501,6 @@
     </plurals>
     <plurals name="trash_empty_dialog_part_categories">
         <item quantity="other">%1$d kategori</item>
-    </plurals>
-    <plurals name="gallery_photo_count">
-        <item quantity="other">%1$d foto</item>
     </plurals>
     <plurals name="home_selection_count">
         <item quantity="other">%1$d dipilih</item>

@@ -126,14 +126,14 @@
     <p style="margin-top:8px;font-size:12px;">位置检测和地理围栏依赖于<strong>Google Play 服务</strong>，其可能使用自身的位置机制（Android/Google 系统行为），与 JTR 无关。</p>
   </div>
 
-  <h2><span class="num">4</span>照片访问</h2>
-  <p>只有在你选择头像或封面图片时，才会请求照片访问权限（Android 13+ 的 <em>READ_MEDIA_IMAGES</em>，或 Android 14+ 的“已选照片”部分访问）：</p>
+  <h2><span class="num">4</span>选择照片</h2>
+  <p>JTR <strong>完全不请求任何照片或相册权限</strong>。当你选择头像或封面图片时，应用会打开 <strong>Android 系统照片选择器</strong>：</p>
   <ul>
-    <li>应用内的选择器在本地读取相册，以显示你的相册和照片</li>
+    <li>选择器由系统提供：JTR 从不浏览你的相册，也看不到你没有选择的照片</li>
     <li>你选择的图片会被裁剪并<strong>仅保存在你的设备上</strong></li>
   </ul>
   <div class="card">
-    <p><span class="ok">✓</span> <strong>不会上传或分享任何照片或相册数据</strong>。你可以授予全部照片、仅所选照片或不授予任何访问权限。</p>
+    <p><span class="ok">✓</span> <strong>不会上传或分享任何照片或相册数据</strong>。只有你选择的那张图片会被复制到应用中。</p>
   </div>
 
   <h2><span class="num">5</span>第三方服务</h2>

@@ -29,3 +29,8 @@ keystore/
 signing.properties
 secrets.properties
 google-services.json
+
+# Release artifacts (AAB/APK) - never commit binaries
+app/release/
+*.aab
+*.apk

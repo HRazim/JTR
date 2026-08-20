@@ -38,7 +38,7 @@ import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.components.JtrViewMode
-import com.jtr.app.ui.components.rememberGalleryImagePicker
+import com.jtr.app.ui.components.rememberSystemPhotoPicker
 import com.jtr.app.ui.person.CropShape
 import com.jtr.app.ui.person.ImageCropDialog
 import kotlinx.coroutines.Dispatchers
@@ -92,8 +92,8 @@ fun CategoryGroupDetailScreen(
 
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    // Galerie IN-APP par ALBUMS (v5.5).
-    val groupPhotoPicker = rememberGalleryImagePicker { uri -> pendingGroupCropUri = uri }
+    // Photo Picker système (v7.1.66) — aucune permission requise.
+    val groupPhotoPicker = rememberSystemPhotoPicker { uri -> pendingGroupCropUri = uri }
 
     LaunchedEffect(members, subGroups) {
         selectedIds.retainAll(members.map { it.id }.toSet())

@@ -4,6 +4,7 @@
 
     <!-- ── Common actions ─────────────────────────────────────────────────── -->
     <string name="common_cancel">إلغاء</string>
+    <string name="common_open_settings">فتح الإعدادات</string>
     <string name="common_close">إغلاق</string>
     <string name="crop_action">اقتصاص</string>
     <string name="crop_hint">اسحب للتحريك · باعد إصبعيك للتكبير · الزوايا لتغيير الحجم</string>
@@ -388,24 +389,8 @@
     <string name="permission_allow">السماح</string>
     <string name="welcome_select_button">اختر جهات الاتصال للاستيراد</string>
     <string name="contact_selection_title">اختر جهات الاتصال</string>
-    <string name="gallery_picker_title">اختر صورة</string>
-    <string name="gallery_album_recents">الأخيرة</string>
-    <string name="gallery_album_dropdown_cd">اختر ألبومًا</string>
-    <string name="gallery_empty">لا توجد صور في هذا الألبوم</string>
-    <string name="gallery_permission_rationale">يحتاج JTR إلى الوصول إلى صورك لتتمكن من اختيار صورة دون مغادرة التطبيق.</string>
-    <string name="gallery_permission_grant">السماح بالوصول</string>
-    <string name="gallery_permission_settings">فتح الإعدادات</string>
     <string name="settings_backup_subtitle">صدّر بياناتك أو استعدها (ملف .jtr)</string>
     <string name="share_preview_loading">جارٍ تحميل الصور…</string>
-    <string name="gallery_category_favorites">المفضّلة</string>
-    <string name="gallery_category_photos">الصور</string>
-    <string name="gallery_all_albums">جميع الألبومات</string>
-    <string name="gallery_select_album_title">اختر ألبومًا</string>
-    <string name="gallery_albums_section">الألبومات</string>
-    <string name="gallery_see_all">عرض الكل</string>
-    <string name="gallery_see_less">عرض أقل</string>
-    <string name="gallery_partial_access_message">لقد سمحت بالوصول إلى صور محددة فقط.</string>
-    <string name="gallery_partial_access_manage">اختيار المزيد</string>
     <string name="settings_notif_rationale_title">السماح بالإشعارات؟</string>
     <string name="settings_notif_rationale_message">يرسل JTR تذكيرات لطيفة بأعياد الميلاد والتواريخ المهمة — مباشرة إلى هاتفك.</string>
     <string name="settings_notif_blocked_title">الإشعارات معطّلة</string>
@@ -513,14 +498,6 @@
         <item quantity="few">%1$d فئات</item>
         <item quantity="many">%1$d فئة</item>
         <item quantity="other">%1$d فئة</item>
-    </plurals>
-    <plurals name="gallery_photo_count">
-        <item quantity="zero">%1$d صورة</item>
-        <item quantity="one">صورة واحدة</item>
-        <item quantity="two">صورتان</item>
-        <item quantity="few">%1$d صور</item>
-        <item quantity="many">%1$d صورة</item>
-        <item quantity="other">%1$d صورة</item>
     </plurals>
     <plurals name="home_selection_count">
         <item quantity="zero">تم تحديد %1$d</item>

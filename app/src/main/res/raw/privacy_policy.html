@@ -126,14 +126,14 @@
     <p style="margin-top:8px;font-size:12px;">Location detection and geofencing rely on <strong>Google Play services</strong>, which may use their own location mechanisms (an Android/Google system behavior), independently of JTR.</p>
   </div>
 
-  <h2><span class="num">4</span>Photo access</h2>
-  <p>Photo access (<em>READ_MEDIA_IMAGES</em> on Android 13+, or partial "selected photos" access on Android 14+) is requested <strong>only</strong> when you choose a profile or cover image:</p>
+  <h2><span class="num">4</span>Choosing a photo</h2>
+  <p>JTR requests <strong>no photo or gallery permission at all</strong>. When you choose a profile or cover image, the app opens the <strong>Android system photo picker</strong>:</p>
   <ul>
-    <li>The in-app picker reads your gallery locally to display your albums and photos</li>
+    <li>The picker is provided by the system — JTR never browses your gallery and cannot see the photos you do not choose</li>
     <li>The image you select is cropped and stored <strong>on your device only</strong></li>
   </ul>
   <div class="card">
-    <p><span class="ok">✓</span> <strong>No photo or gallery data</strong> is uploaded or shared. You can grant access to all photos, only selected ones, or none.</p>
+    <p><span class="ok">✓</span> <strong>No photo or gallery data</strong> is uploaded or shared. Only the image you pick is copied into the app.</p>
   </div>
 
   <h2><span class="num">5</span>Third-party services</h2>

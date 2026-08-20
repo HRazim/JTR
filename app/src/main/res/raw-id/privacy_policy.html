@@ -126,14 +126,14 @@
     <p style="margin-top:8px;font-size:12px;">Deteksi lokasi dan geofencing mengandalkan <strong>layanan Google Play</strong>, yang dapat menggunakan mekanisme lokasinya sendiri (perilaku sistem Android/Google), terlepas dari JTR.</p>
   </div>
 
-  <h2><span class="num">4</span>Akses foto</h2>
-  <p>Akses foto (<em>READ_MEDIA_IMAGES</em> di Android 13+, atau akses parsial “foto terpilih” di Android 14+) diminta <strong>hanya</strong> saat Anda memilih gambar profil atau sampul:</p>
+  <h2><span class="num">4</span>Memilih foto</h2>
+  <p>JTR <strong>tidak meminta izin foto atau galeri sama sekali</strong>. Saat Anda memilih gambar profil atau sampul, aplikasi membuka <strong>pemilih foto sistem Android</strong>:</p>
   <ul>
-    <li>Pemilih dalam aplikasi membaca galeri Anda secara lokal untuk menampilkan album dan foto Anda</li>
+    <li>Pemilih ini disediakan oleh sistem — JTR tidak pernah menjelajahi galeri Anda dan tidak dapat melihat foto yang tidak Anda pilih</li>
     <li>Gambar yang Anda pilih dipangkas dan disimpan <strong>hanya di perangkat Anda</strong></li>
   </ul>
   <div class="card">
-    <p><span class="ok">✓</span> <strong>Tidak ada data foto atau galeri</strong> yang diunggah atau dibagikan. Anda dapat memberikan akses ke semua foto, hanya yang terpilih, atau tidak sama sekali.</p>
+    <p><span class="ok">✓</span> <strong>Tidak ada data foto atau galeri</strong> yang diunggah atau dibagikan. Hanya gambar yang Anda pilih yang disalin ke aplikasi.</p>
   </div>
 
   <h2><span class="num">5</span>Layanan pihak ketiga</h2>

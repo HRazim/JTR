@@ -72,7 +72,7 @@ import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.PhotoZoomDialog
-import com.jtr.app.ui.components.rememberGalleryImagePicker
+import com.jtr.app.ui.components.rememberSystemPhotoPicker
 import com.jtr.app.utils.DateCanonical
 import com.jtr.app.utils.LocationUtils
 import com.jtr.app.utils.getSocialIcon
@@ -187,8 +187,8 @@ fun PersonDetailScreen(
         }
     }
 
-    // Galerie IN-APP par ALBUMS (v5.5) — l'utilisateur ne quitte pas l'application.
-    val photoPicker = rememberGalleryImagePicker { uri -> pendingCropUri = uri }
+    // Photo Picker système (v7.1.66) — aucune permission d'accès à la photothèque.
+    val photoPicker = rememberSystemPhotoPicker { uri -> pendingCropUri = uri }
 
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }

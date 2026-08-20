@@ -64,7 +64,7 @@ import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.JtrViewMode
-import com.jtr.app.ui.components.rememberGalleryImagePicker
+import com.jtr.app.ui.components.rememberSystemPhotoPicker
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -168,8 +168,8 @@ fun CategoriesScreen(
     var pendingGroupCropUri by remember { mutableStateOf<Uri?>(null) }
     val screenContext = LocalContext.current
     val screenScope = rememberCoroutineScope()
-    // Galerie IN-APP par ALBUMS (v5.5).
-    val groupPhotoPicker = rememberGalleryImagePicker { uri -> pendingGroupCropUri = uri }
+    // Photo Picker système (v7.1.66) — aucune permission requise.
+    val groupPhotoPicker = rememberSystemPhotoPicker { uri -> pendingGroupCropUri = uri }
 
     // Reporte l'état de sélection au conteneur (masque la nav globale).
     LaunchedEffect(isSelectionActive) { onSelectionModeChange(isSelectionActive) }
@@ -2137,8 +2137,8 @@ private fun CategoryFormDialog(
     // l'avatar de contact), ouverte PAR-DESSUS ce formulaire (Dialog sur Dialog).
     var showImageZoom by remember { mutableStateOf(false) }
 
-    // Galerie IN-APP par ALBUMS (v5.5).
-    val photoPicker = rememberGalleryImagePicker { uri -> pendingCropUri = uri }
+    // Photo Picker système (v7.1.66) — aucune permission requise.
+    val photoPicker = rememberSystemPhotoPicker { uri -> pendingCropUri = uri }
 
     // Le formulaire RESTE en composition sous la visionneuse (Dialog empilé) : `name`,
     // `selectedColor` et `imagePath` sont des `remember` de CE composable, donc fermer la
