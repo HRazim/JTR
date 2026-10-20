@@ -38,6 +38,9 @@ class PersonRepository(context: Context) {
 
     fun getAllActive(): Flow<List<Person>> = dao.getAllActive()
 
+    /** Contacts récemment ouverts (tri `lastContactedAt` DESC, plafonné). */
+    fun getRecent(limit: Int): Flow<List<Person>> = dao.getRecent(limit)
+
     // La recherche de personnes n'a PAS de point d'entrée Repository dédié : tous les
     // écrans observent getAllActive() et appliquent le moteur CENTRAL en mémoire
     // (utils/TextUtils.matchesSearch, multi-mots accent-insensible, débouncé hors

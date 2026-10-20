@@ -29,6 +29,7 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Contacts</string>
+    <string name="recents_title">Recent</string>
     <string name="home_fab_add_person">Add a person</string>
     <string name="home_location_warning">Enable location for proximity reminders</string>
     <string name="home_search_placeholder">Search a contact…</string>

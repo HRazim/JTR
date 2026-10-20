@@ -132,6 +132,10 @@ fun <T> jtrSortCriterion(
  *   flèche retour pour fermer (et effacer la query), « X » pour vider le texte.
  *
  * La query vient du ViewModel (UDF) ; l'état ouvert/fermé est local à l'écran.
+ *
+ * [onSearchClick] (v7.1.69) : si fourni, la loupe DÉCLENCHE cette action au lieu d'ouvrir
+ * la recherche inline — utilisé par l'Accueil pour NAVIGUER vers l'écran de recherche dédié.
+ * `null` (défaut) = comportement historique (bascule inline), conservé par les autres écrans.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,6 +147,7 @@ fun JtrSearchableTopAppBar(
     onSearchActiveChange: (Boolean) -> Unit,
     searchPlaceholder: String,
     navigationIcon: @Composable () -> Unit = {},
+    onSearchClick: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     if (searchActive) {
@@ -200,7 +205,7 @@ fun JtrSearchableTopAppBar(
             title = { Text(title) },
             navigationIcon = navigationIcon,
             actions = {
-                IconButton(onClick = { onSearchActiveChange(true) }) {
+                IconButton(onClick = { onSearchClick?.invoke() ?: onSearchActiveChange(true) }) {
                     Icon(Icons.Default.Search,
                         contentDescription = stringResource(R.string.action_search))
                 }

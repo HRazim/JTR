@@ -29,6 +29,7 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">جهات الاتصال JTR</string>
+    <string name="recents_title">الأخيرة</string>
     <string name="home_fab_add_person">إضافة شخص</string>
     <string name="home_location_warning">فعّل الموقع لتذكيرات القرب</string>
     <string name="home_search_placeholder">ابحث عن جهة اتصال…</string>

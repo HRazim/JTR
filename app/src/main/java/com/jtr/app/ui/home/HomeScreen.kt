@@ -65,6 +65,8 @@ fun HomeScreen(
     onNavigateToPersonDetail: (String) -> Unit,
     onSelectionModeChange: (Boolean) -> Unit = {},
     onMoveSelectionToCategory: (List<String>) -> Unit = {},
+    /** v7.1.69 — la loupe ouvre l'écran de recherche dédié (plus de recherche inline ici). */
+    onNavigateToSearch: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     val persons by viewModel.persons.collectAsStateWithLifecycle()
@@ -168,7 +170,8 @@ fun HomeScreen(
                 )
             } else {
                 // Barre harmonisée : loupe (à gauche du « + ») + ajout + menu 3 points
-                // (sous-sections Tri / Affichage).
+                // (sous-sections Tri / Affichage). v7.1.69 — la loupe NAVIGUE vers l'écran
+                // de recherche dédié (onSearchClick) au lieu d'ouvrir une recherche inline.
                 JtrSearchableTopAppBar(
                     title = stringResource(R.string.home_title),
                     searchQuery = searchQuery,
@@ -176,6 +179,7 @@ fun HomeScreen(
                     searchActive = searchActive,
                     onSearchActiveChange = { searchActive = it },
                     searchPlaceholder = stringResource(R.string.home_search_placeholder),
+                    onSearchClick = onNavigateToSearch,
                     actions = {
                         // Header minimaliste (v5.3.1) : Loupe → « + » → 3 points.
                         // Tri et Affichage vivent EXCLUSIVEMENT dans le menu 3 points.

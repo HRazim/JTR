@@ -51,6 +51,7 @@ import com.jtr.app.ui.contacts.ImportContactsScreen
 import com.jtr.app.ui.home.HomeScreen
 import com.jtr.app.ui.map.MapScreen
 import com.jtr.app.ui.person.*
+import com.jtr.app.ui.search.SearchScreen
 import com.jtr.app.ui.settings.SettingsScreen
 import com.jtr.app.ui.theme.ThemePreset
 import com.jtr.app.ui.trash.TrashScreen
@@ -75,6 +76,8 @@ object Routes {
     const val MAP_PICKER = "map_picker"
     const val TRASH = "trash"
     const val IMPORT_CONTACTS = "import_contacts"
+    // v7.1.69 — écran de recherche dédié (ouvert depuis la loupe de l'accueil)
+    const val SEARCH = "search"
 
     fun personDetail(personId: String) = "person_detail/$personId"
     fun categoryDetail(categoryId: String) = "category_detail/$categoryId"
@@ -305,6 +308,7 @@ fun JTRMainScaffold(
                 HomeScreen(
                     onNavigateToAddPerson = { navController.navigate(Routes.addPerson()) },
                     onNavigateToPersonDetail = { id -> navController.navigate(Routes.personDetail(id)) },
+                    onNavigateToSearch = { navController.navigate(Routes.SEARCH) },
                     onSelectionModeChange = { homeSelectionMode = it },
                     // « Déplacer » : bascule fluide vers l'onglet Catégories en mode cible.
                     onMoveSelectionToCategory = { ids ->
@@ -513,6 +517,21 @@ fun JTRMainScaffold(
 
             composable(Routes.TRASH) {
                 TrashScreen(onNavigateBack = { navController.popBackStack() })
+            }
+
+            // Recherche dédiée (v7.1.69) : plein écran, retour → accueil. La barre d'onglets
+            // n'apparaît pas (SEARCH n'est pas une destination de premier niveau).
+            composable(
+                route = Routes.SEARCH,
+                enterTransition = { slideInHorizontally(initialOffsetX = { rtlSign * it }) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -rtlSign * it / 3 }) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -rtlSign * it / 3 }) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { rtlSign * it }) }
+            ) {
+                SearchScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToPersonDetail = { id -> navController.navigate(Routes.personDetail(id)) }
+                )
             }
 
             // Import des contacts du téléphone depuis les Paramètres (v7.1.28) —

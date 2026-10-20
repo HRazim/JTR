@@ -29,6 +29,7 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR 联系人</string>
+    <string name="recents_title">最近</string>
     <string name="home_fab_add_person">添加联系人</string>
     <string name="home_location_warning">请开启定位以使用附近提醒功能</string>
     <string name="home_search_placeholder">搜索联系人…</string>

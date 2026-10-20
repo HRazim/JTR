@@ -16,6 +16,16 @@ interface PersonDao {
     @Query("SELECT * FROM persons WHERE deletedAt IS NULL ORDER BY isFavorite DESC, firstName ASC")
     fun getAllActive(): Flow<List<Person>>
 
+    /**
+     * Contacts RÉCEMMENT OUVERTS (v7.1.69) : actifs (même filtre `deletedAt IS NULL` que
+     * [getAllActive]), ayant déjà été ouverts au moins une fois (`lastContactedAt` non nul,
+     * estampillé à chaque ouverture de fiche — cf. Navigation.markAsContacted), les plus
+     * récents d'abord, plafonnés à [limit]. Aucune nouvelle colonne : lecture seule du champ
+     * existant. Alimente la rangée « Récents » en tête d'accueil.
+     */
+    @Query("SELECT * FROM persons WHERE deletedAt IS NULL AND lastContactedAt IS NOT NULL ORDER BY lastContactedAt DESC LIMIT :limit")
+    fun getRecent(limit: Int): Flow<List<Person>>
+
     /** Export intégral (sauvegarde .jtr) : TOUTES les lignes, corbeille incluse. */
     @Query("SELECT * FROM persons")
     suspend fun getAllSync(): List<Person>

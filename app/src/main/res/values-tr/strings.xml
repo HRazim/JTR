@@ -29,6 +29,7 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Kişiler</string>
+    <string name="recents_title">Son görülenler</string>
     <string name="home_fab_add_person">Kişi ekle</string>
     <string name="home_location_warning">Yakınlık hatırlatmaları için konumu aç</string>
     <string name="home_search_placeholder">Kişi ara…</string>
