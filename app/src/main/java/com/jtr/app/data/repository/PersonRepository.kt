@@ -323,6 +323,22 @@ class PersonRepository(context: Context) {
         categoryDao.removePersonsFromCategory(ids, categoryId)
     }
 
+    /**
+     * VRAI DÉPLACEMENT TRANSACTIONNEL (v7.1.70) : retire [ids] de [fromCategoryId] ET les ajoute
+     * à [toCategoryId] en UNE SEULE transaction atomique. `from == to` ⇒ no-op. L'ajout est
+     * idempotent (PK composite + `insertAll` OnConflict.IGNORE) : un contact déjà dans la cible
+     * est simplement retiré de la source, sans doublon. Les AUTRES catégories des contacts ne sont
+     * PAS touchées (seul le lien à la source disparaît). La multi-appartenance (ajout sans retrait)
+     * reste gérée par « Gérer les catégories ».
+     */
+    suspend fun moveToCategory(ids: List<String>, fromCategoryId: String, toCategoryId: String) {
+        if (ids.isEmpty() || fromCategoryId == toCategoryId) return
+        db.withTransaction {
+            categoryDao.insertAll(ids.map { PersonCategoryJoin(it, toCategoryId) })
+            categoryDao.removePersonsFromCategory(ids, fromCategoryId)
+        }
+    }
+
     // =========================================================
     // MIGRATION JSON → ROOM (données du PP1)
     // =========================================================

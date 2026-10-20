@@ -59,4 +59,12 @@ interface CategoryDao {
 
     @Query("DELETE FROM categories WHERE deletedAt IS NOT NULL")
     suspend fun hardDeleteAllDeleted()
+
+    /**
+     * Ids des catégories en corbeille depuis plus longtemps que [cutoff] (auto-purge 30 j, v7.1.70).
+     * La suppression effective passe par le repository (retrait explicite des liens puis
+     * [hardDelete]) → les CONTACTS ne sont jamais supprimés, ils perdent seulement l'étiquette.
+     */
+    @Query("SELECT id FROM categories WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
+    suspend fun getDeletedIdsOlderThan(cutoff: Long): List<String>
 }

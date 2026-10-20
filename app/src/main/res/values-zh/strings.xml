@@ -35,7 +35,6 @@
     <string name="home_search_placeholder">搜索联系人…</string>
     <string name="home_empty_title">未找到联系人</string>
     <string name="home_empty_subtitle">点击 + 添加联系人</string>
-    <string name="home_btn_category">分类</string>
     <string name="home_btn_delete">删除</string>
     <string name="home_favorite_cd">收藏</string>
 
@@ -65,6 +64,7 @@
     <string name="category_detail_empty_title">此分类暂无成员</string>
     <string name="category_detail_empty_subtitle">点击 + 添加联系人</string>
     <string name="category_detail_fab_add">添加联系人</string>
+    <string name="category_detail_removed_snackbar">已从 %1$s 移除</string>
     <string name="category_detail_btn_remove">移除</string>
     <string name="category_detail_default_title">分类</string>
 

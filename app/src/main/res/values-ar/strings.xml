@@ -35,7 +35,6 @@
     <string name="home_search_placeholder">ابحث عن جهة اتصال…</string>
     <string name="home_empty_title">لا توجد جهات اتصال</string>
     <string name="home_empty_subtitle">اضغط + لإضافة شخص</string>
-    <string name="home_btn_category">فئة</string>
     <string name="home_btn_delete">حذف</string>
     <string name="home_favorite_cd">مفضّل</string>
 
@@ -65,6 +64,7 @@
     <string name="category_detail_empty_title">لا يوجد أعضاء في هذه الفئة</string>
     <string name="category_detail_empty_subtitle">اضغط + لإضافة جهة اتصال</string>
     <string name="category_detail_fab_add">إضافة جهة اتصال</string>
+    <string name="category_detail_removed_snackbar">تمت الإزالة من %1$s</string>
     <string name="category_detail_btn_remove">إزالة</string>
     <string name="category_detail_default_title">فئة</string>
 

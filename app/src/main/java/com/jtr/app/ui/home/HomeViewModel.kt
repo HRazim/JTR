@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.location.LocationManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jtr.app.data.repository.CategoryRepository
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
@@ -45,6 +46,7 @@ data class UpcomingEvent(
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = PersonRepository(application.applicationContext)
+    private val categoryRepository = CategoryRepository(application.applicationContext)
     private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
 
     private val _searchQuery = MutableStateFlow("")
@@ -187,6 +189,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.migrateFromJson()
             repository.purgeOldDeleted()
+            // v7.1.70 — auto-purge de la corbeille des CATÉGORIES (> 30 j). Les contacts ne sont
+            // jamais supprimés ici ; ceux mis en corbeille avec la catégorie le sont par le purge
+            // des contacts ci-dessus (même seuil).
+            categoryRepository.purgeOldDeletedCategories()
         }
     }
 

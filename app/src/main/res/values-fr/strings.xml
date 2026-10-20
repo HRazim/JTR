@@ -35,7 +35,6 @@
     <string name="home_search_placeholder">Rechercher un contact…</string>
     <string name="home_empty_title">Aucun contact trouvé</string>
     <string name="home_empty_subtitle">Appuyez sur + pour ajouter une personne</string>
-    <string name="home_btn_category">Catégorie</string>
     <string name="home_btn_delete">Supprimer</string>
     <string name="home_favorite_cd">Favori</string>
 
@@ -65,6 +64,7 @@
     <string name="category_detail_empty_title">Aucun membre dans cette catégorie</string>
     <string name="category_detail_empty_subtitle">Appuyez sur + pour ajouter un contact</string>
     <string name="category_detail_fab_add">Ajouter un contact</string>
+    <string name="category_detail_removed_snackbar">Retiré(s) de %1$s</string>
     <string name="category_detail_btn_remove">Retirer</string>
     <string name="category_detail_default_title">Catégorie</string>
 

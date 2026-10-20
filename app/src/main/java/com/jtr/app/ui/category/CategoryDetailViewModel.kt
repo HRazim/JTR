@@ -225,6 +225,15 @@ class CategoryDetailViewModel(
         }
     }
 
+    /**
+     * Annule un retrait en lot (v7.1.70) : ré-ajoute [ids] à CETTE catégorie. Les contacts
+     * n'ayant jamais quitté la base, c'est une simple ré-association du lien de jointure.
+     */
+    fun undoRemoveFromCategory(ids: List<String>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch { repository.assignCategory(ids, categoryId) }
+    }
+
     /** Supprime définitivement (soft-delete) les contacts sélectionnés. */
     fun deleteSelected() {
         val ids = _selectedIds.value.toList()
@@ -251,6 +260,34 @@ class CategoryDetailViewModel(
         if (ids.isEmpty()) return
         viewModelScope.launch {
             repository.assignCategory(ids, newCategoryId)
+            _selectedIds.value = emptySet()
+        }
+    }
+
+    /**
+     * VRAI DÉPLACEMENT (v7.1.70) : retire les contacts sélectionnés de CETTE catégorie (source)
+     * et les ajoute à [targetId], de façon atomique ([PersonRepository.moveToCategory]). `source ==
+     * cible` ⇒ no-op. Les autres appartenances des contacts ne sont pas touchées. Pour la catégorie
+     * virtuelle « Favoris » (aucune ligne Room), le retrait de la source est sans effet → se
+     * comporte comme un ajout.
+     */
+    fun moveSelectedToCategory(targetId: String) {
+        val ids = _selectedIds.value.toList()
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            repository.moveToCategory(ids, categoryId, targetId)
+            _selectedIds.value = emptySet()
+        }
+    }
+
+    /** Crée une catégorie puis Y DÉPLACE les contacts sélectionnés (retrait de la source inclus). */
+    fun createCategoryAndMoveToSelected(name: String, color: String) {
+        val ids = _selectedIds.value.toList()
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            val category = Category(name = name, color = color)
+            categoryRepo.add(category)
+            repository.moveToCategory(ids, categoryId, category.id)
             _selectedIds.value = emptySet()
         }
     }

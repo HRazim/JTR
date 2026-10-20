@@ -23,6 +23,7 @@ import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.home.AssignCategoryDialog
 import com.jtr.app.ui.home.PersonListContent
 import com.jtr.app.ui.person.formatDateTimeLong
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,6 +59,11 @@ fun CategoryDetailScreen(
     var showInfoDialog by remember { mutableStateOf(false) }
     // Mode recherche de la TopAppBar (état d'UI local ; la query vient du ViewModel).
     var searchActive by remember { mutableStateOf(false) }
+
+    // v7.1.70 — snackbar d'annulation du retrait en lot de contacts (« Retirer de … »).
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val undoLabel = stringResource(R.string.common_undo)
 
     // Sortie d'écran → réinitialisation du filtre : aucune query fantôme au retour.
     DisposableEffect(Unit) { onDispose { viewModel.clearSearch() } }
@@ -154,18 +160,22 @@ fun CategoryDetailScreen(
         AssignCategoryDialog(
             categories = categories,
             onDismiss = { showCategoryDialog = false },
+            // v7.1.70 — depuis une catégorie (source définie) : VRAI DÉPLACEMENT transactionnel
+            // (retrait de la source + ajout à la cible). La multi-appartenance passe par
+            // « Gérer les catégories » sur la fiche.
             onCategorySelected = { categoryId ->
-                viewModel.assignCategoryToSelected(categoryId)
+                viewModel.moveSelectedToCategory(categoryId)
                 showCategoryDialog = false
             },
             onCreateAndAssign = { name, color ->
-                viewModel.createCategoryAndAssignToSelected(name, color)
+                viewModel.createCategoryAndMoveToSelected(name, color)
                 showCategoryDialog = false
             }
         )
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (isSelectionMode) {
                 TopAppBar(
@@ -229,8 +239,14 @@ fun CategoryDetailScreen(
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     onClick = { dismiss(); showInfoDialog = true }
                                 )
+                                // v7.1.70 — « Supprimer » (icône corbeille + rouge), MÊME action
+                                // visuelle que le footer de l'écran Catégories (#2). La confirmation
+                                // (inchangée) décrit honnêtement le passage en corbeille.
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.action_move_to_trash)) },
+                                    text = {
+                                        Text(stringResource(R.string.common_delete),
+                                            color = MaterialTheme.colorScheme.error)
+                                    },
                                     leadingIcon = { Icon(Icons.Default.Delete, null,
                                         tint = MaterialTheme.colorScheme.error) },
                                     onClick = { dismiss(); showTrashConfirm = true }
@@ -247,51 +263,60 @@ fun CategoryDetailScreen(
                 enter = JtrBottomBarTransitions.enter,
                 exit = JtrBottomBarTransitions.exit
             ) {
+                // v7.1.70 — footer harmonisé avec l'Accueil/Catégories (FooterActionColumn :
+                // icône au-dessus d'un libellé court, qui tient enfin ; fini les libellés rognés).
+                // LA COULEUR PORTE LE SENS : neutre pour un retrait d'appartenance (Retirer / Déplacer),
+                // ROUGE (error) uniquement pour une suppression (Corbeille).
                 BottomAppBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 4.dp
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // « Retirer de la catégorie » : enlève SEULEMENT le lien —
-                        // sans objet pour la catégorie virtuelle « Favoris ».
-                        if (!isVirtual) {
-                            OutlinedButton(
-                                onClick = { viewModel.removeSelectedFromCategory() },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.LinkOff, contentDescription = null,
-                                    modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.category_detail_btn_remove))
-                            }
-                        }
-                        OutlinedButton(
-                            onClick = { showCategoryDialog = true },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.Label, contentDescription = null,
-                                modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.home_btn_category))
-                        }
-                        // Sémantique v5.3 : suppression GLOBALE du profil = corbeille.
-                        Button(
-                            onClick = { viewModel.deleteSelected() },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
+                    // « Retirer » : enlève SEULEMENT le lien → NEUTRE + undo (snackbar nommant la
+                    // catégorie). Sans objet pour la catégorie virtuelle « Favoris ».
+                    if (!isVirtual) {
+                        val removedMsg = stringResource(
+                            R.string.category_detail_removed_snackbar, categoryName)
+                        Box(Modifier.weight(1f).fillMaxHeight()) {
+                            FooterActionColumn(
+                                Icons.Default.LinkOff,
+                                stringResource(R.string.category_detail_btn_remove),
+                                enabled = true,
+                                onClick = {
+                                    val removed = selectedIds.toList()
+                                    viewModel.removeSelectedFromCategory()
+                                    scope.launch {
+                                        val res = snackbarHostState.showSnackbar(
+                                            message = removedMsg,
+                                            actionLabel = undoLabel,
+                                            duration = SnackbarDuration.Short
+                                        )
+                                        if (res == SnackbarResult.ActionPerformed) {
+                                            viewModel.undoRemoveFromCategory(removed)
+                                        }
+                                    }
+                                }
                             )
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = null,
-                                modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.action_trash_short))
                         }
+                    }
+                    // « Déplacer » (vrai déplacement : retire de CETTE catégorie, ajoute à la
+                    // cible choisie) → NEUTRE.
+                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                        FooterActionColumn(
+                            Icons.AutoMirrored.Filled.DriveFileMove,
+                            stringResource(R.string.action_move),
+                            enabled = true,
+                            onClick = { showCategoryDialog = true }
+                        )
+                    }
+                    // « Corbeille » : suppression GLOBALE du contact → ROUGE (error).
+                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                        FooterActionColumn(
+                            Icons.Default.Delete,
+                            stringResource(R.string.action_trash_short),
+                            enabled = true,
+                            onClick = { viewModel.deleteSelected() },
+                            tintOverride = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             }

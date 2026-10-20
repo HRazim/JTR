@@ -150,6 +150,24 @@ class CategoryRepository(context: Context) {
     suspend fun hardDeleteAllDeleted() = categoryDao.hardDeleteAllDeleted()
 
     /**
+     * AUTO-PURGE de la corbeille des catégories (v7.1.70) : supprime définitivement les catégories
+     * en corbeille depuis plus de 30 jours, en retirant d'abord leurs liens de jointure. Les
+     * CONTACTS ne sont JAMAIS supprimés ici (ils perdent seulement l'étiquette) ; les contacts
+     * mis en corbeille EN MÊME TEMPS que la catégorie sont purgés, eux, par l'auto-purge des
+     * contacts ([PersonRepository.purgeOldDeleted], même seuil de 30 jours). Idempotent et
+     * auto-réparant (relancé au démarrage). Le retrait des liens est explicite (en plus de la
+     * CASCADE FK sur `categoryId`), pour un comportement testable et sans dépendance implicite.
+     */
+    suspend fun purgeOldDeletedCategories() {
+        val cutoff = System.currentTimeMillis() - THIRTY_DAYS_MS
+        val expired = categoryDao.getDeletedIdsOlderThan(cutoff)
+        expired.forEach { id ->
+            personCategoryDao.removeAllFromCategory(id)
+            categoryDao.hardDelete(id)
+        }
+    }
+
+    /**
      * Flow réactif : nombre de contacts actifs par categoryId.
      * Combine les deux tables via Many-to-Many.
      */
@@ -172,4 +190,9 @@ class CategoryRepository(context: Context) {
     fun getCategoryLastActivity(): Flow<Map<String, Long>> =
         personCategoryDao.getCategoryActivity()
             .map { rows -> rows.associate { it.categoryId to it.lastActivity } }
+
+    companion object {
+        /** Seuil d'auto-purge de la corbeille : 30 jours (aligné sur l'auto-purge des contacts). */
+        private const val THIRTY_DAYS_MS = 30L * 24 * 60 * 60 * 1000
+    }
 }

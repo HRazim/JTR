@@ -35,7 +35,6 @@
     <string name="home_search_placeholder">連絡先を検索…</string>
     <string name="home_empty_title">連絡先が見つかりません</string>
     <string name="home_empty_subtitle">＋をタップして追加</string>
-    <string name="home_btn_category">カテゴリー</string>
     <string name="home_btn_delete">削除</string>
     <string name="home_favorite_cd">お気に入り</string>
 
@@ -65,6 +64,7 @@
     <string name="category_detail_empty_title">このカテゴリーにメンバーがいません</string>
     <string name="category_detail_empty_subtitle">＋をタップして連絡先を追加</string>
     <string name="category_detail_fab_add">連絡先を追加</string>
+    <string name="category_detail_removed_snackbar">%1$s から外しました</string>
     <string name="category_detail_btn_remove">取り除く</string>
     <string name="category_detail_default_title">カテゴリー</string>
 

@@ -35,7 +35,6 @@
     <string name="home_search_placeholder">Поиск контакта…</string>
     <string name="home_empty_title">Контакты не найдены</string>
     <string name="home_empty_subtitle">Нажмите +, чтобы добавить человека</string>
-    <string name="home_btn_category">Категория</string>
     <string name="home_btn_delete">Удалить</string>
     <string name="home_favorite_cd">Избранное</string>
 
@@ -65,6 +64,7 @@
     <string name="category_detail_empty_title">В этой категории нет участников</string>
     <string name="category_detail_empty_subtitle">Нажмите +, чтобы добавить контакт</string>
     <string name="category_detail_fab_add">Добавить контакт</string>
+    <string name="category_detail_removed_snackbar">Убрано из %1$s</string>
     <string name="category_detail_btn_remove">Убрать</string>
     <string name="category_detail_default_title">Категория</string>
 

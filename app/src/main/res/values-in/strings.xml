@@ -53,7 +53,6 @@
     <string name="home_search_placeholder">Cari kontak…</string>
     <string name="home_empty_title">Tidak ada kontak</string>
     <string name="home_empty_subtitle">Ketuk + untuk menambah orang</string>
-    <string name="home_btn_category">Kategori</string>
     <string name="home_btn_delete">Hapus</string>
     <string name="home_favorite_cd">Favorit</string>
 
@@ -83,6 +82,7 @@
     <string name="category_detail_empty_title">Tidak ada anggota di kategori ini</string>
     <string name="category_detail_empty_subtitle">Ketuk + untuk menambah kontak</string>
     <string name="category_detail_fab_add">Tambah kontak</string>
+    <string name="category_detail_removed_snackbar">Dikeluarkan dari %1$s</string>
     <string name="category_detail_btn_remove">Keluarkan</string>
     <string name="category_detail_default_title">Kategori</string>
 
