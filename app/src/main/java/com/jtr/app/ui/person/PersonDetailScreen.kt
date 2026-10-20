@@ -536,38 +536,25 @@ fun PersonDetailScreen(
                 }
             }
 
-            if (categoryChips.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                // FlowRow (v7.1.50) : au-delà de ~3 catégories, une `Row` simple poussait les
-                // badges HORS de l'écran (ni retour à la ligne, ni scroll) — le contact
-                // paraissait n'appartenir qu'aux premières. Ils se replient désormais sur
-                // autant de lignes que nécessaire. Alignement au DÉBUT (et non centré) :
-                // centrer chaque rangée indépendamment donnait une pyramide, la dernière
-                // rangée, plus courte, se retrouvant décalée par rapport aux précédentes.
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    // Badges INTERACTIFS (v5.3.4) : un tap ouvre le détail de la catégorie.
-                    // Source RÉACTIVE (v7.1.5) → ajout/retrait depuis le sélecteur reflété ici.
-                    categoryChips.forEach { (categoryId, name) ->
-                        SuggestionChip(
-                            onClick = { onNavigateToCategory(categoryId) },
-                            label = { Text(name) },
-                            icon = { Icon(Icons.Default.Folder, null, Modifier.size(16.dp)) }
-                        )
-                    }
+            // v7.1.67 — en ÉDITION, le nom s'édite DANS ProfileFormFields (NameSection en
+            // tête du formulaire, rendu plus bas) : badges et réseaux rendus ici passeraient
+            // AU-DESSUS du nom. Ils sont donc déplacés APRÈS le formulaire, pour préserver
+            // l'ordre logique de la lecture (nom → catégories → réseaux). En LECTURE, rien
+            // ne change.
+            if (!isEditing) {
+                if (categoryChips.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    CategoryChipsRow(categoryChips, onNavigateToCategory)
                 }
-            }
 
-            Spacer(Modifier.height(12.dp))
-            SocialLinksSection(
-                links = socialLinks,
-                isEditing = isEditing,
-                onAddClick = { showAddLinkDialog = true },
-                onRemoveClick = { editVm.removeSocialLink(it) }
-            )
+                Spacer(Modifier.height(12.dp))
+                SocialLinksSection(
+                    links = socialLinks,
+                    isEditing = false,
+                    onAddClick = { showAddLinkDialog = true },
+                    onRemoveClick = { editVm.removeSocialLink(it) }
+                )
+            }
 
             Spacer(Modifier.height(16.dp))
             HorizontalDivider()
@@ -614,6 +601,20 @@ fun PersonDetailScreen(
                     noteReorderState = noteReorderState,
                     onExpandedChange = moreInfoScroll.onExpandedChange,
                     onToggleTopInRoot = moreInfoScroll.onToggleTopInRoot
+                )
+
+                // v7.1.67 — badges + réseaux APRÈS le formulaire : le nom (NameSection en
+                // tête de ProfileFormFields) reste au-dessus, comme en lecture.
+                Spacer(Modifier.height(16.dp))
+                if (categoryChips.isNotEmpty()) {
+                    CategoryChipsRow(categoryChips, onNavigateToCategory)
+                    Spacer(Modifier.height(12.dp))
+                }
+                SocialLinksSection(
+                    links = socialLinks,
+                    isEditing = true,
+                    onAddClick = { showAddLinkDialog = true },
+                    onRemoveClick = { editVm.removeSocialLink(it) }
                 )
             } else {
                 // ── Mode lecture : ordre IDENTIQUE au formulaire ─────────────────
@@ -942,6 +943,39 @@ internal fun AddSocialLinkDialog(onConfirm: (String) -> Unit, onDismiss: () -> U
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
+}
+
+/**
+ * Badges de catégories de la fiche. FlowRow (v7.1.50) : au-delà de ~3 catégories, une
+ * `Row` simple poussait les badges HORS de l'écran (ni retour à la ligne, ni scroll) — le
+ * contact paraissait n'appartenir qu'aux premières. Ils se replient désormais sur autant
+ * de lignes que nécessaire. Alignement au DÉBUT (et non centré) : centrer chaque rangée
+ * indépendamment donnait une pyramide, la dernière rangée, plus courte, se retrouvant
+ * décalée par rapport aux précédentes.
+ *
+ * Badges INTERACTIFS (v5.3.4) : un tap ouvre le détail de la catégorie. Source RÉACTIVE
+ * (v7.1.5) → ajout/retrait depuis le sélecteur reflété ici. Partagé lecture/édition
+ * (v7.1.67) : en édition, rendu APRÈS le formulaire pour que le nom reste au-dessus.
+ */
+@OptIn(ExperimentalLayoutApi::class) // FlowRow
+@Composable
+private fun CategoryChipsRow(
+    categoryChips: List<Pair<String, String>>,
+    onNavigateToCategory: (String) -> Unit
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        categoryChips.forEach { (categoryId, name) ->
+            SuggestionChip(
+                onClick = { onNavigateToCategory(categoryId) },
+                label = { Text(name) },
+                icon = { Icon(Icons.Default.Folder, null, Modifier.size(16.dp)) }
+            )
+        }
+    }
 }
 
 @Composable
