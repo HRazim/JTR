@@ -158,7 +158,6 @@
     <string name="trash_group_purge_imminent">baldige Löschung</string>
     <string name="trash_group_purge_1_day">noch 1 Tag</string>
     <string name="trash_group_purge_days">noch %1$d Tage</string>
-    <string name="trash_group_status">%1$d Kontakt(e) · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -313,7 +312,7 @@
     <string name="categories_rename">Umbenennen</string>
     <string name="categories_change_image">Bild ändern</string>
     <string name="categories_delete_selected_title">%1$d Kategorien löschen?</string>
-    <string name="categories_delete_selected_text">Die ausgewählten Kategorien und ihre Kontakte werden in den Papierkorb verschoben.</string>
+    <string name="categories_delete_selected_text">Die ausgewählten Kategorien werden in den Papierkorb verschoben. Deine Kontakte werden nicht gelöscht; sie verlieren nur diese Zuordnungen.</string>
     <string name="categories_drag_handle_cd">Zum Umsortieren ziehen</string>
     <string name="categories_group_empty">Dieser Ordner ist leer</string>
     <string name="relation_not_found">Profil nicht gefunden</string>
@@ -379,7 +378,7 @@
     <string name="action_move_to_trash">In den Papierkorb verschieben</string>
     <string name="action_trash_short">Papierkorb</string>
     <string name="category_trash_confirm_title">Diese Kategorie in den Papierkorb verschieben?</string>
-    <string name="category_trash_confirm_text">Die Kategorie und ihre Kontakte werden in den Papierkorb verschoben.</string>
+    <string name="category_trash_confirm_text">Die Kategorie wird in den Papierkorb verschoben. Deine Kontakte werden nicht gelöscht; sie verlieren nur diese Zuordnung.</string>
     <string name="welcome_title">Willkommen bei JTR</string>
     <string name="welcome_subtitle">JTR ist ein Erinnerungsnotizbuch.</string>
     <string name="welcome_import_button">Telefonkontakte importieren</string>

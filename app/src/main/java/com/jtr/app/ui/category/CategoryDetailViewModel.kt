@@ -194,7 +194,7 @@ class CategoryDetailViewModel(
     /** Met la catégorie À LA CORBEILLE (cascade : ses contacts aussi). */
     fun deleteCategoryToTrash() {
         if (isVirtualFavorites) return
-        viewModelScope.launch { categoryRepo.softDeleteWithCascade(categoryId) }
+        viewModelScope.launch { categoryRepo.softDeleteCategory(categoryId) }
     }
 
     fun onSearchQueryChanged(query: String) { _searchQuery.value = query }

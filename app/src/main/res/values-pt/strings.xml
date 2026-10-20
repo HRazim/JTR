@@ -158,7 +158,6 @@
     <string name="trash_group_purge_imminent">eliminação iminente</string>
     <string name="trash_group_purge_1_day">falta 1 dia</string>
     <string name="trash_group_purge_days">faltam %1$d dias</string>
-    <string name="trash_group_status">%1$d contacto(s) · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -313,7 +312,7 @@
     <string name="categories_rename">Mudar o nome</string>
     <string name="categories_change_image">Alterar imagem</string>
     <string name="categories_delete_selected_title">Eliminar %1$d categorias?</string>
-    <string name="categories_delete_selected_text">As categorias selecionadas e os seus contactos serão movidos para o lixo.</string>
+    <string name="categories_delete_selected_text">As categorias selecionadas serão movidas para o lixo. Os seus contactos não são eliminados: apenas perdem estas etiquetas.</string>
     <string name="categories_drag_handle_cd">Arrasta para reordenar</string>
     <string name="categories_group_empty">Esta pasta está vazia</string>
     <string name="relation_not_found">Perfil não encontrado</string>
@@ -379,7 +378,7 @@
     <string name="action_move_to_trash">Mover para o lixo</string>
     <string name="action_trash_short">Lixo</string>
     <string name="category_trash_confirm_title">Mover esta categoria para o lixo?</string>
-    <string name="category_trash_confirm_text">A categoria e os seus contactos serão movidos para o lixo.</string>
+    <string name="category_trash_confirm_text">A categoria será movida para o lixo. Os seus contactos não são eliminados: apenas perdem esta etiqueta.</string>
     <string name="welcome_title">Bem-vindo ao JTR</string>
     <string name="welcome_subtitle">O JTR é um caderno de memórias.</string>
     <string name="welcome_import_button">Importar os contactos do telemóvel</string>

@@ -153,7 +153,6 @@
     <string name="trash_group_purge_imminent">eliminación inminente</string>
     <string name="trash_group_purge_1_day">queda 1 día</string>
     <string name="trash_group_purge_days">quedan %1$d días</string>
-    <string name="trash_group_status">%1$d contacto(s) · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -307,7 +306,7 @@
     <string name="categories_rename">Renombrar</string>
     <string name="categories_change_image">Cambiar imagen</string>
     <string name="categories_delete_selected_title">¿Eliminar %1$d categorías?</string>
-    <string name="categories_delete_selected_text">Las categorías seleccionadas y sus contactos se moverán a la papelera.</string>
+    <string name="categories_delete_selected_text">Las categorías seleccionadas se moverán a la papelera. Tus contactos no se eliminan: solo pierden estas etiquetas.</string>
     <string name="categories_drag_handle_cd">Arrastrar para reordenar</string>
     <string name="categories_group_empty">Esta carpeta está vacía</string>
     <string name="relation_not_found">Perfil no encontrado</string>
@@ -377,7 +376,7 @@
     <string name="action_move_to_trash">Mover a la papelera</string>
     <string name="action_trash_short">Papelera</string>
     <string name="category_trash_confirm_title">¿Mover esta categoría a la papelera?</string>
-    <string name="category_trash_confirm_text">La categoría y sus contactos se moverán a la papelera.</string>
+    <string name="category_trash_confirm_text">La categoría se moverá a la papelera. Tus contactos no se eliminan: solo pierden esta etiqueta.</string>
     <string name="welcome_title">Bienvenido a JTR</string>
     <string name="welcome_subtitle">JTR es un cuaderno de memoria.</string>
     <string name="welcome_import_button">Importar los contactos del teléfono</string>

@@ -158,7 +158,6 @@
     <string name="trash_group_purge_imminent">imminent deletion</string>
     <string name="trash_group_purge_1_day">1 day left</string>
     <string name="trash_group_purge_days">%1$d days left</string>
-    <string name="trash_group_status">%1$d contact(s) · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -312,7 +311,7 @@
     <string name="categories_rename">Rename</string>
     <string name="categories_change_image">Change image</string>
     <string name="categories_delete_selected_title">Delete %1$d categories?</string>
-    <string name="categories_delete_selected_text">The selected categories and their contacts will be moved to the trash.</string>
+    <string name="categories_delete_selected_text">The selected categories will be moved to the trash. Your contacts are not deleted; they just lose these labels.</string>
     <string name="categories_drag_handle_cd">Drag to reorder</string>
     <string name="categories_group_empty">This folder is empty</string>
     <string name="relation_not_found">Profile not found</string>
@@ -382,7 +381,7 @@
     <string name="action_move_to_trash">Move to trash</string>
     <string name="action_trash_short">Trash</string>
     <string name="category_trash_confirm_title">Move this category to trash?</string>
-    <string name="category_trash_confirm_text">The category and its contacts will be moved to the trash.</string>
+    <string name="category_trash_confirm_text">The category will be moved to the trash. Your contacts are not deleted; they just lose this label.</string>
     <string name="welcome_title">Welcome to JTR</string>
     <string name="welcome_subtitle">JTR is a memory notebook.</string>
     <string name="welcome_import_button">Import your phone contacts</string>

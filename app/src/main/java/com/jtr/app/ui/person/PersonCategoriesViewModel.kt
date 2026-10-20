@@ -71,6 +71,16 @@ class PersonCategoriesViewModel(application: Application) : AndroidViewModel(app
         cats.filter { it.id in member }.map { it.id to it.name }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /**
+     * Ids des catégories ACTIVES dont le contact est membre (v7.1.71). Dérivé des chips (déjà
+     * filtrés sur les catégories actives) → EXCLUT une catégorie en corbeille. À utiliser pour les
+     * affichages qui ne doivent pas la compter (libellé « Ajouter/Gérer », compteur du dialogue),
+     * contrairement à [memberCategoryIds] qui, lui, contient TOUS les liens (corbeille comprise).
+     */
+    val activeMemberCategoryIds: StateFlow<Set<String>> = personCategoryChips
+        .map { chips -> chips.map { it.first }.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
     /** Ajoute/retire la personne d'une catégorie (lien de jointure), persisté immédiatement. */
     fun setInCategory(categoryId: String, inCategory: Boolean) {
         val pid = _personId.value ?: return

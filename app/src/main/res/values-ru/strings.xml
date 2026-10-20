@@ -158,7 +158,6 @@
     <string name="trash_group_purge_imminent">скорое удаление</string>
     <string name="trash_group_purge_1_day">остался 1 день</string>
     <string name="trash_group_purge_days">осталось дней: %1$d</string>
-    <string name="trash_group_status">%1$d контакт(ов) · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -313,7 +312,7 @@
     <string name="categories_rename">Переименовать</string>
     <string name="categories_change_image">Изменить изображение</string>
     <string name="categories_delete_selected_title">Удалить %1$d категорий?</string>
-    <string name="categories_delete_selected_text">Выбранные категории и их контакты будут перемещены в корзину.</string>
+    <string name="categories_delete_selected_text">Выбранные категории будут перемещены в корзину. Ваши контакты не удаляются, они лишь теряют эти метки.</string>
     <string name="categories_drag_handle_cd">Перетащите для изменения порядка</string>
     <string name="categories_group_empty">Эта папка пуста</string>
     <string name="relation_not_found">Профиль не найден</string>
@@ -379,7 +378,7 @@
     <string name="action_move_to_trash">Переместить в корзину</string>
     <string name="action_trash_short">Корзина</string>
     <string name="category_trash_confirm_title">Переместить эту категорию в корзину?</string>
-    <string name="category_trash_confirm_text">Категория и её контакты будут перемещены в корзину.</string>
+    <string name="category_trash_confirm_text">Категория будет перемещена в корзину. Ваши контакты не удаляются, они лишь теряют эту метку.</string>
     <string name="welcome_title">Добро пожаловать в JTR</string>
     <string name="welcome_subtitle">JTR — это блокнот воспоминаний.</string>
     <string name="welcome_import_button">Импортировать контакты телефона</string>

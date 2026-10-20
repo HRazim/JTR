@@ -7,7 +7,6 @@ import com.jtr.app.data.repository.CategoryRepository
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
-import com.jtr.app.domain.model.PersonCategoryJoin
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -23,47 +22,34 @@ class TrashViewModel(application: Application) : AndroidViewModel(application) {
 
     private val allDeletedPersons: Flow<List<Person>> = personRepo.getDeleted()
     private val allDeletedCategories: Flow<List<Category>> = categoryRepo.getDeleted()
-    // Liens Many-to-Many pour retrouver à quelle catégorie appartient un contact supprimé
-    private val allJoins: Flow<List<PersonCategoryJoin>> = personRepo.getAllCategoryJoins()
 
     /**
-     * Catégories supprimées avec leurs membres également en corbeille.
-     * Un membre figure dans le groupe s'il possède un lien vers cette catégorie supprimée
-     * ET s'il est lui-même supprimé logiquement.
+     * Catégories en corbeille (v7.1.71) : supprimer une catégorie ne supprime PLUS ses contacts
+     * → une catégorie en corbeille apparaît SEULE, sans membre cascadé. On conserve le type
+     * [DeletedCategoryGroup] (compat UI) avec une liste de membres toujours vide.
      */
     val deletedCategoryGroups: StateFlow<List<DeletedCategoryGroup>> =
-        combine(allDeletedCategories, allDeletedPersons, allJoins) { cats, persons, joins ->
-            val deletedPersonMap = persons.associateBy { it.id }
-            val joinsByCategoryId = joins.groupBy { it.categoryId }
-            cats.map { cat ->
-                val memberIds = joinsByCategoryId[cat.id]?.map { it.personId }?.toSet() ?: emptySet()
-                val deletedMembers = persons.filter { it.id in memberIds }
-                DeletedCategoryGroup(cat, deletedMembers)
-            }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        allDeletedCategories
+            .map { cats -> cats.map { DeletedCategoryGroup(it, emptyList()) } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /**
-     * Contacts supprimés qui n'appartiennent à AUCUNE catégorie elle-même supprimée.
-     * Ce sont les contacts "orphelins" dans la corbeille.
+     * Contacts en corbeille (v7.1.71) : il n'existe plus de contact « cascadé » avec une catégorie.
+     * Tout contact supprimé (y compris un contact supprimé individuellement mais encore lié à une
+     * catégorie elle-même en corbeille) apparaît ici, de façon autonome.
      */
     val deletedOrphanPersons: StateFlow<List<Person>> =
-        combine(allDeletedCategories, allDeletedPersons, allJoins) { cats, persons, joins ->
-            val deletedCatIds = cats.map { it.id }.toSet()
-            val personIdsInDeletedCats = joins
-                .filter { it.categoryId in deletedCatIds }
-                .map { it.personId }
-                .toSet()
-            persons.filter { it.id !in personIdsInDeletedCats }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        allDeletedPersons
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // ── Actions sur les catégories ──────────────────────────────────────────
 
     fun restoreCategoryGroup(categoryId: String) {
-        viewModelScope.launch { categoryRepo.restoreWithCascade(categoryId) }
+        viewModelScope.launch { categoryRepo.restoreCategory(categoryId) }
     }
 
     fun hardDeleteCategoryGroup(categoryId: String) {
-        viewModelScope.launch { categoryRepo.hardDeleteWithCascade(categoryId) }
+        viewModelScope.launch { categoryRepo.hardDeleteCategory(categoryId) }
     }
 
     // ── Actions granulaires sur les membres d'un groupe ────────────────────

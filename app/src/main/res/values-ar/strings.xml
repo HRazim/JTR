@@ -158,7 +158,6 @@
     <string name="trash_group_purge_imminent">حذف وشيك</string>
     <string name="trash_group_purge_1_day">يبقى يوم واحد</string>
     <string name="trash_group_purge_days">يبقى %1$d يوم</string>
-    <string name="trash_group_status">%1$d جهة اتصال · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -313,7 +312,7 @@
     <string name="categories_rename">إعادة تسمية</string>
     <string name="categories_change_image">تغيير الصورة</string>
     <string name="categories_delete_selected_title">حذف %1$d فئة؟</string>
-    <string name="categories_delete_selected_text">ستُنقل الفئات المحددة وجهات اتصالها إلى سلة المهملات.</string>
+    <string name="categories_delete_selected_text">ستُنقل الفئات المحددة إلى سلة المهملات. لن تُحذف جهات اتصالك؛ ستفقد هذه التصنيفات فقط.</string>
     <string name="categories_drag_handle_cd">اسحب لإعادة الترتيب</string>
     <string name="categories_group_empty">هذا المجلد فارغ</string>
     <string name="relation_not_found">لم يُعثر على الملف الشخصي</string>
@@ -379,7 +378,7 @@
     <string name="action_move_to_trash">نقل إلى سلة المهملات</string>
     <string name="action_trash_short">سلة المهملات</string>
     <string name="category_trash_confirm_title">نقل هذه الفئة إلى سلة المهملات؟</string>
-    <string name="category_trash_confirm_text">ستُنقل الفئة وجهات اتصالها إلى سلة المهملات.</string>
+    <string name="category_trash_confirm_text">ستُنقل الفئة إلى سلة المهملات. لن تُحذف جهات اتصالك؛ ستفقد هذا التصنيف فقط.</string>
     <string name="welcome_title">مرحبًا بك في JTR</string>
     <string name="welcome_subtitle">JTR هو دفتر للذكريات.</string>
     <string name="welcome_import_button">استيراد جهات اتصال الهاتف</string>

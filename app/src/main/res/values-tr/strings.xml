@@ -158,7 +158,6 @@
     <string name="trash_group_purge_imminent">yakında silinecek</string>
     <string name="trash_group_purge_1_day">1 gün kaldı</string>
     <string name="trash_group_purge_days">%1$d gün kaldı</string>
-    <string name="trash_group_status">%1$d kişi · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -313,7 +312,7 @@
     <string name="categories_rename">Yeniden adlandır</string>
     <string name="categories_change_image">Görseli değiştir</string>
     <string name="categories_delete_selected_title">%1$d kategori silinsin mi?</string>
-    <string name="categories_delete_selected_text">Seçilen kategoriler ve kişileri çöp kutusuna taşınacak.</string>
+    <string name="categories_delete_selected_text">Seçilen kategoriler çöp kutusuna taşınacak. Kişileriniz silinmez; yalnızca bu etiketleri kaybeder.</string>
     <string name="categories_drag_handle_cd">Yeniden sıralamak için sürükle</string>
     <string name="categories_group_empty">Bu klasör boş</string>
     <string name="relation_not_found">Profil bulunamadı</string>
@@ -379,7 +378,7 @@
     <string name="action_move_to_trash">Çöp kutusuna taşı</string>
     <string name="action_trash_short">Çöp Kutusu</string>
     <string name="category_trash_confirm_title">Bu kategori çöp kutusuna taşınsın mı?</string>
-    <string name="category_trash_confirm_text">Kategori ve kişileri çöp kutusuna taşınacak.</string>
+    <string name="category_trash_confirm_text">Kategori çöp kutusuna taşınacak. Kişileriniz silinmez; yalnızca bu etiketi kaybeder.</string>
     <string name="welcome_title">JTR\'ye hoş geldin</string>
     <string name="welcome_subtitle">JTR bir anı defteridir.</string>
     <string name="welcome_import_button">Telefon kişilerini içe aktar</string>

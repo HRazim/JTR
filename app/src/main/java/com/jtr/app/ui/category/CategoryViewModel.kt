@@ -169,7 +169,7 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
 
     /** Soft delete en cascade : catégorie + tous ses membres actifs. */
     fun deleteCategoryWithCascade(categoryId: String) {
-        viewModelScope.launch { repo.softDeleteWithCascade(categoryId) }
+        viewModelScope.launch { repo.softDeleteCategory(categoryId) }
     }
 
     /** Bascule le favori d'une catégorie (la fait flotter en tête de liste). */

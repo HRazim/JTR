@@ -153,7 +153,6 @@
     <string name="trash_group_purge_imminent">即将删除</string>
     <string name="trash_group_purge_1_day">还剩 1 天</string>
     <string name="trash_group_purge_days">还剩 %1$d 天</string>
-    <string name="trash_group_status">%1$d 个联系人 · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -307,7 +306,7 @@
     <string name="categories_rename">重命名</string>
     <string name="categories_change_image">更换图片</string>
     <string name="categories_delete_selected_title">删除 %1$d 个分类？</string>
-    <string name="categories_delete_selected_text">选中的分类及其联系人将被移至回收站。</string>
+    <string name="categories_delete_selected_text">选中的分类将被移至回收站。您的联系人不会被删除，只是失去这些标签。</string>
     <string name="categories_drag_handle_cd">拖动以重新排序</string>
     <string name="categories_group_empty">此文件夹为空</string>
     <string name="relation_not_found">未找到资料</string>
@@ -377,7 +376,7 @@
     <string name="action_move_to_trash">移至回收站</string>
     <string name="action_trash_short">回收站</string>
     <string name="category_trash_confirm_title">将此分类移至回收站？</string>
-    <string name="category_trash_confirm_text">该分类及其联系人将被移至回收站。</string>
+    <string name="category_trash_confirm_text">该分类将被移至回收站。您的联系人不会被删除，只是失去此标签。</string>
     <string name="welcome_title">欢迎使用 JTR</string>
     <string name="welcome_subtitle">JTR 是一本记忆手册。</string>
     <string name="welcome_import_button">导入手机联系人</string>

@@ -133,7 +133,9 @@ fun PersonDetailScreen(
     // chargement one-shot de la navigation → les chips se mettent à jour sans recharger.
     val categoriesVm: PersonCategoriesViewModel = viewModel()
     val categoryChips by categoriesVm.personCategoryChips.collectAsStateWithLifecycle()
-    val memberCategoryIds by categoriesVm.memberCategoryIds.collectAsStateWithLifecycle()
+    // v7.1.71 — ids des catégories ACTIVES du contact (exclut la corbeille) : pilote le libellé
+    // « Ajouter/Gérer » ET le compteur du dialogue, pour ne jamais compter une catégorie supprimée.
+    val memberCategoryIds by categoriesVm.activeMemberCategoryIds.collectAsStateWithLifecycle()
     val allCategories by categoriesVm.allCategories.collectAsStateWithLifecycle()
     val categoryGroups by categoriesVm.groups.collectAsStateWithLifecycle()
 

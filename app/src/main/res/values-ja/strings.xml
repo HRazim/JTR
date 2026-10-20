@@ -153,7 +153,6 @@
     <string name="trash_group_purge_imminent">まもなく削除</string>
     <string name="trash_group_purge_1_day">残り1日</string>
     <string name="trash_group_purge_days">残り%1$d日</string>
-    <string name="trash_group_status">%1$d件の連絡先 · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -307,7 +306,7 @@
     <string name="categories_rename">名前を変更</string>
     <string name="categories_change_image">画像を変更</string>
     <string name="categories_delete_selected_title">%1$d 個のカテゴリを削除しますか？</string>
-    <string name="categories_delete_selected_text">選択したカテゴリとその連絡先はゴミ箱に移動されます。</string>
+    <string name="categories_delete_selected_text">選択したカテゴリはゴミ箱に移動されます。連絡先は削除されず、これらのラベルが外れるだけです。</string>
     <string name="categories_drag_handle_cd">ドラッグして並べ替え</string>
     <string name="categories_group_empty">このフォルダは空です</string>
     <string name="relation_not_found">プロフィールが見つかりません</string>
@@ -377,7 +376,7 @@
     <string name="action_move_to_trash">ゴミ箱に移動</string>
     <string name="action_trash_short">ゴミ箱</string>
     <string name="category_trash_confirm_title">このカテゴリをゴミ箱に移動しますか？</string>
-    <string name="category_trash_confirm_text">カテゴリとその連絡先はゴミ箱に移動されます。</string>
+    <string name="category_trash_confirm_text">カテゴリはゴミ箱に移動されます。連絡先は削除されず、このラベルが外れるだけです。</string>
     <string name="welcome_title">JTR へようこそ</string>
     <string name="welcome_subtitle">JTR は記憶のノートです。</string>
     <string name="welcome_import_button">電話の連絡先をインポート</string>

@@ -280,9 +280,10 @@ private fun DeletedCategoryGroupCard(
                         1    -> stringResource(R.string.trash_group_purge_1_day)
                         else -> stringResource(R.string.trash_group_purge_days, daysUntilPurge)
                     }
+                    // v7.1.71 — catégorie SEULE en corbeille (ses contacts ne sont plus supprimés
+                    // avec elle) : on n'affiche que le compte à rebours, sans « N contact(s) ».
                     Text(
-                        text = stringResource(R.string.trash_group_status,
-                            group.persons.size, purgeText),
+                        text = purgeText,
                         style = MaterialTheme.typography.labelSmall,
                         color = purgeColor
                     )

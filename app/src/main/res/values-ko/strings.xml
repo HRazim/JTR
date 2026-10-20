@@ -158,7 +158,6 @@
     <string name="trash_group_purge_imminent">곧 삭제됨</string>
     <string name="trash_group_purge_1_day">1일 남음</string>
     <string name="trash_group_purge_days">%1$d일 남음</string>
-    <string name="trash_group_status">연락처 %1$d명 · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -313,7 +312,7 @@
     <string name="categories_rename">이름 변경</string>
     <string name="categories_change_image">이미지 변경</string>
     <string name="categories_delete_selected_title">카테고리 %1$d개를 삭제할까요?</string>
-    <string name="categories_delete_selected_text">선택한 카테고리와 그 연락처가 휴지통으로 이동됩니다.</string>
+    <string name="categories_delete_selected_text">선택한 카테고리가 휴지통으로 이동됩니다. 연락처는 삭제되지 않으며 이 라벨들만 사라집니다.</string>
     <string name="categories_drag_handle_cd">끌어서 순서 변경</string>
     <string name="categories_group_empty">이 폴더는 비어 있습니다</string>
     <string name="relation_not_found">프로필을 찾을 수 없습니다</string>
@@ -379,7 +378,7 @@
     <string name="action_move_to_trash">휴지통으로 이동</string>
     <string name="action_trash_short">휴지통</string>
     <string name="category_trash_confirm_title">이 카테고리를 휴지통으로 이동할까요?</string>
-    <string name="category_trash_confirm_text">카테고리와 그 연락처가 휴지통으로 이동됩니다.</string>
+    <string name="category_trash_confirm_text">카테고리가 휴지통으로 이동됩니다. 연락처는 삭제되지 않으며 이 라벨만 사라집니다.</string>
     <string name="welcome_title">JTR에 오신 것을 환영합니다</string>
     <string name="welcome_subtitle">JTR은 추억을 기록하는 노트입니다.</string>
     <string name="welcome_import_button">휴대폰 연락처 가져오기</string>

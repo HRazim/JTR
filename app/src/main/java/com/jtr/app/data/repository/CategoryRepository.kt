@@ -62,7 +62,7 @@ class CategoryRepository(context: Context) {
     }
 
     suspend fun softDeleteMultipleWithCascade(categoryIds: List<String>) {
-        categoryIds.forEach { softDeleteWithCascade(it) }
+        categoryIds.forEach { softDeleteCategory(it) }
     }
 
     /**
@@ -113,38 +113,35 @@ class CategoryRepository(context: Context) {
     }
 
     /**
-     * Soft-delete de la catégorie + tous ses membres actifs en cascade.
-     * Utilise la table de jointure pour trouver les membres (Many-to-Many).
+     * Soft-delete d'une catégorie SEULE (v7.1.71). Les contacts membres restent ACTIFS (ils
+     * perdent seulement l'étiquette) ; les liens de jointure sont CONSERVÉS — ils sont masqués
+     * des vues actives par le filtre `category.deletedAt IS NULL` (cf. DAO) et permettent une
+     * restauration gratuite. Aucun contact n'est jamais touché par la suppression d'une catégorie.
      */
-    suspend fun softDeleteWithCascade(categoryId: String) {
-        val ts = System.currentTimeMillis()
-        val activeIds = personCategoryDao.getActivePersonIdsInCategory(categoryId)
-        categoryDao.softDelete(categoryId, ts)
-        if (activeIds.isNotEmpty()) {
-            personDao.softDeleteMultiple(activeIds, ts)
-        }
+    suspend fun softDeleteCategory(categoryId: String) {
+        categoryDao.softDelete(categoryId, System.currentTimeMillis())
     }
 
     /**
-     * Restaure la catégorie ET tous ses membres supprimés logiquement.
+     * Restaure une catégorie (v7.1.71) : efface simplement `deletedAt`. Les liens n'ayant jamais
+     * été retirés et les contacts jamais cachés, les anciens membres ENCORE PRÉSENTS réapparaissent
+     * automatiquement dans la catégorie. Un contact supprimé individuellement entre-temps n'est PAS
+     * ressuscité (on ne touche plus aux contacts à la restauration).
      */
-    suspend fun restoreWithCascade(categoryId: String) {
+    suspend fun restoreCategory(categoryId: String) {
         categoryDao.restore(categoryId)
-        val allIds = personCategoryDao.getAllPersonIdsInCategory(categoryId)
-        if (allIds.isNotEmpty()) {
-            personDao.restoreMultiple(allIds)
-        }
     }
 
     /**
-     * Suppression définitive de la catégorie et des membres déjà en corbeille.
-     * Les membres actifs ne sont PAS supprimés (ils restent sans cette catégorie).
+     * Suppression DÉFINITIVE d'une catégorie (v7.1.71) : retire ses liens de jointure puis
+     * hard-delete la catégorie. Un CONTACT n'est JAMAIS hard-deleté ici — même un contact
+     * supprimé individuellement mais encore lié à cette catégorie SURVIT (seule l'auto-purge des
+     * contacts, sur son propre calendrier, peut le supprimer). Le retrait explicite des liens
+     * double la CASCADE FK sur categoryId (comportement explicite et testable).
      */
-    suspend fun hardDeleteWithCascade(categoryId: String) {
-        val deletedIds = personCategoryDao.getDeletedPersonIdsInCategory(categoryId)
-        deletedIds.forEach { personDao.hardDelete(it) }
+    suspend fun hardDeleteCategory(categoryId: String) {
+        personCategoryDao.removeAllFromCategory(categoryId)
         categoryDao.hardDelete(categoryId)
-        // Les lignes de jointure sont supprimées par CASCADE sur categoryId
     }
 
     suspend fun hardDeleteAllDeleted() = categoryDao.hardDeleteAllDeleted()
@@ -172,7 +169,9 @@ class CategoryRepository(context: Context) {
      * Combine les deux tables via Many-to-Many.
      */
     fun getPersonCountsPerCategory(): Flow<Map<String, Int>> =
-        combine(personCategoryDao.getAllJoins(), personDao.getAllActive()) { joins, activePersons ->
+        // v7.1.71 — liens des catégories ACTIVES uniquement (une catégorie en corbeille ne porte
+        // plus de compte fantôme). `getAllJoins` reste réservé à l'écran Corbeille.
+        combine(personCategoryDao.getActiveCategoryJoins(), personDao.getAllActive()) { joins, activePersons ->
             val activeIds = activePersons.map { it.id }.toSet()
             joins.filter { it.personId in activeIds }
                 .groupingBy { it.categoryId }

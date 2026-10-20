@@ -176,7 +176,6 @@
     <string name="trash_group_purge_imminent">segera dihapus</string>
     <string name="trash_group_purge_1_day">sisa 1 hari</string>
     <string name="trash_group_purge_days">sisa %1$d hari</string>
-    <string name="trash_group_status">%1$d kontak · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -331,7 +330,7 @@
     <string name="categories_rename">Ganti nama</string>
     <string name="categories_change_image">Ganti gambar</string>
     <string name="categories_delete_selected_title">Hapus %1$d kategori?</string>
-    <string name="categories_delete_selected_text">Kategori yang dipilih beserta kontaknya akan dipindahkan ke sampah.</string>
+    <string name="categories_delete_selected_text">Kategori yang dipilih akan dipindahkan ke sampah. Kontak Anda tidak dihapus; hanya kehilangan label ini.</string>
     <string name="categories_drag_handle_cd">Seret untuk mengurutkan ulang</string>
     <string name="categories_group_empty">Folder ini kosong</string>
     <string name="relation_not_found">Profil tidak ditemukan</string>
@@ -397,7 +396,7 @@
     <string name="action_move_to_trash">Pindahkan ke sampah</string>
     <string name="action_trash_short">Sampah</string>
     <string name="category_trash_confirm_title">Pindahkan kategori ini ke sampah?</string>
-    <string name="category_trash_confirm_text">Kategori dan kontaknya akan dipindahkan ke sampah.</string>
+    <string name="category_trash_confirm_text">Kategori akan dipindahkan ke sampah. Kontak Anda tidak dihapus; hanya kehilangan label ini.</string>
     <string name="welcome_title">Selamat datang di JTR</string>
     <string name="welcome_subtitle">JTR adalah buku catatan kenangan.</string>
     <string name="welcome_import_button">Impor kontak ponsel</string>

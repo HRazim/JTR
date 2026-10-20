@@ -158,7 +158,6 @@
     <string name="trash_group_purge_imminent">eliminazione imminente</string>
     <string name="trash_group_purge_1_day">1 giorno rimasto</string>
     <string name="trash_group_purge_days">%1$d giorni rimasti</string>
-    <string name="trash_group_status">%1$d contatto/i · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -313,7 +312,7 @@
     <string name="categories_rename">Rinomina</string>
     <string name="categories_change_image">Cambia immagine</string>
     <string name="categories_delete_selected_title">Eliminare %1$d categorie?</string>
-    <string name="categories_delete_selected_text">Le categorie selezionate e i loro contatti verranno spostati nel cestino.</string>
+    <string name="categories_delete_selected_text">Le categorie selezionate verranno spostate nel cestino. I tuoi contatti non vengono eliminati: perdono solo queste etichette.</string>
     <string name="categories_drag_handle_cd">Trascina per riordinare</string>
     <string name="categories_group_empty">Questa cartella è vuota</string>
     <string name="relation_not_found">Profilo non trovato</string>
@@ -379,7 +378,7 @@
     <string name="action_move_to_trash">Sposta nel cestino</string>
     <string name="action_trash_short">Cestino</string>
     <string name="category_trash_confirm_title">Spostare questa categoria nel cestino?</string>
-    <string name="category_trash_confirm_text">La categoria e i suoi contatti verranno spostati nel cestino.</string>
+    <string name="category_trash_confirm_text">La categoria verrà spostata nel cestino. I tuoi contatti non vengono eliminati: perdono solo questa etichetta.</string>
     <string name="welcome_title">Benvenuto in JTR</string>
     <string name="welcome_subtitle">JTR è un taccuino della memoria.</string>
     <string name="welcome_import_button">Importa i contatti del telefono</string>
