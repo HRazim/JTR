@@ -65,11 +65,17 @@ class AddPersonViewModel(
             ?: CoroutineScope(SupervisorJob() + Dispatchers.IO)
     /** Id du BROUILLON, stable une fois créé (anti-doublon) ; survit à la mort du process. */
     private var draftId: String? = savedStateHandle.get<String>("draft_id")
+    // v7.1.68 — createdAt du brouillon FIXÉ au premier persist puis PRÉSERVÉ : sans cela, chaque
+    // flush d'auto-save reconstruisait un Person neuf (createdAt = now) et le REPLACE écrasait la
+    // date de création à chaque frappe. Survit à la mort du process via le SavedStateHandle.
+    private var draftCreatedAt: Long? = savedStateHandle.get<Long>("draft_created_at")
     private val dirty = AtomicBoolean(false)
     private val autoSave = AutoSaveController(viewModelScope, appScope) { final -> persistDraft(final) }
     private fun markDirty() { dirty.set(true); autoSave.markDirty() }
     private fun newDraftId(): String =
         UUID.randomUUID().toString().also { draftId = it; savedStateHandle["draft_id"] = it }
+    private fun draftCreatedAtOrInit(now: Long): Long =
+        draftCreatedAt ?: now.also { draftCreatedAt = it; savedStateHandle["draft_created_at"] = it }
     // ──────────────────────────────────────────────────────────────────────────
 
     // --- Form state ---
@@ -205,8 +211,13 @@ class AddPersonViewModel(
         val birthdayOffset = _dateLines.value
             .firstOrNull { it.label == FieldTypes.DATE_BIRTHDAY }?.reminderOffsetMinutes ?: 0
         val nd = _nameDetails.value
+        // v7.1.68 — createdAt fixé UNE fois (préservé entre les flushes du même brouillon ET
+        // au save explicite), updatedAt à CHAQUE écriture → base d'un tri « récents » fiable.
+        val now = System.currentTimeMillis()
         return Person(
             id = id,
+            createdAt = draftCreatedAtOrInit(now),
+            updatedAt = now,
             firstName = _firstName.value.trim(),
             lastName = _lastName.value.trim().ifBlank { null },
             birthdate = birthday,
@@ -266,11 +277,21 @@ class AddPersonViewModel(
                 repository.hardDelete(id)
                 draftId = null
                 savedStateHandle.remove<String>("draft_id")
+                // Nouveau brouillon ultérieur → nouvelle date de création (pas de réemploi).
+                draftCreatedAt = null
+                savedStateHandle.remove<Long>("draft_created_at")
             }
             return
         }
         val id = draftId ?: newDraftId()
         repository.add(buildPerson(id))
+        // v7.1.68 — DÉCISION PRODUIT : on CONSERVE le brouillon auto-sauvé. Pour qu'il soit
+        // COHÉRENT (plus d'orphelin invisible dans sa catégorie), on crée le lien de jointure
+        // dès l'auto-save quand l'écran a été ouvert dans une catégorie. Idempotent : la PK
+        // composite + OnConflict.IGNORE (assignCategory → insertAll) garantit zéro doublon à
+        // chaque tick. Si le nom est ensuite vidé, le hardDelete ci-dessus (branche prénom vide)
+        // supprime la personne ET, par FK CASCADE, ce lien — aucun join fantôme.
+        presetCategoryId?.let { repository.assignCategory(listOf(id), it) }
         if (final) {
             persistPendingLinks(id)
             repository.syncMirrorRelations(buildPerson(id), previousLines = null)
