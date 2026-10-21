@@ -30,6 +30,10 @@
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Contacts</string>
     <string name="recents_title">Récents</string>
+    <!-- v7.1.73 — harmonized search: result section headers -->
+    <string name="search_section_contacts">Contacts</string>
+    <string name="search_section_categories">Catégories</string>
+    <string name="search_section_folders">Dossiers</string>
     <string name="home_fab_add_person">Ajouter une personne</string>
     <string name="home_location_warning">Activez la localisation pour les rappels de proximité</string>
     <string name="home_search_placeholder">Rechercher un contact…</string>

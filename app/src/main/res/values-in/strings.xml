@@ -48,6 +48,10 @@
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">Kontak JTR</string>
     <string name="recents_title">Terbaru</string>
+    <!-- v7.1.73 — harmonized search: result section headers -->
+    <string name="search_section_contacts">Kontak</string>
+    <string name="search_section_categories">Kategori</string>
+    <string name="search_section_folders">Folder</string>
     <string name="home_fab_add_person">Tambah orang</string>
     <string name="home_location_warning">Aktifkan lokasi untuk pengingat kedekatan</string>
     <string name="home_search_placeholder">Cari kontak…</string>

@@ -4,13 +4,17 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jtr.app.data.repository.CategoryRepository
 import com.jtr.app.data.repository.PersonRepository
+import com.jtr.app.domain.model.Category
+import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
 import com.jtr.app.ui.category.ContactSortOrder
 import com.jtr.app.ui.category.sortPersonsBy
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.person.FieldTypes
+import com.jtr.app.utils.matchesAllTokens
 import com.jtr.app.utils.matchesSearch
 import com.jtr.app.utils.normalizeForSearch
 import com.jtr.app.utils.searchTokens
@@ -35,13 +39,16 @@ import kotlinx.coroutines.flow.stateIn
  * aucune logique de recherche dupliquée. Expose :
  *  - [recents] : contacts récemment ouverts (déplacé de l'accueil, [PersonRepository.getRecent]),
  *    visible seulement quand la requête est vide ;
- *  - [results] : liste active filtrée par la requête (ou liste complète si requête vide).
+ *  - [results] : liste active filtrée par la requête (ou liste complète si requête vide) ;
+ *  - [categoryResults] / [groupResults] (v7.1.73) : catégories ACTIVES et dossiers dont le nom
+ *    matche la requête, via le même moteur ([matchesAllTokens], mêmes tokens normalisés).
  *
  * MVVM/UDF strict : l'UI n'expose que des [StateFlow] en lecture seule. Room v22, aucune migration.
  */
 class SearchViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = PersonRepository(application.applicationContext)
+    private val categoryRepository = CategoryRepository(application.applicationContext)
     private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
 
     private val _query = MutableStateFlow("")
@@ -89,6 +96,42 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         sortPersonsBy(filtered, sortOrder)
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /**
+     * Catégories correspondantes (v7.1.73) : catégories ACTIVES dont le nom matche la requête,
+     * via le MÊME moteur central ([matchesAllTokens], tokens identiques aux contacts). Requête
+     * vide → AUCUN résultat : l'état vide de l'écran reste la rangée Récents, inchangée.
+     * La source [CategoryRepository.getAllActive] exclut déjà la corbeille en SQL
+     * (`deletedAt IS NULL`) ; le filtre `deletedAt == null` redouble ici ce contrat v7.1.71
+     * (explicite et testable) — une catégorie jetée ne peut JAMAIS apparaître en résultat.
+     */
+    val categoryResults: StateFlow<List<Category>> = combine(
+        categoryRepository.getAllActive(), debouncedQuery
+    ) { list, q ->
+        val tokens = q.searchTokens()
+        if (tokens.isEmpty()) emptyList()
+        else list.filter { it.deletedAt == null && it.name.matchesAllTokens(tokens) }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /**
+     * Dossiers correspondants (v7.1.73) : même moteur sur le nom. Les dossiers n'ont pas de
+     * corbeille (une suppression les dissout immédiatement) → [CategoryRepository.getGroups]
+     * ne renvoie que des dossiers vivants. Requête vide → aucun résultat.
+     */
+    val groupResults: StateFlow<List<CategoryGroup>> = combine(
+        categoryRepository.getGroups(), debouncedQuery
+    ) { list, q ->
+        val tokens = q.searchTokens()
+        if (tokens.isEmpty()) emptyList()
+        else list.filter { it.name.matchesAllTokens(tokens) }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Nombre de contacts ACTIFS par catégorie — compteur des lignes de résultat (v7.1.71). */
+    val categoryCounts: StateFlow<Map<String, Int>> =
+        categoryRepository.getPersonCountsPerCategory()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     companion object {
         /** Nombre maximum de contacts dans la section « Récents ». */

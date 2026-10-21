@@ -530,7 +530,10 @@ fun JTRMainScaffold(
             ) {
                 SearchScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToPersonDetail = { id -> navController.navigate(Routes.personDetail(id)) }
+                    onNavigateToPersonDetail = { id -> navController.navigate(Routes.personDetail(id)) },
+                    // v7.1.73 — résultats catégories/dossiers : mêmes routes que l'onglet Catégories.
+                    onNavigateToCategory = { id -> navController.navigate(Routes.categoryDetail(id)) },
+                    onNavigateToGroup = { id -> navController.navigate(Routes.categoryGroupDetail(id)) }
                 )
             }
 

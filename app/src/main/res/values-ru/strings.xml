@@ -30,6 +30,10 @@
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">Контакты JTR</string>
     <string name="recents_title">Недавние</string>
+    <!-- v7.1.73 — harmonized search: result section headers -->
+    <string name="search_section_contacts">Контакты</string>
+    <string name="search_section_categories">Категории</string>
+    <string name="search_section_folders">Папки</string>
     <string name="home_fab_add_person">Добавить человека</string>
     <string name="home_location_warning">Включите геолокацию для напоминаний о близости</string>
     <string name="home_search_placeholder">Поиск контакта…</string>

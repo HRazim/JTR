@@ -1,24 +1,31 @@
 package com.jtr.app.ui.search
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,6 +48,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -53,7 +61,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jtr.app.R
+import com.jtr.app.domain.model.Category
+import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.domain.model.Person
+import com.jtr.app.ui.category.rememberCategoryColor
 import com.jtr.app.ui.home.PersonAvatar
 import com.jtr.app.ui.home.PersonListContent
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
@@ -62,11 +73,14 @@ import com.jtr.app.ui.navigation.nestedScreenContentInsets
  * Écran de RECHERCHE dédié (v7.1.69), ouvert depuis la loupe de l'accueil.
  *
  * - Champ de recherche en tête, FOCUS + clavier affichés à l'ouverture.
- * - Requête vide → section « Récents » (en-tête défilant) PUIS la liste complète des contacts.
- * - En cours de frappe → la liste se filtre via le moteur central (SearchViewModel.results).
- * - Tap sur un contact (récents ou liste) → ouvre sa fiche ; flèche retour → accueil.
+ * - Requête vide → section « Récents » (rangée stories), inchangée (v7.1.69).
+ * - En cours de frappe → résultats HARMONISÉS (v7.1.73) en sections, chacune seulement si
+ *   non vide, dans l'ordre Contacts → Catégories → Dossiers (moteur central unique).
+ * - Taps : contact → fiche ; catégorie → détail de la catégorie ; dossier → intérieur du
+ *   dossier ; flèche retour → accueil.
  *
- * Réutilise [PersonListContent] (rendu Liste/Détail/Grille) et [PersonAvatar] ; aucune logique
+ * Réutilise [PersonListContent] (rendu Liste/Détail/Grille — les sections Catégories/Dossiers
+ * passent par son slot `footer`, donc tout défile ensemble) et [PersonAvatar] ; aucune logique
  * de recherche dupliquée (tout passe par [SearchViewModel] + `utils.matchesSearch`).
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,10 +88,15 @@ import com.jtr.app.ui.navigation.nestedScreenContentInsets
 fun SearchScreen(
     onNavigateBack: () -> Unit,
     onNavigateToPersonDetail: (String) -> Unit,
+    onNavigateToCategory: (String) -> Unit,
+    onNavigateToGroup: (Long) -> Unit,
     viewModel: SearchViewModel = viewModel()
 ) {
     val query by viewModel.query.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
+    val categoryResults by viewModel.categoryResults.collectAsStateWithLifecycle()
+    val groupResults by viewModel.groupResults.collectAsStateWithLifecycle()
+    val categoryCounts by viewModel.categoryCounts.collectAsStateWithLifecycle()
     val recents by viewModel.recents.collectAsStateWithLifecycle()
     val socialLinksMap by viewModel.socialLinksMap.collectAsStateWithLifecycle()
 
@@ -87,11 +106,22 @@ fun SearchScreen(
     // Ouverture de l'écran → focus sur le champ → clavier affiché immédiatement.
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
-    // Ferme le clavier AVANT de naviguer vers une fiche (transition non saccadée).
+    // Ferme le clavier AVANT de naviguer (transition non saccadée) — même règle pour les
+    // trois destinations : fiche, catégorie, dossier.
     val openPerson: (String) -> Unit = { id ->
         keyboardController?.hide()
         focusManager.clearFocus()
         onNavigateToPersonDetail(id)
+    }
+    val openCategory: (String) -> Unit = { id ->
+        keyboardController?.hide()
+        focusManager.clearFocus()
+        onNavigateToCategory(id)
+    }
+    val openGroup: (Long) -> Unit = { id ->
+        keyboardController?.hide()
+        focusManager.clearFocus()
+        onNavigateToGroup(id)
     }
 
     Scaffold(
@@ -155,9 +185,12 @@ fun SearchScreen(
                     RecentsRow(persons = recents, onPersonClick = openPerson)
                 }
             } else {
-                // REQUÊTE SAISIE : résultats filtrés (moteur central), la rangée Récents disparaît.
+                // REQUÊTE SAISIE : résultats HARMONISÉS (v7.1.73) — Contacts → Catégories →
+                // Dossiers, chaque section seulement si non vide ; la rangée Récents disparaît.
+                val hasAnyResult = results.isNotEmpty() ||
+                    categoryResults.isNotEmpty() || groupResults.isNotEmpty()
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    if (results.isEmpty()) {
+                    if (!hasAnyResult) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
                                 text = stringResource(R.string.home_empty_title),
@@ -166,11 +199,27 @@ fun SearchScreen(
                             )
                         }
                     } else {
+                        // Les contacts gardent leur rendu existant (Liste/Détail/Grille) ; les
+                        // sections Catégories/Dossiers défilent À LA SUITE via le slot `footer`.
                         PersonListContent(
                             viewMode = viewModel.viewMode,
                             persons = results,
                             socialLinksMap = socialLinksMap,
-                            onClick = { openPerson(it.id) }
+                            onClick = { openPerson(it.id) },
+                            header = if (results.isEmpty()) null else {
+                                { SearchSectionHeader(stringResource(R.string.search_section_contacts)) }
+                            },
+                            footer = if (categoryResults.isEmpty() && groupResults.isEmpty()) null else {
+                                {
+                                    SearchCrossSections(
+                                        categories = categoryResults,
+                                        counts = categoryCounts,
+                                        groups = groupResults,
+                                        onCategoryClick = openCategory,
+                                        onGroupClick = openGroup
+                                    )
+                                }
+                            }
                         )
                     }
                 }
@@ -226,6 +275,142 @@ private fun RecentsRow(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * En-tête de section DISCRET des résultats (Contacts / Catégories / Dossiers) — même style
+ * que le libellé « Récents ». TalkBack le lit comme un simple texte avant les lignes.
+ */
+@Composable
+private fun SearchSectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
+    )
+}
+
+/**
+ * Sections Catégories puis Dossiers (v7.1.73), rendues dans le slot `footer` de
+ * [PersonListContent] : elles défilent à la suite des contacts, chacune SEULEMENT si
+ * non vide. Lignes alignées sur la grammaire des lignes compactes de contact (carte,
+ * pastille 40 dp, nom). RTL : Row/padding en start/end → miroir automatique.
+ */
+@Composable
+private fun SearchCrossSections(
+    categories: List<Category>,
+    counts: Map<String, Int>,
+    groups: List<CategoryGroup>,
+    onCategoryClick: (String) -> Unit,
+    onGroupClick: (Long) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (categories.isNotEmpty()) {
+            SearchSectionHeader(stringResource(R.string.search_section_categories))
+            categories.forEach { category ->
+                CategoryResultRow(
+                    category = category,
+                    memberCount = counts[category.id] ?: 0,
+                    onClick = { onCategoryClick(category.id) }
+                )
+            }
+        }
+        if (groups.isNotEmpty()) {
+            SearchSectionHeader(stringResource(R.string.search_section_folders))
+            groups.forEach { group ->
+                FolderResultRow(group = group, onClick = { onGroupClick(group.id) })
+            }
+        }
+    }
+}
+
+/**
+ * Ligne de résultat CATÉGORIE : pastille à la couleur d'accent (source unique
+ * [rememberCategoryColor]) + nom + compteur de membres actifs (plurals existant).
+ */
+@Composable
+private fun CategoryResultRow(
+    category: Category,
+    memberCount: Int,
+    onClick: () -> Unit
+) {
+    val accent = rememberCategoryColor(category.color)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(accent))
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = category.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = pluralStringResource(
+                    R.plurals.categories_person_count, memberCount, memberCount),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/** Ligne de résultat DOSSIER : pastille avec icône dossier + nom. */
+@Composable
+private fun FolderResultRow(
+    group: CategoryGroup,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Folder,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = group.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }

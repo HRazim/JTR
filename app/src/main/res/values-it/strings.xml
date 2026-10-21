@@ -30,6 +30,10 @@
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">Contatti JTR</string>
     <string name="recents_title">Recenti</string>
+    <!-- v7.1.73 — harmonized search: result section headers -->
+    <string name="search_section_contacts">Contatti</string>
+    <string name="search_section_categories">Categorie</string>
+    <string name="search_section_folders">Cartelle</string>
     <string name="home_fab_add_person">Aggiungi una persona</string>
     <string name="home_location_warning">Attiva la posizione per i promemoria di prossimità</string>
     <string name="home_search_placeholder">Cerca un contatto…</string>

@@ -85,7 +85,13 @@ fun PersonListContent(
      * liste/grille : il défile avec le contenu et, en mode Grille, s'étale sur
      * TOUTE la largeur via [GridItemSpan] (harmonie avec les tuiles carrées).
      */
-    header: (@Composable () -> Unit)? = null
+    header: (@Composable () -> Unit)? = null,
+    /**
+     * Pied de liste optionnel (v7.1.73 — sections Catégories/Dossiers de la recherche) rendu
+     * À L'INTÉRIEUR de la liste/grille, APRÈS les contacts : il défile avec le contenu et,
+     * en mode Grille, s'étale sur toute la largeur (même règle que [header]).
+     */
+    footer: (@Composable () -> Unit)? = null
 ) {
     when (viewMode) {
         JtrViewMode.LIST -> LazyColumn(
@@ -104,6 +110,7 @@ fun PersonListContent(
                     onLongClick = { onLongClick(person) }
                 )
             }
+            footer?.let { item(key = "jtr_footer") { it() } }
         }
 
         JtrViewMode.GRID -> LazyVerticalGrid(
@@ -127,6 +134,9 @@ fun PersonListContent(
                     onLongClick = { onLongClick(person) }
                 )
             }
+            footer?.let {
+                item(key = "jtr_footer", span = { GridItemSpan(maxLineSpan) }) { it() }
+            }
         }
 
         JtrViewMode.DETAIL -> LazyColumn(
@@ -147,6 +157,7 @@ fun PersonListContent(
                     onFavoriteClick = { onFavoriteClick(person) }
                 )
             }
+            footer?.let { item(key = "jtr_footer") { it() } }
         }
     }
 }
