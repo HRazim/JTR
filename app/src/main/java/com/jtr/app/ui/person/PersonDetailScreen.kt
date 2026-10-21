@@ -90,8 +90,10 @@ import kotlinx.coroutines.launch
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.domain.model.combinedText
 import com.jtr.app.domain.model.deriveNoteSections
 import com.jtr.app.domain.model.effectiveNoteSections
+import com.jtr.app.domain.model.splitCombinedText
 import com.jtr.app.utils.SocialPlatform
 import com.jtr.app.utils.extractSocialLinks
 import com.jtr.app.utils.openSocialLink
@@ -712,17 +714,22 @@ fun PersonDetailScreen(
                 // 9. Sections de notes — grands blocs de texte tout en bas (v7.0.3).
                 // Sections persistées, ou conversion sans perte des notes héritées (legacy).
                 // On masque les sections vides en lecture.
+                // v7.1.75 — « 1re ligne = titre » : le couple (titre affiché, corps) est
+                // CALCULÉ au rendu via combined/split (dérivation pure, AUCUNE écriture).
+                // Filtre sur le texte COMBINÉ : les sections « titre seul » (contenu vide),
+                // invisibles avant, deviennent visibles — une ligne en style titre (tranché HR).
                 val readSections = person.effectiveNoteSections(notesTitle, likesTitle)
-                    .filter { it.content.isNotBlank() }
+                    .filter { it.combinedText().isNotBlank() }
                 if (readSections.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
                     HorizontalDivider()
                     Spacer(Modifier.height(4.dp))
                     readSections.forEach { s ->
+                        val (displayTitle, displayBody) = splitCombinedText(s.combinedText())
                         DetailTextBlock(
                             icon = NoteIcons.icon(s.iconKey),
-                            label = s.title,
-                            value = s.content
+                            label = displayTitle,
+                            value = displayBody
                         )
                     }
                 }
@@ -1337,13 +1344,19 @@ fun DetailTextBlock(icon: ImageVector, label: String, value: String) {
         Column {
             // Titre VIDE possible depuis v7.1.33 (section laissée sans titre) : on MASQUE la ligne
             // de libellé plutôt que d'afficher un vide ou de réinjecter « Notes » → bloc cohérent
-            // (icône + contenu). Sans effet sur les sections titrées (label non vide → inchangé).
+            // (icône + contenu). v7.1.75 — la 1re ligne faisant office de titre, elle passe en
+            // VRAI style de titre (titleSmall SemiBold, onSurface), gras en lecture seulement.
             if (label.isNotBlank()) {
-                Text(label, style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(label, style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.height(4.dp))
             }
-            Text(value, style = MaterialTheme.typography.bodyLarge)
+            // v7.1.75 — corps masqué s'il est vide (note d'une seule ligne = titre seul) :
+            // sinon Text("") réserverait une ligne fantôme sous le titre.
+            if (value.isNotBlank()) {
+                Text(value, style = MaterialTheme.typography.bodyLarge)
+            }
         }
     }
 }

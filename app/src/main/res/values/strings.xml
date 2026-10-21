@@ -480,7 +480,6 @@
     <string name="note_section_add">Add a section</string>
     <string name="note_section_default_notes">Notes</string>
     <string name="note_section_address">Address</string>
-    <string name="note_section_title_hint">Section title</string>
     <string name="note_section_content_hint">Write something…</string>    <string name="note_section_delete_confirm_title">Delete this section?</string>
     <string name="note_section_delete_confirm_text">Its content will be permanently removed.</string>
     <string name="note_section_icon_picker_title">Choose an icon</string>

@@ -183,11 +183,10 @@ fun AddPersonScreen(
         onMapResultConsumed()
     }
 
-    // Nouveau contact : démarre avec UNE section vide prête à remplir — titre VIDE (v7.1.33)
-    // → le champ affiche le placeholder Material 3 « Titre de la section » (note_section_title_hint)
-    // au lieu de préremplir la VRAIE valeur « Notes » que l'utilisateur devait effacer. Idempotent
-    // (ne re-sème pas si la liste n'est pas vide). Le titre reste vide tant que l'utilisateur n'écrit
-    // rien ; il n'est jamais persisté tel quel (placeholder natif M3).
+    // Nouveau contact : démarre avec UNE section vide prête à remplir — texte VIDE (v7.1.33,
+    // repris v7.1.75 champ unique) → le champ affiche son placeholder au lieu de préremplir
+    // une vraie valeur que l'utilisateur devrait effacer. Idempotent (ne re-sème pas si la
+    // liste n'est pas vide) ; une section restée vide est éliminée par sanitizeNoteSections.
     LaunchedEffect(Unit) {
         if (viewModel.noteSections.value.isEmpty()) {
             viewModel.onNoteSectionsChanged(

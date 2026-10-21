@@ -93,6 +93,8 @@ import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.domain.model.NOTE_ICON_NOTES
 import com.jtr.app.domain.model.NoteSection
+import com.jtr.app.domain.model.combinedText
+import com.jtr.app.domain.model.withCombinedText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -282,14 +284,12 @@ fun NoteSectionsEditor(
                             reorderState.pendingUndo = null
                         },
                         onFocusedChange = { cardFocused = it },
-                        onTitleChange = { newTitle ->
+                        // v7.1.75 — champ UNIQUE : le texte tapé est redistribué en
+                        // (title = 1re ligne, content = reste) via withCombinedText —
+                        // round-trip sans perte (cf. NoteSection.kt).
+                        onTextChange = { newText ->
                             onSectionsChange(sections.map {
-                                if (it.id == section.id) it.copy(title = newTitle) else it
-                            })
-                        },
-                        onContentChange = { newContent ->
-                            onSectionsChange(sections.map {
-                                if (it.id == section.id) it.copy(content = newContent) else it
+                                if (it.id == section.id) it.withCombinedText(newText) else it
                             })
                         }
                     )
@@ -474,12 +474,16 @@ private fun <T> List<T>.moved(from: Int, to: Int): List<T> {
 }
 
 /**
- * Carte d'une section : icône + titre éditable, puis contenu multiligne.
+ * Carte d'une section (v7.1.75) : icône compacte + CHAMP UNIQUE multiligne dont la
+ * 1re ligne fait office de titre (gras en LECTURE seulement ; champ plain ici). Le
+ * texte est recombiné depuis title/content à l'affichage et redécoupé à chaque frappe
+ * ([NoteSection.combinedText]/[withCombinedText]) — les colonnes restent inchangées,
+ * aucune migration.
  *
  * Le handle de réordonnancement ([reorderScope] `longPressDraggableHandle`) est posé
  * UNIQUEMENT sur l'icône (le « grip » de la carte) : appui long sur l'icône → glisser
  * (la bibliothèque suit le pointeur sur toute la liste une fois la prise faite), tap sur
- * l'icône → sélecteur. Les `TextField` ne portent AUCUN geste de glisser ni gating de
+ * l'icône → sélecteur. Le `TextField` ne porte AUCUN geste de glisser ni gating de
  * focus → frappe clavier + sélection (Copier/Coller) 100 % natives, sans perte de focus.
  * [onFieldFocused] sert seulement à masquer le footer/undo pendant l'édition.
  *
@@ -502,8 +506,7 @@ private fun NoteSectionCard(
     onGrabStarted: () -> Unit,
     onFieldFocused: () -> Unit,
     onFocusedChange: (Boolean) -> Unit,
-    onTitleChange: (String) -> Unit,
-    onContentChange: (String) -> Unit,
+    onTextChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Retour haptique à l'ENTRÉE en déplacement seulement (transition isDragging false→true) :
@@ -514,11 +517,10 @@ private fun NoteSectionCard(
         if (isDragging) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
     }
 
-    // Focus COMBINÉ (titre OU contenu) remonté à l'hôte (v7.1.13) → il désactive le swipe-suppression
+    // Focus du champ unique remonté à l'hôte (v7.1.13) → il désactive le swipe-suppression
     // pendant l'édition (pas de suppression accidentelle ; sélection de texte native préservée).
-    var titleFocused by remember { mutableStateOf(false) }
-    var contentFocused by remember { mutableStateOf(false) }
-    LaunchedEffect(titleFocused, contentFocused) { onFocusedChange(titleFocused || contentFocused) }
+    var fieldFocused by remember { mutableStateOf(false) }
+    LaunchedEffect(fieldFocused) { onFocusedChange(fieldFocused) }
 
     val scale by animateFloatAsState(
         targetValue = if (isDragging) 1.03f else 1f,
@@ -564,40 +566,32 @@ private fun NoteSectionCard(
             BorderStroke(borderWidth, MaterialTheme.colorScheme.primary) else null,
         colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
-        Column(
+        // v7.1.75 — icône COMPACTE à côté du champ unique (plus de gros champ titre) :
+        // alignement en HAUT pour que l'icône reste au niveau de la 1re ligne (= titre)
+        // quand la note grandit.
+        Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalAlignment = Alignment.Top
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Icône = grip de glisser (appui long) + sélecteur d'icône (tap).
-                IconButton(
-                    onClick = onIconClick,
-                    modifier = with(reorderScope) {
-                        Modifier.longPressDraggableHandle(
-                            onDragStarted = { onGrabStarted() }
-                        )
-                    }
-                ) {
-                    Icon(NoteIcons.icon(section.iconKey),
-                        contentDescription = stringResource(R.string.note_section_icon_picker_title),
-                        tint = MaterialTheme.colorScheme.primary)
+            // Icône = grip de glisser (appui long) + sélecteur d'icône (tap).
+            IconButton(
+                onClick = onIconClick,
+                modifier = with(reorderScope) {
+                    Modifier.longPressDraggableHandle(
+                        onDragStarted = { onGrabStarted() }
+                    )
                 }
-                SoftTextField(
-                    value = section.title,
-                    onValueChange = onTitleChange,
-                    placeholder = stringResource(R.string.note_section_title_hint),
-                    leadingIcon = null,
-                    modifier = Modifier
-                        .weight(1f)
-                        .onFocusChanged { titleFocused = it.isFocused; if (it.isFocused) onFieldFocused() }
-                        .bringIntoViewOnFocus()
-                )
+            ) {
+                Icon(NoteIcons.icon(section.iconKey),
+                    contentDescription = stringResource(R.string.note_section_icon_picker_title),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp))
             }
             NoteContentField(
-                value = section.content,
-                onValueChange = onContentChange,
-                onFocusChange = { focused -> contentFocused = focused; if (focused) onFieldFocused() },
-                modifier = Modifier.fillMaxWidth()
+                value = section.combinedText(),
+                onValueChange = onTextChange,
+                onFocusChange = { focused -> fieldFocused = focused; if (focused) onFieldFocused() },
+                modifier = Modifier.weight(1f)
             )
         }
     }
