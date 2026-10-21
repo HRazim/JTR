@@ -545,10 +545,16 @@ fun PersonDetailScreen(
             // ProfileFormFields, rendu plus bas), ils apparaissent donc AU-DESSUS du
             // prénom : photo → catégorie → liens → nom → notes. En LECTURE, rien ne
             // change (le nom, affiché juste au-dessus, reste premier).
-            if (categoryChips.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                CategoryChipsRow(categoryChips, onNavigateToCategory)
-            }
+            // v7.1.76 (Lot 1, harmonisé) — point d'entrée DIRECT « + catégorie », MÊME
+            // matrice de visibilité que les liens (SocialLinksSection) : lecture sans
+            // catégorie → rien, chips → petit « + » au bout, édition → affordance texte.
+            // La rangée gère sa marge haute elle-même (aucun Spacer fantôme à vide).
+            CategoryChipsRow(
+                categoryChips = categoryChips,
+                isEditing = isEditing,
+                onNavigateToCategory = onNavigateToCategory,
+                onAddCategoryClick = { showCategoryDialog = true }
+            )
 
             Spacer(Modifier.height(12.dp))
             SocialLinksSection(
@@ -947,26 +953,75 @@ internal fun AddSocialLinkDialog(onConfirm: (String) -> Unit, onDismiss: () -> U
  * décalée par rapport aux précédentes.
  *
  * Badges INTERACTIFS (v5.3.4) : un tap ouvre le détail de la catégorie. Source RÉACTIVE
- * (v7.1.5) → ajout/retrait depuis le sélecteur reflété ici. Partagé lecture/édition
- * (v7.1.67) : en édition, rendu APRÈS le formulaire pour que le nom reste au-dessus.
+ * (v7.1.5) → ajout/retrait depuis le sélecteur reflété ici.
+ *
+ * v7.1.76 (Lot 1 refonte catégories, HARMONISÉ) : la rangée porte son propre bouton
+ * « + catégorie » — icône dossier+ ([Icons.Default.CreateNewFolder]), jamais confondable
+ * avec le « + lien » voisin — qui ouvre le sélecteur EXISTANT (aucun nouveau flux).
+ * MÊME MATRICE DE VISIBILITÉ que [SocialLinksSection], la référence tranchée par HR :
+ * lecture sans élément → RIEN (la 1re catégorie s'ajoute via l'édition, comme un lien) ;
+ * lecture avec chips → chips + petit « + » rond 28 dp en fin de rangée, sans texte ;
+ * édition → affordance texte sous les chips (0 ou N), même grammaire que « + lien ».
+ * La rangée porte sa propre marge haute : aucun espace fantôme quand elle ne rend rien.
  */
 @OptIn(ExperimentalLayoutApi::class) // FlowRow
 @Composable
 private fun CategoryChipsRow(
     categoryChips: List<Pair<String, String>>,
-    onNavigateToCategory: (String) -> Unit
+    isEditing: Boolean,
+    onNavigateToCategory: (String) -> Unit,
+    onAddCategoryClick: () -> Unit
 ) {
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        categoryChips.forEach { (categoryId, name) ->
-            SuggestionChip(
-                onClick = { onNavigateToCategory(categoryId) },
-                label = { Text(name) },
-                icon = { Icon(Icons.Default.Folder, null, Modifier.size(16.dp)) }
-            )
+    // Matrice [SocialLinksSection] : en lecture sans élément, la section n'existe pas.
+    if (categoryChips.isEmpty() && !isEditing) return
+
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        if (categoryChips.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                categoryChips.forEach { (categoryId, name) ->
+                    SuggestionChip(
+                        onClick = { onNavigateToCategory(categoryId) },
+                        label = { Text(name) },
+                        icon = { Icon(Icons.Default.Folder, null, Modifier.size(16.dp)) }
+                    )
+                }
+                if (!isEditing) {
+                    // Petit « + » rond 28 dp en FIN de rangée (suit le miroir RTL),
+                    // strict équivalent du « + lien » de lecture. Un SuggestionChip
+                    // occupe un slot de 48 dp (cible tactile a11y) autour de ses 32 dp
+                    // visibles : sans `align`, un conteneur de 32 dp calé en haut de
+                    // ligne mettait le bouton ~8 dp trop haut (retour HR) ; le centrage
+                    // vaut PAR LIGNE, donc reste correct quand les chips se replient.
+                    Box(
+                        modifier = Modifier.height(32.dp).align(Alignment.CenterVertically),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        FilledTonalIconButton(onClick = onAddCategoryClick, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.CreateNewFolder,
+                                contentDescription = stringResource(R.string.person_add_to_category),
+                                modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+        }
+        if (isEditing) {
+            // Affordance texte SOUS les chips — grammaire identique à « Add a social
+            // link » du mode édition (TextButton + icône 18 dp + libellé), 0 ou N chips.
+            TextButton(
+                onClick = onAddCategoryClick,
+                modifier = Modifier.align(Alignment.Start),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Icon(Icons.Default.CreateNewFolder, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.person_add_to_category),
+                    style = MaterialTheme.typography.labelLarge)
+            }
         }
     }
 }
