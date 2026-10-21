@@ -346,6 +346,7 @@
     <string name="category_detail_no_candidates">All contacts are already in this category</string>
     <!-- v5.1 — recherche dans la TopAppBar, modes d'affichage, sélection de contacts -->
     <string name="action_search">Search</string>
+    <string name="action_scroll_to_top">Scroll to top</string>
     <string name="view_mode_title">View</string>
     <string name="view_mode_list">List</string>
     <string name="view_mode_grid">Grid</string>

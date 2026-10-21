@@ -8,6 +8,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,7 +52,11 @@ import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
+import com.jtr.app.ui.components.JtrViewMode
+import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
+import com.jtr.app.ui.components.ScrollToTopFab
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
+import kotlinx.coroutines.launch
 import com.jtr.app.ui.share.PersonsSharePreview
 import com.jtr.app.ui.share.ShareFormatSheet
 import com.jtr.app.ui.share.ShareUtils
@@ -86,6 +92,21 @@ fun HomeScreen(
     // recherche : la transition vers la fiche ne reste plus saccadée par l'IME.
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+
+    // FAB « remonter en haut » (v7.1.72) : états de défilement hoistés ici pour piloter le FAB.
+    // LIST/DETAIL partagent [listState] (LazyColumn, un seul rendu à la fois) ; GRID a [gridState].
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+    val scrollScope = rememberCoroutineScope()
+    // derivedStateOf (reclé sur viewMode) : ne recompose qu'au FRANCHISSEMENT du seuil, pas à
+    // chaque pixel défilé → pas de clignotement. firstVisibleItemIndex ne change qu'aux frontières.
+    val showScrollToTop by remember(viewMode) {
+        derivedStateOf {
+            val index = if (viewMode == JtrViewMode.GRID) gridState.firstVisibleItemIndex
+            else listState.firstVisibleItemIndex
+            index > SCROLL_TO_TOP_THRESHOLD
+        }
+    }
 
     // Bouton Retour en mode sélection : annule la sélection (événement remonté au
     // ViewModel) au lieu de quitter l'écran. Inactif si rien n'est sélectionné →
@@ -248,6 +269,21 @@ fun HomeScreen(
                     }
                 }
             }
+        },
+        // FAB secondaire « remonter en haut » (v7.1.72) : positionné bas-fin par le Scaffold,
+        // au-dessus de la barre de navigation globale (déjà exclue par le padding racine).
+        // L'ajout de contact étant une icône « + » dans la TopAppBar, aucun FAB à chevaucher.
+        // Masqué en mode sélection (le footer contextuel occupe alors le bas).
+        floatingActionButton = {
+            ScrollToTopFab(
+                visible = showScrollToTop && !isSelectionMode,
+                onClick = {
+                    scrollScope.launch {
+                        if (viewMode == JtrViewMode.GRID) gridState.animateScrollToItem(0)
+                        else listState.animateScrollToItem(0)
+                    }
+                }
+            )
         }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
@@ -276,6 +312,8 @@ fun HomeScreen(
                     socialLinksMap = socialLinksMap,
                     selectedIds = selectedIds,
                     isSelectionMode = isSelectionMode,
+                    listState = listState,
+                    gridState = gridState,
                     onClick = { person ->
                         if (isSelectionMode) {
                             viewModel.toggleSelection(person.id)

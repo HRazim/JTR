@@ -341,6 +341,7 @@
     <string name="category_detail_no_candidates">すべての連絡先は既にこのカテゴリに含まれています</string>
     <!-- v5.1 — トップバー検索、表示モード、連絡先の選択 -->
     <string name="action_search">検索</string>
+    <string name="action_scroll_to_top">上に戻る</string>
     <string name="view_mode_title">表示</string>
     <string name="view_mode_list">リスト</string>
     <string name="view_mode_grid">グリッド</string>

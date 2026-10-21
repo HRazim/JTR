@@ -344,6 +344,7 @@
     <string name="category_detail_create_new">إنشاء جهة اتصال جديدة</string>
     <string name="category_detail_no_candidates">جميع جهات الاتصال موجودة في هذه الفئة بالفعل</string>
     <string name="action_search">بحث</string>
+    <string name="action_scroll_to_top">العودة إلى الأعلى</string>
     <string name="view_mode_title">العرض</string>
     <string name="view_mode_list">قائمة</string>
     <string name="view_mode_grid">شبكة</string>

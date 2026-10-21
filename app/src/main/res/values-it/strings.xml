@@ -344,6 +344,7 @@
     <string name="category_detail_create_new">Crea un nuovo contatto</string>
     <string name="category_detail_no_candidates">Tutti i contatti sono già in questa categoria</string>
     <string name="action_search">Cerca</string>
+    <string name="action_scroll_to_top">Torna su</string>
     <string name="view_mode_title">Visualizzazione</string>
     <string name="view_mode_list">Elenco</string>
     <string name="view_mode_grid">Griglia</string>

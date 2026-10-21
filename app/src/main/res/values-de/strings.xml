@@ -344,6 +344,7 @@
     <string name="category_detail_create_new">Neuen Kontakt erstellen</string>
     <string name="category_detail_no_candidates">Alle Kontakte sind bereits in dieser Kategorie</string>
     <string name="action_search">Suchen</string>
+    <string name="action_scroll_to_top">Nach oben scrollen</string>
     <string name="view_mode_title">Ansicht</string>
     <string name="view_mode_list">Liste</string>
     <string name="view_mode_grid">Raster</string>

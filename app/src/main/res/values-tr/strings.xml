@@ -344,6 +344,7 @@
     <string name="category_detail_create_new">Yeni bir kişi oluştur</string>
     <string name="category_detail_no_candidates">Tüm kişiler zaten bu kategoride</string>
     <string name="action_search">Ara</string>
+    <string name="action_scroll_to_top">Yukarı kaydır</string>
     <string name="view_mode_title">Görünüm</string>
     <string name="view_mode_list">Liste</string>
     <string name="view_mode_grid">Izgara</string>

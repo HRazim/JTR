@@ -344,6 +344,7 @@
     <string name="category_detail_create_new">새 연락처 만들기</string>
     <string name="category_detail_no_candidates">모든 연락처가 이미 이 카테고리에 있습니다</string>
     <string name="action_search">검색</string>
+    <string name="action_scroll_to_top">맨 위로</string>
     <string name="view_mode_title">보기</string>
     <string name="view_mode_list">목록</string>
     <string name="view_mode_grid">그리드</string>

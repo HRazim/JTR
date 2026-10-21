@@ -14,10 +14,12 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -64,6 +66,8 @@ import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.JtrViewMode
+import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
+import com.jtr.app.ui.components.ScrollToTopFab
 import com.jtr.app.ui.components.rememberSystemPhotoPicker
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
 import kotlinx.coroutines.Dispatchers
@@ -403,6 +407,23 @@ fun CategoriesScreen(
         )
     }
 
+    // FAB « remonter en haut » (v7.1.72) : états de défilement du navigateur NORMAL
+    // (TopEntriesBrowser). En mode sélection, le contenu bascule sur ReorderableTopGrid/List
+    // (états internes propres) → le FAB est masqué (visible=false). derivedStateOf reclé sur
+    // viewMode → ne recompose qu'au franchissement du seuil.
+    val topListState = rememberLazyListState()
+    val topGridState = rememberLazyGridState()
+    val showScrollToTop by remember(viewMode) {
+        derivedStateOf {
+            if (isSelectionActive) false
+            else {
+                val index = if (viewMode == JtrViewMode.GRID) topGridState.firstVisibleItemIndex
+                else topListState.firstVisibleItemIndex
+                index > SCROLL_TO_TOP_THRESHOLD
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             if (isSelectionActive) {
@@ -528,6 +549,20 @@ fun CategoriesScreen(
                     }
                 )
             }
+        },
+        // FAB secondaire « remonter en haut » (v7.1.72) : bas-fin, au-dessus de la nav bar
+        // globale (padding racine). L'ajout de catégorie est une icône « + » en TopAppBar :
+        // aucun FAB d'ajout à chevaucher.
+        floatingActionButton = {
+            ScrollToTopFab(
+                visible = showScrollToTop,
+                onClick = {
+                    screenScope.launch {
+                        if (viewMode == JtrViewMode.GRID) topGridState.animateScrollToItem(0)
+                        else topListState.animateScrollToItem(0)
+                    }
+                }
+            )
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -615,6 +650,8 @@ fun CategoriesScreen(
                     onGroupClick = onGroupClick,
                     onCategoryLongClick = { startSelectionCategory(it) },
                     onGroupLongClick = { startSelectionGroup(it) },
+                    listState = topListState,
+                    gridState = topGridState,
                     // Tuile virtuelle « Favoris » : hors recherche et hors mode cible
                     // (elle ne peut pas recevoir de contacts déplacés).
                     favoritesCount = if (isSearching || isPickingMoveTarget) 0 else favoritePersonCount,
@@ -842,13 +879,18 @@ internal fun TopEntriesBrowser(
     onCategoryLongClick: (String) -> Unit,
     onGroupLongClick: (Long) -> Unit,
     favoritesCount: Int = 0,
-    onFavoritesClick: () -> Unit = {}
+    onFavoritesClick: () -> Unit = {},
+    // États de défilement hoistés (v7.1.72) pour le FAB « remonter en haut ». LIST/DETAIL
+    // partagent [listState] (LazyColumn), GRID a [gridState]. Défauts = aucun appelant impacté.
+    listState: LazyListState = rememberLazyListState(),
+    gridState: LazyGridState = rememberLazyGridState()
 ) {
     // Catégorie VIRTUELLE « Favoris » : visible dès 2 contacts favoris, toujours
     // en tête (les favoris restent par ailleurs premiers dans leurs catégories).
     val showFavorites = favoritesCount >= 2
     when (viewMode) {
         JtrViewMode.GRID -> LazyVerticalGrid(
+            state = gridState,
             columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
@@ -879,6 +921,7 @@ internal fun TopEntriesBrowser(
         }
 
         JtrViewMode.DETAIL -> LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -906,6 +949,7 @@ internal fun TopEntriesBrowser(
         }
 
         JtrViewMode.LIST -> LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)

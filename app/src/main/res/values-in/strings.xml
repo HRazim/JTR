@@ -362,6 +362,7 @@
     <string name="category_detail_create_new">Buat kontak baru</string>
     <string name="category_detail_no_candidates">Semua kontak sudah ada di kategori ini</string>
     <string name="action_search">Cari</string>
+    <string name="action_scroll_to_top">Gulir ke atas</string>
     <string name="view_mode_title">Tampilan</string>
     <string name="view_mode_list">Daftar</string>
     <string name="view_mode_grid">Kisi</string>

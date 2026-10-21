@@ -344,6 +344,7 @@
     <string name="category_detail_create_new">Создать новый контакт</string>
     <string name="category_detail_no_candidates">Все контакты уже в этой категории</string>
     <string name="action_search">Поиск</string>
+    <string name="action_scroll_to_top">Наверх</string>
     <string name="view_mode_title">Вид</string>
     <string name="view_mode_list">Список</string>
     <string name="view_mode_grid">Сетка</string>

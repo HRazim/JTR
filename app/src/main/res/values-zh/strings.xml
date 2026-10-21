@@ -341,6 +341,7 @@
     <string name="category_detail_no_candidates">所有联系人都已在此分类中</string>
     <!-- v5.1 — 顶栏搜索、视图模式、联系人选择 -->
     <string name="action_search">搜索</string>
+    <string name="action_scroll_to_top">返回顶部</string>
     <string name="view_mode_title">视图</string>
     <string name="view_mode_list">列表</string>
     <string name="view_mode_grid">网格</string>
