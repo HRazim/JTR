@@ -74,9 +74,18 @@
         android:theme="@style/Theme.JTR"
         tools:targetApi="36">
 
+        <!-- v7.1.74 — adjustResize OBLIGATOIRE avec enableEdgeToEdge : sans lui
+             (adjustUnspecified par défaut), le système PANNE la fenêtre vers le haut
+             pour exposer le curseur d'un champ bas à l'ouverture du clavier, PENDANT
+             que Compose pad déjà l'inset IME (Scaffold systemBars ∪ ime) → double
+             décalage = grand VIDE entre le contenu et le clavier (vérifié S21 : focus
+             d'un contenu de note bas → viewport remonté de ~660 px). En edge-to-edge,
+             adjustResize ne redimensionne rien (la fenêtre reste pleine) : il sert
+             uniquement à DÉSACTIVER ce pan système. -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

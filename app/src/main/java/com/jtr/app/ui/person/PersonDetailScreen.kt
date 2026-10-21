@@ -538,25 +538,23 @@ fun PersonDetailScreen(
                 }
             }
 
-            // v7.1.67 — en ÉDITION, le nom s'édite DANS ProfileFormFields (NameSection en
-            // tête du formulaire, rendu plus bas) : badges et réseaux rendus ici passeraient
-            // AU-DESSUS du nom. Ils sont donc déplacés APRÈS le formulaire, pour préserver
-            // l'ordre logique de la lecture (nom → catégories → réseaux). En LECTURE, rien
-            // ne change.
-            if (!isEditing) {
-                if (categoryChips.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    CategoryChipsRow(categoryChips, onNavigateToCategory)
-                }
-
-                Spacer(Modifier.height(12.dp))
-                SocialLinksSection(
-                    links = socialLinks,
-                    isEditing = false,
-                    onAddClick = { showAddLinkDialog = true },
-                    onRemoveClick = { editVm.removeSocialLink(it) }
-                )
+            // v7.1.74 — retour à la disposition d'AVANT v7.1.67 (demande HR) : badges et
+            // réseaux rendus ICI dans les DEUX modes. En ÉDITION (le nom s'édite dans
+            // ProfileFormFields, rendu plus bas), ils apparaissent donc AU-DESSUS du
+            // prénom : photo → catégorie → liens → nom → notes. En LECTURE, rien ne
+            // change (le nom, affiché juste au-dessus, reste premier).
+            if (categoryChips.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                CategoryChipsRow(categoryChips, onNavigateToCategory)
             }
+
+            Spacer(Modifier.height(12.dp))
+            SocialLinksSection(
+                links = socialLinks,
+                isEditing = isEditing,
+                onAddClick = { showAddLinkDialog = true },
+                onRemoveClick = { editVm.removeSocialLink(it) }
+            )
 
             Spacer(Modifier.height(16.dp))
             HorizontalDivider()
@@ -603,20 +601,6 @@ fun PersonDetailScreen(
                     noteReorderState = noteReorderState,
                     onExpandedChange = moreInfoScroll.onExpandedChange,
                     onToggleTopInRoot = moreInfoScroll.onToggleTopInRoot
-                )
-
-                // v7.1.67 — badges + réseaux APRÈS le formulaire : le nom (NameSection en
-                // tête de ProfileFormFields) reste au-dessus, comme en lecture.
-                Spacer(Modifier.height(16.dp))
-                if (categoryChips.isNotEmpty()) {
-                    CategoryChipsRow(categoryChips, onNavigateToCategory)
-                    Spacer(Modifier.height(12.dp))
-                }
-                SocialLinksSection(
-                    links = socialLinks,
-                    isEditing = true,
-                    onAddClick = { showAddLinkDialog = true },
-                    onRemoveClick = { editVm.removeSocialLink(it) }
                 )
             } else {
                 // ── Mode lecture : ordre IDENTIQUE au formulaire ─────────────────

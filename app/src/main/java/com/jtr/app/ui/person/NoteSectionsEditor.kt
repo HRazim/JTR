@@ -546,6 +546,9 @@ private fun NoteSectionCard(
         label = "noteSectionBorder"
     )
 
+    // v7.1.74 — les poignées de curseur/sélection de ces champs (titre + contenu) sont
+    // TRANSPARENTES via la racine du thème (cf. JTRTheme : masquage global ; un masquage
+    // local par champ laissait fuir la poignée émeraude au tout premier focus).
     Card(
         modifier = modifier
             .fillMaxWidth()

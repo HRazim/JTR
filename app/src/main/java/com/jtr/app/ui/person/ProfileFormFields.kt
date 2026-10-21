@@ -340,6 +340,10 @@ internal fun softFieldColors() = TextFieldDefaults.colors(
     unfocusedIndicatorColor = Color.Transparent,
     disabledIndicatorColor = Color.Transparent,
     errorIndicatorColor = Color.Transparent
+    // v7.1.74 — les poignées de curseur/sélection (la « goutte ») sont transparentes pour
+    // TOUTE l'app via la racine du thème (cf. JTRTheme) : les masquages locaux par champ
+    // laissaient fuir une poignée émeraude au tout premier focus (captures de premier
+    // rendu M3/foundation — mécanique détaillée dans Theme.kt).
 )
 
 /**
