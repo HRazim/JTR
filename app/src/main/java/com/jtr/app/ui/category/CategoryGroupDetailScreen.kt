@@ -10,7 +10,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -83,6 +85,10 @@ fun CategoryGroupDetailScreen(
     var isSelectionActive by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateListOf<String>() }
     val selectedGroupIds = remember { mutableStateListOf<Long>() }
+    // Fix v7.1.81 — états de défilement HOISTÉS au niveau de l'écran et PARTAGÉS entre le
+    // navigateur normal et le mode sélection : l'appui long n'emporte plus la liste en haut.
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
     var showBulkDelete by remember { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<Category?>(null) }
     var renameGroupTarget by remember { mutableStateOf<CategoryGroup?>(null) }
@@ -482,7 +488,9 @@ fun CategoryGroupDetailScreen(
                         onMoveToFolder = { catId, gid ->
                             viewModel.moveCategoryToSubGroup(catId, gid); exitSelection()
                         },
-                        enableMerge = true
+                        enableMerge = true,
+                        // Fix v7.1.81 — même état que le navigateur normal (pas de reset).
+                        gridState = gridState
                     )
                     else -> ReorderableTopList(
                         entries = topEntries,
@@ -496,7 +504,8 @@ fun CategoryGroupDetailScreen(
                         onMoveToFolder = { catId, gid ->
                             viewModel.moveCategoryToSubGroup(catId, gid); exitSelection()
                         },
-                        enableMerge = true
+                        enableMerge = true,
+                        listState = listState
                     )
                 }
             }
@@ -510,7 +519,9 @@ fun CategoryGroupDetailScreen(
                     onCategoryClick = onCategoryClick,
                     onGroupClick = onGroupClick,
                     onCategoryLongClick = { startSelectionCategory(it) },
-                    onGroupLongClick = { startSelectionGroup(it) }
+                    onGroupLongClick = { startSelectionGroup(it) },
+                    listState = listState,
+                    gridState = gridState
                 )
             }
         }

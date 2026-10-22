@@ -615,7 +615,10 @@ fun CategoriesScreen(
                             viewModel.moveCategoryToGroup(categoryId, groupId)
                             exitSelection()
                         },
-                        enableMerge = true
+                        enableMerge = true,
+                        // Fix v7.1.81 — MÊME état que le navigateur normal : l'appui
+                        // long entre en sélection sans bouger la liste.
+                        gridState = topGridState
                     )
                     else -> ReorderableTopList(
                         entries = topEntries,
@@ -630,7 +633,8 @@ fun CategoriesScreen(
                             viewModel.moveCategoryToGroup(categoryId, groupId)
                             exitSelection()
                         },
-                        enableMerge = true
+                        enableMerge = true,
+                        listState = topListState
                     )
                 }
             } else if (categories.isEmpty() && groups.isEmpty()) {
@@ -1484,10 +1488,18 @@ internal fun ReorderableTopGrid(
     onPersistOrder: (List<TopOrderRef>) -> Unit,
     onMergeRequest: (List<String>) -> Unit,
     onMoveToFolder: (String, Long) -> Unit,
-    enableMerge: Boolean = true
+    enableMerge: Boolean = true,
+    // Fix v7.1.81 — état de défilement HOISTABLE : l'appelant passe le MÊME état que son
+    // navigateur normal, sinon l'entrée en mode sélection recréait une grille à l'index 0
+    // (« flash » + liste renvoyée tout en haut sous le doigt).
+    gridState: LazyGridState = rememberLazyGridState()
 ) {
-    val gridState = rememberLazyGridState()
-    val data = remember { mutableStateListOf<TopEntry>() }
+    // Fix v7.1.81 (2e cause) — la copie de travail est SEMÉE dès sa création. Avec un
+    // `mutableStateListOf()` vide rempli seulement par le LaunchedEffect ci-dessous, la
+    // grille se posait une première fois avec ZÉRO item : l'état de défilement partagé
+    // était alors CLAMPÉ à l'index 0 (d'où le flash + le retour en haut), et le
+    // remplissage suivant n'y changeait plus rien.
+    val data = remember { mutableStateListOf<TopEntry>().apply { addAll(entries) } }
     var draggingIndex by remember { mutableStateOf<Int?>(null) }
     var initialOffset by remember { mutableStateOf(IntOffset.Zero) }
     var delta by remember { mutableStateOf(Offset.Zero) }
@@ -1806,10 +1818,12 @@ internal fun ReorderableTopList(
     onPersistOrder: (List<TopOrderRef>) -> Unit,
     onMergeRequest: (List<String>) -> Unit,
     onMoveToFolder: (String, Long) -> Unit,
-    enableMerge: Boolean = true
+    enableMerge: Boolean = true,
+    // Fix v7.1.81 — même hoisting que ReorderableTopGrid (pas de reset à l'appui long).
+    listState: LazyListState = rememberLazyListState()
 ) {
-    val listState = rememberLazyListState()
-    val data = remember { mutableStateListOf<TopEntry>() }
+    // Fix v7.1.81 (2e cause) — semée à la création : voir ReorderableTopGrid.
+    val data = remember { mutableStateListOf<TopEntry>().apply { addAll(entries) } }
     var draggingIndex by remember { mutableStateOf<Int?>(null) }
     var initialOffsetY by remember { mutableIntStateOf(0) }
     var deltaY by remember { mutableFloatStateOf(0f) }
