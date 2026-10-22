@@ -70,11 +70,17 @@ class CategoryRepository(context: Context) {
      * [parentGroupId] non nul → SOUS-GROUPE imbriqué dans ce groupe parent.
      */
     suspend fun createGroupWith(
-        name: String, categoryIds: List<String>, parentGroupId: Long? = null
+        name: String, categoryIds: List<String>, parentGroupId: Long? = null,
+        // v7.1.82 — image de couverture définissable DÈS la création (la feuille moderne
+        // la propose ; `imagePath` existe en base depuis la DB v15 → aucune migration).
+        imagePath: String? = null
     ): Long {
         val pos = categoryGroupDao.maxPosition() + 1
         val groupId = categoryGroupDao.insert(
-            CategoryGroup(name = name, position = pos, parentGroupId = parentGroupId))
+            CategoryGroup(
+                name = name, position = pos, parentGroupId = parentGroupId,
+                imagePath = imagePath
+            ))
         categoryDao.assignGroup(categoryIds, groupId)
         return groupId
     }

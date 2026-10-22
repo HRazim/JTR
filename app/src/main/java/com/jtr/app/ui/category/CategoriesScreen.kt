@@ -281,13 +281,13 @@ fun CategoriesScreen(
 
     // ── Dialogues du mode sélection ───────────────────────────────────────────
     if (showCreateGroupDialog) {
-        TextPromptDialog(
-            title = stringResource(R.string.categories_create_group),
-            hint = stringResource(R.string.categories_group_name_hint),
-            initial = "",
-            confirmLabel = stringResource(R.string.common_create),
-            onConfirm = { name ->
-                viewModel.createGroup(name, selectedIds.toList())
+        // v7.1.82 — feuille moderne (aperçu vivant, image de couverture, vignettes de ce
+        // qu'on groupe) à la place du dialogue nu. Le nommage d'un groupe né du geste de
+        // FUSION et le renommage gardent [TextPromptDialog] (hors périmètre V1).
+        CreateGroupSheet(
+            members = selectedCategories,
+            onConfirm = { name, imagePath ->
+                viewModel.createGroup(name, selectedIds.toList(), imagePath)
                 showCreateGroupDialog = false
                 exitSelection()
             },

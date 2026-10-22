@@ -94,6 +94,9 @@ fun CategoryGroupDetailScreen(
     var renameGroupTarget by remember { mutableStateOf<CategoryGroup?>(null) }
     var editTarget by remember { mutableStateOf<Category?>(null) }
     var pendingMergeIds by remember { mutableStateOf<List<String>?>(null) }
+    // v7.1.82 — création EXPLICITE d'un sous-dossier depuis le footer : état DISTINCT de
+    // [pendingMergeIds] pour que le geste de FUSION garde son dialogue historique.
+    var pendingCreateSubGroupIds by remember { mutableStateOf<List<String>?>(null) }
     var groupImageTarget by remember { mutableStateOf<CategoryGroup?>(null) }
     var pendingGroupCropUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -167,7 +170,20 @@ fun CategoryGroupDetailScreen(
             onDismiss = { showCreate = false }
         )
     }
-    // Fusion par geste → nommer le SOUS-GROUPE créé.
+    // v7.1.82 — création explicite d'un sous-dossier : MÊME feuille moderne qu'à la racine.
+    pendingCreateSubGroupIds?.let { ids ->
+        CreateGroupSheet(
+            members = selectedCategories,
+            onConfirm = { name, imagePath ->
+                viewModel.createSubGroup(name, ids, imagePath)
+                pendingCreateSubGroupIds = null
+                exitSelection()
+            },
+            onDismiss = { pendingCreateSubGroupIds = null }
+        )
+    }
+
+    // Fusion par geste → nommer le SOUS-GROUPE créé (dialogue historique, inchangé).
     pendingMergeIds?.let { ids ->
         TextPromptDialog(
             title = stringResource(R.string.categories_create_group),
@@ -423,8 +439,9 @@ fun CategoryGroupDetailScreen(
                     movableGroups = movableGroups,
                     canMove = totalSelected >= 1 && movableGroups.isNotEmpty(),
                     onCreateGroup = {
-                        // Crée un SOUS-GROUPE depuis les catégories cochées.
-                        if (selectedIds.size >= 2) pendingMergeIds = selectedIds.toList()
+                        // Crée un SOUS-GROUPE depuis les catégories cochées (feuille
+                        // moderne v7.1.82, distincte du nommage par fusion).
+                        if (selectedIds.size >= 2) pendingCreateSubGroupIds = selectedIds.toList()
                     },
                     onMoveToGroup = { tid ->
                         viewModel.relocateSelection(selectedIds.toList(), selectedGroups, tid)
