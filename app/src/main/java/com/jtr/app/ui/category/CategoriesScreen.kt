@@ -190,6 +190,8 @@ fun CategoriesScreen(
     val selectedIds = remember { mutableStateListOf<String>() }       // catégories cochées
     val selectedGroupIds = remember { mutableStateListOf<Long>() }    // dossiers cochés
     var showCreateGroupDialog by remember { mutableStateOf(false) }
+    // v7.1.83 — sélecteur de dossier CIBLE (« Déplacer vers un groupe… »).
+    var showMoveToGroupPicker by remember { mutableStateOf(false) }
     var showBulkDeleteDialog by remember { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<Category?>(null) }
     var renameGroupTarget by remember { mutableStateOf<CategoryGroup?>(null) }
@@ -280,6 +282,30 @@ fun CategoriesScreen(
     }
 
     // ── Dialogues du mode sélection ───────────────────────────────────────────
+    if (showMoveToGroupPicker) {
+        // v7.1.83 — sélecteur de dossiers MODERNE (vignettes, hiérarchie, recherche) au
+        // lieu d'un item « Move to X » par dossier. Le déplacement reste celui de
+        // v7.1.70 (transactionnel : rattachement des catégories + fusion des dossiers
+        // cochés dans la cible).
+        CategoryPickerSheet(
+            title = stringResource(R.string.categories_move_to_group),
+            categories = categories,
+            groups = groups,
+            folderTargets = true,
+            // On ne propose pas comme cible un dossier qu'on est en train de déplacer.
+            excludeGroupIds = selectedGroupIds.toSet(),
+            onPickFolder = { targetId ->
+                val merges = selectedGroupIds.associateWith { gid ->
+                    categories.filter { it.parentGroupId == gid }.map { it.id }
+                }
+                viewModel.moveSelectionToGroup(selectedIds.toList(), merges, targetId)
+                showMoveToGroupPicker = false
+                exitSelection()
+            },
+            onDismiss = { showMoveToGroupPicker = false }
+        )
+    }
+
     if (showCreateGroupDialog) {
         // v7.1.82 — feuille moderne (aperçu vivant, image de couverture, vignettes de ce
         // qu'on groupe) à la place du dialogue nu. Le nommage d'un groupe né du geste de
@@ -549,16 +575,9 @@ fun CategoriesScreen(
                         exitSelection()
                     },
                     canCreateGroup = selectedIds.size >= 2 && selectedGroupIds.isEmpty(),
-                    movableGroups = movableGroups,
                     canMove = totalSelected >= 1 && movableGroups.isNotEmpty(),
                     onCreateGroup = { showCreateGroupDialog = true },
-                    onMoveToGroup = { targetId ->
-                        val merges = selectedGroupIds.associateWith { gid ->
-                            categories.filter { it.parentGroupId == gid }.map { it.id }
-                        }
-                        viewModel.moveSelectionToGroup(selectedIds.toList(), merges, targetId)
-                        exitSelection()
-                    },
+                    onMoveToGroup = { showMoveToGroupPicker = true },
                     canDelete = totalSelected >= 1,
                     onDelete = { showBulkDeleteDialog = true },
                     canRename = totalSelected == 1,
@@ -1199,10 +1218,11 @@ internal fun SelectionFooter(
     favoriteActive: Boolean,
     onToggleFavorite: () -> Unit,
     canCreateGroup: Boolean,
-    movableGroups: List<CategoryGroup>,
     canMove: Boolean,
     onCreateGroup: () -> Unit,
-    onMoveToGroup: (Long) -> Unit,
+    // v7.1.83 — UNE entrée « Déplacer vers un groupe… » qui ouvre le sélecteur de
+    // dossiers moderne, au lieu d'un item par dossier (liste plate ingérable).
+    onMoveToGroup: () -> Unit,
     canDelete: Boolean,
     onDelete: () -> Unit,
     canRename: Boolean,
@@ -1244,12 +1264,10 @@ internal fun SelectionFooter(
                         onClick = { folderMenu = false; onMoveOut() })
                 }
                 if (canMove) {
-                    movableGroups.forEach { g ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.categories_move_to, g.name)) },
-                            leadingIcon = { Icon(Icons.Default.Folder, null) },
-                            onClick = { folderMenu = false; onMoveToGroup(g.id) })
-                    }
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.categories_move_to_group)) },
+                        leadingIcon = { Icon(Icons.Default.Folder, null) },
+                        onClick = { folderMenu = false; onMoveToGroup() })
                 }
             }
         }

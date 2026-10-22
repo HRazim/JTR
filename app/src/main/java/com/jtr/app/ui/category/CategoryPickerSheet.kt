@@ -89,6 +89,14 @@ fun CategoryPickerSheet(
     onPickSingle: (categoryId: String) -> Unit = {},
     onConfirmMulti: (categoryIds: List<String>) -> Unit = {},
     onCreateCategory: ((name: String, color: String, imagePath: String?) -> Unit)? = null,
+    // v7.1.83 — mode DOSSIER-CIBLE : ce sont les DOSSIERS qu'on choisit (déplacer des
+    // catégories dans un groupe), en sélection simple. Les catégories ne sont alors pas
+    // listées (bruit : on ne peut pas déplacer dans une catégorie), la hiérarchie des
+    // sous-dossiers reste navigable (chevron) et [excludeGroupIds] retire les cibles
+    // invalides (dossier courant, dossiers en cours de déplacement).
+    folderTargets: Boolean = false,
+    excludeGroupIds: Set<Long> = emptySet(),
+    onPickFolder: (groupId: Long) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var showAddCategory by remember { mutableStateOf(false) }
@@ -99,13 +107,21 @@ fun CategoryPickerSheet(
     var expandedFolders by remember { mutableStateOf(emptySet<Long>()) }
     // Sélection multiple (set immuable, même motif).
     var selected by remember { mutableStateOf(emptySet<String>()) }
-    val rows = remember(categories, groups, query, expandedFolders, excludeCategoryIds) {
+    val rows = remember(
+        categories, groups, query, expandedFolders, excludeCategoryIds, folderTargets, excludeGroupIds
+    ) {
         buildCategoryPickerRows(
-            categories, groups, query, expandedFolders,
+            // Mode dossier-cible : aucune catégorie listée, que l'arbre des dossiers.
+            categories = if (folderTargets) emptyList() else categories,
+            groups = groups,
+            query = query,
+            expandedFolders = expandedFolders,
             excludeCategoryIds = excludeCategoryIds,
             // Un picker de CIBLES n'affiche pas de bandeau sans candidate (ex. le
-            // dossier où l'on est déjà, ou un dossier vidé par l'exclusion).
-            pruneEmptyFolders = true
+            // dossier où l'on est déjà, ou un dossier vidé par l'exclusion) — mais en
+            // mode dossier-cible, un dossier VIDE reste une cible légitime.
+            pruneEmptyFolders = !folderTargets,
+            excludeGroupIds = excludeGroupIds
         )
     }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -237,7 +253,11 @@ fun CategoryPickerSheet(
                                 expandedFolders =
                                     if (id in expandedFolders) expandedFolders - id
                                     else expandedFolders + id
-                            }
+                            },
+                            // Mode dossier-cible : taper le bandeau CHOISIT ce dossier.
+                            onSelect = if (folderTargets) {
+                                { onPickFolder(row.group.id) }
+                            } else null
                         )
                         is CategoryPickerRow.Item -> CategoryCheckRow(
                             category = row.category,

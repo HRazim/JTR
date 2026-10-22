@@ -340,7 +340,7 @@
     <string name="sort_direction_descending">Menurun</string>
     <string name="categories_fav_action">Favorit</string>
     <string name="categories_group_action">Kelompokkan</string>
-    <string name="categories_move_to">Pindahkan ke “%1$s”</string>
+    <string name="categories_move_to_group">Pindahkan ke grup…</string>
     <string name="categories_add_to_group_title">Tambah ke grup</string>
     <string name="categories_add_existing">Tambah kategori yang ada</string>
     <string name="categories_create_here">Buat kategori di sini</string>

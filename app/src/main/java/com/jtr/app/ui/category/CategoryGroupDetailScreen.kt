@@ -97,6 +97,8 @@ fun CategoryGroupDetailScreen(
     // v7.1.82 — création EXPLICITE d'un sous-dossier depuis le footer : état DISTINCT de
     // [pendingMergeIds] pour que le geste de FUSION garde son dialogue historique.
     var pendingCreateSubGroupIds by remember { mutableStateOf<List<String>?>(null) }
+    // v7.1.83 — sélecteur de dossier CIBLE (« Déplacer vers un groupe… »).
+    var showMoveToGroupPicker by remember { mutableStateOf(false) }
     var groupImageTarget by remember { mutableStateOf<CategoryGroup?>(null) }
     var pendingGroupCropUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -170,6 +172,24 @@ fun CategoryGroupDetailScreen(
             onDismiss = { showCreate = false }
         )
     }
+    if (showMoveToGroupPicker) {
+        // v7.1.83 — sélecteur de dossiers MODERNE. Cibles exclues : le dossier COURANT
+        // (on y est déjà) et les sous-dossiers cochés (on ne les déplace pas en eux-mêmes).
+        CategoryPickerSheet(
+            title = stringResource(R.string.categories_move_to_group),
+            categories = members,
+            groups = allGroups,
+            folderTargets = true,
+            excludeGroupIds = selectedGroupIds.toSet() + listOfNotNull(group?.id),
+            onPickFolder = { targetId ->
+                viewModel.relocateSelection(selectedIds.toList(), selectedGroups, targetId)
+                showMoveToGroupPicker = false
+                exitSelection()
+            },
+            onDismiss = { showMoveToGroupPicker = false }
+        )
+    }
+
     // v7.1.82 — création explicite d'un sous-dossier : MÊME feuille moderne qu'à la racine.
     pendingCreateSubGroupIds?.let { ids ->
         CreateGroupSheet(
@@ -436,17 +456,13 @@ fun CategoryGroupDetailScreen(
                         exitSelection()
                     },
                     canCreateGroup = selectedIds.size >= 2 && selectedGroupIds.isEmpty(),
-                    movableGroups = movableGroups,
                     canMove = totalSelected >= 1 && movableGroups.isNotEmpty(),
                     onCreateGroup = {
                         // Crée un SOUS-GROUPE depuis les catégories cochées (feuille
                         // moderne v7.1.82, distincte du nommage par fusion).
                         if (selectedIds.size >= 2) pendingCreateSubGroupIds = selectedIds.toList()
                     },
-                    onMoveToGroup = { tid ->
-                        viewModel.relocateSelection(selectedIds.toList(), selectedGroups, tid)
-                        exitSelection()
-                    },
+                    onMoveToGroup = { showMoveToGroupPicker = true },
                     canDelete = totalSelected >= 1,
                     onDelete = { showBulkDelete = true },
                     canRename = totalSelected == 1,

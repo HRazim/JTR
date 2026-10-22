@@ -127,11 +127,17 @@ internal fun buildCategoryPickerRows(
     query: String,
     expandedFolders: Set<Long>,
     excludeCategoryIds: Set<String> = emptySet(),
-    pruneEmptyFolders: Boolean = false
+    pruneEmptyFolders: Boolean = false,
+    // v7.1.83 — dossiers à retirer de l'arbre (sélecteur de dossier CIBLE : on ne propose
+    // ni le dossier courant, ni ceux qu'on est en train de déplacer).
+    excludeGroupIds: Set<Long> = emptySet()
 ): List<CategoryPickerRow> {
     val cats =
         if (excludeCategoryIds.isEmpty()) categories
         else categories.filter { it.id !in excludeCategoryIds }
+    val grps =
+        if (excludeGroupIds.isEmpty()) groups
+        else groups.filter { it.id !in excludeGroupIds }
     // Moteur de recherche CENTRAL (multi-mots, insensible casse/accents, sûr en arabe).
     val tokens = query.searchTokens()
     if (tokens.isNotEmpty()) {
@@ -142,7 +148,7 @@ internal fun buildCategoryPickerRows(
 
     val rows = mutableListOf<CategoryPickerRow>()
     val catsByGroup = cats.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
-    val subByParent = groups.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
+    val subByParent = grps.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
 
     // Un sous-arbre « vivant » contient au moins une catégorie (après exclusions).
     fun subtreeHasCategory(group: CategoryGroup): Boolean =
@@ -165,7 +171,11 @@ internal fun buildCategoryPickerRows(
         childGroups.forEach { emitGroup(it, indent + 1) }
     }
 
-    groups.filter { it.parentGroupId == null }.forEach { emitGroup(it, 0) }
+    // Un dossier dont le parent a été exclu remonte à la RACINE plutôt que de disparaître
+    // avec lui (sinon des cibles valides deviendraient inatteignables).
+    val visibleIds = grps.map { it.id }.toSet()
+    grps.filter { it.parentGroupId == null || it.parentGroupId !in visibleIds }
+        .forEach { emitGroup(it, 0) }
     cats.filter { it.parentGroupId == null }.forEach { rows += CategoryPickerRow.Item(it, 0) }
     return rows
 }
@@ -509,7 +519,11 @@ internal fun FolderHeaderRow(
     indent: Int,
     expanded: Boolean,
     hasChildren: Boolean,
-    onToggleExpand: () -> Unit
+    onToggleExpand: () -> Unit,
+    // v7.1.83 — non nul ⇒ le dossier est une CIBLE sélectionnable (déplacer une catégorie
+    // dans un groupe) : le corps de la ligne CHOISIT, et le chevron devient une zone
+    // cliquable à part pour déplier. Nul (usages historiques) ⇒ la ligne déplie, inchangé.
+    onSelect: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -518,10 +532,13 @@ internal fun FolderHeaderRow(
             .clip(MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             // Dossier vide : rien à déplier ⇒ ligne inerte (pas de ripple qui promette
-            // une ouverture qui n'arrivera pas).
+            // une ouverture qui n'arrivera pas) — sauf s'il est sélectionnable.
             .then(
-                if (hasChildren) Modifier.clickable(role = Role.Button, onClick = onToggleExpand)
-                else Modifier
+                when {
+                    onSelect != null -> Modifier.clickable(role = Role.Button, onClick = onSelect)
+                    hasChildren -> Modifier.clickable(role = Role.Button, onClick = onToggleExpand)
+                    else -> Modifier
+                }
             )
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -536,16 +553,24 @@ internal fun FolderHeaderRow(
             modifier = Modifier.weight(1f)
         )
         if (hasChildren) {
-            Icon(
-                // AutoMirrored : en RTL (arabe) le chevron « fermé » doit pointer vers la
-                // GAUCHE, sens de lecture. Ouvert, il pointe vers le bas dans les deux sens.
-                if (expanded) Icons.Default.KeyboardArrowDown
-                else Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = stringResource(
-                    if (expanded) R.string.common_hide else R.string.common_show
-                ),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            val chevron = @Composable {
+                Icon(
+                    // AutoMirrored : en RTL (arabe) le chevron « fermé » doit pointer vers la
+                    // GAUCHE, sens de lecture. Ouvert, il pointe vers le bas dans les deux sens.
+                    if (expanded) Icons.Default.KeyboardArrowDown
+                    else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = stringResource(
+                        if (expanded) R.string.common_hide else R.string.common_show
+                    ),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (onSelect != null) {
+                // Cible tactile propre pour déplier sans choisir le dossier.
+                IconButton(onClick = onToggleExpand) { chevron() }
+            } else {
+                chevron()
+            }
         }
     }
 }

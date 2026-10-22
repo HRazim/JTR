@@ -322,7 +322,7 @@
     <string name="sort_direction_descending">Decrescente</string>
     <string name="categories_fav_action">Preferito</string>
     <string name="categories_group_action">Raggruppa</string>
-    <string name="categories_move_to">Sposta in «%1$s»</string>
+    <string name="categories_move_to_group">Sposta in un gruppo…</string>
     <string name="categories_add_to_group_title">Aggiungi al gruppo</string>
     <string name="categories_add_existing">Aggiungi categorie esistenti</string>
     <string name="categories_create_here">Crea una categoria qui</string>

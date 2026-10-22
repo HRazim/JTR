@@ -322,7 +322,7 @@
     <string name="sort_direction_descending">По убыванию</string>
     <string name="categories_fav_action">Избранное</string>
     <string name="categories_group_action">Группировать</string>
-    <string name="categories_move_to">Переместить в «%1$s»</string>
+    <string name="categories_move_to_group">Переместить в группу…</string>
     <string name="categories_add_to_group_title">Добавить в группу</string>
     <string name="categories_add_existing">Добавить существующие категории</string>
     <string name="categories_create_here">Создать категорию здесь</string>

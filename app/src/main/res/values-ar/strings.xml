@@ -322,7 +322,7 @@
     <string name="sort_direction_descending">تنازلي</string>
     <string name="categories_fav_action">مفضّل</string>
     <string name="categories_group_action">تجميع</string>
-    <string name="categories_move_to">نقل إلى «%1$s»</string>
+    <string name="categories_move_to_group">نقل إلى مجموعة…</string>
     <string name="categories_add_to_group_title">إضافة إلى المجموعة</string>
     <string name="categories_add_existing">إضافة فئات موجودة</string>
     <string name="categories_create_here">إنشاء فئة هنا</string>
