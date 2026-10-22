@@ -323,6 +323,8 @@
     <string name="categories_fav_action">Favori</string>
     <string name="categories_group_action">Grupla</string>
     <string name="categories_move_to_group">Bir gruba taşı…</string>
+    <string name="categories_parent_group">Üst grup</string>
+    <string name="categories_parent_root">Kök</string>
     <string name="categories_add_to_group_title">Gruba ekle</string>
     <string name="categories_add_existing">Mevcut kategorileri ekle</string>
     <string name="categories_create_here">Burada kategori oluştur</string>

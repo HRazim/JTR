@@ -217,10 +217,16 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
     }
 
     /** Crée un groupe et y rattache les catégories cochées (≥ 2). */
-    fun createGroup(name: String, ids: List<String>, imagePath: String? = null) {
+    fun createGroup(
+        name: String, ids: List<String>, imagePath: String? = null,
+        // v7.1.84 — dossier parent choisi dans la feuille (null = racine).
+        parentGroupId: Long? = null
+    ) {
         val trimmed = name.trim()
         if (trimmed.isBlank() || ids.size < 2) return
-        viewModelScope.launch { repo.createGroupWith(trimmed, ids, imagePath = imagePath) }
+        viewModelScope.launch {
+            repo.createGroupWith(trimmed, ids, parentGroupId = parentGroupId, imagePath = imagePath)
+        }
     }
 
     /** Persiste le nouvel ordre (drag & drop) : position = index dans la liste. */

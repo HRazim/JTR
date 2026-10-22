@@ -318,6 +318,8 @@
     <string name="categories_fav_action">收藏</string>
     <string name="categories_group_action">分组</string>
     <string name="categories_move_to_group">移动到分组…</string>
+    <string name="categories_parent_group">父分组</string>
+    <string name="categories_parent_root">根目录</string>
     <string name="categories_add_to_group_title">添加到分组</string>
     <string name="categories_add_existing">添加现有分类</string>
     <string name="categories_create_here">在此创建分类</string>

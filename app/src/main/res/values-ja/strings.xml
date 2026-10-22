@@ -318,6 +318,8 @@
     <string name="categories_fav_action">お気に入り</string>
     <string name="categories_group_action">グループ化</string>
     <string name="categories_move_to_group">グループに移動…</string>
+    <string name="categories_parent_group">親グループ</string>
+    <string name="categories_parent_root">ルート</string>
     <string name="categories_add_to_group_title">グループに追加</string>
     <string name="categories_add_existing">既存のカテゴリを追加</string>
     <string name="categories_create_here">ここにカテゴリを作成</string>

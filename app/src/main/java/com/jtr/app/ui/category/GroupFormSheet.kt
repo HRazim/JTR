@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.jtr.app.R
 import com.jtr.app.domain.model.Category
+import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.ui.components.PhotoZoomDialog
 import com.jtr.app.ui.components.rememberSystemPhotoPicker
 import com.jtr.app.ui.person.CropShape
@@ -87,7 +89,10 @@ import kotlinx.coroutines.withContext
 @Composable
 fun CreateGroupSheet(
     members: List<Category>,
-    onConfirm: (name: String, imagePath: String?) -> Unit,
+    // v7.1.84 — dossiers existants + parent initial, pour choisir où naît le groupe.
+    groups: List<CategoryGroup> = emptyList(),
+    initialParentId: Long? = null,
+    onConfirm: (name: String, imagePath: String?, parentGroupId: Long?) -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -97,6 +102,10 @@ fun CreateGroupSheet(
     var imagePath by remember { mutableStateOf<String?>(null) }
     var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
     var showImageZoom by remember { mutableStateOf(false) }
+    // v7.1.84 — dossier PARENT : null = racine. Pré-rempli avec le dossier courant quand
+    // on crée depuis l'intérieur d'un dossier (sous-groupe), modifiable dans les deux cas.
+    var parentId by remember { mutableStateOf(initialParentId) }
+    var showParentPicker by remember { mutableStateOf(false) }
 
     // Photo Picker système (v7.1.66) — aucune permission requise.
     val photoPicker = rememberSystemPhotoPicker { uri -> pendingCropUri = uri }
@@ -226,7 +235,43 @@ fun CreateGroupSheet(
                         .focusRequester(focusRequester)
                 )
                 LaunchedEffect(Unit) { focusRequester.requestFocus() }
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
+
+                // ── Dossier PARENT : on crée directement AU BON ENDROIT (plus besoin de
+                // créer à la racine puis de déplacer). « Racine » = premier niveau.
+                val parentName = parentId?.let { id -> groups.firstOrNull { it.id == id }?.name }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable { showParentPicker = true }
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Folder, contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.categories_parent_group),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            parentName ?: stringResource(R.string.categories_parent_root),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
 
                 // ── CE QU'ON GROUPE : compte + vignettes (on voit ce qui entre dans le
                 // dossier avant de valider — le dialogue historique ne le montrait pas).
@@ -257,7 +302,7 @@ fun CreateGroupSheet(
 
             // Barre d'action FIXE : reste tappable clavier ouvert (focus auto sur le nom).
             Button(
-                onClick = { if (name.isNotBlank()) onConfirm(name.trim(), imagePath) },
+                onClick = { if (name.isNotBlank()) onConfirm(name.trim(), imagePath, parentId) },
                 enabled = name.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -265,5 +310,21 @@ fun CreateGroupSheet(
             ) { Text(stringResource(R.string.common_create)) }
             Spacer(Modifier.height(16.dp))
         }
+    }
+
+    if (showParentPicker) {
+        // Réutilise le sélecteur de dossiers de v7.1.83 (vignettes, hiérarchie, recherche)
+        // + l'option « Racine ». Le groupe n'existant pas encore, aucune cible à exclure
+        // (pas de cycle possible à la création).
+        CategoryPickerSheet(
+            title = stringResource(R.string.categories_parent_group),
+            categories = emptyList(),
+            groups = groups,
+            folderTargets = true,
+            rootOption = true,
+            onPickFolder = { id -> parentId = id; showParentPicker = false },
+            onPickRoot = { parentId = null; showParentPicker = false },
+            onDismiss = { showParentPicker = false }
+        )
     }
 }

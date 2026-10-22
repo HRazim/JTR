@@ -318,6 +318,8 @@
     <string name="categories_fav_action">Favorito</string>
     <string name="categories_group_action">Agrupar</string>
     <string name="categories_move_to_group">Mover a un grupo…</string>
+    <string name="categories_parent_group">Grupo principal</string>
+    <string name="categories_parent_root">Raíz</string>
     <string name="categories_add_to_group_title">Añadir al grupo</string>
     <string name="categories_add_existing">Añadir categorías existentes</string>
     <string name="categories_create_here">Crear una categoría aquí</string>

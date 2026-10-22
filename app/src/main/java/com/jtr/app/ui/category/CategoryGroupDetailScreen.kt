@@ -194,8 +194,12 @@ fun CategoryGroupDetailScreen(
     pendingCreateSubGroupIds?.let { ids ->
         CreateGroupSheet(
             members = selectedCategories,
-            onConfirm = { name, imagePath ->
-                viewModel.createSubGroup(name, ids, imagePath)
+            groups = allGroups,
+            // v7.1.84 — pré-rempli avec le dossier COURANT (on crée un sous-groupe ici),
+            // mais modifiable : on peut le faire naître ailleurs, ou à la racine.
+            initialParentId = group?.id,
+            onConfirm = { name, imagePath, parentId ->
+                viewModel.createSubGroup(name, ids, imagePath, parentId)
                 pendingCreateSubGroupIds = null
                 exitSelection()
             },

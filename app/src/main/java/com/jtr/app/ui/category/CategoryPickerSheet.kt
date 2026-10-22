@@ -1,6 +1,9 @@
 package com.jtr.app.ui.category
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,7 +12,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
@@ -19,7 +24,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderOff
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -97,6 +104,10 @@ fun CategoryPickerSheet(
     folderTargets: Boolean = false,
     excludeGroupIds: Set<Long> = emptySet(),
     onPickFolder: (groupId: Long) -> Unit = {},
+    // v7.1.84 — propose « Racine » en tête (aucun dossier parent) : choisir le parent
+    // d'un groupe doit aussi permettre de le (re)mettre au premier niveau.
+    rootOption: Boolean = false,
+    onPickRoot: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var showAddCategory by remember { mutableStateOf(false) }
@@ -228,6 +239,42 @@ fun CategoryPickerSheet(
                     .heightIn(max = 400.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
+                if (rootOption && query.isBlank()) {
+                    item {
+                        // Même grammaire visuelle que les bandeaux de dossier, avec une
+                        // vignette neutre « hors dossier ».
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp)
+                                .clip(MaterialTheme.shapes.small)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                .clickable { onPickRoot() }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.FolderOff, contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                stringResource(R.string.categories_parent_root),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
                 if (rows.isEmpty()) {
                     item {
                         Text(

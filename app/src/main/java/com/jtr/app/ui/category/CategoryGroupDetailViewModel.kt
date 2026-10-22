@@ -193,11 +193,16 @@ class CategoryGroupDetailViewModel(
     // ── Sous-groupes imbriqués (création par superposition / insertion) ─────────
 
     /** Crée un SOUS-GROUPE dans ce dossier (fusion de 2 sous-catégories au centre). */
-    fun createSubGroup(name: String, ids: List<String>, imagePath: String? = null) {
+    fun createSubGroup(
+        name: String, ids: List<String>, imagePath: String? = null,
+        // v7.1.84 — parent choisi dans la feuille ; à défaut, CE dossier (comportement
+        // historique). `null` explicite = le groupe naît à la RACINE.
+        parentGroupId: Long? = groupId
+    ) {
         val trimmed = name.trim()
         if (trimmed.isBlank() || ids.isEmpty()) return
         viewModelScope.launch {
-            repo.createGroupWith(trimmed, ids, parentGroupId = groupId, imagePath = imagePath)
+            repo.createGroupWith(trimmed, ids, parentGroupId = parentGroupId, imagePath = imagePath)
         }
     }
 

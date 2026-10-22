@@ -312,8 +312,11 @@ fun CategoriesScreen(
         // FUSION et le renommage gardent [TextPromptDialog] (hors périmètre V1).
         CreateGroupSheet(
             members = selectedCategories,
-            onConfirm = { name, imagePath ->
-                viewModel.createGroup(name, selectedIds.toList(), imagePath)
+            // v7.1.84 — le dossier parent se choisit DANS la feuille (défaut : racine).
+            groups = groups,
+            initialParentId = null,
+            onConfirm = { name, imagePath, parentId ->
+                viewModel.createGroup(name, selectedIds.toList(), imagePath, parentId)
                 showCreateGroupDialog = false
                 exitSelection()
             },
