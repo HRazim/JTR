@@ -29,7 +29,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
-import androidx.core.graphics.toColorInt
+import com.jtr.app.ui.category.categoryColorPalette
+import com.jtr.app.ui.category.rememberCategoryColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -346,6 +347,7 @@ fun HomeScreen(
 
 private enum class CategoryDialogMode { SELECT, CREATE }
 
+@OptIn(ExperimentalLayoutApi::class) // FlowRow : la palette curatée tient sur 2 rangées.
 @Composable
 fun AssignCategoryDialog(
     categories: List<Category>,
@@ -358,7 +360,9 @@ fun AssignCategoryDialog(
     }
 
     var newName by remember { mutableStateOf("") }
-    val colorOptions = listOf("#2E86C1", "#E74C3C", "#27AE60", "#F39C12", "#8E44AD", "#16A085")
+    // v7.1.79 (E-light) — PALETTE CURATÉE partagée avec le formulaire de catégorie :
+    // plus de doublon de 6 hex saturés en dur ici.
+    val colorOptions = categoryColorPalette
     var selectedColor by remember { mutableStateOf(colorOptions.first()) }
 
     AlertDialog(
@@ -401,7 +405,8 @@ fun AssignCategoryDialog(
                                         modifier = Modifier
                                             .size(14.dp)
                                             .clip(CircleShape)
-                                            .background(parseCategoryColor(category.color))
+                                            // v7.1.79 — source unique (fallback thème, plus de Gray).
+                                            .background(rememberCategoryColor(category.color))
                                     )
                                     Spacer(Modifier.width(10.dp))
                                     Text(category.name,
@@ -433,13 +438,17 @@ fun AssignCategoryDialog(
                         )
                         Text(stringResource(R.string.common_color_label),
                             style = MaterialTheme.typography.labelMedium)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // v7.1.79 — FlowRow : 12 pastilles sur 2 rangées (une Row déborderait).
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             colorOptions.forEach { color ->
                                 val isSelected = selectedColor == color
                                 Surface(
                                     onClick = { selectedColor = color },
                                     shape = CircleShape,
-                                    color = parseCategoryColor(color),
+                                    color = rememberCategoryColor(color),
                                     modifier = Modifier.size(34.dp),
                                     border = if (isSelected)
                                         androidx.compose.foundation.BorderStroke(
@@ -484,12 +493,6 @@ fun AssignCategoryDialog(
             }
         }
     )
-}
-
-private fun parseCategoryColor(hex: String): Color = try {
-    Color(hex.toColorInt())
-} catch (_: Exception) {
-    Color.Gray
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

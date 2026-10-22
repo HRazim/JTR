@@ -38,6 +38,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -116,6 +118,30 @@ internal sealed interface TopEntry {
         override val createdAt get() = category.createdAt
     }
 }
+
+/**
+ * v7.1.79 — PALETTE CURATÉE partagée (formulaire catégorie + création à la volée de
+ * l'Accueil) : 12 teintes DOUCES (gamme « 300 » Material : saturation modérée, luminosité
+ * homogène ~65 %) qui remplacent les 6 aplats saturés « Flat UI ». Lisibles en clair ET
+ * en sombre, en aplat (tuiles sans image) comme en accent dérivé (initiale sur teinte
+ * 16 %, anneau — langage v7.1.77). Le STOCKAGE ne change pas : `Category.color` reste un
+ * hex String NOT NULL, et les anciens hex restent valides partout au rendu (en édition,
+ * un hex hors palette est présenté comme pastille « couleur actuelle » en tête).
+ */
+internal val categoryColorPalette = listOf(
+    "#E57373", // rouge doux
+    "#F06292", // rose
+    "#BA68C8", // mauve
+    "#9575CD", // violet
+    "#7986CB", // indigo
+    "#64B5F6", // bleu
+    "#4FC3F7", // cyan
+    "#4DB6AC", // teal
+    "#81C784", // vert
+    "#FFB74D", // ambre
+    "#FF8A65", // corail
+    "#A1887F", // taupe
+)
 
 /**
  * Couleur d'accent d'une catégorie — SOURCE UNIQUE (v6.2.5) partagée par TOUS les
@@ -2255,15 +2281,27 @@ fun AddCategoryDialog(
 ) = CategoryFormDialog(
     title = stringResource(R.string.categories_new_dialog_title),
     initialName = "",
-    initialColor = "#2E86C1",
+    // v7.1.79 — le défaut vient de la PALETTE CURATÉE (bleu doux, analogue au bleu
+    // historique #2E86C1) : pas de pastille « couleur actuelle » parasite en création.
+    initialColor = "#64B5F6",
     initialImagePath = null,
     confirmLabel = stringResource(R.string.common_create),
     onConfirm = onConfirm,
     onDismiss = onDismiss
 )
 
-/** Formulaire de catégorie UNIFIÉ (création ET édition) : nom + couleur + image. */
-@OptIn(ExperimentalLayoutApi::class) // FlowRow (pastilles de couleur, cibles tactiles 48 dp)
+/**
+ * Formulaire de catégorie UNIFIÉ (création ET édition) : nom + couleur + image.
+ *
+ * v7.1.79 — refonte V1 : FEUILLE MONTANTE (cohérente avec le sélecteur, le tri et les
+ * langues) au lieu du dialogue centré ; APERÇU VIVANT en tête (image, sinon initiale sur
+ * teinte douce + anneau — langage v7.1.77) avec badge caméra ; palette CURATÉE douce
+ * ([categoryColorPalette]) en section compacte sous le nom (l'image prime, la couleur
+ * reste le moteur du repli) ; bouton de validation pleine largeur. Les chaînes photo
+ * (Photo Picker → crop → filesDir) et la signature `onConfirm(name, color, imagePath)`
+ * sont inchangées — Dialog (zoom/crop) sur feuille : même empilement qu'avant.
+ */
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun CategoryFormDialog(
     title: String,
@@ -2278,7 +2316,13 @@ private fun CategoryFormDialog(
     val scope = rememberCoroutineScope()
 
     var name by remember { mutableStateOf(initialName) }
-    val presetColors = listOf("#2E86C1", "#E74C3C", "#27AE60", "#F39C12", "#8E44AD", "#16A085")
+    // En ÉDITION d'une catégorie dont l'hex (ancienne palette, restauration .jtr…) est
+    // HORS palette curatée : il devient la PREMIÈRE pastille (« couleur actuelle ») —
+    // la couleur d'origine reste sélectionnable, aucune perte silencieuse.
+    val palette = remember(initialColor) {
+        if (initialColor in categoryColorPalette) categoryColorPalette
+        else listOf(initialColor) + categoryColorPalette
+    }
     var selectedColor by remember { mutableStateOf(initialColor) }
     var imagePath by remember { mutableStateOf(initialImagePath) }
     var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
@@ -2322,21 +2366,38 @@ private fun CategoryFormDialog(
         )
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val accent = rememberCategoryColor(selectedColor)
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        // Fix v7.1.79 — le bouton de validation est ÉPINGLÉ hors de la zone scrollable,
+        // dans la Column porteuse de l'imePadding : dès que le clavier s'ouvre (focus
+        // auto en création), il REMONTE au-dessus et reste tappable sans « Done ». Le
+        // contenu (aperçu, nom, palette) se compresse et défile au-dessus de lui
+        // (`weight(1f, fill = false)` : même grammaire que la liste du sélecteur).
+        Column(modifier = Modifier.fillMaxWidth().imePadding()) {
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp)
             ) {
+            Text(title, style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.height(16.dp))
+
+            // ── APERÇU VIVANT : ce que la catégorie aura l'air d'être, en temps réel —
+            // image si présente, sinon initiale du nom sur teinte douce + anneau d'accent
+            // (même langage que le sélecteur v7.1.77). Fini l'aplat saturé permanent.
+            Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
                 Box(
                     modifier = Modifier
                         .size(96.dp)
                         .clip(CircleShape)
-                        .background(rememberCategoryColor(selectedColor))
-                        // Image présente → on la MONTRE en grand (Remplacer/Retirer y sont
-                        // proposés) ; image absente → rien à zoomer, on va droit au picker.
+                        .border(2.dp, accent.copy(alpha = 0.55f), CircleShape)
+                        .background(accent.copy(alpha = 0.16f))
+                        // Image présente → visionneuse (Remplacer/Retirer, v7.1.49) ;
+                        // absente → rien à zoomer, on va droit au Photo Picker.
                         .clickable { if (imagePath != null) showImageZoom = true else photoPicker() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -2347,83 +2408,117 @@ private fun CategoryFormDialog(
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.25f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = null,
-                                tint = Color.White, modifier = Modifier.size(28.dp))
-                        }
                     } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.AddAPhoto, contentDescription = null,
-                                tint = Color.White, modifier = Modifier.size(28.dp))
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(stringResource(R.string.common_photo),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White)
+                        // codePointAt : initiale emoji/arabe (surrogate pair) entière.
+                        val initial = name.trim().let {
+                            if (it.isEmpty()) "" else String(Character.toChars(it.codePointAt(0))).uppercase()
+                        }
+                        if (initial.isEmpty()) {
+                            Icon(Icons.Default.Folder, contentDescription = null,
+                                modifier = Modifier.size(36.dp), tint = accent)
+                        } else {
+                            Text(initial,
+                                style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = accent)
                         }
                     }
                 }
+                // Badge caméra en coin : l'ajout d'image est l'action CENTRALE de la tuile.
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .clickable { if (imagePath != null) showImageZoom = true else photoPicker() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        if (imagePath != null) Icons.Default.Edit else Icons.Default.AddAPhoto,
+                        contentDescription = stringResource(R.string.common_photo),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            // Bouton photo EXPLICITE (en plus du tap sur l'aperçu) — même routage.
+            TextButton(
+                onClick = { if (imagePath != null) showImageZoom = true else photoPicker() },
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) { Text(stringResource(R.string.common_photo)) }
+            Spacer(Modifier.height(8.dp))
 
-                // Aucun bouton « Retirer » ICI : taper le cercle ouvre la visionneuse, qui
-                // porte déjà Remplacer/Retirer (v7.1.49). Simple respiration avant le nom.
-                Spacer(modifier = Modifier.height(8.dp))
+            val focusRequester = remember { FocusRequester() }
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(R.string.common_name_label)) },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+            )
+            if (initialName.isEmpty()) {
+                // Focus auto en CRÉATION seulement : en édition, le clavier recouvrirait
+                // l'aperçu et la palette qu'on vient précisément retoucher.
+                LaunchedEffect(Unit) { focusRequester.requestFocus() }
+            }
+            Spacer(Modifier.height(20.dp))
 
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.common_name_label)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(stringResource(R.string.common_color_label),
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.align(Alignment.Start))
-                Spacer(modifier = Modifier.height(8.dp))
-                // FlowRow : se replie sur une 2e ligne si l'espace manque (écrans étroits /
-                // grande police) au lieu de rogner la dernière pastille.
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    presetColors.forEach { color ->
-                        // Cible tactile ≥ 48 dp (a11y) : pastille VISIBLE de 36 dp centrée
-                        // dans une zone CLIQUABLE de 48 dp (le visuel est inchangé).
+            // ── Couleur : section compacte SECONDAIRE (l'image prime ; la couleur reste
+            // le moteur du repli initiale/anneau et des tuiles sans image).
+            Text(stringResource(R.string.common_color_label),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            // FlowRow : 2 rangées de 6 ; se replie proprement (écran étroit, grande police).
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                palette.forEach { color ->
+                    val swatch = rememberCategoryColor(color)
+                    val selected = selectedColor == color
+                    // Cible tactile 48 dp ; sélection = ANNEAU détaché + coche (plus de
+                    // coche blanche posée sur un aplat).
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .then(if (selected) Modifier.border(2.dp, swatch, CircleShape) else Modifier)
+                            .clickable { selectedColor = color },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(32.dp)
                                 .clip(CircleShape)
-                                .clickable { selectedColor = color },
+                                .background(swatch),
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(android.graphics.Color.parseColor(color))),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (selectedColor == color) {
-                                    Icon(Icons.Default.Check, contentDescription = null,
-                                        tint = Color.White, modifier = Modifier.size(20.dp))
-                                }
+                            if (selected) {
+                                Icon(Icons.Default.Check, contentDescription = null,
+                                    tint = Color.White, modifier = Modifier.size(16.dp))
                             }
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
+            Spacer(Modifier.height(16.dp))
+            }
+
+            // Barre d'action FIXE (voir le commentaire d'en-tête de la Column).
+            Button(
                 onClick = { if (name.isNotBlank()) onConfirm(name, selectedColor, imagePath) },
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
             ) { Text(confirmLabel) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+            Spacer(Modifier.height(16.dp))
         }
-    )
+    }
 }
 
 internal fun copyCategoryPhotoToStorage(context: android.content.Context, uri: Uri): String? = try {
