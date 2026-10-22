@@ -88,6 +88,9 @@ data class JtrSortCriterion(
     @StringRes val labelRes: Int,
     val selected: Boolean,
     val direction: JtrSortDirection,
+    // v7.1.78 — false pour un critère MONO-SENS (ex. l'ordre personnalisé, qui n'a pas
+    // d'inverse utile) : la feuille n'affiche ni libellé de sens ni chevron pour lui.
+    val showDirection: Boolean = true,
     val onClick: () -> Unit
 )
 
@@ -379,7 +382,7 @@ private fun JtrSheetCriterionRow(criterion: JtrSortCriterion) {
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             modifier = Modifier.weight(1f)
         )
-        if (selected) {
+        if (selected && criterion.showDirection) {
             val dirLabel = stringResource(
                 if (ascending) R.string.sort_direction_ascending
                 else R.string.sort_direction_descending

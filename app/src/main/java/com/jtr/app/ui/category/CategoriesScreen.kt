@@ -12,6 +12,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -47,6 +48,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -489,7 +491,9 @@ fun CategoriesScreen(
                             )
                         }
                         JtrOverflowMenu(
-                            sortCriteria = categorySortCriteria(sortOrder) { viewModel.setSortOrder(it) },
+                            // v7.1.78 — includeCustom : « Personnalisé » n'est offert qu'à la
+                            // RACINE (le détail de dossier garde ses trois critères).
+                            sortCriteria = categorySortCriteria(sortOrder, includeCustom = true) { viewModel.setSortOrder(it) },
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
                         )
@@ -1471,6 +1475,20 @@ internal fun ReorderableTopGrid(
     // Action de Drop différée : assignée DANS le geste, TRAITÉE en dehors (anti-crash
     // InputDispatcher — on ne déclenche jamais dialogue/Room dans le callback tactile).
     var pendingDrop by remember { mutableStateOf<DropAction?>(null) }
+    // v7.1.78 — AUTO-DÉFILEMENT pendant le drag : vitesse courante en px/FRAME (signée,
+    // négative = vers le haut), posée par onDrag selon la proximité du bord du viewport
+    // et remise à zéro à la fin du geste. Appliquée par la boucle LaunchedEffect plus bas.
+    var autoScrollSpeed by remember { mutableFloatStateOf(0f) }
+    val autoDensity = LocalDensity.current
+    // Zone de déclenchement au bord (~64 dp) et pas MAXIMAL par frame (~10 dp ≈ 600 dp/s) :
+    // vitesse proportionnelle à la proximité du bord, bornée — contrôlable, pas d'emballement.
+    val autoScrollZonePx = with(autoDensity) { 64.dp.toPx() }
+    // Bord BAS : la grille s'étend SOUS le footer contextuel du mode sélection (le contenu
+    // passe sous les barres, v7.1.11 — mesuré : ~125 dp recouverts). Une zone de 64 dp
+    // ancrée au bas MESURÉ serait entièrement cachée derrière le footer : on l'élargit de
+    // la hauteur du footer pour qu'elle commence au-dessus de lui, dans la partie visible.
+    val autoScrollBottomZonePx = with(autoDensity) { 190.dp.toPx() }
+    val autoScrollMaxStepPx = with(autoDensity) { 10.dp.toPx() }
 
     LaunchedEffect(entries) {
         if (draggingIndex == null) { data.clear(); data.addAll(entries) }
@@ -1546,6 +1564,56 @@ internal fun ReorderableTopGrid(
         val dirY = center.y - fromCenter.y
         return (pointerWin.x - center.x) * dirX + (pointerWin.y - center.y) * dirY >= 0f
     }
+    // Résolution cible → fusion/réordonnancement. PARTAGÉE entre onDrag (le doigt bouge)
+    // et la boucle d'auto-défilement (la GRILLE glisse sous un doigt immobile : sans cette
+    // réévaluation à chaque pas de scroll, les échanges ne cascaderaient pas et la tuile
+    // déplacée sortirait du viewport au lieu de suivre le défilement).
+    fun resolveDragTarget() {
+        val from = draggingIndex ?: return
+        val target = targetUnderFinger(from)
+        val draggedIsSingle = data.getOrNull(from) is TopEntry.Single
+        if (enableMerge && draggedIsSingle && target != null && inMergeZone(target)) {
+            mergeTargetKey = keyOf(data[target.index])
+            Log.d("JTR_DRAG", "onDrag finger(win)=(${pointerWin.x},${pointerWin.y}) hover=${keyOf(data[target.index])} idx=${target.index} mergeTarget=$mergeTargetKey")
+        } else {
+            mergeTargetKey = null
+            if (target != null && fingerPastTargetCenter(from, target)) {
+                data.add(target.index, data.removeAt(from))
+                draggingIndex = target.index
+            }
+        }
+    }
+    // v7.1.78 — pas d'auto-défilement (px/frame) selon la position du doigt : nul hors
+    // des zones de bord, proportionnel à la pénétration dans la zone (plus près = plus vite).
+    fun autoScrollStepFor(pointerY: Float): Float {
+        val c = gridCoords ?: return 0f
+        if (!c.isAttached) return 0f
+        val top = c.localToWindow(Offset.Zero).y
+        val bottom = top + c.size.height
+        // Plancher de 25 % : dès l'entrée en zone le défilement est FRANC (sans lui, la
+        // portion visible de la zone basse — au-dessus du footer — resterait trop lente).
+        return when {
+            pointerY <= top + autoScrollZonePx ->
+                -autoScrollMaxStepPx * ((top + autoScrollZonePx - pointerY) / autoScrollZonePx).coerceIn(0.25f, 1f)
+            pointerY >= bottom - autoScrollBottomZonePx ->
+                autoScrollMaxStepPx * ((pointerY - (bottom - autoScrollBottomZonePx)) / autoScrollBottomZonePx).coerceIn(0.25f, 1f)
+            else -> 0f
+        }
+    }
+
+    // v7.1.78 — boucle d'auto-défilement : UNE itération par frame tant qu'un drag est en
+    // cours. S'arrête d'elle-même hors zone (pas nul), au drop et à l'annulation (index
+    // null) ; en butée de liste, scrollBy ne consomme rien — aucun emballement possible.
+    LaunchedEffect(draggingIndex != null) {
+        while (draggingIndex != null) {
+            val step = autoScrollSpeed
+            if (step != 0f) {
+                gridState.scrollBy(step)
+                resolveDragTarget()
+            }
+            withFrameMillis { }
+        }
+    }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -1571,12 +1639,13 @@ internal fun ReorderableTopGrid(
                             initialOffset = hit.offset
                             delta = Offset.Zero
                             mergeTargetKey = null
+                            autoScrollSpeed = 0f
                             Log.d("JTR_DRAG", "onDragStart finger(win)=(${pointerWin.x},${pointerWin.y}) grab=${keyOf(data[hit.index])}")
                         }
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
-                        val from = draggingIndex ?: return@detectDragGesturesAfterLongPress
+                        if (draggingIndex == null) return@detectDragGesturesAfterLongPress
                         val coords = gridCoords
                         if (coords == null || !coords.isAttached)
                             return@detectDragGesturesAfterLongPress
@@ -1584,22 +1653,11 @@ internal fun ReorderableTopGrid(
                         // Position GLOBALE (Window) du doigt — stable, indépendante de la
                         // tuile en cours de déplacement.
                         pointerWin = coords.localToWindow(change.position)
-                        val target = targetUnderFinger(from)
-                        val draggedIsSingle = data.getOrNull(from) is TopEntry.Single
-                        // ZONE CENTRALE (50 %) : intention de fusion/insertion. Le
+                        // ZONE CENTRALE (50 %) : intention de fusion/insertion ; le
                         // réordonnancement n'a lieu qu'APRÈS traversée du centre de la
-                        // cible (fingerPastTargetCenter) — le bord proche est neutre,
-                        // la cible ne « fuit » plus avant la fusion (v5.5).
-                        if (enableMerge && draggedIsSingle && target != null && inMergeZone(target)) {
-                            mergeTargetKey = keyOf(data[target.index])
-                            Log.d("JTR_DRAG", "onDrag finger(win)=(${pointerWin.x},${pointerWin.y}) hover=${keyOf(data[target.index])} idx=${target.index} mergeTarget=$mergeTargetKey")
-                        } else {
-                            mergeTargetKey = null
-                            if (target != null && fingerPastTargetCenter(from, target)) {
-                                data.add(target.index, data.removeAt(from))
-                                draggingIndex = target.index
-                            }
-                        }
+                        // cible — logique partagée avec l'auto-défilement (v7.1.78).
+                        resolveDragTarget()
+                        autoScrollSpeed = autoScrollStepFor(pointerWin.y)
                     },
                     onDragEnd = {
                         // ANTI-CRASH : on NE déclenche RIEN ici (ni dialogue, ni Room).
@@ -1646,9 +1704,10 @@ internal fun ReorderableTopGrid(
                             // Réinitialisation défensive de l'état du geste.
                             draggingIndex = null
                             mergeTargetKey = null
+                            autoScrollSpeed = 0f
                         }
                     },
-                    onDragCancel = { draggingIndex = null; mergeTargetKey = null }
+                    onDragCancel = { draggingIndex = null; mergeTargetKey = null; autoScrollSpeed = 0f }
                 )
             },
         contentPadding = PaddingValues(16.dp),
@@ -1735,6 +1794,15 @@ internal fun ReorderableTopList(
     // Action de Drop différée : assignée DANS le geste, traitée HORS du callback
     // tactile (anti-crash InputDispatcher — voir ReorderableTopGrid).
     var pendingDrop by remember { mutableStateOf<DropAction?>(null) }
+    // v7.1.78 — auto-défilement pendant le drag (voir ReorderableTopGrid) : vitesse en
+    // px/frame, posée par onDrag, appliquée par la boucle LaunchedEffect, remise à zéro
+    // à la fin du geste.
+    var autoScrollSpeed by remember { mutableFloatStateOf(0f) }
+    val autoDensity = LocalDensity.current
+    val autoScrollZonePx = with(autoDensity) { 64.dp.toPx() }
+    // Zone basse élargie : la liste passe SOUS le footer contextuel (voir la grille).
+    val autoScrollBottomZonePx = with(autoDensity) { 190.dp.toPx() }
+    val autoScrollMaxStepPx = with(autoDensity) { 10.dp.toPx() }
 
     LaunchedEffect(entries) {
         if (draggingIndex == null) { data.clear(); data.addAll(entries) }
@@ -1794,6 +1862,50 @@ internal fun ReorderableTopList(
         val dir = center - fromCenter
         return (pointerWinY - center) * dir >= 0f
     }
+    // Résolution cible → fusion/réordonnancement, partagée entre onDrag et la boucle
+    // d'auto-défilement (même raison que la grille : la liste glisse sous un doigt
+    // immobile, les échanges doivent continuer de cascader).
+    fun resolveDragTarget() {
+        val from = draggingIndex ?: return
+        val target = targetUnderFinger(from)
+        val draggedIsSingle = data.getOrNull(from) is TopEntry.Single
+        if (enableMerge && draggedIsSingle && target != null && inMergeBand(target)) {
+            mergeTargetKey = keyOf(data[target.index])
+        } else {
+            mergeTargetKey = null
+            // Réordonnancement seulement après traversée du centre (v5.5).
+            if (target != null && fingerPastTargetCenter(from, target)) {
+                data.add(target.index, data.removeAt(from))
+                draggingIndex = target.index
+            }
+        }
+    }
+    // v7.1.78 — pas d'auto-défilement selon la proximité des bords (voir la grille).
+    fun autoScrollStepFor(pointerY: Float): Float {
+        val c = listCoords ?: return 0f
+        if (!c.isAttached) return 0f
+        val top = c.localToWindow(Offset.Zero).y
+        val bottom = top + c.size.height
+        return when {
+            pointerY <= top + autoScrollZonePx ->
+                -autoScrollMaxStepPx * ((top + autoScrollZonePx - pointerY) / autoScrollZonePx).coerceIn(0.25f, 1f)
+            pointerY >= bottom - autoScrollBottomZonePx ->
+                autoScrollMaxStepPx * ((pointerY - (bottom - autoScrollBottomZonePx)) / autoScrollBottomZonePx).coerceIn(0.25f, 1f)
+            else -> 0f
+        }
+    }
+
+    // Boucle d'auto-défilement (une itération par frame, voir ReorderableTopGrid).
+    LaunchedEffect(draggingIndex != null) {
+        while (draggingIndex != null) {
+            val step = autoScrollSpeed
+            if (step != 0f) {
+                listState.scrollBy(step)
+                resolveDragTarget()
+            }
+            withFrameMillis { }
+        }
+    }
 
     LazyColumn(
         state = listState,
@@ -1816,28 +1928,20 @@ internal fun ReorderableTopList(
                             initialOffsetY = hit.offset
                             deltaY = 0f
                             mergeTargetKey = null
+                            autoScrollSpeed = 0f
                         }
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
-                        val from = draggingIndex ?: return@detectDragGesturesAfterLongPress
+                        if (draggingIndex == null) return@detectDragGesturesAfterLongPress
                         val coords = listCoords
                         if (coords == null || !coords.isAttached)
                             return@detectDragGesturesAfterLongPress
                         deltaY += dragAmount.y
                         pointerWinY = coords.localToWindow(change.position).y
-                        val target = targetUnderFinger(from)
-                        val draggedIsSingle = data.getOrNull(from) is TopEntry.Single
-                        if (enableMerge && draggedIsSingle && target != null && inMergeBand(target)) {
-                            mergeTargetKey = keyOf(data[target.index])
-                        } else {
-                            mergeTargetKey = null
-                            // Réordonnancement seulement après traversée du centre (v5.5).
-                            if (target != null && fingerPastTargetCenter(from, target)) {
-                                data.add(target.index, data.removeAt(from))
-                                draggingIndex = target.index
-                            }
-                        }
+                        // Fusion/réordonnancement : logique partagée avec l'auto-défilement.
+                        resolveDragTarget()
+                        autoScrollSpeed = autoScrollStepFor(pointerWinY)
                     },
                     onDragEnd = {
                         // ANTI-CRASH : aucun dialogue/Room ici — voir ReorderableTopGrid.
@@ -1871,9 +1975,10 @@ internal fun ReorderableTopList(
                         } finally {
                             draggingIndex = null
                             mergeTargetKey = null
+                            autoScrollSpeed = 0f
                         }
                     },
-                    onDragCancel = { draggingIndex = null; mergeTargetKey = null }
+                    onDragCancel = { draggingIndex = null; mergeTargetKey = null; autoScrollSpeed = 0f }
                 )
             },
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
