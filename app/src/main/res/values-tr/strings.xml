@@ -44,11 +44,6 @@
 
     <!-- ── Category assign dialog ─────────────────────────────────────────── -->
     <string name="dialog_assign_category_title">Kategori ata</string>
-    <string name="dialog_new_category_title">Yeni kategori</string>
-    <string name="dialog_create_category_cd">Kategori oluştur</string>
-    <string name="dialog_create_new_category">Yeni kategori oluştur</string>
-    <string name="dialog_create_and_assign">Oluştur ve ata</string>
-    <string name="dialog_category_name_label">Kategori adı</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">Kategoriler</string>
@@ -333,7 +328,6 @@
     <string name="categories_create_here">Burada kategori oluştur</string>
     <string name="categories_dissolve_group">Grubu çöz</string>
     <string name="categories_dissolve_confirm_text">Kategoriler yeniden bağımsız olacak.</string>
-    <string name="categories_no_candidates">Uygun kategori yok</string>
     <string name="categories_group_counter">%1$d kategori, %2$d grup</string>
     <string name="categories_folder_counter">%1$d kat. · %2$d kişi</string>
     <string name="categories_move_out">Gruptan çıkar</string>

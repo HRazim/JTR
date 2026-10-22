@@ -44,11 +44,6 @@
 
     <!-- ── Category assign dialog ─────────────────────────────────────────── -->
     <string name="dialog_assign_category_title">تعيين فئة</string>
-    <string name="dialog_new_category_title">فئة جديدة</string>
-    <string name="dialog_create_category_cd">إنشاء فئة</string>
-    <string name="dialog_create_new_category">إنشاء فئة جديدة</string>
-    <string name="dialog_create_and_assign">إنشاء وتعيين</string>
-    <string name="dialog_category_name_label">اسم الفئة</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">الفئات</string>
@@ -333,7 +328,6 @@
     <string name="categories_create_here">إنشاء فئة هنا</string>
     <string name="categories_dissolve_group">فك التجميع</string>
     <string name="categories_dissolve_confirm_text">ستعود الفئات مستقلة من جديد.</string>
-    <string name="categories_no_candidates">لا توجد فئة متاحة</string>
     <string name="categories_group_counter">%1$d فئة، %2$d مجموعة</string>
     <string name="categories_folder_counter">%1$d فئة · %2$d جهة اتصال</string>
     <string name="categories_move_out">إخراج من المجموعة</string>

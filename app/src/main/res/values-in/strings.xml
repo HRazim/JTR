@@ -62,11 +62,6 @@
 
     <!-- ── Category assign dialog ─────────────────────────────────────────── -->
     <string name="dialog_assign_category_title">Tetapkan kategori</string>
-    <string name="dialog_new_category_title">Kategori baru</string>
-    <string name="dialog_create_category_cd">Buat kategori</string>
-    <string name="dialog_create_new_category">Buat kategori baru</string>
-    <string name="dialog_create_and_assign">Buat dan tetapkan</string>
-    <string name="dialog_category_name_label">Nama kategori</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">Kategori</string>
@@ -351,7 +346,6 @@
     <string name="categories_create_here">Buat kategori di sini</string>
     <string name="categories_dissolve_group">Bubarkan grup</string>
     <string name="categories_dissolve_confirm_text">Kategori akan kembali berdiri sendiri.</string>
-    <string name="categories_no_candidates">Tidak ada kategori tersedia</string>
     <string name="categories_group_counter">%1$d kategori, %2$d grup</string>
     <string name="categories_folder_counter">%1$d kat. · %2$d kontak</string>
     <string name="categories_move_out">Keluarkan dari grup</string>

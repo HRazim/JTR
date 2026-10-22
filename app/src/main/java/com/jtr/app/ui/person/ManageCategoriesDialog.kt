@@ -75,8 +75,12 @@ import com.jtr.app.utils.searchTokens
 /**
  * Une ligne du sélecteur de catégories, à plat avec son niveau d'indentation pour
  * refléter la hiérarchie récursive (dossiers → sous-dossiers → catégories).
+ *
+ * v7.1.80 — `internal` (ainsi que le moteur et les lignes ci-dessous) : le MÊME langage
+ * sert désormais au sélecteur de cible du « Move » et au rattachement à un dossier
+ * ([com.jtr.app.ui.category.CategoryPickerSheet]) — réutilisation, pas de fork.
  */
-private sealed interface CategoryPickerRow {
+internal sealed interface CategoryPickerRow {
     val indent: Int
 
     /**
@@ -110,26 +114,43 @@ private sealed interface CategoryPickerRow {
  * récursif PAR CONSTRUCTION : on s'arrête au dossier replié, donc un sous-dossier n'est
  * même pas atteint tant que son parent est fermé — tout le sous-arbre disparaît d'un coup.
  * Les catégories LIBRES (sans dossier) ne dépendent d'aucun dossier : toujours visibles.
+ *
+ * v7.1.80 — deux paramètres pour les NOUVEAUX usages (défauts = comportement historique) :
+ * [excludeCategoryIds] retire des catégories de l'arbre ET de la recherche (le « Move »
+ * exclut sa catégorie SOURCE des cibles) ; [pruneEmptyFolders] n'émet un dossier que si
+ * son sous-arbre contient au moins une catégorie restante (un picker de rattachement
+ * n'affiche pas de bandeaux morts — le sélecteur de la fiche, lui, montre tout).
  */
-private fun buildCategoryPickerRows(
+internal fun buildCategoryPickerRows(
     categories: List<Category>,
     groups: List<CategoryGroup>,
     query: String,
-    expandedFolders: Set<Long>
+    expandedFolders: Set<Long>,
+    excludeCategoryIds: Set<String> = emptySet(),
+    pruneEmptyFolders: Boolean = false
 ): List<CategoryPickerRow> {
+    val cats =
+        if (excludeCategoryIds.isEmpty()) categories
+        else categories.filter { it.id !in excludeCategoryIds }
     // Moteur de recherche CENTRAL (multi-mots, insensible casse/accents, sûr en arabe).
     val tokens = query.searchTokens()
     if (tokens.isNotEmpty()) {
-        return categories
+        return cats
             .filter { it.name.matchesAllTokens(tokens) }
             .map { CategoryPickerRow.Item(it, 0) }
     }
 
     val rows = mutableListOf<CategoryPickerRow>()
-    val catsByGroup = categories.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
+    val catsByGroup = cats.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
     val subByParent = groups.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
 
+    // Un sous-arbre « vivant » contient au moins une catégorie (après exclusions).
+    fun subtreeHasCategory(group: CategoryGroup): Boolean =
+        catsByGroup[group.id].orEmpty().isNotEmpty() ||
+            subByParent[group.id].orEmpty().any { subtreeHasCategory(it) }
+
     fun emitGroup(group: CategoryGroup, indent: Int) {
+        if (pruneEmptyFolders && !subtreeHasCategory(group)) return
         val childCategories = catsByGroup[group.id].orEmpty()
         val childGroups = subByParent[group.id].orEmpty()
         val expanded = group.id in expandedFolders
@@ -145,7 +166,7 @@ private fun buildCategoryPickerRows(
     }
 
     groups.filter { it.parentGroupId == null }.forEach { emitGroup(it, 0) }
-    categories.filter { it.parentGroupId == null }.forEach { rows += CategoryPickerRow.Item(it, 0) }
+    cats.filter { it.parentGroupId == null }.forEach { rows += CategoryPickerRow.Item(it, 0) }
     return rows
 }
 
@@ -384,7 +405,7 @@ fun ManageCategoriesDialog(
     }
 }
 
-private fun pickerRowKey(row: CategoryPickerRow): String = when (row) {
+internal fun pickerRowKey(row: CategoryPickerRow): String = when (row) {
     is CategoryPickerRow.Folder -> "g_${row.group.id}"
     is CategoryPickerRow.Item -> "c_${row.category.id}"
 }
@@ -398,7 +419,7 @@ private fun pickerRowKey(row: CategoryPickerRow): String = when (row) {
  * image. Chargement Coil, même mécanisme que les tuiles (chemin absolu filesDir/photos).
  */
 @Composable
-private fun PickerThumbnail(
+internal fun PickerThumbnail(
     imagePath: String?,
     name: String,
     colorHex: String?,
@@ -483,7 +504,7 @@ private fun PickerThumbnail(
  *   noms restent alignés à l'ouverture, avec ou sans enfants.
  */
 @Composable
-private fun FolderHeaderRow(
+internal fun FolderHeaderRow(
     group: CategoryGroup,
     indent: Int,
     expanded: Boolean,
@@ -529,11 +550,17 @@ private fun FolderHeaderRow(
     }
 }
 
+/**
+ * v7.1.80 — [checked] devient NULLABLE : `null` = ligne de sélection SIMPLE (le tap
+ * CHOISIT, rôle Button, pas de case — le sélecteur de cible du « Move ») ; non-null =
+ * ligne cochable historique (fiche contact, rattachement multiple). Les appels
+ * existants passent un Boolean : comportement strictement inchangé.
+ */
 @Composable
-private fun CategoryCheckRow(
+internal fun CategoryCheckRow(
     category: Category,
     indent: Int,
-    checked: Boolean,
+    checked: Boolean?,
     onCheckedChange: (Boolean) -> Unit,
     showDivider: Boolean
 ) {
@@ -541,15 +568,17 @@ private fun CategoryCheckRow(
     // la zone cliquable : le ripple s'arrête au bord indenté, l'arbre parent → enfants se
     // lit au décalage du bloc, cohérent avec les bandeaux de dossier.
     Column(modifier = Modifier.padding(start = (indent * 20).dp)) {
-        // Toute la ligne est cochable (accessibilité : rôle Checkbox + libellé = nom).
+        // Toute la ligne est cochable/cliquable (a11y : rôle Checkbox ou Button + nom).
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.small)
-                .toggleable(
-                    value = checked,
-                    role = Role.Checkbox,
-                    onValueChange = onCheckedChange
+                .then(
+                    if (checked != null) Modifier.toggleable(
+                        value = checked,
+                        role = Role.Checkbox,
+                        onValueChange = onCheckedChange
+                    ) else Modifier.clickable(role = Role.Button) { onCheckedChange(true) }
                 )
                 .padding(top = 4.dp, bottom = 4.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -574,7 +603,10 @@ private fun CategoryCheckRow(
                 FavoriteStar(size = 16.dp)
             }
             // Le rôle/clic est porté par la Row → la case ne re-gère pas l'événement.
-            Checkbox(checked = checked, onCheckedChange = null)
+            // Sélection simple (checked == null) : pas de case, le tap suffit.
+            if (checked != null) {
+                Checkbox(checked = checked, onCheckedChange = null)
+            }
         }
         if (showDivider) {
             HorizontalDivider(

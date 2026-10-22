@@ -44,11 +44,6 @@
 
     <!-- ── Category assign dialog ─────────────────────────────────────────── -->
     <string name="dialog_assign_category_title">指定分类</string>
-    <string name="dialog_new_category_title">新建分类</string>
-    <string name="dialog_create_category_cd">创建分类</string>
-    <string name="dialog_create_new_category">创建新分类</string>
-    <string name="dialog_create_and_assign">创建并指定</string>
-    <string name="dialog_category_name_label">分类名称</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">分类</string>
@@ -328,7 +323,6 @@
     <string name="categories_create_here">在此创建分类</string>
     <string name="categories_dissolve_group">解散分组</string>
     <string name="categories_dissolve_confirm_text">这些分类将重新变为独立分类。</string>
-    <string name="categories_no_candidates">没有可用的分类</string>
     <string name="categories_group_counter">%1$d 个分类，%2$d 个分组</string>
     <string name="categories_folder_counter">%1$d 个分类 · %2$d 位联系人</string>
     <string name="categories_move_out">移出分组</string>

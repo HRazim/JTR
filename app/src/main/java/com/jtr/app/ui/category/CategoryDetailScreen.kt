@@ -20,7 +20,6 @@ import com.jtr.app.R
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
-import com.jtr.app.ui.home.AssignCategoryDialog
 import com.jtr.app.ui.home.PersonListContent
 import com.jtr.app.ui.person.formatDateTimeLong
 import kotlinx.coroutines.launch
@@ -44,6 +43,7 @@ fun CategoryDetailScreen(
     // ViewModel) et reste sur l'écran ; inactif sinon (navigation standard).
     BackHandler(enabled = isSelectionMode) { viewModel.clearSelection() }
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val groups by viewModel.groups.collectAsStateWithLifecycle()
     val categoryName by viewModel.categoryName.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
@@ -157,20 +157,28 @@ fun CategoryDetailScreen(
     }
 
     if (showCategoryDialog) {
-        AssignCategoryDialog(
+        // v7.1.80 — sélecteur de cible MODERNE (langage v7.1.77 : vignettes, dossiers
+        // dépliables, recherche), sélection SIMPLE : taper une catégorie déplace.
+        CategoryPickerSheet(
+            title = stringResource(R.string.dialog_assign_category_title),
             categories = categories,
-            onDismiss = { showCategoryDialog = false },
+            groups = groups,
+            // La catégorie SOURCE n'est plus proposée comme cible (un « move » vers
+            // soi-même n'a pas de sens — elle était listée avant v7.1.80).
+            excludeCategoryIds = setOf(viewModel.categoryId),
             // v7.1.70 — depuis une catégorie (source définie) : VRAI DÉPLACEMENT transactionnel
             // (retrait de la source + ajout à la cible). La multi-appartenance passe par
             // « Gérer les catégories » sur la fiche.
-            onCategorySelected = { categoryId ->
-                viewModel.moveSelectedToCategory(categoryId)
+            onPickSingle = { targetId ->
+                viewModel.moveSelectedToCategory(targetId)
                 showCategoryDialog = false
             },
-            onCreateAndAssign = { name, color ->
-                viewModel.createCategoryAndMoveToSelected(name, color)
+            // « + » → la feuille unifiée de création (image incluse), puis move.
+            onCreateCategory = { name, color, imagePath ->
+                viewModel.createCategoryAndMoveToSelected(name, color, imagePath)
                 showCategoryDialog = false
-            }
+            },
+            onDismiss = { showCategoryDialog = false }
         )
     }
 

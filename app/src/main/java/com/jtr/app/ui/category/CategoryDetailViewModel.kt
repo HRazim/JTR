@@ -129,6 +129,10 @@ class CategoryDetailViewModel(
     val categories: StateFlow<List<Category>> = categoryDao.getAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // v7.1.80 — dossiers pour le sélecteur de cible du « Move » (hiérarchie moderne).
+    val groups: StateFlow<List<com.jtr.app.domain.model.CategoryGroup>> = categoryRepo.getGroups()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     /** Catégorie observée en direct (null pour la virtuelle « Favoris »). */
     val category: StateFlow<Category?> =
         if (isVirtualFavorites) MutableStateFlow(null)
@@ -280,12 +284,16 @@ class CategoryDetailViewModel(
         }
     }
 
-    /** Crée une catégorie puis Y DÉPLACE les contacts sélectionnés (retrait de la source inclus). */
-    fun createCategoryAndMoveToSelected(name: String, color: String) {
+    /**
+     * Crée une catégorie puis Y DÉPLACE les contacts sélectionnés (retrait de la source
+     * inclus). v7.1.80 — [imagePath] : la création passe par la feuille unifiée
+     * (AddCategoryDialog), image de couverture comprise — dernier doublon supprimé.
+     */
+    fun createCategoryAndMoveToSelected(name: String, color: String, imagePath: String? = null) {
         val ids = _selectedIds.value.toList()
         if (ids.isEmpty()) return
         viewModelScope.launch {
-            val category = Category(name = name, color = color)
+            val category = Category(name = name, color = color, imagePath = imagePath)
             categoryRepo.add(category)
             repository.moveToCategory(ids, categoryId, category.id)
             _selectedIds.value = emptySet()

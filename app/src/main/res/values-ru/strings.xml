@@ -44,11 +44,6 @@
 
     <!-- ── Category assign dialog ─────────────────────────────────────────── -->
     <string name="dialog_assign_category_title">Назначить категорию</string>
-    <string name="dialog_new_category_title">Новая категория</string>
-    <string name="dialog_create_category_cd">Создать категорию</string>
-    <string name="dialog_create_new_category">Создать новую категорию</string>
-    <string name="dialog_create_and_assign">Создать и назначить</string>
-    <string name="dialog_category_name_label">Название категории</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">Категории</string>
@@ -333,7 +328,6 @@
     <string name="categories_create_here">Создать категорию здесь</string>
     <string name="categories_dissolve_group">Разгруппировать</string>
     <string name="categories_dissolve_confirm_text">Категории снова станут независимыми.</string>
-    <string name="categories_no_candidates">Нет доступных категорий</string>
     <string name="categories_group_counter">Категорий: %1$d, групп: %2$d</string>
     <string name="categories_folder_counter">%1$d кат. · %2$d контактов</string>
     <string name="categories_move_out">Убрать из группы</string>

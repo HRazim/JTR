@@ -44,11 +44,6 @@
 
     <!-- ── Category assign dialog ─────────────────────────────────────────── -->
     <string name="dialog_assign_category_title">카테고리 지정</string>
-    <string name="dialog_new_category_title">새 카테고리</string>
-    <string name="dialog_create_category_cd">카테고리 만들기</string>
-    <string name="dialog_create_new_category">새 카테고리 만들기</string>
-    <string name="dialog_create_and_assign">만들고 지정</string>
-    <string name="dialog_category_name_label">카테고리 이름</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">카테고리</string>
@@ -333,7 +328,6 @@
     <string name="categories_create_here">여기에 카테고리 만들기</string>
     <string name="categories_dissolve_group">그룹 해제</string>
     <string name="categories_dissolve_confirm_text">카테고리가 다시 독립됩니다.</string>
-    <string name="categories_no_candidates">사용 가능한 카테고리가 없습니다</string>
     <string name="categories_group_counter">카테고리 %1$d개, 그룹 %2$d개</string>
     <string name="categories_folder_counter">카테고리 %1$d개 · 연락처 %2$d명</string>
     <string name="categories_move_out">그룹에서 꺼내기</string>

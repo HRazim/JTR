@@ -44,11 +44,6 @@
 
     <!-- ── Category assign dialog (Home + CategoryDetail) ─────────────────── -->
     <string name="dialog_assign_category_title">カテゴリーを割り当て</string>
-    <string name="dialog_new_category_title">新しいカテゴリー</string>
-    <string name="dialog_create_category_cd">カテゴリーを作成</string>
-    <string name="dialog_create_new_category">新しいカテゴリーを作成</string>
-    <string name="dialog_create_and_assign">作成して割り当て</string>
-    <string name="dialog_category_name_label">カテゴリー名</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">カテゴリー</string>
@@ -328,7 +323,6 @@
     <string name="categories_create_here">ここにカテゴリを作成</string>
     <string name="categories_dissolve_group">グループを解除</string>
     <string name="categories_dissolve_confirm_text">カテゴリは再び独立します。</string>
-    <string name="categories_no_candidates">利用可能なカテゴリがありません</string>
     <string name="categories_group_counter">%1$d 個のカテゴリ、%2$d 個のグループ</string>
     <string name="categories_folder_counter">カテゴリ %1$d · 連絡先 %2$d</string>
     <string name="categories_move_out">グループから出す</string>

@@ -44,11 +44,6 @@
 
     <!-- ── Category assign dialog ─────────────────────────────────────────── -->
     <string name="dialog_assign_category_title">Assegna una categoria</string>
-    <string name="dialog_new_category_title">Nuova categoria</string>
-    <string name="dialog_create_category_cd">Crea una categoria</string>
-    <string name="dialog_create_new_category">Crea una nuova categoria</string>
-    <string name="dialog_create_and_assign">Crea e assegna</string>
-    <string name="dialog_category_name_label">Nome della categoria</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">Categorie</string>
@@ -333,7 +328,6 @@
     <string name="categories_create_here">Crea una categoria qui</string>
     <string name="categories_dissolve_group">Separa</string>
     <string name="categories_dissolve_confirm_text">Le categorie torneranno indipendenti.</string>
-    <string name="categories_no_candidates">Nessuna categoria disponibile</string>
     <string name="categories_group_counter">%1$d categorie, %2$d gruppi</string>
     <string name="categories_folder_counter">%1$d cat. · %2$d contatti</string>
     <string name="categories_move_out">Sposta fuori dal gruppo</string>

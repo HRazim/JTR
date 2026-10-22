@@ -65,6 +65,7 @@ fun CategoryGroupDetailScreen(
     val topEntries by viewModel.topEntries.collectAsStateWithLifecycle()
     val counts by viewModel.personCountByCategory.collectAsStateWithLifecycle()
     val candidates by viewModel.candidateCategories.collectAsStateWithLifecycle()
+    val allGroups by viewModel.allGroups.collectAsStateWithLifecycle()
     val otherGroups by viewModel.otherGroups.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
@@ -139,9 +140,16 @@ fun CategoryGroupDetailScreen(
 
     // ── Dialogues ─────────────────────────────────────────────────────────────
     if (showAddExisting) {
-        AddExistingCategoriesDialog(
-            candidates = candidates,
-            onConfirm = { ids -> viewModel.addExisting(ids); showAddExisting = false },
+        // v7.1.80 — sélection MULTIPLE moderne (langage v7.1.77 : vignettes, dossiers
+        // dépliables, recherche) au lieu des cases + disques pleins ; les dossiers sans
+        // candidate (dont CE dossier) sont élagués par le composant.
+        CategoryPickerSheet(
+            title = stringResource(R.string.categories_add_to_group_title),
+            categories = candidates,
+            groups = allGroups,
+            multiSelect = true,
+            confirmLabel = stringResource(R.string.common_add),
+            onConfirmMulti = { ids -> viewModel.addExisting(ids); showAddExisting = false },
             onDismiss = { showAddExisting = false }
         )
     }
@@ -509,64 +517,3 @@ fun CategoryGroupDetailScreen(
     }
 }
 
-/** Dialogue de sélection multiple de catégories existantes à rattacher au groupe. */
-@Composable
-private fun AddExistingCategoriesDialog(
-    candidates: List<Category>,
-    onConfirm: (List<String>) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val selected = remember { mutableStateListOf<String>() }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.categories_add_to_group_title)) },
-        text = {
-            if (candidates.isEmpty()) {
-                Text(stringResource(R.string.categories_no_candidates))
-            } else {
-                LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
-                    items(candidates, key = { it.id }) { category ->
-                        val checked = category.id in selected
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable {
-                                    if (checked) selected.remove(category.id) else selected.add(category.id)
-                                }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(checked = checked, onCheckedChange = {
-                                if (checked) selected.remove(category.id) else selected.add(category.id)
-                            })
-                            val accent = rememberCategoryColor(category.color)
-                            Box(
-                                modifier = Modifier.size(32.dp).clip(CircleShape).background(accent),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (category.imagePath != null) {
-                                    AsyncImage(model = category.imagePath, contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                                } else {
-                                    Icon(Icons.Default.Folder, null, tint = Color.White,
-                                        modifier = Modifier.size(18.dp))
-                                }
-                            }
-                            Spacer(Modifier.width(10.dp))
-                            Text(category.name, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(selected.toList()) }, enabled = selected.isNotEmpty()) {
-                Text(stringResource(R.string.common_add))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-        }
-    )
-}

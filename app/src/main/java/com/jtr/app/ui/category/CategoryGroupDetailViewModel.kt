@@ -112,6 +112,10 @@ class CategoryGroupDetailViewModel(
         .map { list -> list.filter { it.parentGroupId != groupId } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** v7.1.80 — TOUS les dossiers : hiérarchie du sélecteur moderne de rattachement. */
+    val allGroups: StateFlow<List<CategoryGroup>> = repo.getGroups()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     /** Rattache des catégories existantes à ce groupe. */
     fun addExisting(ids: List<String>) {
         if (ids.isEmpty()) return
