@@ -536,4 +536,17 @@
     <string name="import_contacts_done_message_updated">%1$d içe aktarıldı · %2$d güncellendi · %3$d atlandı</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">Doğum tarihi gelecekte olamaz</string>
+    <!-- v7.1.89 - galerie d'images par contact -->
+    <string name="gallery_title">Galeri</string>
+    <string name="gallery_add">Fotoğraf ekle</string>
+    <string name="gallery_empty_title">Henüz anı yok</string>
+    <string name="gallery_empty_subtitle">Bu kişi için ilk anınızı ekleyin.</string>
+    <string name="gallery_delete_title">Bu fotoğraf silinsin mi?</string>
+    <string name="gallery_delete_message">Fotoğraf bu galeriden kaldırılacak ve cihazdan silinecek. Bu işlem geri alınamaz.</string>
+    <string name="gallery_delete_confirm">Sil</string>
+    <string name="gallery_image_cd">Galeri fotoğrafı</string>
+    <plurals name="gallery_square_cd">
+        <item quantity="one">%1$s galerisi, 1 fotoğraf</item>
+        <item quantity="other">%1$s galerisi, %2$d fotoğraf</item>
+    </plurals>
 </resources>

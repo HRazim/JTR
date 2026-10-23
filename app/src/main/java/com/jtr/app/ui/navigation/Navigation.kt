@@ -49,6 +49,7 @@ import com.jtr.app.ui.category.SelectContactsScreen
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.contacts.ImportContactsScreen
 import com.jtr.app.ui.home.HomeScreen
+import com.jtr.app.ui.gallery.GalleryScreen
 import com.jtr.app.ui.map.MapScreen
 import com.jtr.app.ui.person.*
 import com.jtr.app.ui.search.SearchScreen
@@ -98,7 +99,11 @@ object Routes {
     fun searchInCategory(categoryId: String) = "search?categoryId=$categoryId"
     fun searchInGroup(groupId: Long) = "search?groupId=$groupId"
 
+    /** v7.1.89 — galerie d'images d'un contact (`personId` = UUID TEXT, jamais nul). */
+    const val GALLERY = "gallery/{personId}"
+
     fun personDetail(personId: String) = "person_detail/$personId"
+    fun gallery(personId: String) = "gallery/$personId"
     fun categoryDetail(categoryId: String) = "category_detail/$categoryId"
     fun categoryGroupDetail(groupId: Long) = "category_group_detail/$groupId"
 
@@ -415,6 +420,8 @@ fun JTRMainScaffold(
                             navController.popBackStack()
                         }
                     },
+                    // v7.1.89 — carré « galerie » à côté de l'avatar.
+                    onNavigateToGallery = { navController.navigate(Routes.gallery(personId)) },
                     onNavigateToMap = { navController.navigate(Routes.MAP_PICKER) },
                     cityFromMap = cityFromMap,
                     latFromMap = latFromMap,
@@ -425,6 +432,18 @@ fun JTRMainScaffold(
                         backStackEntry.savedStateHandle.remove<Double>("selected_lng")
                     }
                 )
+            }
+
+            // v7.1.89 — galerie d'un contact : écran plein, empilé sur la fiche.
+            composable(
+                route = Routes.GALLERY,
+                arguments = listOf(navArgument("personId") { type = NavType.StringType }),
+                enterTransition = { slideInHorizontally(initialOffsetX = { rtlSign * it }) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -rtlSign * it / 3 }) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -rtlSign * it / 3 }) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { rtlSign * it }) }
+            ) {
+                GalleryScreen(onNavigateBack = { navController.popBackStack() })
             }
 
             composable(Routes.MAP_PICKER) {

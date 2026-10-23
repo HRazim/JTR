@@ -576,4 +576,21 @@
     <string name="import_contacts_done_message_updated">%1$d مستورد · %2$d محدَّث · %3$d متجاوَز</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">لا يمكن أن يكون تاريخ الميلاد في المستقبل</string>
+    <!-- v7.1.89 - galerie d'images par contact -->
+    <string name="gallery_title">المعرض</string>
+    <string name="gallery_add">إضافة صور</string>
+    <string name="gallery_empty_title">لا توجد ذكريات بعد</string>
+    <string name="gallery_empty_subtitle">أضف أول ذكرى لجهة الاتصال هذه.</string>
+    <string name="gallery_delete_title">حذف هذه الصورة؟</string>
+    <string name="gallery_delete_message">ستتم إزالة الصورة من هذا المعرض وحذفها من الجهاز. لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="gallery_delete_confirm">حذف</string>
+    <string name="gallery_image_cd">صورة من المعرض</string>
+    <plurals name="gallery_square_cd">
+        <item quantity="zero">معرض %1$s، %2$d صور</item>
+        <item quantity="one">معرض %1$s، صورة واحدة</item>
+        <item quantity="two">معرض %1$s، %2$d صور</item>
+        <item quantity="few">معرض %1$s، %2$d صور</item>
+        <item quantity="many">معرض %1$s، %2$d صور</item>
+        <item quantity="other">معرض %1$s، %2$d صور</item>
+    </plurals>
 </resources>

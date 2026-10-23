@@ -556,4 +556,19 @@
     <string name="import_contacts_done_message_updated">%1$d импортировано · %2$d обновлено · %3$d пропущено</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">Дата рождения не может быть в будущем</string>
+    <!-- v7.1.89 - galerie d'images par contact -->
+    <string name="gallery_title">Галерея</string>
+    <string name="gallery_add">Добавить фото</string>
+    <string name="gallery_empty_title">Пока нет воспоминаний</string>
+    <string name="gallery_empty_subtitle">Добавьте первое воспоминание об этом контакте.</string>
+    <string name="gallery_delete_title">Удалить это фото?</string>
+    <string name="gallery_delete_message">Фото будет убрано из этой галереи и удалено с устройства. Отменить нельзя.</string>
+    <string name="gallery_delete_confirm">Удалить</string>
+    <string name="gallery_image_cd">Фото из галереи</string>
+    <plurals name="gallery_square_cd">
+        <item quantity="one">Галерея: %1$s, 1 фото</item>
+        <item quantity="few">Галерея: %1$s, %2$d фото</item>
+        <item quantity="many">Галерея: %1$s, %2$d фото</item>
+        <item quantity="other">Галерея: %1$s, %2$d фото</item>
+    </plurals>
 </resources>

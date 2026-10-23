@@ -555,4 +555,18 @@
     <string name="import_contacts_done_message_updated">%1$d importados · %2$d actualizados · %3$d omitidos</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">Una fecha de nacimiento no puede estar en el futuro</string>
+    <!-- v7.1.89 - galerie d'images par contact -->
+    <string name="gallery_title">Galería</string>
+    <string name="gallery_add">Añadir fotos</string>
+    <string name="gallery_empty_title">Aún no hay recuerdos</string>
+    <string name="gallery_empty_subtitle">Añade tu primer recuerdo de este contacto.</string>
+    <string name="gallery_delete_title">¿Eliminar esta foto?</string>
+    <string name="gallery_delete_message">La foto se quitará de esta galería y se eliminará del dispositivo. Esta acción no se puede deshacer.</string>
+    <string name="gallery_delete_confirm">Eliminar</string>
+    <string name="gallery_image_cd">Foto de la galería</string>
+    <plurals name="gallery_square_cd">
+        <item quantity="one">Galería de %1$s, 1 foto</item>
+        <item quantity="many">Galería de %1$s, %2$d fotos</item>
+        <item quantity="other">Galería de %1$s, %2$d fotos</item>
+    </plurals>
 </resources>

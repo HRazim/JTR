@@ -41,4 +41,12 @@ interface GalleryImageDao {
     /** Toutes les lignes — lecture ponctuelle pour l'export `.jtr`. */
     @Query("SELECT * FROM gallery_images")
     suspend fun getAllSync(): List<GalleryImage>
+
+    /**
+     * v7.1.89 — plus grande `position` déjà utilisée pour ce contact ; `-1` s'il n'a aucune
+     * image, de sorte que la première ajoutée prenne la position 0. Permet d'ajouter EN FIN
+     * de liste sans relire toute la galerie.
+     */
+    @Query("SELECT COALESCE(MAX(position), -1) FROM gallery_images WHERE personId = :personId")
+    suspend fun maxPosition(personId: String): Int
 }

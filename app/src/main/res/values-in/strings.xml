@@ -544,4 +544,16 @@
     <string name="import_contacts_done_message_updated">%1$d diimpor · %2$d diperbarui · %3$d dilewati</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">Tanggal lahir tidak boleh di masa depan</string>
+    <!-- v7.1.89 - galerie d'images par contact -->
+    <string name="gallery_title">Galeri</string>
+    <string name="gallery_add">Tambah foto</string>
+    <string name="gallery_empty_title">Belum ada kenangan</string>
+    <string name="gallery_empty_subtitle">Tambahkan kenangan pertama untuk kontak ini.</string>
+    <string name="gallery_delete_title">Hapus foto ini?</string>
+    <string name="gallery_delete_message">Foto akan dihapus dari galeri ini dan dari perangkat. Tindakan ini tidak dapat dibatalkan.</string>
+    <string name="gallery_delete_confirm">Hapus</string>
+    <string name="gallery_image_cd">Foto galeri</string>
+    <plurals name="gallery_square_cd">
+        <item quantity="other">Galeri %1$s, %2$d foto</item>
+    </plurals>
 </resources>

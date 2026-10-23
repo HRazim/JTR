@@ -83,6 +83,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jtr.app.data.repository.GalleryRepository
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
@@ -113,6 +114,8 @@ fun PersonDetailScreen(
     onNavigateToCategory: (String) -> Unit = {},
     onDeleteClick: () -> Unit,
     onNavigateToMap: () -> Unit = {},
+    // v7.1.89 — carré « galerie » à côté de l'avatar → page galerie du contact.
+    onNavigateToGallery: (String) -> Unit = {},
     cityFromMap: String? = null,
     latFromMap: Double? = null,
     lngFromMap: Double? = null,
@@ -464,6 +467,23 @@ fun PersonDetailScreen(
                 Spacer(Modifier.height(8.dp))
             }
 
+            // v7.1.89 — la galerie du contact alimente À LA FOIS la pastille (nombre) et la
+            // vignette du carré (image la plus récente). Une seule observation : la liste est
+            // triée position/createdAt croissants, donc la DERNIÈRE entrée est la plus récente.
+            val galleryContext = LocalContext.current
+            val galleryImages by remember(person.id) {
+                GalleryRepository(galleryContext).observeByPerson(person.id)
+            }.collectAsStateWithLifecycle(initialValue = emptyList())
+            val galleryCount = galleryImages.size
+            val galleryLatestPath = galleryImages.lastOrNull()?.path
+
+            // v7.1.89 — l'avatar est encadré par un espaceur et le carré « galerie » de MÊME
+            // largeur : le carré apparaît à droite SANS décentrer l'avatar. Le carré est un
+            // FRÈRE du Box de 96 dp, donc l'EditPhotoOverlay (qui couvre tout le disque en
+            // édition) ne le masque pas — il reste accessible dans les deux modes.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.width(GALLERY_SQUARE_SIZE + 12.dp))
+
             Box(modifier = Modifier.size(96.dp)) {
                 // Source résolue dans un ordre STABLE, indépendant de isEditing :
                 // 1) photo en attente (sélectionnée, pas encore persistée),
@@ -519,6 +539,15 @@ fun PersonDetailScreen(
                 EditPhotoOverlay(isEditing = isEditing) {
                     photoPicker()
                 }
+            }
+
+                Spacer(Modifier.width(12.dp))
+                GallerySquare(
+                    count = galleryCount,
+                    latestImagePath = galleryLatestPath,
+                    personName = person.fullName,
+                    onClick = { onNavigateToGallery(person.id) }
+                )
             }
 
             Spacer(Modifier.height(16.dp))

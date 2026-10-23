@@ -546,4 +546,18 @@
     <string name="import_contacts_done_message_updated">%1$d importados · %2$d atualizados · %3$d ignorados</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">Uma data de nascimento não pode estar no futuro</string>
+    <!-- v7.1.89 - galerie d'images par contact -->
+    <string name="gallery_title">Galeria</string>
+    <string name="gallery_add">Adicionar fotos</string>
+    <string name="gallery_empty_title">Ainda sem recordações</string>
+    <string name="gallery_empty_subtitle">Adicione a sua primeira recordação deste contacto.</string>
+    <string name="gallery_delete_title">Eliminar esta foto?</string>
+    <string name="gallery_delete_message">A foto será removida desta galeria e eliminada do dispositivo. Esta ação não pode ser anulada.</string>
+    <string name="gallery_delete_confirm">Eliminar</string>
+    <string name="gallery_image_cd">Foto da galeria</string>
+    <plurals name="gallery_square_cd">
+        <item quantity="one">Galeria de %1$s, 1 foto</item>
+        <item quantity="many">Galeria de %1$s, %2$d fotos</item>
+        <item quantity="other">Galeria de %1$s, %2$d fotos</item>
+    </plurals>
 </resources>

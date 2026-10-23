@@ -535,4 +535,16 @@
     <string name="import_contacts_done_message_updated">%1$d 件をインポート · %2$d 件を更新 · %3$d 件をスキップ</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">誕生日を未来の日付にはできません</string>
+    <!-- v7.1.89 - galerie d'images par contact -->
+    <string name="gallery_title">ギャラリー</string>
+    <string name="gallery_add">写真を追加</string>
+    <string name="gallery_empty_title">まだ思い出がありません</string>
+    <string name="gallery_empty_subtitle">この連絡先の最初の思い出を追加しましょう。</string>
+    <string name="gallery_delete_title">この写真を削除しますか？</string>
+    <string name="gallery_delete_message">写真はこのギャラリーから外され、端末からも削除されます。元に戻せません。</string>
+    <string name="gallery_delete_confirm">削除</string>
+    <string name="gallery_image_cd">ギャラリーの写真</string>
+    <plurals name="gallery_square_cd">
+        <item quantity="other">%1$s のギャラリー、写真 %2$d 枚</item>
+    </plurals>
 </resources>
