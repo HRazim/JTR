@@ -560,8 +560,6 @@
     <string name="gallery_add">Añadir fotos</string>
     <string name="gallery_empty_title">Aún no hay recuerdos</string>
     <string name="gallery_empty_subtitle">Añade tu primer recuerdo de este contacto.</string>
-    <string name="gallery_delete_title">¿Eliminar esta foto?</string>
-    <string name="gallery_delete_message">La foto se quitará de esta galería y se eliminará del dispositivo. Esta acción no se puede deshacer.</string>
     <string name="gallery_delete_confirm">Eliminar</string>
     <string name="gallery_image_cd">Foto de la galería</string>
     <plurals name="gallery_square_cd">
@@ -569,4 +567,10 @@
         <item quantity="many">Galería de %1$s, %2$d fotos</item>
         <item quantity="other">Galería de %1$s, %2$d fotos</item>
     </plurals>
+    <plurals name="gallery_delete_n_title">
+        <item quantity="one">¿Eliminar %1$d foto(s)?</item>
+        <item quantity="many">¿Eliminar %1$d foto(s)?</item>
+        <item quantity="other">¿Eliminar %1$d foto(s)?</item>
+    </plurals>
+    <string name="gallery_delete_warning">Se quitará de esta galería y se eliminará del dispositivo. Esta acción no se puede deshacer.</string>
 </resources>

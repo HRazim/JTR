@@ -64,4 +64,16 @@ class GalleryRepository(context: Context) {
         dao.delete(image.id)
         GalleryImageStore.deleteFile(appContext, image.path)
     }
+
+    /**
+     * v7.1.90 — suppression EN LOT (mode sélection de la grille). Même chemin exactement que
+     * [delete], appliqué à chaque image : ligne puis fichier, avec le garde-fou de chemin.
+     * Un seul aller-retour hors du thread principal pour toute la sélection.
+     */
+    suspend fun deleteAll(images: List<GalleryImage>) = withContext(Dispatchers.IO) {
+        images.forEach { image ->
+            dao.delete(image.id)
+            GalleryImageStore.deleteFile(appContext, image.path)
+        }
+    }
 }

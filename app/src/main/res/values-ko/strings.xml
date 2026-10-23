@@ -531,11 +531,13 @@
     <string name="gallery_add">사진 추가</string>
     <string name="gallery_empty_title">아직 추억이 없습니다</string>
     <string name="gallery_empty_subtitle">이 연락처의 첫 추억을 추가하세요.</string>
-    <string name="gallery_delete_title">이 사진을 삭제할까요?</string>
-    <string name="gallery_delete_message">사진이 갤러리에서 제거되고 기기에서도 삭제됩니다. 되돌릴 수 없습니다.</string>
     <string name="gallery_delete_confirm">삭제</string>
     <string name="gallery_image_cd">갤러리 사진</string>
     <plurals name="gallery_square_cd">
         <item quantity="other">%1$s의 갤러리, 사진 %2$d장</item>
     </plurals>
+    <plurals name="gallery_delete_n_title">
+        <item quantity="other">사진 %1$d장을 삭제할까요?</item>
+    </plurals>
+    <string name="gallery_delete_warning">갤러리에서 제거되고 기기에서도 삭제됩니다. 되돌릴 수 없습니다.</string>
 </resources>

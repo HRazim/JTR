@@ -540,11 +540,13 @@
     <string name="gallery_add">添加照片</string>
     <string name="gallery_empty_title">还没有回忆</string>
     <string name="gallery_empty_subtitle">为这位联系人添加第一段回忆。</string>
-    <string name="gallery_delete_title">删除这张照片？</string>
-    <string name="gallery_delete_message">照片将从该相册移除并从设备中删除。此操作无法撤销。</string>
     <string name="gallery_delete_confirm">删除</string>
     <string name="gallery_image_cd">相册照片</string>
     <plurals name="gallery_square_cd">
         <item quantity="other">%1$s 的相册，%2$d 张照片</item>
     </plurals>
+    <plurals name="gallery_delete_n_title">
+        <item quantity="other">删除 %1$d 张照片？</item>
+    </plurals>
+    <string name="gallery_delete_warning">将从该相册移除并从设备中删除。此操作无法撤销。</string>
 </resources>

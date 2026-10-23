@@ -1,12 +1,16 @@
 package com.jtr.app.ui.gallery
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,7 +28,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -37,6 +43,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,6 +65,9 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.jtr.app.R
 import com.jtr.app.domain.model.GalleryImage
+import com.jtr.app.ui.category.FooterActionColumn
+import com.jtr.app.ui.components.JtrBottomBarTransitions
+import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.rememberSystemMultiPhotoPicker
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
 
@@ -82,7 +93,20 @@ fun GalleryScreen(
 
     // Index de l'image ouverte en plein écran ; null = grille seule.
     var viewerIndex by remember { mutableStateOf<Int?>(null) }
-    var pendingDelete by remember { mutableStateOf<GalleryImage?>(null) }
+    // Images dont la suppression est en attente de confirmation (1 depuis la visionneuse,
+    // N depuis le mode sélection) — un seul dialogue pour les deux chemins.
+    var pendingDelete by remember { mutableStateOf<List<GalleryImage>>(emptyList()) }
+
+    // v7.1.90 — mode SÉLECTION de la grille, sur appui long. Les identifiants survivent aux
+    // recompositions ; une image supprimée disparaît naturellement de la liste observée.
+    var isSelectionActive by remember { mutableStateOf(false) }
+    val selectedIds = remember { mutableStateListOf<Long>() }
+    fun exitSelection() {
+        isSelectionActive = false
+        selectedIds.clear()
+    }
+    // Back en mode sélection = annuler la sélection, pas quitter l'écran (idiome de l'app).
+    BackHandler(enabled = isSelectionActive) { exitSelection() }
 
     val pickImages = rememberSystemMultiPhotoPicker { uris -> viewModel.addImages(uris) }
 
@@ -94,25 +118,45 @@ fun GalleryScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = personName.ifBlank { stringResource(R.string.gallery_title) },
+                        // En sélection, le titre devient le compteur — comme l'Accueil
+                        // et Catégories, qui réutilisent la même chaîne plurielle.
+                        text = if (isSelectionActive)
+                            pluralStringResource(
+                                R.plurals.home_selection_count, selectedIds.size, selectedIds.size
+                            )
+                        else personName.ifBlank { stringResource(R.string.gallery_title) },
                         maxLines = 1
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.common_back))
+                    if (isSelectionActive) {
+                        IconButton(onClick = { exitSelection() }) {
+                            Icon(Icons.Default.Close,
+                                contentDescription = stringResource(R.string.common_cancel))
+                        }
+                    } else {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.common_back))
+                        }
                     }
                 },
                 actions = {
-                    if (isImporting) {
-                        CircularProgressIndicator(
+                    when {
+                        // Le « + » DISPARAÎT en sélection, comme partout ailleurs dans l'app ;
+                        // il cède la place à « Tout sélectionner ».
+                        isSelectionActive -> IconButton(onClick = {
+                            selectedIds.clear()
+                            selectedIds.addAll(images.map { it.id })
+                        }) {
+                            Icon(Icons.Default.SelectAll,
+                                contentDescription = stringResource(R.string.select_all))
+                        }
+                        isImporting -> CircularProgressIndicator(
                             modifier = Modifier.size(24.dp).padding(end = 8.dp),
                             strokeWidth = 2.dp
                         )
-                    } else {
-                        // Même idiome que les autres écrans : « + » dans la barre du haut.
-                        IconButton(onClick = pickImages) {
+                        else -> IconButton(onClick = pickImages) {
                             Icon(Icons.Default.Add,
                                 contentDescription = stringResource(R.string.gallery_add))
                         }
@@ -125,6 +169,33 @@ fun GalleryScreen(
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
+        },
+        bottomBar = {
+            // Footer contextuel : même grammaire que l'Accueil et Catégories
+            // (FooterActionColumn partagé), et la COULEUR porte le sens — rouge `error`
+            // pour une suppression, jamais pour autre chose.
+            AnimatedVisibility(
+                visible = isSelectionActive,
+                enter = JtrBottomBarTransitions.enter,
+                exit = JtrBottomBarTransitions.exit
+            ) {
+                BottomAppBar(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ) {
+                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                        FooterActionColumn(
+                            icon = Icons.Default.Delete,
+                            label = stringResource(R.string.gallery_delete_confirm),
+                            enabled = selectedIds.isNotEmpty(),
+                            onClick = {
+                                pendingDelete = images.filter { it.id in selectedIds }
+                            },
+                            tintOverride = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
@@ -142,7 +213,24 @@ fun GalleryScreen(
                         val index = images.indexOf(image)
                         GalleryThumbnail(
                             image = image,
-                            onClick = { viewerIndex = index }
+                            isSelectionActive = isSelectionActive,
+                            isSelected = image.id in selectedIds,
+                            onClick = {
+                                if (isSelectionActive) {
+                                    // Bascule ; vider la sélection ne quitte PAS le mode
+                                    // (on peut re-cocher sans refaire un appui long).
+                                    if (image.id in selectedIds) selectedIds.remove(image.id)
+                                    else selectedIds.add(image.id)
+                                } else {
+                                    viewerIndex = index
+                                }
+                            },
+                            onLongClick = {
+                                if (!isSelectionActive) {
+                                    isSelectionActive = true
+                                    selectedIds.add(image.id)
+                                }
+                            }
                         )
                     }
                 }
@@ -159,28 +247,37 @@ fun GalleryScreen(
                 images = images,
                 startIndex = startIndex.coerceIn(0, images.lastIndex),
                 onDismiss = { viewerIndex = null },
-                onRequestDelete = { pendingDelete = it }
+                onRequestDelete = { pendingDelete = listOf(it) }
             )
         }
     }
 
-    pendingDelete?.let { target ->
+    // UNE seule confirmation pour les deux chemins : une image depuis la visionneuse,
+    // ou toute une sélection depuis la grille. Les chaînes sont au pluriel, donc le
+    // cas « 1 » se lit exactement comme avant.
+    if (pendingDelete.isNotEmpty()) {
+        val targets = pendingDelete
         AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            title = { Text(stringResource(R.string.gallery_delete_title)) },
-            text = { Text(stringResource(R.string.gallery_delete_message)) },
+            onDismissRequest = { pendingDelete = emptyList() },
+            title = {
+                Text(pluralStringResource(
+                    R.plurals.gallery_delete_n_title, targets.size, targets.size))
+            },
+            text = { Text(stringResource(R.string.gallery_delete_warning)) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.delete(target)
-                    pendingDelete = null
-                    // La visionneuse se referme : l'image affichée vient de disparaître.
+                    viewModel.deleteAll(targets)
+                    pendingDelete = emptyList()
+                    // La visionneuse se referme (l'image affichée vient de disparaître) et
+                    // le mode sélection se termine : plus rien à y faire.
                     viewerIndex = null
+                    exitSelection()
                 }) {
                     Text(stringResource(R.string.gallery_delete_confirm))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) {
+                TextButton(onClick = { pendingDelete = emptyList() }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             }
@@ -188,15 +285,28 @@ fun GalleryScreen(
     }
 }
 
-/** Vignette carrée (recadrage d'AFFICHAGE uniquement — le fichier garde ses proportions). */
+/**
+ * Vignette carrée (recadrage d'AFFICHAGE uniquement — le fichier garde ses proportions).
+ *
+ * Appui long = entrer en sélection, comme l'Accueil et Catégories. En sélection, un voile
+ * assombrit les images COCHÉES et la coche universelle [JtrSelectionCheck] (obligatoire pour
+ * tout nouvel affichage) reste lisible sur n'importe quelle photo.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun GalleryThumbnail(image: GalleryImage, onClick: () -> Unit) {
+private fun GalleryThumbnail(
+    image: GalleryImage,
+    isSelectionActive: Boolean,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
@@ -205,6 +315,19 @@ private fun GalleryThumbnail(image: GalleryImage, onClick: () -> Unit) {
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
+        if (isSelectionActive) {
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.35f))
+                )
+            }
+            JtrSelectionCheck(
+                selected = isSelected,
+                modifier = Modifier.align(Alignment.TopStart).padding(6.dp)
+            )
+        }
     }
 }
 
@@ -288,7 +411,7 @@ private fun GalleryViewer(
                 modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
             ) {
                 Icon(Icons.Default.Delete, tint = Color.White,
-                    contentDescription = stringResource(R.string.gallery_delete_title))
+                    contentDescription = stringResource(R.string.gallery_delete_confirm))
             }
 
             // Compteur « 2 / 7 » : repère discret quand on feuillette.

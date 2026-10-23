@@ -549,11 +549,13 @@
     <string name="gallery_add">Tambah foto</string>
     <string name="gallery_empty_title">Belum ada kenangan</string>
     <string name="gallery_empty_subtitle">Tambahkan kenangan pertama untuk kontak ini.</string>
-    <string name="gallery_delete_title">Hapus foto ini?</string>
-    <string name="gallery_delete_message">Foto akan dihapus dari galeri ini dan dari perangkat. Tindakan ini tidak dapat dibatalkan.</string>
     <string name="gallery_delete_confirm">Hapus</string>
     <string name="gallery_image_cd">Foto galeri</string>
     <plurals name="gallery_square_cd">
         <item quantity="other">Galeri %1$s, %2$d foto</item>
     </plurals>
+    <plurals name="gallery_delete_n_title">
+        <item quantity="other">Hapus %1$d foto?</item>
+    </plurals>
+    <string name="gallery_delete_warning">Dihapus dari galeri ini dan dari perangkat. Tindakan ini tidak dapat dibatalkan.</string>
 </resources>

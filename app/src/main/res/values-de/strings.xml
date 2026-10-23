@@ -541,12 +541,15 @@
     <string name="gallery_add">Fotos hinzufügen</string>
     <string name="gallery_empty_title">Noch keine Erinnerungen</string>
     <string name="gallery_empty_subtitle">Füge die erste Erinnerung für diesen Kontakt hinzu.</string>
-    <string name="gallery_delete_title">Dieses Foto löschen?</string>
-    <string name="gallery_delete_message">Das Foto wird aus dieser Galerie entfernt und vom Gerät gelöscht. Das lässt sich nicht rückgängig machen.</string>
     <string name="gallery_delete_confirm">Löschen</string>
     <string name="gallery_image_cd">Galeriefoto</string>
     <plurals name="gallery_square_cd">
         <item quantity="one">Galerie von %1$s, 1 Foto</item>
         <item quantity="other">Galerie von %1$s, %2$d Fotos</item>
     </plurals>
+    <plurals name="gallery_delete_n_title">
+        <item quantity="one">%1$d Foto(s) löschen?</item>
+        <item quantity="other">%1$d Foto(s) löschen?</item>
+    </plurals>
+    <string name="gallery_delete_warning">Aus dieser Galerie entfernt und vom Gerät gelöscht. Das lässt sich nicht rückgängig machen.</string>
 </resources>

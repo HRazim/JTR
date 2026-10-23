@@ -560,8 +560,6 @@
     <string name="gallery_add">Ajouter des photos</string>
     <string name="gallery_empty_title">Aucun souvenir</string>
     <string name="gallery_empty_subtitle">Ajoutez votre premier souvenir pour ce contact.</string>
-    <string name="gallery_delete_title">Supprimer cette photo ?</string>
-    <string name="gallery_delete_message">La photo sera retirée de cette galerie et effacée de l\'appareil. Action irréversible.</string>
     <string name="gallery_delete_confirm">Supprimer</string>
     <string name="gallery_image_cd">Photo de la galerie</string>
     <plurals name="gallery_square_cd">
@@ -569,4 +567,10 @@
         <item quantity="many">Galerie de %1$s, %2$d photos</item>
         <item quantity="other">Galerie de %1$s, %2$d photos</item>
     </plurals>
+    <plurals name="gallery_delete_n_title">
+        <item quantity="one">Supprimer %1$d photo(s) ?</item>
+        <item quantity="many">Supprimer %1$d photo(s) ?</item>
+        <item quantity="other">Supprimer %1$d photo(s) ?</item>
+    </plurals>
+    <string name="gallery_delete_warning">Retrait de cette galerie et effacement de l\'appareil. Action irréversible.</string>
 </resources>

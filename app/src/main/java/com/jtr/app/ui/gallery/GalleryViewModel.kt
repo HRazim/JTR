@@ -63,4 +63,10 @@ class GalleryViewModel(
     fun delete(image: GalleryImage) {
         viewModelScope.launch { repository.delete(image) }
     }
+
+    /** v7.1.90 — supprime toute une sélection, même chemin unitaire appliqué en lot. */
+    fun deleteAll(images: List<GalleryImage>) {
+        if (images.isEmpty()) return
+        viewModelScope.launch { repository.deleteAll(images) }
+    }
 }
