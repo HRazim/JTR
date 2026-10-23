@@ -119,6 +119,9 @@ fun GalleryScreen(
     // recompositions ; une image supprimée disparaît naturellement de la liste observée.
     var isSelectionActive by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateListOf<Long>() }
+    // v7.1.96 — image dont le panneau de détails est ouvert DEPUIS LA GRILLE (bouton ⓘ du
+    // mode sélection) ; null = aucun panneau. La visionneuse a son propre état.
+    var detailsImageId by remember { mutableStateOf<Long?>(null) }
     fun exitSelection() {
         isSelectionActive = false
         selectedIds.clear()
@@ -172,9 +175,16 @@ fun GalleryScreen(
                 },
                 navigationIcon = {
                     if (isSelectionActive) {
-                        IconButton(onClick = { exitSelection() }) {
-                            Icon(Icons.Default.Close,
-                                contentDescription = stringResource(R.string.common_cancel))
+                        // v7.1.96 — « Tout sélectionner » à GAUCHE, « Annuler » à droite :
+                        // c'est déjà la disposition de l'Accueil, de Catégories et du détail
+                        // de dossier (tous trois le posent en `navigationIcon`). La galerie
+                        // était la SEULE à faire l'inverse ; elle rentre dans le rang.
+                        IconButton(onClick = {
+                            selectedIds.clear()
+                            selectedIds.addAll(images.map { it.id })
+                        }) {
+                            Icon(Icons.Default.SelectAll,
+                                contentDescription = stringResource(R.string.select_all))
                         }
                     } else {
                         IconButton(onClick = onNavigateBack) {
@@ -185,19 +195,27 @@ fun GalleryScreen(
                 },
                 actions = {
                     when {
-                        // Le « + » DISPARAÎT en sélection, comme partout ailleurs dans l'app ;
-                        // il cède la place à « Tout sélectionner ».
-                        isSelectionActive -> IconButton(onClick = {
-                            selectedIds.clear()
-                            selectedIds.addAll(images.map { it.id })
-                        }) {
-                            Icon(Icons.Default.SelectAll,
-                                contentDescription = stringResource(R.string.select_all))
+                        isSelectionActive -> {
+                            // ⓘ UNIQUEMENT sur une sélection d'UNE image : des détails n'ont
+                            // de sens que pour une photo précise. Même bouton, même panneau
+                            // que depuis la visionneuse — aucune variante.
+                            if (selectedIds.size == 1) {
+                                IconButton(onClick = { detailsImageId = selectedIds.first() }) {
+                                    Icon(Icons.Outlined.Info,
+                                        contentDescription =
+                                            stringResource(R.string.gallery_details_open))
+                                }
+                            }
+                            IconButton(onClick = { exitSelection() }) {
+                                Icon(Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.common_cancel))
+                            }
                         }
                         isImporting -> CircularProgressIndicator(
                             modifier = Modifier.size(24.dp).padding(end = 8.dp),
                             strokeWidth = 2.dp
                         )
+                        // Le « + » DISPARAÎT en sélection, comme partout ailleurs dans l'app.
                         else -> IconButton(onClick = pickImages) {
                             Icon(Icons.Default.Add,
                                 contentDescription = stringResource(R.string.gallery_add))
@@ -278,6 +296,27 @@ fun GalleryScreen(
                     }
                 }
             }
+        }
+    }
+
+    // PANNEAU DE DÉTAILS ouvert depuis la GRILLE (sélection d'une seule image) — le MÊME
+    // composant que depuis la visionneuse, câblé sur les mêmes intentions.
+    detailsImageId?.let { id ->
+        val image = images.firstOrNull { it.id == id }
+        if (image == null) {
+            // L'image a disparu (suppression concurrente) : on referme plutôt que d'afficher
+            // un panneau orphelin.
+            detailsImageId = null
+        } else {
+            ImageDetailsSheet(
+                image = image,
+                onCaptionChange = { viewModel.setCaption(id, it) },
+                onCreatedAtChange = { viewModel.setCreatedAt(id, it) },
+                onLocationChange = { lat, lng, label ->
+                    viewModel.setLocation(id, lat, lng, label)
+                },
+                onDismiss = { detailsImageId = null }
+            )
         }
     }
 
