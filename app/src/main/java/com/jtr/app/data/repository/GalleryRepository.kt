@@ -56,6 +56,20 @@ class GalleryRepository(context: Context) {
     }
 
     /**
+     * v7.1.94 — enregistre la DESCRIPTION d'une image. Une chaîne vide (ou blanche) est
+     * normalisée en `null` : « pas de description » n'a qu'UNE représentation en base, ce qui
+     * évite qu'un champ vidé puis relu ressorte comme une chaîne vide significative.
+     */
+    suspend fun setCaption(id: Long, caption: String?) = withContext(Dispatchers.IO) {
+        dao.updateCaption(id, caption?.trim()?.takeIf { it.isNotEmpty() })
+    }
+
+    /** v7.1.94 — enregistre la DATE + HEURE d'une image (epoch millis). */
+    suspend fun setCreatedAt(id: Long, createdAt: Long) = withContext(Dispatchers.IO) {
+        dao.updateCreatedAt(id, createdAt)
+    }
+
+    /**
      * Supprime une image : la LIGNE d'abord (l'UI se met à jour immédiatement via le Flow),
      * le FICHIER ensuite. Dans cet ordre, un échec de suppression du fichier laisse au pire
      * un orphelin invisible, jamais une vignette pointant dans le vide.

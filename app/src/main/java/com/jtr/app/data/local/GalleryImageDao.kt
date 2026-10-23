@@ -38,6 +38,22 @@ interface GalleryImageDao {
     @Query("DELETE FROM gallery_images WHERE personId = :personId")
     suspend fun deleteByPerson(personId: String)
 
+    /**
+     * v7.1.94 — DESCRIPTION de l'image. Écrit la seule colonne `caption`, jamais la ligne
+     * entière : une mise à jour partielle ne peut pas écraser par mégarde un `path` ou un
+     * `createdAt` lus plus tôt dans l'UI. `null` efface la description.
+     */
+    @Query("UPDATE gallery_images SET caption = :caption WHERE id = :id")
+    suspend fun updateCaption(id: Long, caption: String?)
+
+    /**
+     * v7.1.94 — DATE + HEURE de l'image (epoch millis). ⚠️ `createdAt` est aussi le critère
+     * de tri secondaire de [observeByPerson] : la modifier RÉORDONNE la galerie et peut donc
+     * changer la vignette « la plus récente » du carré d'entrée. C'est voulu.
+     */
+    @Query("UPDATE gallery_images SET createdAt = :createdAt WHERE id = :id")
+    suspend fun updateCreatedAt(id: Long, createdAt: Long)
+
     /** Toutes les lignes — lecture ponctuelle pour l'export `.jtr`. */
     @Query("SELECT * FROM gallery_images")
     suspend fun getAllSync(): List<GalleryImage>

@@ -543,6 +543,17 @@
     <string name="gallery_empty_subtitle">Bu kişi için ilk anınızı ekleyin.</string>
     <string name="gallery_delete_confirm">Sil</string>
     <string name="gallery_image_cd">Galeri fotoğrafı</string>
+    <string name="gallery_details_open">Ayrıntılar</string>
+    <string name="gallery_details_title">Fotoğraf ayrıntıları</string>
+    <string name="gallery_details_description">Açıklama</string>
+    <string name="gallery_details_description_hint">Açıklama ekle</string>
+    <string name="gallery_details_date">Tarih</string>
+    <string name="gallery_details_time">Saat</string>
+    <string name="gallery_details_month">Ay</string>
+    <string name="gallery_details_day">Gün</string>
+    <string name="gallery_details_year">Yıl</string>
+    <string name="gallery_details_hour">Saat</string>
+    <string name="gallery_details_minute">Dakika</string>
     <plurals name="gallery_square_cd">
         <item quantity="one">%1$s galerisi, 1 fotoğraf</item>
         <item quantity="other">%1$s galerisi, %2$d fotoğraf</item>

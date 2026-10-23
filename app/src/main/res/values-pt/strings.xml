@@ -553,6 +553,17 @@
     <string name="gallery_empty_subtitle">Adicione a sua primeira recordação deste contacto.</string>
     <string name="gallery_delete_confirm">Eliminar</string>
     <string name="gallery_image_cd">Foto da galeria</string>
+    <string name="gallery_details_open">Detalhes</string>
+    <string name="gallery_details_title">Detalhes da foto</string>
+    <string name="gallery_details_description">Descrição</string>
+    <string name="gallery_details_description_hint">Adicionar uma descrição</string>
+    <string name="gallery_details_date">Data</string>
+    <string name="gallery_details_time">Hora</string>
+    <string name="gallery_details_month">Mês</string>
+    <string name="gallery_details_day">Dia</string>
+    <string name="gallery_details_year">Ano</string>
+    <string name="gallery_details_hour">Hora</string>
+    <string name="gallery_details_minute">Minuto</string>
     <plurals name="gallery_square_cd">
         <item quantity="one">Galeria de %1$s, 1 foto</item>
         <item quantity="many">Galeria de %1$s, %2$d fotos</item>

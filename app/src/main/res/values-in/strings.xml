@@ -551,6 +551,17 @@
     <string name="gallery_empty_subtitle">Tambahkan kenangan pertama untuk kontak ini.</string>
     <string name="gallery_delete_confirm">Hapus</string>
     <string name="gallery_image_cd">Foto galeri</string>
+    <string name="gallery_details_open">Detail</string>
+    <string name="gallery_details_title">Detail foto</string>
+    <string name="gallery_details_description">Deskripsi</string>
+    <string name="gallery_details_description_hint">Tambahkan deskripsi</string>
+    <string name="gallery_details_date">Tanggal</string>
+    <string name="gallery_details_time">Waktu</string>
+    <string name="gallery_details_month">Bulan</string>
+    <string name="gallery_details_day">Tanggal</string>
+    <string name="gallery_details_year">Tahun</string>
+    <string name="gallery_details_hour">Jam</string>
+    <string name="gallery_details_minute">Menit</string>
     <plurals name="gallery_square_cd">
         <item quantity="other">Galeri %1$s, %2$d foto</item>
     </plurals>

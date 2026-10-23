@@ -59,6 +59,19 @@ class GalleryViewModel(
         }
     }
 
+    /**
+     * v7.1.94 — enregistre la description saisie dans le panneau de détails. Écriture hors
+     * du thread principal (cf. [GalleryRepository]) ; le Flow [images] rediffuse la ligne.
+     */
+    fun setCaption(imageId: Long, caption: String?) {
+        viewModelScope.launch { repository.setCaption(imageId, caption) }
+    }
+
+    /** v7.1.94 — enregistre la date + heure choisies dans le panneau de détails. */
+    fun setCreatedAt(imageId: Long, createdAt: Long) {
+        viewModelScope.launch { repository.setCreatedAt(imageId, createdAt) }
+    }
+
     /** Supprime une image : la ligne puis son fichier. */
     fun delete(image: GalleryImage) {
         viewModelScope.launch { repository.delete(image) }

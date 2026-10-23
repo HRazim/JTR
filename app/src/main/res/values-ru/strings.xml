@@ -563,6 +563,17 @@
     <string name="gallery_empty_subtitle">Добавьте первое воспоминание об этом контакте.</string>
     <string name="gallery_delete_confirm">Удалить</string>
     <string name="gallery_image_cd">Фото из галереи</string>
+    <string name="gallery_details_open">Сведения</string>
+    <string name="gallery_details_title">Сведения о фото</string>
+    <string name="gallery_details_description">Описание</string>
+    <string name="gallery_details_description_hint">Добавить описание</string>
+    <string name="gallery_details_date">Дата</string>
+    <string name="gallery_details_time">Время</string>
+    <string name="gallery_details_month">Месяц</string>
+    <string name="gallery_details_day">День</string>
+    <string name="gallery_details_year">Год</string>
+    <string name="gallery_details_hour">Час</string>
+    <string name="gallery_details_minute">Минута</string>
     <plurals name="gallery_square_cd">
         <item quantity="one">Галерея: %1$s, 1 фото</item>
         <item quantity="few">Галерея: %1$s, %2$d фото</item>

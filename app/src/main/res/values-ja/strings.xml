@@ -542,6 +542,17 @@
     <string name="gallery_empty_subtitle">この連絡先の最初の思い出を追加しましょう。</string>
     <string name="gallery_delete_confirm">削除</string>
     <string name="gallery_image_cd">ギャラリーの写真</string>
+    <string name="gallery_details_open">詳細</string>
+    <string name="gallery_details_title">写真の詳細</string>
+    <string name="gallery_details_description">説明</string>
+    <string name="gallery_details_description_hint">説明を追加</string>
+    <string name="gallery_details_date">日付</string>
+    <string name="gallery_details_time">時刻</string>
+    <string name="gallery_details_month">月</string>
+    <string name="gallery_details_day">日</string>
+    <string name="gallery_details_year">年</string>
+    <string name="gallery_details_hour">時</string>
+    <string name="gallery_details_minute">分</string>
     <plurals name="gallery_square_cd">
         <item quantity="other">%1$s のギャラリー、写真 %2$d 枚</item>
     </plurals>

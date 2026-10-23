@@ -533,6 +533,17 @@
     <string name="gallery_empty_subtitle">이 연락처의 첫 추억을 추가하세요.</string>
     <string name="gallery_delete_confirm">삭제</string>
     <string name="gallery_image_cd">갤러리 사진</string>
+    <string name="gallery_details_open">세부정보</string>
+    <string name="gallery_details_title">사진 세부정보</string>
+    <string name="gallery_details_description">설명</string>
+    <string name="gallery_details_description_hint">설명 추가</string>
+    <string name="gallery_details_date">날짜</string>
+    <string name="gallery_details_time">시간</string>
+    <string name="gallery_details_month">월</string>
+    <string name="gallery_details_day">일</string>
+    <string name="gallery_details_year">년</string>
+    <string name="gallery_details_hour">시</string>
+    <string name="gallery_details_minute">분</string>
     <plurals name="gallery_square_cd">
         <item quantity="other">%1$s의 갤러리, 사진 %2$d장</item>
     </plurals>

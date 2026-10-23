@@ -542,6 +542,17 @@
     <string name="gallery_empty_subtitle">为这位联系人添加第一段回忆。</string>
     <string name="gallery_delete_confirm">删除</string>
     <string name="gallery_image_cd">相册照片</string>
+    <string name="gallery_details_open">详情</string>
+    <string name="gallery_details_title">照片详情</string>
+    <string name="gallery_details_description">描述</string>
+    <string name="gallery_details_description_hint">添加描述</string>
+    <string name="gallery_details_date">日期</string>
+    <string name="gallery_details_time">时间</string>
+    <string name="gallery_details_month">月</string>
+    <string name="gallery_details_day">日</string>
+    <string name="gallery_details_year">年</string>
+    <string name="gallery_details_hour">时</string>
+    <string name="gallery_details_minute">分</string>
     <plurals name="gallery_square_cd">
         <item quantity="other">%1$s 的相册，%2$d 张照片</item>
     </plurals>

@@ -6,6 +6,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -288,7 +290,9 @@ fun GalleryScreen(
                 images = images,
                 startIndex = startIndex.coerceIn(0, images.lastIndex),
                 onDismiss = { viewerIndex = null },
-                onRequestDelete = { pendingDelete = listOf(it) }
+                onRequestDelete = { pendingDelete = listOf(it) },
+                onCaptionChange = { id, caption -> viewModel.setCaption(id, caption) },
+                onCreatedAtChange = { id, millis -> viewModel.setCreatedAt(id, millis) }
             )
         }
     }
@@ -420,9 +424,18 @@ private fun GalleryViewer(
     images: List<GalleryImage>,
     startIndex: Int,
     onDismiss: () -> Unit,
-    onRequestDelete: (GalleryImage) -> Unit
+    onRequestDelete: (GalleryImage) -> Unit,
+    onCaptionChange: (Long, String?) -> Unit,
+    onCreatedAtChange: (Long, Long) -> Unit
 ) {
     val pagerState = rememberPagerState(initialPage = startIndex) { images.size }
+    // v7.1.94 — panneau de détails de l'image COURANTE (bouton ⓘ).
+    var showDetails by remember { mutableStateOf(false) }
+    // ⚠️ Direction RÉELLE de l'app, capturée AVANT le forçage LTR du Dialog ci-dessous. Ce
+    // forçage sert au moteur de GESTES (zoom/pan en pixels) ; le panneau de détails, lui, est
+    // de l'UI de TEXTE et doit se miroiter en arabe. Sans cette capture il en héritait et
+    // s'affichait aligné à gauche en RTL (mesuré sur S21).
+    val appLayoutDirection = LocalLayoutDirection.current
     // UN SEUL état de zoom pour le pager : seule l'image courante peut être zoomée, car le
     // pager est verrouillé tant qu'on ne revient pas à 1×. Changer d'image remet à plat.
     val zoomState = rememberZoomState()
@@ -480,15 +493,51 @@ private fun GalleryViewer(
                     alphaProvider = { 1f - zoomState.dismissFraction() },
                     modifier = Modifier.align(Alignment.TopStart).padding(16.dp)
                 )
-                ViewerControlButton(
-                    icon = Icons.Default.Delete,
-                    label = stringResource(R.string.gallery_delete_confirm),
-                    onClick = { images.getOrNull(pagerState.currentPage)?.let(onRequestDelete) },
-                    alphaProvider = { 1f - zoomState.dismissFraction() },
-                    // Rouge CLAIR : le fond de la visionneuse est noir quel que soit le thème.
-                    tint = Color(0xFFFF8A80),
-                    modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
-                )
+                // ⓘ et corbeille GROUPÉS en haut-fin, dans cet ordre : l'action destructrice
+                // reste la plus excentrée, comme partout dans l'app.
+                Row(
+                    modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    ViewerControlButton(
+                        icon = Icons.Outlined.Info,
+                        label = stringResource(R.string.gallery_details_open),
+                        onClick = { showDetails = true },
+                        alphaProvider = { 1f - zoomState.dismissFraction() }
+                    )
+                    ViewerControlButton(
+                        icon = Icons.Default.Delete,
+                        label = stringResource(R.string.gallery_delete_confirm),
+                        onClick = {
+                            images.getOrNull(pagerState.currentPage)?.let(onRequestDelete)
+                        },
+                        alphaProvider = { 1f - zoomState.dismissFraction() },
+                        // Rouge CLAIR : le fond est noir quel que soit le thème.
+                        tint = Color(0xFFFF8A80)
+                    )
+                }
+            }
+
+            // PANNEAU DE DÉTAILS, posé PAR-DESSUS la visionneuse : le pager reste monté
+            // derrière, donc fermer le panneau rend la visionneuse intacte, sur la même
+            // image. On relit la ligne à chaque composition pour refléter une écriture.
+            if (showDetails) {
+                val current = images.getOrNull(pagerState.currentPage)
+                if (current == null) {
+                    showDetails = false
+                } else {
+                    // On REND au panneau la direction réelle de l'app (cf. plus haut).
+                    CompositionLocalProvider(
+                        LocalLayoutDirection provides appLayoutDirection
+                    ) {
+                        ImageDetailsSheet(
+                            image = current,
+                            onCaptionChange = { onCaptionChange(current.id, it) },
+                            onCreatedAtChange = { onCreatedAtChange(current.id, it) },
+                            onDismiss = { showDetails = false }
+                        )
+                    }
+                }
             }
         }
     }
