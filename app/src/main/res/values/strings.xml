@@ -567,7 +567,6 @@
     <string name="gallery_empty_subtitle">Add your first memory for this contact.</string>
     <string name="gallery_delete_confirm">Delete</string>
     <string name="gallery_image_cd">Gallery photo</string>
-    <string name="gallery_position" translatable="false">%1$d / %2$d</string>
     <plurals name="gallery_square_cd">
         <item quantity="one">Gallery of %1$s, 1 photo</item>
         <item quantity="other">Gallery of %1$s, %2$d photos</item>

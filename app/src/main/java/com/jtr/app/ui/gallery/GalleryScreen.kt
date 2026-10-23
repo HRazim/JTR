@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -46,7 +47,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,12 +79,13 @@ import com.jtr.app.domain.model.GalleryImage
 import com.jtr.app.ui.category.FooterActionColumn
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrSelectionCheck
+import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
+import com.jtr.app.ui.components.ScrollToTopFab
 import com.jtr.app.ui.components.ZoomableImage
-import com.jtr.app.ui.components.rememberSystemBarsDp
 import com.jtr.app.ui.components.rememberVisualCenterCorrectionPx
 import com.jtr.app.ui.components.rememberSystemMultiPhotoPicker
 import com.jtr.app.ui.components.rememberZoomState
-import com.jtr.app.ui.navigation.nestedScreenContentInsets
+import kotlinx.coroutines.launch
 
 /**
  * GALERIE d'un contact (v7.1.89) — grille de souvenirs, ajout multiple et visionneuse.
@@ -122,10 +126,34 @@ fun GalleryScreen(
 
     val pickImages = rememberSystemMultiPhotoPicker { uris -> viewModel.addImages(uris) }
 
+    // v7.1.92 — FAB « remonter en haut », MÊME composant et MÊME seuil que l'Accueil, les
+    // Catégories et les écrans de détail (v7.1.72/86) : aucune variante. L'état de la grille
+    // est hoisté ici pour que le FAB puisse la piloter ; `derivedStateOf` ne recompose qu'au
+    // FRANCHISSEMENT du seuil, pas à chaque pixel défilé.
+    val scope = rememberCoroutineScope()
+    val gridState = rememberLazyGridState()
+    val showScrollToTop by remember {
+        derivedStateOf { gridState.firstVisibleItemIndex > SCROLL_TO_TOP_THRESHOLD }
+    }
+
     Scaffold(
-        // Écran plein (hors onglets) : seuls les insets horizontaux s'appliquent au contenu,
-        // règle centralisée partagée avec les autres écrans empilés.
-        contentWindowInsets = nestedScreenContentInsets,
+        // ⚠️ INSETS PAR DÉFAUT DU SCAFFOLD (v7.1.92) — surtout PAS `nestedScreenContentInsets`.
+        // Cette règle-là ampute volontairement le BAS, parce qu'elle est écrite pour les
+        // écrans à ONGLETS (Accueil/Catégories/Paramètres), dont la barre globale occupe déjà
+        // le bas. La galerie est un écran EMPILÉ : rien dessous. Mesuré sur S21, l'amputation
+        // faisait passer la DERNIÈRE RANGÉE de vignettes ET le FAB sous la barre de
+        // navigation. On s'aligne donc sur `CategoryDetailScreen`, qui ne pose rien : le
+        // Scaffold dégage alors la barre UNE SEULE FOIS pour la grille, le FAB et le footer.
+        floatingActionButton = {
+            // Le Scaffold pose le FAB en bas-fin (donc en miroir automatique en RTL) et le
+            // remonte au-dessus de la bottomBar ET de la barre système. L'ajout étant le « + »
+            // de la TopAppBar, il n'y a rien à chevaucher ; le FAB s'efface en sélection, où
+            // le footer de suppression occupe le bas.
+            ScrollToTopFab(
+                visible = showScrollToTop && !isSelectionActive,
+                onClick = { scope.launch { gridState.animateScrollToItem(0) } }
+            )
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -216,6 +244,7 @@ fun GalleryScreen(
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
+                    state = gridState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -399,9 +428,6 @@ private fun GalleryViewer(
     val zoomState = rememberZoomState()
     LaunchedEffect(pagerState.currentPage) { zoomState.reset() }
 
-    // Insets RÉELS (lus sur la fenêtre de l'activité : dans un Dialog, Compose renvoie 0).
-    val (_, navBarBottom) = rememberSystemBarsDp()
-
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -462,19 +488,6 @@ private fun GalleryViewer(
                     // Rouge CLAIR : le fond de la visionneuse est noir quel que soit le thème.
                     tint = Color(0xFFFF8A80),
                     modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
-                )
-
-                // Compteur « 2 / 7 » : repère discret quand on feuillette.
-                Text(
-                    text = stringResource(
-                        R.string.gallery_position, pagerState.currentPage + 1, images.size
-                    ),
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .graphicsLayer { alpha = 1f - zoomState.dismissFraction() }
-                        .padding(bottom = navBarBottom + 24.dp)
                 )
             }
         }
