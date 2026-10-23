@@ -163,7 +163,7 @@ fun CategoryPickerSheet(
                     TextField(
                         value = query,
                         onValueChange = { query = it },
-                        placeholder = { Text(stringResource(R.string.person_categories_search_placeholder)) },
+                        placeholder = { Text(stringResource(R.string.category_search_placeholder)) },
                         singleLine = true,
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,

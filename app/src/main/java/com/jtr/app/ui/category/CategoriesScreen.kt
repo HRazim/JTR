@@ -523,7 +523,9 @@ fun CategoriesScreen(
                     onSearchQueryChange = { viewModel.setSearchQuery(it) },
                     searchActive = true,
                     onSearchActiveChange = { searchActive = it },
-                    searchPlaceholder = stringResource(R.string.home_search_placeholder)
+                    // v7.1.99 — cet écran filtre des CATÉGORIES et des dossiers par leur nom
+                    // (`CategoryViewModel`), pas des contacts : le placeholder le dit enfin.
+                    searchPlaceholder = stringResource(R.string.category_search_placeholder)
                 )
             } else if (isSelectionActive) {
                 // En-tête de sélection : Tout sélectionner (G) · compteur (C) · Annuler (D).
@@ -588,7 +590,8 @@ fun CategoriesScreen(
                     onSearchQueryChange = { viewModel.setSearchQuery(it) },
                     searchActive = searchActive,
                     onSearchActiveChange = { searchActive = it },
-                    searchPlaceholder = stringResource(R.string.home_search_placeholder),
+                    // v7.1.99 — même périmètre qu'en sélection : des catégories.
+                    searchPlaceholder = stringResource(R.string.category_search_placeholder),
                     actions = {
                         // Header minimaliste (v5.3.1) : Loupe → « + » → 3 points.
                         // Tri et Affichage vivent EXCLUSIVEMENT dans le menu 3 points.

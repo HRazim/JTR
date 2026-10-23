@@ -415,7 +415,11 @@ fun CategoryGroupDetailScreen(
                     onSearchQueryChange = { viewModel.setSearchQuery(it) },
                     searchActive = true,
                     onSearchActiveChange = { searchActive = it },
-                    searchPlaceholder = stringResource(R.string.home_search_placeholder)
+                    // v7.1.99 — EN SÉLECTION la recherche filtre le CONTENU du dossier
+                    // (ses catégories et sous-dossiers, `sortName`), pas des contacts —
+                    // contrairement à la loupe hors sélection, qui ouvre la page scopée
+                    // aux contacts de v7.1.87. Deux périmètres, deux libellés.
+                    searchPlaceholder = stringResource(R.string.category_search_placeholder)
                 )
             } else if (isSelectionActive) {
                 TopAppBar(

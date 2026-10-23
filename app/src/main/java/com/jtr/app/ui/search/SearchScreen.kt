@@ -147,6 +147,10 @@ fun SearchScreen(
                                     stringResource(R.string.search_in_folder, scopedFolderName)
                                 else if (scopedName.isNotBlank())
                                     stringResource(R.string.search_in_category, scopedName)
+                                // Hors périmètre, cette page remonte AUSSI les catégories et
+                                // les dossiers en sections croisées (v7.1.73) ; le libellé
+                                // reste malgré tout le simple « contact », par préférence
+                                // explicite — nommer les trois alourdissait le champ.
                                 else stringResource(R.string.home_search_placeholder)
                             )
                         },
