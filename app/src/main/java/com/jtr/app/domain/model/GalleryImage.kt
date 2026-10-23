@@ -24,6 +24,12 @@ import androidx.room.PrimaryKey
  *
  * [position] et [caption] sont provisionnés DÈS MAINTENANT bien qu'aucune UI ne les
  * exploite : réordonner ou légender plus tard n'exigera alors AUCUNE autre migration.
+ *
+ * v7.1.93 (DB v24) — LOCALISATION d'image, elle aussi posée AVANT son UI. Le modèle copie
+ * celui de [Person] (`city` + `cityLat` + `cityLng`) : deux coordonnées et **UN SEUL
+ * libellé composé**. Pas de `address` + `placeName` séparés — rien dans la chaîne ne les
+ * produit distinctement, `MapViewModel` compose déjà un libellé unique (POI, numéro + rue,
+ * localité, pays) qu'il renvoie avec les coordonnées.
  */
 @Entity(
     tableName = "gallery_images",
@@ -49,5 +55,11 @@ data class GalleryImage(
     /** Légende future, facultative. */
     val caption: String? = null,
     @ColumnInfo(defaultValue = "0")
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    /** Latitude du lieu associé, `null` tant qu'aucun lieu n'est posé (v24). */
+    val latitude: Double? = null,
+    /** Longitude du lieu associé, `null` tant qu'aucun lieu n'est posé (v24). */
+    val longitude: Double? = null,
+    /** Libellé lisible du lieu, composé par le sélecteur de carte — jamais recalculé (v24). */
+    val placeLabel: String? = null
 )

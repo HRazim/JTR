@@ -18,8 +18,14 @@ import org.json.JSONArray
 import java.util.Locale
 
 /**
- * AppDatabase — Version 23.
+ * AppDatabase — Version 24.
  *
+ * v24 : Localisation d'image (v7.1.93). Trois colonnes NULLABLES sur `gallery_images` —
+ *       `latitude` REAL, `longitude` REAL, `placeLabel` TEXT. Migration PUREMENT ADDITIVE :
+ *       trois `ALTER TABLE … ADD COLUMN`, qui ne touchent que l'en-tête de schéma — aucune
+ *       table recréée, aucune ligne lue ni réécrite → ZÉRO perte possible ([MIGRATION_23_24]).
+ *       Posées AVANT toute UI, sur le modèle de `Person` (2 coordonnées + 1 libellé composé),
+ *       pour que le panneau de détails d'image n'exige JAMAIS d'autre migration.
  * v23 : Galerie d'images par contact (v7.1.88). Nouvelle table `gallery_images`
  *       (id AUTOINCREMENT, personId TEXT FK → persons(id) ON DELETE CASCADE + index,
  *       path TEXT, position/createdAt INTEGER NOT NULL DEFAULT 0, caption TEXT).
@@ -76,7 +82,7 @@ import java.util.Locale
 @Database(
     entities = [Person::class, Category::class, CategoryGroup::class,
         PersonCategoryJoin::class, SocialLinkEntity::class, GalleryImage::class],
-    version = 23,
+    version = 24,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -396,6 +402,30 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration v23 → v24, ZÉRO perte de données — localisation d'image (v7.1.93).
+         *
+         * PUREMENT ADDITIVE, et de la forme la plus sûre qui soit : trois `ALTER TABLE …
+         * ADD COLUMN`, qui en SQLite n'écrivent QUE l'en-tête de schéma — aucune table n'est
+         * recréée, aucune ligne n'est lue ni réécrite. Les lignes de galerie existantes
+         * reçoivent simplement `NULL` dans les trois nouvelles colonnes.
+         *
+         * ⚠️ Les trois colonnes sont NULLABLES et SANS DEFAUT : c'est exactement ce que Room
+         * attend d'un `Double?`/`String?` sans `@ColumnInfo(defaultValue = …)`. Ajouter un
+         * `DEFAULT` ou un `NOT NULL` ici ferait diverger le schéma obtenu de `24.json` et
+         * lèverait « Migration didn't properly handle » au premier lancement (c'est le piège
+         * qui avait été prouvé par contrôle négatif en v7.1.88).
+         *
+         * SQLite n'accepte qu'UNE colonne par `ALTER TABLE` → trois instructions distinctes.
+         */
+        val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `gallery_images` ADD COLUMN `latitude` REAL")
+                db.execSQL("ALTER TABLE `gallery_images` ADD COLUMN `longitude` REAL")
+                db.execSQL("ALTER TABLE `gallery_images` ADD COLUMN `placeLabel` TEXT")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -406,7 +436,7 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                         MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
                         MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
-                        MIGRATION_22_23)
+                        MIGRATION_22_23, MIGRATION_23_24)
                     // v7.1.63 — AUCUN FALLBACK DESTRUCTIF : la base n'est PLUS JAMAIS
                     // effacée silencieusement, quel que soit le scénario.
                     //
