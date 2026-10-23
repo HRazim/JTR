@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -42,6 +44,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -51,11 +55,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -68,7 +76,11 @@ import com.jtr.app.domain.model.GalleryImage
 import com.jtr.app.ui.category.FooterActionColumn
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrSelectionCheck
+import com.jtr.app.ui.components.ZoomableImage
+import com.jtr.app.ui.components.rememberSystemBarsDp
+import com.jtr.app.ui.components.rememberVisualCenterCorrectionPx
 import com.jtr.app.ui.components.rememberSystemMultiPhotoPicker
+import com.jtr.app.ui.components.rememberZoomState
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
 
 /**
@@ -382,47 +394,115 @@ private fun GalleryViewer(
     onRequestDelete: (GalleryImage) -> Unit
 ) {
     val pagerState = rememberPagerState(initialPage = startIndex) { images.size }
+    // UN SEUL état de zoom pour le pager : seule l'image courante peut être zoomée, car le
+    // pager est verrouillé tant qu'on ne revient pas à 1×. Changer d'image remet à plat.
+    val zoomState = rememberZoomState()
+    LaunchedEffect(pagerState.currentPage) { zoomState.reset() }
+
+    // Insets RÉELS (lus sur la fenêtre de l'activité : dans un Dialog, Compose renvoie 0).
+    val (_, navBarBottom) = rememberSystemBarsDp()
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(images[page].path).crossfade(200).build(),
-                    contentDescription = stringResource(R.string.gallery_image_cd),
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
+        // Gestes en pixels (zoom/pan, ancrage du double-tap) → LTR forcé pour qu'ils soient
+        // identiques en arabe, exactement comme la visionneuse d'avatar.
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            // ⚠️ DOIT être appelé À L'INTÉRIEUR du Dialog : c'est la fenêtre du DIALOGUE
+            // qu'on mesure. Appelé au-dessus, `LocalView` est celle de l'activité et la
+            // correction vaut 0 (vérifié sur appareil : image toujours 80 px trop basse).
+            val centerCorrection = rememberVisualCenterCorrectionPx()
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Fond noir qui s'estompe au glissement de fermeture, en SYNCHRO avec
+                // l'image (même source : dismissFraction).
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .graphicsLayer { alpha = 1f - zoomState.dismissFraction() }
+                        .background(Color.Black)
+                )
+
+                HorizontalPager(
+                    state = pagerState,
+                    // Recentrage sur l'écran RÉEL : la fenêtre du dialogue est posée sous la
+                    // barre d'état, donc son centre n'est pas celui de l'écran. Appliqué aux
+                    // seules IMAGES — le fond noir, lui, doit couvrir toute la fenêtre.
+                    modifier = Modifier.fillMaxSize().offset { IntOffset(0, centerCorrection) },
+                    // VERROU : zoomée, l'image prend tous les glissements pour son pan ;
+                    // le pager ne doit pas voler le geste.
+                    userScrollEnabled = !zoomState.isZoomed
+                ) { page ->
+                    ZoomableImage(
+                        model = images[page].path,
+                        onDismiss = onDismiss,
+                        state = zoomState,
+                        // Au repos, l'horizontal appartient au PAGER (changer d'image) et
+                        // le vertical ferme. C'est tout l'arbitrage du mode pager.
+                        horizontalDragGoesToParent = true,
+                        contentDescription = stringResource(R.string.gallery_image_cd)
+                    )
+                }
+
+                // CONTRÔLES sur scrim circulaire sombre : lisibles sur une photo claire
+                // comme sombre (ils étaient blancs sur blanc avant v7.1.91). Estompés par
+                // la même progression que le fond.
+                ViewerControlButton(
+                    icon = Icons.Default.Close,
+                    label = stringResource(R.string.common_close),
+                    onClick = onDismiss,
+                    alphaProvider = { 1f - zoomState.dismissFraction() },
+                    modifier = Modifier.align(Alignment.TopStart).padding(16.dp)
+                )
+                ViewerControlButton(
+                    icon = Icons.Default.Delete,
+                    label = stringResource(R.string.gallery_delete_confirm),
+                    onClick = { images.getOrNull(pagerState.currentPage)?.let(onRequestDelete) },
+                    alphaProvider = { 1f - zoomState.dismissFraction() },
+                    // Rouge CLAIR : le fond de la visionneuse est noir quel que soit le thème.
+                    tint = Color(0xFFFF8A80),
+                    modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+                )
+
+                // Compteur « 2 / 7 » : repère discret quand on feuillette.
+                Text(
+                    text = stringResource(
+                        R.string.gallery_position, pagerState.currentPage + 1, images.size
+                    ),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .graphicsLayer { alpha = 1f - zoomState.dismissFraction() }
+                        .padding(bottom = navBarBottom + 24.dp)
                 )
             }
-
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier.align(Alignment.TopStart).padding(8.dp)
-            ) {
-                Icon(Icons.Default.Close, tint = Color.White,
-                    contentDescription = stringResource(R.string.common_close))
-            }
-
-            IconButton(
-                onClick = { images.getOrNull(pagerState.currentPage)?.let(onRequestDelete) },
-                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
-            ) {
-                Icon(Icons.Default.Delete, tint = Color.White,
-                    contentDescription = stringResource(R.string.gallery_delete_confirm))
-            }
-
-            // Compteur « 2 / 7 » : repère discret quand on feuillette.
-            Text(
-                text = stringResource(
-                    R.string.gallery_position, pagerState.currentPage + 1, images.size
-                ),
-                color = Color.White,
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp)
-            )
         }
+    }
+}
+
+/**
+ * Bouton de contrôle de la visionneuse : icône blanche (ou teintée) sur un disque sombre.
+ * Le scrim est ce qui le rend lisible par-dessus n'importe quelle photo — même grammaire
+ * que la croix de [com.jtr.app.ui.components.PhotoZoomDialog]. Cible 40 dp + padding → 48 dp.
+ */
+@Composable
+private fun ViewerControlButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    alphaProvider: () -> Float,
+    modifier: Modifier = Modifier,
+    tint: Color = Color.White
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier
+            .graphicsLayer { alpha = alphaProvider() }
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.45f))
+    ) {
+        Icon(icon, contentDescription = label, tint = tint)
     }
 }
