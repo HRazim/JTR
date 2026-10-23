@@ -338,8 +338,8 @@
     <string name="categories_delete_group_title">Gruppe „%1$s“ löschen?</string>
     <string name="categories_delete_group_text">Möchtest du die Gruppe „%1$s“ und die darin enthaltenen %2$d Kategorien wirklich löschen?</string>
     <string name="select_all">Alle auswählen</string>
-    <string name="categories_selection_none">0 ausgewählt</string>
-    <string name="select_all_count">Alle auswählen (%1$d)</string>
+    <string name="select_all_short">Alle</string>
+    <string name="select_none">Auswahl aufheben</string>
     <string name="action_move">Verschieben</string>
     <string name="move_pick_target_title">Kategorie auswählen</string>
     <string name="category_detail_add_existing">Vorhandenen Kontakt hinzufügen</string>

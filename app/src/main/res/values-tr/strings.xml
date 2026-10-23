@@ -338,8 +338,8 @@
     <string name="categories_delete_group_title">“%1$s” grubu silinsin mi?</string>
     <string name="categories_delete_group_text">“%1$s” grubunu ve içindeki %2$d kategoriyi silmek istediğine emin misin?</string>
     <string name="select_all">Tümünü seç</string>
-    <string name="categories_selection_none">0 seçildi</string>
-    <string name="select_all_count">Tümünü seç (%1$d)</string>
+    <string name="select_all_short">Tümü</string>
+    <string name="select_none">Tüm seçimi kaldır</string>
     <string name="action_move">Taşı</string>
     <string name="move_pick_target_title">Kategori seç</string>
     <string name="category_detail_add_existing">Mevcut bir kişi ekle</string>

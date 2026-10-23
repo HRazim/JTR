@@ -338,9 +338,9 @@
     <string name="categories_delete_group_title">Delete the group “%1$s”?</string>
     <string name="categories_delete_group_text">Are you sure you want to delete the group “%1$s” and the %2$d categories it contains?</string>
     <string name="select_all">Select all</string>
-    <string name="categories_selection_none">0 selected</string>
+    <string name="select_all_short">All</string>
+    <string name="select_none">Deselect all</string>
     <!-- v5.0 — sélection Accueil, déplacement direct, ajout depuis une catégorie -->
-    <string name="select_all_count">Select all (%1$d)</string>
     <string name="action_move">Move</string>
     <string name="move_pick_target_title">Choose a category</string>
     <string name="category_detail_add_existing">Add an existing contact</string>

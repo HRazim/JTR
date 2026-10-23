@@ -338,8 +338,8 @@
     <string name="categories_delete_group_title">Удалить группу «%1$s»?</string>
     <string name="categories_delete_group_text">Удалить группу «%1$s» и %2$d категорий в ней?</string>
     <string name="select_all">Выбрать всё</string>
-    <string name="categories_selection_none">Выбрано: 0</string>
-    <string name="select_all_count">Выбрать всё (%1$d)</string>
+    <string name="select_all_short">Все</string>
+    <string name="select_none">Снять выделение</string>
     <string name="action_move">Переместить</string>
     <string name="move_pick_target_title">Выберите категорию</string>
     <string name="category_detail_add_existing">Добавить существующий контакт</string>

@@ -25,6 +25,7 @@ import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
 import com.jtr.app.ui.components.ScrollToTopFab
+import com.jtr.app.ui.components.SelectAllToggle
 import com.jtr.app.ui.home.PersonListContent
 import com.jtr.app.ui.person.formatDateTimeLong
 import kotlinx.coroutines.launch
@@ -46,9 +47,21 @@ fun CategoryDetailScreen(
     val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
 
-    // Bouton Retour en mode sélection : vide la sélection (événement remonté au
-    // ViewModel) et reste sur l'écran ; inactif sinon (navigation standard).
-    BackHandler(enabled = isSelectionMode) { viewModel.clearSelection() }
+    // v7.1.98 — recherche INLINE pendant la sélection (la loupe navigue hors sélection,
+    // ce qui ferait perdre les coches). Même mécanique que l'Accueil.
+    var searchActive by remember { mutableStateOf(false) }
+
+    // v7.1.98 — priorité du bouton Retour, identique sur les 5 écrans de sélection :
+    // 1) la recherche inline est ouverte → on la ferme, la sélection SURVIT ;
+    // 2) sinon on quitte la sélection ; 3) sinon la navigation reprend normalement.
+    BackHandler(enabled = searchActive || isSelectionMode) {
+        if (searchActive) {
+            searchActive = false
+            viewModel.clearSearch()
+        } else {
+            viewModel.exitSelection()
+        }
+    }
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val groups by viewModel.groups.collectAsStateWithLifecycle()
     val categoryName by viewModel.categoryName.collectAsStateWithLifecycle()
@@ -218,18 +231,51 @@ fun CategoryDetailScreen(
             )
         },
         topBar = {
-            if (isSelectionMode) {
+            if (isSelectionMode && searchActive) {
+                // Recherche CONTEXTUELLE pendant la sélection : filtre l'affichage sans
+                // toucher au Set des ids cochés — fermer la recherche efface la requête,
+                // pas la sélection. (Hors sélection, la loupe ouvre la page scopée.)
+                JtrSearchableTopAppBar(
+                    title = "",
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
+                    searchActive = true,
+                    onSearchActiveChange = { searchActive = it },
+                    searchPlaceholder = stringResource(R.string.category_detail_search_placeholder)
+                )
+            } else if (isSelectionMode) {
+                // v7.1.98 — en-tête aligné sur les 4 autres écrans : bascule « All » à
+                // GAUCHE, loupe + « Annuler » à DROITE. Il n'avait ni l'un ni l'autre, et
+                // posait son annulation à gauche, seul de toute l'app à le faire.
                 TopAppBar(
-                    title = { Text(pluralStringResource(R.plurals.home_selection_count, selectedIds.size, selectedIds.size)) },
+                    title = {
+                        Text(pluralStringResource(
+                            R.plurals.home_selection_count, selectedIds.size, selectedIds.size
+                        ))
+                    },
                     navigationIcon = {
-                        IconButton(onClick = { viewModel.clearSelection() }) {
-                            Icon(Icons.Default.Close,
-                                contentDescription = stringResource(R.string.common_cancel))
+                        SelectAllToggle(
+                            allSelected = persons.isNotEmpty() &&
+                                persons.all { it.id in selectedIds },
+                            onSelectAll = { viewModel.selectAll() },
+                            onDeselectAll = { viewModel.deselectVisible() }
+                        )
+                    },
+                    actions = {
+                        IconButton(onClick = { searchActive = true }) {
+                            Icon(Icons.Default.Search,
+                                contentDescription = stringResource(R.string.action_search))
+                        }
+                        TextButton(onClick = { viewModel.exitSelection() }) {
+                            Text(stringResource(R.string.common_cancel),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 )
             } else {
@@ -409,7 +455,7 @@ fun CategoryDetailScreen(
                         if (isSelectionMode) viewModel.toggleSelection(person.id)
                         else onNavigateToPersonDetail(person.id)
                     },
-                    onLongClick = { viewModel.toggleSelection(it.id) },
+                    onLongClick = { viewModel.startSelection(it.id) },
                     onFavoriteClick = { viewModel.toggleFavorite(it) },
                     // v7.1.86 — états hoistés : c'est ce qui pilote le FAB « remonter ».
                     listState = listState,

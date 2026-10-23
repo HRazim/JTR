@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
@@ -42,6 +43,7 @@ import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.ui.components.SelectAllToggle
 import com.jtr.app.ui.person.FieldTypes
 import com.jtr.app.ui.person.formatStoredDateLong
 import com.jtr.app.utils.DateCanonical
@@ -107,10 +109,19 @@ fun HomeScreen(
         }
     }
 
-    // Bouton Retour en mode sélection : annule la sélection (événement remonté au
-    // ViewModel) au lieu de quitter l'écran. Inactif si rien n'est sélectionné →
-    // la navigation standard reprend normalement.
-    BackHandler(enabled = isSelectionMode) { viewModel.clearSelection() }
+    // v7.1.98 — priorité du bouton Retour, identique sur les 5 écrans de sélection :
+    // 1) la recherche inline est ouverte → on la ferme, la sélection SURVIT ;
+    // 2) sinon on quitte la sélection ; 3) sinon la navigation reprend normalement.
+    // Avant, Back fermait la sélection sans voir la recherche : on cherchait « Florian »,
+    // on le cochait, et Back faisait disparaître les deux d'un coup.
+    BackHandler(enabled = searchActive || isSelectionMode) {
+        if (searchActive) {
+            searchActive = false
+            viewModel.clearSearch()
+        } else {
+            viewModel.exitSelection()
+        }
+    }
 
     // Cible du partage contextuel : instantané des profils cochés au moment du clic.
     var shareTargets by remember { mutableStateOf<List<Person>?>(null) }
@@ -162,12 +173,26 @@ fun HomeScreen(
             } else if (isSelectionMode) {
                 // Gauche : « Tout sélectionner (n) » · Droite : Loupe + « Annuler ».
                 TopAppBar(
-                    title = { Text(stringResource(R.string.select_all_count, selectedIds.size)) },
+                    title = {
+                        // v7.1.98 — « N selected », comme les 4 autres écrans. L'ancien
+                        // « Select all (N) » décrivait un bouton, pas un état, et se lisait
+                        // mal à côté du bouton « All » voisin. Le plural couvre aussi 0.
+                        Text(
+                            pluralStringResource(
+                                R.plurals.home_selection_count, selectedIds.size, selectedIds.size
+                            )
+                        )
+                    },
                     navigationIcon = {
-                        IconButton(onClick = { viewModel.selectAll() }) {
-                            Icon(Icons.Default.SelectAll,
-                                contentDescription = stringResource(R.string.select_all))
-                        }
+                        // v7.1.98 — bascule partagée, portée sur le VISIBLE : `persons` est
+                        // déjà la liste filtrée, donc cocher et décocher jouent sur le même
+                        // périmètre et les coches hors recherche sont préservées.
+                        SelectAllToggle(
+                            allSelected = persons.isNotEmpty() &&
+                                persons.all { it.id in selectedIds },
+                            onSelectAll = { viewModel.selectAll() },
+                            onDeselectAll = { viewModel.deselectVisible() }
+                        )
                     },
                     actions = {
                         // Loupe accessible EN mode sélection (grands volumes) : on
@@ -176,7 +201,7 @@ fun HomeScreen(
                             Icon(Icons.Default.Search,
                                 contentDescription = stringResource(R.string.action_search))
                         }
-                        TextButton(onClick = { viewModel.clearSelection() }) {
+                        TextButton(onClick = { viewModel.exitSelection() }) {
                             Text(stringResource(R.string.common_cancel),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
@@ -323,7 +348,7 @@ fun HomeScreen(
                             onNavigateToPersonDetail(person.id)
                         }
                     },
-                    onLongClick = { viewModel.toggleSelection(it.id) },
+                    onLongClick = { viewModel.startSelection(it.id) },
                     onFavoriteClick = { viewModel.toggleFavorite(it) },
                     header = if (!isSelectionMode && upcomingEvents.isNotEmpty()) {
                         {

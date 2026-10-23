@@ -83,6 +83,7 @@ import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
 import com.jtr.app.ui.components.ScrollToTopFab
+import com.jtr.app.ui.components.SelectAllToggle
 import com.jtr.app.ui.components.ZoomableImage
 import com.jtr.app.ui.components.rememberVisualCenterCorrectionPx
 import com.jtr.app.ui.components.rememberSystemMultiPhotoPicker
@@ -179,13 +180,17 @@ fun GalleryScreen(
                         // c'est déjà la disposition de l'Accueil, de Catégories et du détail
                         // de dossier (tous trois le posent en `navigationIcon`). La galerie
                         // était la SEULE à faire l'inverse ; elle rentre dans le rang.
-                        IconButton(onClick = {
-                            selectedIds.clear()
-                            selectedIds.addAll(images.map { it.id })
-                        }) {
-                            Icon(Icons.Default.SelectAll,
-                                contentDescription = stringResource(R.string.select_all))
-                        }
+                        // v7.1.98 — et c'est désormais la BASCULE partagée par les 5 écrans.
+                        // La galerie n'a pas de recherche : « visible » y vaut « tout ».
+                        SelectAllToggle(
+                            allSelected = images.isNotEmpty() &&
+                                selectedIds.size == images.size,
+                            onSelectAll = {
+                                selectedIds.clear()
+                                selectedIds.addAll(images.map { it.id })
+                            },
+                            onDeselectAll = { selectedIds.clear() }
+                        )
                     } else {
                         IconButton(onClick = onNavigateBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack,
@@ -206,9 +211,11 @@ fun GalleryScreen(
                                             stringResource(R.string.gallery_details_open))
                                 }
                             }
-                            IconButton(onClick = { exitSelection() }) {
-                                Icon(Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.common_cancel))
+                            // v7.1.98 — « Annuler » en TEXTE, comme les 4 autres écrans :
+                            // une croix seule se confond avec « supprimer » à cet endroit.
+                            TextButton(onClick = { exitSelection() }) {
+                                Text(stringResource(R.string.common_cancel),
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer)
                             }
                         }
                         isImporting -> CircularProgressIndicator(

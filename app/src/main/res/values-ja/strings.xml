@@ -333,9 +333,9 @@
     <string name="categories_delete_group_title">グループ「%1$s」を削除しますか？</string>
     <string name="categories_delete_group_text">グループ「%1$s」と、その中の %2$d 個のカテゴリを削除してもよろしいですか？</string>
     <string name="select_all">すべて選択</string>
-    <string name="categories_selection_none">0 件選択中</string>
+    <string name="select_all_short">すべて</string>
+    <string name="select_none">すべての選択を解除</string>
     <!-- v5.0 — ホームの複数選択、直接移動、カテゴリ内からの追加 -->
-    <string name="select_all_count">すべて選択 (%1$d)</string>
     <string name="action_move">移動</string>
     <string name="move_pick_target_title">カテゴリを選択</string>
     <string name="category_detail_add_existing">既存の連絡先を追加</string>

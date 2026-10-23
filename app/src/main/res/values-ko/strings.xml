@@ -338,8 +338,8 @@
     <string name="categories_delete_group_title">그룹 “%1$s”을(를) 삭제할까요?</string>
     <string name="categories_delete_group_text">그룹 “%1$s”과(와) 그 안의 카테고리 %2$d개를 삭제하시겠습니까?</string>
     <string name="select_all">모두 선택</string>
-    <string name="categories_selection_none">0개 선택됨</string>
-    <string name="select_all_count">모두 선택 (%1$d)</string>
+    <string name="select_all_short">전체</string>
+    <string name="select_none">전체 선택 해제</string>
     <string name="action_move">이동</string>
     <string name="move_pick_target_title">카테고리 선택</string>
     <string name="category_detail_add_existing">기존 연락처 추가</string>

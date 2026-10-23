@@ -122,9 +122,13 @@ class CategoryDetailViewModel(
     private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedIds: StateFlow<Set<String>> = _selectedIds.asStateFlow()
 
-    val isSelectionMode: StateFlow<Boolean> = _selectedIds
-        .map { it.isNotEmpty() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    /**
+     * v7.1.98 — mode sélection EXPLICITE (même refonte que [com.jtr.app.ui.home.HomeViewModel]) :
+     * dérivé de « la sélection n'est pas vide », il se refermait dès la dernière case décochée.
+     * On entre par [startSelection], on ne sort que par [exitSelection].
+     */
+    private val _isSelectionMode = MutableStateFlow(false)
+    val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
 
     val categories: StateFlow<List<Category>> = categoryDao.getAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -210,11 +214,35 @@ class CategoryDetailViewModel(
         viewModelScope.launch { repository.toggleFavorite(person) }
     }
 
+    /** Appui long : ouvre le mode sélection sur ce contact. */
+    fun startSelection(id: String) {
+        _isSelectionMode.value = true
+        _selectedIds.update { it + id }
+    }
+
     fun toggleSelection(id: String) {
         _selectedIds.update { if (id in it) it - id else it + id }
     }
 
+    /** Coche les contacts AFFICHÉS (recherche comprise) — additif, comme l'Accueil. */
+    fun selectAll() {
+        _selectedIds.update { current -> current + persons.value.map { it.id } }
+    }
+
+    /** Décoche les contacts AFFICHÉS, et eux seuls — pendant exact de [selectAll]. */
+    fun deselectVisible() {
+        val visible = persons.value.mapTo(HashSet()) { it.id }
+        _selectedIds.update { it - visible }
+    }
+
+    /** Vide la sélection SANS quitter le mode. */
     fun clearSelection() { _selectedIds.value = emptySet() }
+
+    /** Quitte le mode sélection : la seule sortie (Annuler, Retour, fin d'action groupée). */
+    fun exitSelection() {
+        _selectedIds.value = emptySet()
+        _isSelectionMode.value = false
+    }
 
     /**
      * Retire les contacts sélectionnés de CETTE catégorie uniquement.
@@ -225,7 +253,7 @@ class CategoryDetailViewModel(
         if (ids.isEmpty()) return
         viewModelScope.launch {
             repository.removeFromCategory(ids, categoryId)
-            _selectedIds.value = emptySet()
+            exitSelection()
         }
     }
 
@@ -244,7 +272,7 @@ class CategoryDetailViewModel(
         if (ids.isEmpty()) return
         viewModelScope.launch {
             repository.softDeleteMultiple(ids)
-            _selectedIds.value = emptySet()
+            exitSelection()
         }
     }
 
@@ -255,7 +283,7 @@ class CategoryDetailViewModel(
             val category = Category(name = name, color = color)
             categoryRepo.add(category)
             repository.assignCategory(ids, category.id)
-            _selectedIds.value = emptySet()
+            exitSelection()
         }
     }
 
@@ -264,7 +292,7 @@ class CategoryDetailViewModel(
         if (ids.isEmpty()) return
         viewModelScope.launch {
             repository.assignCategory(ids, newCategoryId)
-            _selectedIds.value = emptySet()
+            exitSelection()
         }
     }
 
@@ -280,7 +308,7 @@ class CategoryDetailViewModel(
         if (ids.isEmpty()) return
         viewModelScope.launch {
             repository.moveToCategory(ids, categoryId, targetId)
-            _selectedIds.value = emptySet()
+            exitSelection()
         }
     }
 
@@ -296,7 +324,7 @@ class CategoryDetailViewModel(
             val category = Category(name = name, color = color, imagePath = imagePath)
             categoryRepo.add(category)
             repository.moveToCategory(ids, categoryId, category.id)
-            _selectedIds.value = emptySet()
+            exitSelection()
         }
     }
 

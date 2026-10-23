@@ -338,8 +338,8 @@
     <string name="categories_delete_group_title">حذف المجموعة «%1$s»؟</string>
     <string name="categories_delete_group_text">هل تريد بالتأكيد حذف المجموعة «%1$s» و%2$d فئة بداخلها؟</string>
     <string name="select_all">تحديد الكل</string>
-    <string name="categories_selection_none">لم يتم تحديد شيء</string>
-    <string name="select_all_count">تحديد الكل (%1$d)</string>
+    <string name="select_all_short">الكل</string>
+    <string name="select_none">إلغاء تحديد الكل</string>
     <string name="action_move">نقل</string>
     <string name="move_pick_target_title">اختر فئة</string>
     <string name="category_detail_add_existing">إضافة جهة اتصال موجودة</string>

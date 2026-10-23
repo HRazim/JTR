@@ -42,6 +42,7 @@ import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
 import com.jtr.app.ui.components.ScrollToTopFab
+import com.jtr.app.ui.components.SelectAllToggle
 import com.jtr.app.ui.components.rememberSystemPhotoPicker
 import com.jtr.app.ui.person.CropShape
 import com.jtr.app.ui.person.ImageCropDialog
@@ -130,9 +131,22 @@ fun CategoryGroupDetailScreen(
         isSelectionActive = false; selectedIds.clear(); selectedGroupIds.clear()
     }
 
-    // Bouton Retour en mode sélection : vide la sélection et reste sur l'écran ;
-    // inactif sinon → le retour navigue normalement vers le dossier parent.
-    BackHandler(enabled = isSelectionActive) { exitSelection() }
+    // v7.1.98 — la recherche INLINE revient, mais UNIQUEMENT en mode sélection : hors
+    // sélection la loupe garde la page scopée de v7.1.87 (qui cherche des CONTACTS) ;
+    // en sélection elle filtre les entrées affichées, celles qu'on est en train de cocher.
+    var searchActive by remember { mutableStateOf(false) }
+
+    // v7.1.98 — priorité du bouton Retour, identique sur les 5 écrans de sélection :
+    // 1) la recherche inline est ouverte → on la ferme, la sélection SURVIT ;
+    // 2) sinon on quitte la sélection ; 3) sinon la navigation reprend normalement.
+    BackHandler(enabled = isSelectionActive) {
+        if (searchActive) {
+            searchActive = false
+            viewModel.setSearchQuery("")
+        } else {
+            exitSelection()
+        }
+    }
     fun toggleCategory(id: String) {
         if (selectedIds.contains(id)) selectedIds.remove(id) else selectedIds.add(id)
     }
@@ -153,6 +167,27 @@ fun CategoryGroupDetailScreen(
             }
         }
         if (topEntries.isNotEmpty()) isSelectionActive = true
+    }
+
+    /** v7.1.98 — vrai quand TOUTES les entrées du dossier sont cochées (bascule partagée). */
+    val allTopEntriesSelected = topEntries.isNotEmpty() && topEntries.all { entry ->
+        when (entry) {
+            is TopEntry.Folder -> entry.group.id in selectedGroupIds
+            is TopEntry.Single -> entry.category.id in selectedIds
+        }
+    }
+
+    /**
+     * Décoche les entrées AFFICHÉES, et elles seules — pendant exact de [selectAll].
+     * On RESTE en mode sélection : seul Annuler / Retour en sort.
+     */
+    fun deselectVisible() {
+        topEntries.forEach { entry ->
+            when (entry) {
+                is TopEntry.Folder -> selectedGroupIds.remove(entry.group.id)
+                is TopEntry.Single -> selectedIds.remove(entry.category.id)
+            }
+        }
     }
 
     val totalSelected = selectedIds.size + selectedGroupIds.size
@@ -371,20 +406,42 @@ fun CategoryGroupDetailScreen(
             )
         },
         topBar = {
-            if (isSelectionActive) {
+            if (isSelectionActive && searchActive) {
+                // Recherche CONTEXTUELLE pendant la sélection : filtre l'affichage sans
+                // toucher aux coches ; la fermer n'efface que la requête.
+                JtrSearchableTopAppBar(
+                    title = "",
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                    searchActive = true,
+                    onSearchActiveChange = { searchActive = it },
+                    searchPlaceholder = stringResource(R.string.home_search_placeholder)
+                )
+            } else if (isSelectionActive) {
                 TopAppBar(
                     title = {
+                        // Le plural couvre 0 (« 0 selected ») : plus de chaîne séparée pour
+                        // ce cas, c'est désormais la même forme sur les 5 écrans (v7.1.98).
                         Text(
-                            if (totalSelected == 0) stringResource(R.string.categories_selection_none)
-                            else pluralStringResource(R.plurals.categories_selection_count, totalSelected, totalSelected)
+                            pluralStringResource(
+                                R.plurals.categories_selection_count, totalSelected, totalSelected
+                            )
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = { selectAll() }) {
-                            Icon(Icons.Default.SelectAll, contentDescription = stringResource(R.string.select_all))
-                        }
+                        SelectAllToggle(
+                            allSelected = allTopEntriesSelected,
+                            onSelectAll = { selectAll() },
+                            onDeselectAll = { deselectVisible() }
+                        )
                     },
                     actions = {
+                        // v7.1.98 — loupe conservée EN sélection, comme les 3 autres écrans
+                        // qui ont une recherche : on filtre, on coche, les coches survivent.
+                        IconButton(onClick = { searchActive = true }) {
+                            Icon(Icons.Default.Search,
+                                contentDescription = stringResource(R.string.action_search))
+                        }
                         TextButton(onClick = { exitSelection() }) {
                             Text(stringResource(R.string.common_cancel),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer)
@@ -393,7 +450,8 @@ fun CategoryGroupDetailScreen(
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 )
             } else {

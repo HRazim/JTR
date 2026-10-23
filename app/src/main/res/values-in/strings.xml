@@ -356,8 +356,8 @@
     <string name="categories_delete_group_title">Hapus grup “%1$s”?</string>
     <string name="categories_delete_group_text">Yakin ingin menghapus grup “%1$s” dan %2$d kategori di dalamnya?</string>
     <string name="select_all">Pilih semua</string>
-    <string name="categories_selection_none">0 dipilih</string>
-    <string name="select_all_count">Pilih semua (%1$d)</string>
+    <string name="select_all_short">Semua</string>
+    <string name="select_none">Batalkan semua pilihan</string>
     <string name="action_move">Pindahkan</string>
     <string name="move_pick_target_title">Pilih kategori</string>
     <string name="category_detail_add_existing">Tambah kontak yang ada</string>

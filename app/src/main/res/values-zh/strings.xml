@@ -333,9 +333,9 @@
     <string name="categories_delete_group_title">删除分组「%1$s」？</string>
     <string name="categories_delete_group_text">确定要删除分组「%1$s」及其包含的 %2$d 个分类吗？</string>
     <string name="select_all">全选</string>
-    <string name="categories_selection_none">已选择 0 个</string>
+    <string name="select_all_short">全选</string>
+    <string name="select_none">取消全选</string>
     <!-- v5.0 — 主页多选、直接移动、从分类内添加 -->
-    <string name="select_all_count">全选 (%1$d)</string>
     <string name="action_move">移动</string>
     <string name="move_pick_target_title">选择分类</string>
     <string name="category_detail_add_existing">添加现有联系人</string>
