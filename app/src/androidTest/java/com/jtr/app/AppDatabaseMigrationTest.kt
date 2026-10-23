@@ -557,4 +557,93 @@ class AppDatabaseMigrationTest {
             assertEquals(createdAt, c.getLong(2))
         }
     }
+
+    /**
+     * Migration v22 → v23 — galerie d'images par contact (v7.1.88).
+     *
+     * Elle est PUREMENT ADDITIVE : un CREATE TABLE + un CREATE INDEX. Ce test vérifie donc
+     * les deux moitiés du contrat :
+     *  1. **Rien n'est perdu** : un contact, une catégorie et leur lien, écrits en v22,
+     *     ressortent INTACTS en v23 (c'est la seule chose qui compte pour la vraie base).
+     *  2. **La table est utilisable** : `gallery_images` existe, est VIDE, accepte une
+     *     ligne, et son AUTOINCREMENT fonctionne.
+     *
+     * `runMigrationsAndValidate(..., true, ...)` valide en prime la conformité STRUCTURELLE
+     * à `23.json` : c'est ce qui attraperait une divergence de type, de DEFAULT, de clé
+     * étrangère ou d'index — autrement dit le « Migration didn't properly handle » qui
+     * ferait planter l'app au premier lancement sur la vraie base.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate22To23_addsEmptyGalleryTableAndKeepsEverythingElse() {
+        val personId = "person-pre-v23"
+        val categoryId = "cat-pre-v23"
+        val createdAt = 1_700_000_000_000L
+
+        helper.createDatabase(testDb, 22).use { db ->
+            db.execSQL(
+                "INSERT INTO persons (id, firstName, lastName, birthdateNotify, cityNotify, " +
+                    "isFavorite, createdAt, updatedAt, noteSections, " +
+                    "birthdateReminderOffsetMinutes) " +
+                    "VALUES (?, 'Alice', 'Souvenir', 0, 0, 0, ?, ?, '[]', 0)",
+                arrayOf<Any?>(personId, createdAt, createdAt)
+            )
+            db.execSQL(
+                "INSERT INTO categories " +
+                    "(id, name, color, icon, imagePath, `order`, isFavorite, position, " +
+                    "parentGroupId, createdAt, updatedAt, deletedAt) " +
+                    "VALUES (?, 'Vacances', '#2E86C1', 'folder', NULL, 0, 0, 0, NULL, ?, ?, NULL)",
+                arrayOf<Any?>(categoryId, createdAt, createdAt)
+            )
+            db.execSQL(
+                "INSERT INTO person_category_join (personId, categoryId, addedAt) " +
+                    "VALUES (?, ?, ?)",
+                arrayOf<Any?>(personId, categoryId, createdAt)
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 23, true, AppDatabase.MIGRATION_22_23
+        )
+
+        // 1) RIEN N'EST PERDU — contact, catégorie et lien intacts.
+        db.query("SELECT firstName, lastName, createdAt FROM persons WHERE id = ?",
+            arrayOf(personId)).use { c ->
+            assertTrue("Le contact doit survivre à la migration", c.moveToFirst())
+            assertEquals("Alice", c.getString(0))
+            assertEquals("Souvenir", c.getString(1))
+            assertEquals(createdAt, c.getLong(2))
+        }
+        db.query("SELECT name FROM categories WHERE id = ?", arrayOf(categoryId)).use { c ->
+            assertTrue("La catégorie doit survivre", c.moveToFirst())
+            assertEquals("Vacances", c.getString(0))
+        }
+        db.query("SELECT COUNT(*) FROM person_category_join WHERE personId = ?",
+            arrayOf(personId)).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(1, c.getInt(0))
+        }
+
+        // 2) La table existe et naît VIDE (aucune donnée inventée par la migration).
+        db.query("SELECT COUNT(*) FROM gallery_images").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("gallery_images doit naître VIDE", 0, c.getInt(0))
+        }
+
+        // 3) Elle est écrivable, avec AUTOINCREMENT et les défauts attendus.
+        db.execSQL(
+            "INSERT INTO gallery_images (personId, path, createdAt) VALUES (?, ?, ?)",
+            arrayOf<Any?>(personId, "/data/photos/souvenir.jpg", createdAt)
+        )
+        db.query("SELECT id, personId, path, position, caption, createdAt FROM gallery_images")
+            .use { c ->
+                assertTrue("La ligne insérée doit être relue", c.moveToFirst())
+                assertTrue("AUTOINCREMENT doit attribuer un id > 0", c.getLong(0) > 0L)
+                assertEquals(personId, c.getString(1))
+                assertEquals("/data/photos/souvenir.jpg", c.getString(2))
+                assertEquals(0, c.getInt(3))          // DEFAULT 0
+                assertTrue("caption est nullable", c.isNull(4))
+                assertEquals(createdAt, c.getLong(5))
+            }
+    }
 }

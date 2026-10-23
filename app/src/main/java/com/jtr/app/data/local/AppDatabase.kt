@@ -9,6 +9,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.domain.model.GalleryImage
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
@@ -17,8 +18,16 @@ import org.json.JSONArray
 import java.util.Locale
 
 /**
- * AppDatabase — Version 22.
+ * AppDatabase — Version 23.
  *
+ * v23 : Galerie d'images par contact (v7.1.88). Nouvelle table `gallery_images`
+ *       (id AUTOINCREMENT, personId TEXT FK → persons(id) ON DELETE CASCADE + index,
+ *       path TEXT, position/createdAt INTEGER NOT NULL DEFAULT 0, caption TEXT).
+ *       Migration PUREMENT ADDITIVE : un seul CREATE TABLE + un CREATE INDEX, aucune
+ *       table existante touchée, aucune ligne lue ni écrite → ZÉRO perte possible
+ *       ([MIGRATION_22_23]). `position` et `caption` sont provisionnés dès maintenant
+ *       bien qu'aucune UI ne les exploite, pour que le réordonnancement et les légendes
+ *       n'exigent JAMAIS d'autre migration.
  * v22 : Métadonnées de catégorie (v7.1.48). Ajout de Category.updatedAt (INTEGER NOT NULL
  *       DEFAULT 0) — dernière modification du CONTENU (nom / couleur / image), en parité
  *       avec Person.updatedAt (v14). Les lignes préexistantes sont backfillées depuis
@@ -66,14 +75,15 @@ import java.util.Locale
  */
 @Database(
     entities = [Person::class, Category::class, CategoryGroup::class,
-        PersonCategoryJoin::class, SocialLinkEntity::class],
-    version = 22,
+        PersonCategoryJoin::class, SocialLinkEntity::class, GalleryImage::class],
+    version = 23,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun personDao(): PersonDao
+    abstract fun galleryImageDao(): GalleryImageDao
     abstract fun categoryDao(): CategoryDao
     abstract fun categoryGroupDao(): CategoryGroupDao
     abstract fun personCategoryDao(): PersonCategoryDao
@@ -350,6 +360,42 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration v22 → v23, ZÉRO perte de données — galerie d'images par contact (v7.1.88).
+         *
+         * PUREMENT ADDITIVE : un `CREATE TABLE` et un `CREATE INDEX`, rien d'autre. Aucune
+         * table existante n'est recréée, altérée ni lue ; aucune ligne n'est écrite. Il n'y a
+         * donc littéralement aucun chemin par lequel une donnée préexistante pourrait être
+         * perdue — contrairement aux migrations qui recréent une table pour changer une
+         * contrainte.
+         *
+         * ⚠️ Le SQL ci-dessous doit correspondre AU CARACTÈRE PRÈS à ce que Room génère pour
+         * [GalleryImage] (cf. `schemas/.../23.json`, champ `createSql`) : Room revalide le
+         * schéma obtenu au premier lancement et lève « Migration didn't properly handle »
+         * à la moindre divergence (type, NOT NULL, DEFAULT, ordre des colonnes, nom d'index).
+         * `personId` est un **TEXT** : `Person.id` est un UUID String, et la table parente
+         * s'appelle `persons`.
+         */
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `gallery_images` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`personId` TEXT NOT NULL, " +
+                        "`path` TEXT NOT NULL, " +
+                        "`position` INTEGER NOT NULL DEFAULT 0, " +
+                        "`caption` TEXT, " +
+                        "`createdAt` INTEGER NOT NULL DEFAULT 0, " +
+                        "FOREIGN KEY(`personId`) REFERENCES `persons`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE )"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_gallery_images_personId` " +
+                        "ON `gallery_images` (`personId`)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -359,7 +405,8 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                         MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
-                        MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
+                        MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
+                        MIGRATION_22_23)
                     // v7.1.63 — AUCUN FALLBACK DESTRUCTIF : la base n'est PLUS JAMAIS
                     // effacée silencieusement, quel que soit le scénario.
                     //

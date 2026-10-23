@@ -9,6 +9,7 @@ import com.google.gson.annotations.SerializedName
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.domain.model.GalleryImage
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
@@ -41,7 +42,13 @@ data class BackupPayload(
     val categories: List<Category>? = null,
     val groups: List<CategoryGroup>? = null,
     val joins: List<PersonCategoryJoin>? = null,
-    val socialLinks: List<SocialLinkEntity>? = null
+    val socialLinks: List<SocialLinkEntity>? = null,
+    /**
+     * v7.1.88 — galerie par contact. Champ NULLABLE et ajout PUREMENT ADDITIF : une archive
+     * ANTÉRIEURE ne le porte pas, Gson le laisse `null`, [coerceList] le ramène à vide →
+     * un ancien `.jtr` s'importe exactement comme avant.
+     */
+    val galleryImages: List<GalleryImage>? = null
 )
 
 /**
@@ -123,6 +130,7 @@ class BackupManager(context: Context) {
             val groups = db.categoryGroupDao().getAllSync()
             val joins = db.personCategoryDao().getAllJoinsSync()
             val socialLinks = db.socialLinkDao().getAllSync()
+            val galleryImages = db.galleryImageDao().getAllSync()
 
             // Médias référencés → entrées ZIP « media/n_nom » (dédupliquées).
             // PORTABILITÉ (v5.5) : toute source LISIBLE est embarquée — fichier
@@ -148,7 +156,11 @@ class BackupManager(context: Context) {
                 categories = categories.map { it.copy(imagePath = register(it.imagePath)) },
                 groups = groups.map { it.copy(imagePath = register(it.imagePath)) },
                 joins = joins,
-                socialLinks = socialLinks
+                socialLinks = socialLinks,
+                // v7.1.88 — la galerie passe par le MÊME mécanisme que les autres images :
+                // `register` tokenise le chemin et embarque le fichier dans l'archive. Rien
+                // de spécifique à écrire côté ZIP, c'est tout l'intérêt d'un chemin en base.
+                galleryImages = galleryImages.map { it.copy(path = register(it.path) ?: it.path) }
             )
 
             val output = appContext.contentResolver.openOutputStream(uri)
@@ -263,6 +275,8 @@ class BackupManager(context: Context) {
                 val groups = payload.groups.orEmpty()
                 val joins = payload.joins.orEmpty()
                 val socialLinks = payload.socialLinks.orEmpty()
+                // v7.1.88 — absent des archives antérieures → liste vide, import inchangé.
+                val galleryImages = coerceList(payload.galleryImages)
 
                 // Réécriture TRANSPARENTE des jetons jtr-media:// vers les chemins
                 // ABSOLUS de CE téléphone (les fichiers viennent d'être copiés dans
@@ -308,6 +322,17 @@ class BackupManager(context: Context) {
                         }
                         db.personCategoryDao().insertAll(joins.map { it.copy(addedAt = orRestore(it.addedAt)) })
                         socialLinks.forEach { db.socialLinkDao().insert(it) }
+                        // v7.1.88 — APRÈS les profils : la FK gallery_images.personId exige
+                        // que la personne existe. `Person.id` survit tel quel à l'import, donc
+                        // le rattachement est direct, sans remappage d'identifiant.
+                        // Un jeton dont le fichier manque donnerait un chemin null, interdit
+                        // par la colonne NOT NULL → la ligne est ÉCARTÉE plutôt qu'insérée
+                        // cassée (même esprit que « jamais d'URI morte en base »).
+                        db.galleryImageDao().insertAll(
+                            galleryImages.mapNotNull { img ->
+                                rewrite(img.path, false)?.let { img.copy(path = it) }
+                            }
+                        )
                     }
                 } catch (e: RestoreException) {
                     throw e
