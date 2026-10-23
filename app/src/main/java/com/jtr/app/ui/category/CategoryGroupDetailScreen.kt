@@ -40,6 +40,8 @@ import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.components.JtrViewMode
+import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
+import com.jtr.app.ui.components.ScrollToTopFab
 import com.jtr.app.ui.components.rememberSystemPhotoPicker
 import com.jtr.app.ui.person.CropShape
 import com.jtr.app.ui.person.ImageCropDialog
@@ -89,6 +91,16 @@ fun CategoryGroupDetailScreen(
     // navigateur normal et le mode sélection : l'appui long n'emporte plus la liste en haut.
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
+    // v7.1.86 — FAB « remonter en haut » : MÊME composant et MÊME seuil que l'Accueil
+    // (v7.1.72), branché sur les états ci-dessus — donc valable en navigation comme en
+    // sélection, et dans les 3 modes (GRID a son état, LIST/DETAIL partagent l'autre).
+    val showScrollToTop by remember(viewMode) {
+        derivedStateOf {
+            val index = if (viewMode == JtrViewMode.GRID) gridState.firstVisibleItemIndex
+            else listState.firstVisibleItemIndex
+            index > SCROLL_TO_TOP_THRESHOLD
+        }
+    }
     var showBulkDelete by remember { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<Category?>(null) }
     var renameGroupTarget by remember { mutableStateOf<CategoryGroup?>(null) }
@@ -345,6 +357,19 @@ fun CategoryGroupDetailScreen(
     }
 
     Scaffold(
+        // v7.1.86 — même agencement qu'à l'Accueil : bas-fin, au-dessus de la bottomBar ;
+        // masqué en sélection, où le SelectionFooter occupe le bas.
+        floatingActionButton = {
+            ScrollToTopFab(
+                visible = showScrollToTop && !isSelectionActive,
+                onClick = {
+                    scope.launch {
+                        if (viewMode == JtrViewMode.GRID) gridState.animateScrollToItem(0)
+                        else listState.animateScrollToItem(0)
+                    }
+                }
+            )
+        },
         topBar = {
             if (isSelectionActive) {
                 TopAppBar(

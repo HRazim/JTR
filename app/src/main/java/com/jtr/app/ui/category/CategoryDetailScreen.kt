@@ -3,6 +3,8 @@ package com.jtr.app.ui.category
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.*
@@ -20,6 +22,9 @@ import com.jtr.app.R
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
+import com.jtr.app.ui.components.JtrViewMode
+import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
+import com.jtr.app.ui.components.ScrollToTopFab
 import com.jtr.app.ui.home.PersonListContent
 import com.jtr.app.ui.person.formatDateTimeLong
 import kotlinx.coroutines.launch
@@ -64,6 +69,20 @@ fun CategoryDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val undoLabel = stringResource(R.string.common_undo)
+
+    // v7.1.86 — FAB « remonter en haut », MÊME composant et MÊME seuil que l'Accueil et
+    // Catégories (v7.1.72). États de défilement hoistés ici puis passés à PersonListContent :
+    // LIST et DETAIL partagent [listState] (tous deux LazyColumn), GRID a [gridState].
+    // derivedStateOf → recomposition au seul FRANCHISSEMENT du seuil, pas à chaque pixel.
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+    val showScrollToTop by remember(viewMode) {
+        derivedStateOf {
+            val index = if (viewMode == JtrViewMode.GRID) gridState.firstVisibleItemIndex
+            else listState.firstVisibleItemIndex
+            index > SCROLL_TO_TOP_THRESHOLD
+        }
+    }
 
     // Sortie d'écran → réinitialisation du filtre : aucune query fantôme au retour.
     DisposableEffect(Unit) { onDispose { viewModel.clearSearch() } }
@@ -184,6 +203,20 @@ fun CategoryDetailScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        // v7.1.86 — même agencement qu'à l'Accueil : le Scaffold pose le FAB en bas-fin,
+        // au-dessus de la bottomBar. L'ajout de contact étant une icône « + » de la
+        // TopAppBar, rien à chevaucher ; masqué en sélection, le footer occupant le bas.
+        floatingActionButton = {
+            ScrollToTopFab(
+                visible = showScrollToTop && !isSelectionMode,
+                onClick = {
+                    scope.launch {
+                        if (viewMode == JtrViewMode.GRID) gridState.animateScrollToItem(0)
+                        else listState.animateScrollToItem(0)
+                    }
+                }
+            )
+        },
         topBar = {
             if (isSelectionMode) {
                 TopAppBar(
@@ -377,7 +410,10 @@ fun CategoryDetailScreen(
                         else onNavigateToPersonDetail(person.id)
                     },
                     onLongClick = { viewModel.toggleSelection(it.id) },
-                    onFavoriteClick = { viewModel.toggleFavorite(it) }
+                    onFavoriteClick = { viewModel.toggleFavorite(it) },
+                    // v7.1.86 — états hoistés : c'est ce qui pilote le FAB « remonter ».
+                    listState = listState,
+                    gridState = gridState
                 )
             }
         }

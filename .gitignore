@@ -20,6 +20,8 @@ local.properties
 .idea/
 .gradle/
 build/
+# Sessions du démon Kotlin (.kotlin/sessions/*.salive) — artefact de build local
+.kotlin/
 
 # Signing & secrets (ne jamais committer)
 *.jks
