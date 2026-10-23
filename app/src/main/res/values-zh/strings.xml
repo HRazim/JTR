@@ -553,6 +553,9 @@
     <string name="gallery_details_year">年</string>
     <string name="gallery_details_hour">时</string>
     <string name="gallery_details_minute">分</string>
+    <string name="gallery_details_location">位置</string>
+    <string name="gallery_details_location_add">添加位置</string>
+    <string name="gallery_details_location_remove">移除位置</string>
     <plurals name="gallery_square_cd">
         <item quantity="other">%1$s 的相册，%2$d 张照片</item>
     </plurals>

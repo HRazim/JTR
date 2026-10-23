@@ -544,6 +544,9 @@
     <string name="gallery_details_year">년</string>
     <string name="gallery_details_hour">시</string>
     <string name="gallery_details_minute">분</string>
+    <string name="gallery_details_location">위치</string>
+    <string name="gallery_details_location_add">위치 추가</string>
+    <string name="gallery_details_location_remove">위치 삭제</string>
     <plurals name="gallery_square_cd">
         <item quantity="other">%1$s의 갤러리, 사진 %2$d장</item>
     </plurals>

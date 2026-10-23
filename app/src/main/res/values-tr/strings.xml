@@ -554,6 +554,9 @@
     <string name="gallery_details_year">Yıl</string>
     <string name="gallery_details_hour">Saat</string>
     <string name="gallery_details_minute">Dakika</string>
+    <string name="gallery_details_location">Konum</string>
+    <string name="gallery_details_location_add">Konum ekle</string>
+    <string name="gallery_details_location_remove">Konumu kaldır</string>
     <plurals name="gallery_square_cd">
         <item quantity="one">%1$s galerisi, 1 fotoğraf</item>
         <item quantity="other">%1$s galerisi, %2$d fotoğraf</item>

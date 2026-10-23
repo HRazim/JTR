@@ -292,7 +292,10 @@ fun GalleryScreen(
                 onDismiss = { viewerIndex = null },
                 onRequestDelete = { pendingDelete = listOf(it) },
                 onCaptionChange = { id, caption -> viewModel.setCaption(id, caption) },
-                onCreatedAtChange = { id, millis -> viewModel.setCreatedAt(id, millis) }
+                onCreatedAtChange = { id, millis -> viewModel.setCreatedAt(id, millis) },
+                onLocationChange = { id, lat, lng, label ->
+                    viewModel.setLocation(id, lat, lng, label)
+                }
             )
         }
     }
@@ -426,7 +429,8 @@ private fun GalleryViewer(
     onDismiss: () -> Unit,
     onRequestDelete: (GalleryImage) -> Unit,
     onCaptionChange: (Long, String?) -> Unit,
-    onCreatedAtChange: (Long, Long) -> Unit
+    onCreatedAtChange: (Long, Long) -> Unit,
+    onLocationChange: (Long, Double?, Double?, String?) -> Unit
 ) {
     val pagerState = rememberPagerState(initialPage = startIndex) { images.size }
     // v7.1.94 — panneau de détails de l'image COURANTE (bouton ⓘ).
@@ -534,6 +538,9 @@ private fun GalleryViewer(
                             image = current,
                             onCaptionChange = { onCaptionChange(current.id, it) },
                             onCreatedAtChange = { onCreatedAtChange(current.id, it) },
+                            onLocationChange = { lat, lng, label ->
+                                onLocationChange(current.id, lat, lng, label)
+                            },
                             onDismiss = { showDetails = false }
                         )
                     }

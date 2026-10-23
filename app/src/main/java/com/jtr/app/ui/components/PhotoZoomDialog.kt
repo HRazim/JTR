@@ -211,6 +211,40 @@ internal fun rememberVisualCenterCorrectionPx(): Int {
     return correction
 }
 
+/**
+ * Marge BASSE à appliquer DANS un `Dialog` pour qu'un élément ancré en bas reste visible
+ * (v7.1.95). Deux effets s'additionnent, tous deux mesurés sur S21 :
+ *  1. la **barre de navigation**, que les `WindowInsets` de Compose rapportent à ZÉRO dans
+ *     un dialogue — il faut donc la lire sur la fenêtre de l'ACTIVITÉ ;
+ *  2. le **débordement de la fenêtre sous l'écran** : elle reçoit la HAUTEUR de l'écran mais
+ *     est posée sous la barre d'état (cf. [rememberVisualCenterCorrectionPx]), donc son bas
+ *     tombe hors de l'écran d'autant.
+ * Sans cette marge, un bandeau ancré en bas (le « Enregistrer » du sélecteur de carte) est
+ * coupé par les touches Android.
+ */
+@Composable
+internal fun rememberDialogBottomInsetDp(): Dp {
+    val view = LocalView.current
+    val density = LocalDensity.current
+    val (_, navBarBottom) = rememberSystemBarsDp()
+    var overflow by remember { mutableIntStateOf(0) }
+    DisposableEffect(view) {
+        val observer = view.viewTreeObserver
+        val listener = ViewTreeObserver.OnGlobalLayoutListener {
+            if (view.height > 0) {
+                val location = IntArray(2).also { view.getLocationOnScreen(it) }
+                val screenHeight = view.context.realScreenHeightPx()
+                overflow = (location[1] + view.height - screenHeight).coerceAtLeast(0)
+            }
+        }
+        observer.addOnGlobalLayoutListener(listener)
+        onDispose {
+            if (observer.isAlive) observer.removeOnGlobalLayoutListener(listener)
+        }
+    }
+    return navBarBottom + with(density) { overflow.toDp() }
+}
+
 /** Hauteur de l'écran PHYSIQUE, barres comprises — et non celle de la fenêtre courante. */
 @Suppress("DEPRECATION")
 private fun Context.realScreenHeightPx(): Int {

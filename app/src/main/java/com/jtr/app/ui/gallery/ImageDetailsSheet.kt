@@ -4,6 +4,7 @@ import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,8 +15,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -41,10 +45,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+
+
+
+
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.jtr.app.R
 import com.jtr.app.domain.model.GalleryImage
 import com.jtr.app.ui.components.WheelPicker
+import com.jtr.app.ui.components.rememberDialogBottomInsetDp
+import com.jtr.app.ui.map.MapScreen
 import kotlinx.coroutines.launch
 import java.text.DateFormatSymbols
 import java.util.Calendar
@@ -82,6 +94,7 @@ internal fun ImageDetailsSheet(
     image: GalleryImage,
     onCaptionChange: (String?) -> Unit,
     onCreatedAtChange: (Long) -> Unit,
+    onLocationChange: (Double?, Double?, String?) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetStateCompat()
@@ -89,6 +102,7 @@ internal fun ImageDetailsSheet(
     val context = LocalContext.current
 
     var editing by remember { mutableStateOf(EditTarget.NONE) }
+    var showPicker by remember { mutableStateOf(false) }
     // Brouillon local : l'édition reste fluide même si la ligne est rediffusée par le Flow.
     var draft by remember(image.id) { mutableStateOf(image.caption.orEmpty()) }
     val focusRequester = remember { FocusRequester() }
@@ -197,6 +211,59 @@ internal fun ImageDetailsSheet(
                 // Le clavier arrive sur le champ sans tap supplémentaire.
                 LaunchedEffect(Unit) { focusRequester.requestFocus() }
             }
+
+            // ── LIEU ────────────────────────────────────────────────────────────────
+            val hasLocation = image.latitude != null && image.longitude != null
+            val placeText = image.placeLabel?.takeIf { it.isNotBlank() }
+            DetailRow(
+                icon = Icons.Outlined.LocationOn,
+                label = stringResource(R.string.gallery_details_location),
+                value = placeText
+                    ?: stringResource(R.string.gallery_details_location_add),
+                isPlaceholder = !hasLocation,
+                onClick = { showPicker = true },
+                // Un lieu posé se retire d'ici même : pas de sous-menu pour une action
+                // aussi simple, et l'action n'existe pas quand il n'y a rien à retirer.
+                trailing = if (hasLocation) {
+                    {
+                        IconButton(onClick = { onLocationChange(null, null, null) }) {
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription =
+                                    stringResource(R.string.gallery_details_location_remove),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else null
+            )
+        }
+    }
+
+    // SÉLECTEUR DE CARTE posé en FENÊTRE PAR-DESSUS : surtout pas une navigation vers
+    // `Routes.MAP_PICKER`, qui démonterait l'écran galerie et donc la visionneuse
+    // (`viewerIndex` est un `remember` non-Saveable). Ici, visionneuse et panneau restent
+    // montés derrière, et le sélecteur rend son résultat par simple callback.
+    if (showPicker) {
+        Dialog(
+            onDismissRequest = { showPicker = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            MapScreen(
+                onLocationSelected = { label, lat, lng ->
+                    onLocationChange(lat, lng, label)
+                    showPicker = false
+                },
+                onNavigateBack = { showPicker = false },
+                // Déjà localisée ⇒ le sélecteur s'ouvre CENTRÉ sur le point enregistré.
+                initialLabel = image.placeLabel,
+                initialLat = image.latitude,
+                initialLng = image.longitude,
+                // Dans un Dialog, les insets de Compose valent 0 ET la fenêtre déborde sous
+                // l'écran : sans cette marge, le bandeau « Enregistrer » passe sous les
+                // touches Android (mesuré sur S21).
+                bottomInset = rememberDialogBottomInsetDp()
+            )
         }
     }
 
@@ -218,32 +285,48 @@ private fun DetailRow(
     label: String,
     value: String,
     isPlaceholder: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    trailing: (@Composable () -> Unit)? = null
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            // Un seul nœud d'accessibilité porte le libellé ET la valeur : « Date, 21
-            // octobre 2026 · 16:58 ». L'icône, décorative, reste muette.
-            .semantics { contentDescription = "$label, $value" },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(22.dp)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (isPlaceholder) MaterialTheme.colorScheme.onSurfaceVariant
-            else MaterialTheme.colorScheme.onSurface
-        )
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                // ⚠️ AUCUN `semantics {}` ICI, volontairement. `clickable` fusionne DÉJÀ
+                // ses descendants et impose la cible de 48 dp sur un nœud ENGLOBANT ; un
+                // `semantics {}` posé sur la Row crée un nœud intérieur qui BLOQUE cette
+                // fusion — l'`uiautomator dump` montrait alors un cliquable SANS libellé
+                // (144 px) doublé d'un libellé non cliquable (138 px), soit un bouton
+                // anonyme pour TalkBack (défaut de v7.1.86, reproduit puis mesuré ici, et
+                // que ni `mergeDescendants` ni le réordonnancement ne corrigeaient).
+                // Le libellé du champ est donc porté par l'ICÔNE : le nœud cliquable
+                // annonce « Date, April 28, 2026 · 11:40 » d'un seul tenant.
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                // Porte le NOM du champ (« Date », « Description », « Lieu ») : fusionné au
+                // texte de valeur par le `clickable`, cela donne une annonce complète.
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp)
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isPlaceholder) MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.onSurface
+            )
+        }
+        // Action secondaire éventuelle, HORS de la zone cliquable principale pour qu'elle
+        // ait son propre nœud d'accessibilité et sa propre cible tactile.
+        trailing?.let { it(); Box(Modifier.size(4.dp)) }
     }
 }
 

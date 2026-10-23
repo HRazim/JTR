@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import com.jtr.app.R
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
@@ -45,6 +46,9 @@ private const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 /** Durée de l'animation de survol en millisecondes. */
 private const val CAMERA_ANIMATION_DURATION_MS = 1800
 
+/** Zoom d'ouverture sur un point DÉJÀ enregistré : échelle « adresse précise ». */
+private const val INITIAL_POINT_ZOOM = 14.5
+
 /** Padding overlay en dp : laisse de l'air sous la search bar et au-dessus du bandeau bas. */
 private const val OVERLAY_TOP_DP = 76f
 private const val OVERLAY_BOTTOM_DP = 90f
@@ -55,8 +59,24 @@ private const val OVERLAY_SIDE_DP = 32f
 fun MapScreen(
     onLocationSelected: (cityName: String, lat: Double, lng: Double) -> Unit,
     onNavigateBack: () -> Unit,
+    // v7.1.95 — POINT DE DÉPART facultatif : rouvrir le sélecteur sur un lieu déjà
+    // enregistré (une image de galerie localisée) plutôt que sur la caméra par défaut.
+    // Absent (le cas de la fiche contact), le comportement est inchangé.
+    initialLabel: String? = null,
+    initialLat: Double? = null,
+    initialLng: Double? = null,
+    // v7.1.95 — marge basse supplémentaire pour le bandeau de sélection. Vaut 0 dans la
+    // navigation normale (le Scaffold gère déjà les barres) ; l'hôte la fournit quand
+    // l'écran est posé dans un `Dialog`, où les insets de Compose rapportent ZÉRO et où la
+    // fenêtre déborde sous l'écran — sans elle, « Enregistrer » passe sous les touches.
+    bottomInset: Dp = 0.dp,
     viewModel: MapViewModel = viewModel()
 ) {
+    // Une ouverture = une remise à plat (cf. [MapViewModel.startAt]) : indispensable quand
+    // le ViewModel est porté par l'activité, inoffensif quand il naît avec la navigation.
+    LaunchedEffect(initialLat, initialLng) {
+        viewModel.startAt(initialLabel, initialLat, initialLng)
+    }
     var query by remember { mutableStateOf("") }
     val results by viewModel.searchResults.collectAsStateWithLifecycle()
     val isSearching by viewModel.isSearching.collectAsStateWithLifecycle()
@@ -174,6 +194,21 @@ fun MapScreen(
                                 (OVERLAY_BOTTOM_DP * d).toInt()
                             )
                             map.setStyle(STYLE_URL)
+                            // POINT DE DÉPART (v7.1.95) — posé ICI, et non par un événement
+                            // caméra : à l'ouverture la carte n'est pas encore prête, un
+                            // événement émis alors serait perdu (mesuré). `moveCamera` et
+                            // non `easeCamera` : c'est la position de DÉPART, pas un survol.
+                            if (initialLat != null && initialLng != null) {
+                                markerRef[0]?.remove()
+                                markerRef[0] = map.addMarker(
+                                    MarkerOptions().position(LatLng(initialLat, initialLng))
+                                )
+                                map.moveCamera(
+                                    CameraUpdateFactory.newLatLngZoom(
+                                        LatLng(initialLat, initialLng), INITIAL_POINT_ZOOM
+                                    )
+                                )
+                            }
                             map.addOnMapClickListener { point ->
                                 // Piquer un point sur la carte CLÔT la saisie : le bandeau de
                                 // sélection va apparaître en bas, il ne doit pas naître derrière
@@ -300,6 +335,7 @@ fun MapScreen(
                         .imePadding()
                         .fillMaxWidth()
                         .padding(12.dp)
+                        .padding(bottom = bottomInset)
                         .zIndex(1f),
                     shape = RoundedCornerShape(16.dp),
                     tonalElevation = 4.dp,

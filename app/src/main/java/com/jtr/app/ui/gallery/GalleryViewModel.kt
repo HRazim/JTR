@@ -72,6 +72,16 @@ class GalleryViewModel(
         viewModelScope.launch { repository.setCreatedAt(imageId, createdAt) }
     }
 
+    /**
+     * v7.1.95 — enregistre le lieu choisi dans le sélecteur de carte, ou le RETIRE quand les
+     * trois valeurs sont `null`.
+     */
+    fun setLocation(imageId: Long, latitude: Double?, longitude: Double?, placeLabel: String?) {
+        viewModelScope.launch {
+            repository.setLocation(imageId, latitude, longitude, placeLabel)
+        }
+    }
+
     /** Supprime une image : la ligne puis son fichier. */
     fun delete(image: GalleryImage) {
         viewModelScope.launch { repository.delete(image) }

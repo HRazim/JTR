@@ -574,6 +574,9 @@
     <string name="gallery_details_year">Год</string>
     <string name="gallery_details_hour">Час</string>
     <string name="gallery_details_minute">Минута</string>
+    <string name="gallery_details_location">Место</string>
+    <string name="gallery_details_location_add">Добавить место</string>
+    <string name="gallery_details_location_remove">Удалить место</string>
     <plurals name="gallery_square_cd">
         <item quantity="one">Галерея: %1$s, 1 фото</item>
         <item quantity="few">Галерея: %1$s, %2$d фото</item>

@@ -594,6 +594,9 @@
     <string name="gallery_details_year">السنة</string>
     <string name="gallery_details_hour">الساعة</string>
     <string name="gallery_details_minute">الدقيقة</string>
+    <string name="gallery_details_location">الموقع</string>
+    <string name="gallery_details_location_add">إضافة موقع</string>
+    <string name="gallery_details_location_remove">إزالة الموقع</string>
     <plurals name="gallery_square_cd">
         <item quantity="zero">معرض %1$s، %2$d صور</item>
         <item quantity="one">معرض %1$s، صورة واحدة</item>

@@ -54,6 +54,25 @@ interface GalleryImageDao {
     @Query("UPDATE gallery_images SET createdAt = :createdAt WHERE id = :id")
     suspend fun updateCreatedAt(id: Long, createdAt: Long)
 
+    /**
+     * v7.1.95 — LOCALISATION de l'image (colonnes posées en v24). Les trois valeurs vont
+     * ENSEMBLE : passer `null` partout retire le lieu, et il n'existe aucun chemin par
+     * lequel une coordonnée survivrait à son libellé, ou l'inverse.
+     */
+    @Query(
+        """
+        UPDATE gallery_images
+        SET latitude = :latitude, longitude = :longitude, placeLabel = :placeLabel
+        WHERE id = :id
+        """
+    )
+    suspend fun updateLocation(
+        id: Long,
+        latitude: Double?,
+        longitude: Double?,
+        placeLabel: String?
+    )
+
     /** Toutes les lignes — lecture ponctuelle pour l'export `.jtr`. */
     @Query("SELECT * FROM gallery_images")
     suspend fun getAllSync(): List<GalleryImage>

@@ -76,6 +76,27 @@ class MapViewModel : ViewModel() {
     }
 
     /**
+     * Prépare le sélecteur pour UNE ouverture (v7.1.95).
+     *
+     * ⚠️ Ouvert en feuille par-dessus la galerie, ce ViewModel est porté par l'ACTIVITÉ et
+     * non par une entrée de navigation : sans remise à plat, la sélection de l'ouverture
+     * précédente ressurgirait d'emblée (bandeau « Enregistrer » déjà posé sur l'ancien lieu).
+     *
+     * Avec des coordonnées, on REPOSE la sélection : le bandeau « Enregistrer » est donc
+     * déjà là, sur le lieu actuel de l'image.
+     *
+     * ⚠️ On n'émet PAS d'événement caméra ici : au moment de l'ouverture la `MapView` n'est
+     * pas encore prête (`getMapAsync` n'a pas rendu la main) et l'événement serait PERDU —
+     * mesuré sur S21, le bandeau se remplissait mais la carte restait sur le planisphère.
+     * Le centrage initial est appliqué par [MapScreen] À LA CRÉATION de la carte.
+     */
+    fun startAt(label: String?, lat: Double?, lng: Double?) {
+        _searchResults.value = emptyList()
+        _selectedLocation.value =
+            if (lat != null && lng != null) Triple(label.orEmpty(), lat, lng) else null
+    }
+
+    /**
      * Sélection depuis la barre de recherche.
      * Calcule un niveau de zoom adapté au type de lieu (ville entière vs rue précise),
      * puis émet un événement caméra que la View consommera pour lancer l'animation.

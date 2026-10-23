@@ -553,6 +553,9 @@
     <string name="gallery_details_year">年</string>
     <string name="gallery_details_hour">時</string>
     <string name="gallery_details_minute">分</string>
+    <string name="gallery_details_location">場所</string>
+    <string name="gallery_details_location_add">場所を追加</string>
+    <string name="gallery_details_location_remove">場所を削除</string>
     <plurals name="gallery_square_cd">
         <item quantity="other">%1$s のギャラリー、写真 %2$d 枚</item>
     </plurals>

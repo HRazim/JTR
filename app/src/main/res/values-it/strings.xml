@@ -564,6 +564,9 @@
     <string name="gallery_details_year">Anno</string>
     <string name="gallery_details_hour">Ora</string>
     <string name="gallery_details_minute">Minuto</string>
+    <string name="gallery_details_location">Luogo</string>
+    <string name="gallery_details_location_add">Aggiungi una posizione</string>
+    <string name="gallery_details_location_remove">Rimuovi la posizione</string>
     <plurals name="gallery_square_cd">
         <item quantity="one">Galleria di %1$s, 1 foto</item>
         <item quantity="many">Galleria di %1$s, %2$d foto</item>

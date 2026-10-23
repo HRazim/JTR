@@ -70,6 +70,20 @@ class GalleryRepository(context: Context) {
     }
 
     /**
+     * v7.1.95 — enregistre (ou RETIRE, avec des `null`) la localisation d'une image. Le
+     * libellé est normalisé comme la description : vide ⇒ `null`, une seule représentation
+     * de « pas de lieu ».
+     */
+    suspend fun setLocation(
+        id: Long,
+        latitude: Double?,
+        longitude: Double?,
+        placeLabel: String?
+    ) = withContext(Dispatchers.IO) {
+        dao.updateLocation(id, latitude, longitude, placeLabel?.trim()?.takeIf { it.isNotEmpty() })
+    }
+
+    /**
      * Supprime une image : la LIGNE d'abord (l'UI se met à jour immédiatement via le Flow),
      * le FICHIER ensuite. Dans cet ordre, un échec de suppression du fichier laisse au pire
      * un orphelin invisible, jamais une vignette pointant dans le vide.

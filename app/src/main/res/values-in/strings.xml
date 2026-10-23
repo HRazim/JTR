@@ -562,6 +562,9 @@
     <string name="gallery_details_year">Tahun</string>
     <string name="gallery_details_hour">Jam</string>
     <string name="gallery_details_minute">Menit</string>
+    <string name="gallery_details_location">Lokasi</string>
+    <string name="gallery_details_location_add">Tambahkan lokasi</string>
+    <string name="gallery_details_location_remove">Hapus lokasi</string>
     <plurals name="gallery_square_cd">
         <item quantity="other">Galeri %1$s, %2$d foto</item>
     </plurals>
