@@ -2,6 +2,7 @@ package com.jtr.app.ui.search
 
 import android.app.Application
 import android.content.SharedPreferences
+import androidx.lifecycle.SavedStateHandle
 import com.google.common.truth.Truth.assertThat
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.data.local.CategoryDao
@@ -53,6 +54,9 @@ class SearchViewModelTest {
     private val categoriesFlow = MutableStateFlow<List<Category>>(emptyList())
     private val groupsFlow = MutableStateFlow<List<CategoryGroup>>(emptyList())
 
+    /** v7.1.85 — membres de la catégorie de périmètre (source de la recherche SCOPÉE). */
+    private val membersFlow = MutableStateFlow<List<Person>>(emptyList())
+
     @Before
     fun setUp() {
         // viewModelScope = Main.immediate ; Unconfined exécute inline mais respecte les delays réels.
@@ -69,6 +73,8 @@ class SearchViewModelTest {
         every { groupDao.getAll() } returns groupsFlow
         val personCategoryDao = mockk<PersonCategoryDao>(relaxed = true)
         every { personCategoryDao.getActiveCategoryJoins() } returns flowOf(emptyList())
+        // v7.1.85 — source du mode SCOPÉ (PersonRepository.getByCategory → ce DAO).
+        every { personCategoryDao.getActivePersonsInCategory(SCOPED_ID) } returns membersFlow
 
         val db = mockk<AppDatabase>(relaxed = true)
         every { db.personDao() } returns personDao
@@ -117,7 +123,7 @@ class SearchViewModelTest {
     @Test
     fun emptyQuery_returnsAllActive() {
         activeFlow.value = listOf(person("Alice"), person("Bob"), person("Charlie"))
-        val vm = SearchViewModel(fakeApp())
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle())
         val res = awaitValue(vm.results) { it.size == 3 }
         assertThat(res.map { it.firstName }).containsExactly("Alice", "Bob", "Charlie")
     }
@@ -125,7 +131,7 @@ class SearchViewModelTest {
     @Test
     fun query_filtersViaCentralEngine_caseInsensitive() {
         activeFlow.value = listOf(person("Alice"), person("Bob"), person("Alicia"))
-        val vm = SearchViewModel(fakeApp())
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle())
         vm.onQueryChanged("ALI")
         val res = awaitValue(vm.results) { r -> r.map { it.firstName }.toSet() == setOf("Alice", "Alicia") }
         assertThat(res.map { it.firstName }).containsExactly("Alice", "Alicia")
@@ -134,7 +140,7 @@ class SearchViewModelTest {
     @Test
     fun query_noMatch_returnsEmpty() {
         activeFlow.value = listOf(person("Alice"), person("Bob"))
-        val vm = SearchViewModel(fakeApp())
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle())
         vm.onQueryChanged("zzzz")
         val res = awaitValue(vm.results) { it.isEmpty() && vm.query.value == "zzzz" }
         // Laisse le debounce (250 ms) s'appliquer puis vérifie l'absence de résultat.
@@ -143,7 +149,7 @@ class SearchViewModelTest {
 
     @Test
     fun recents_exposedFromRepository() {
-        val vm = SearchViewModel(fakeApp())
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle())
         val res = awaitValue(vm.recents) { it.isNotEmpty() }
         assertThat(res.map { it.firstName }).containsExactly("Zoe")
     }
@@ -155,7 +161,7 @@ class SearchViewModelTest {
         activeFlow.value = listOf(person("Amine"), person("Bob"))
         categoriesFlow.value = listOf(Category(name = "Amis"), Category(name = "Travail"))
         groupsFlow.value = listOf(CategoryGroup(id = 1, name = "Amicale"), CategoryGroup(id = 2, name = "Pro"))
-        val vm = SearchViewModel(fakeApp())
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle())
         vm.onQueryChanged("ami")
         val contacts = awaitValue(vm.results) { r -> r.map { it.firstName } == listOf("Amine") }
         val cats = awaitValue(vm.categoryResults) { it.size == 1 }
@@ -173,7 +179,7 @@ class SearchViewModelTest {
             Category(name = "Amis"),
             Category(name = "Amis d'enfance", deletedAt = 123L)
         )
-        val vm = SearchViewModel(fakeApp())
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle())
         vm.onQueryChanged("amis")
         val cats = awaitValue(vm.categoryResults) { it.size == 1 && vm.query.value == "amis" }
         assertThat(cats.map { it.name }).containsExactly("Amis")
@@ -183,7 +189,7 @@ class SearchViewModelTest {
     fun query_noMatch_categoriesAndGroupsEmpty() {
         categoriesFlow.value = listOf(Category(name = "Amis"))
         groupsFlow.value = listOf(CategoryGroup(id = 1, name = "Pro"))
-        val vm = SearchViewModel(fakeApp())
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle())
         vm.onQueryChanged("zzzz")
         val cats = awaitValue(vm.categoryResults) { it.isEmpty() && vm.query.value == "zzzz" }
         val groups = awaitValue(vm.groupResults) { it.isEmpty() && vm.query.value == "zzzz" }
@@ -195,7 +201,7 @@ class SearchViewModelTest {
     fun emptyQuery_categoriesAndGroupsEmpty_recentsUntouched() {
         categoriesFlow.value = listOf(Category(name = "Amis"))
         groupsFlow.value = listOf(CategoryGroup(id = 1, name = "Amicale"))
-        val vm = SearchViewModel(fakeApp())
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle())
         // Transition réelle : frappe (sections pleines) puis EFFACEMENT → sections vides
         // (l'état vide de l'écran reste la rangée Récents, inchangée).
         vm.onQueryChanged("ami")
@@ -214,7 +220,7 @@ class SearchViewModelTest {
     fun categoryAndGroupMatching_usesCentralEngine_accentAndCaseInsensitive() {
         categoriesFlow.value = listOf(Category(name = "Collègues"), Category(name = "Famille"))
         groupsFlow.value = listOf(CategoryGroup(id = 1, name = "Collège Sainte-Thérèse"))
-        val vm = SearchViewModel(fakeApp())
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle())
         // « COLLEGE » sans accent ni casse : le moteur central (normalizeForSearch) doit matcher
         // « Collègues » ET « Collège Sainte-Thérèse » — cohérent avec la recherche de contacts.
         vm.onQueryChanged("COLLEG")
@@ -222,5 +228,62 @@ class SearchViewModelTest {
         val groups = awaitValue(vm.groupResults) { it.size == 1 }
         assertThat(cats.map { it.name }).containsExactly("Collègues")
         assertThat(groups.map { it.name }).containsExactly("Collège Sainte-Thérèse")
+    }
+
+    // ── v7.1.85 — recherche SCOPÉE à une catégorie ────────────────────────────────
+
+    /** Scopé, requête vide : la liste est celle des MEMBRES, pas tous les contacts actifs. */
+    @Test
+    fun scoped_emptyQuery_showsOnlyCategoryMembers() {
+        activeFlow.value = listOf(person("Alice"), person("Bob"), person("Carla"))
+        membersFlow.value = listOf(person("Alice"), person("Carla"))
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle(mapOf("categoryId" to SCOPED_ID)))
+        assertThat(vm.isScoped).isTrue()
+        val res = awaitValue(vm.results) { it.size == 2 }
+        assertThat(res.map { it.firstName }).containsExactly("Alice", "Carla")
+    }
+
+    /**
+     * Scopé, requête saisie : le filtre ne voit QUE les membres — un contact d'une AUTRE
+     * catégorie qui matcherait la requête n'apparaît JAMAIS (garantie centrale du lot).
+     */
+    @Test
+    fun scoped_query_neverLeaksContactOutsideTheCategory() {
+        // « Bob » matche « bo » mais n'est PAS membre : il ne doit pas remonter.
+        activeFlow.value = listOf(person("Bob"), person("Boris"))
+        membersFlow.value = listOf(person("Boris"))
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle(mapOf("categoryId" to SCOPED_ID)))
+        vm.onQueryChanged("bo")
+        val res = awaitValue(vm.results) { r -> r.map { it.firstName } == listOf("Boris") }
+        assertThat(res.map { it.firstName }).containsExactly("Boris")
+        assertThat(res.map { it.firstName }).doesNotContain("Bob")
+    }
+
+    /** Scopé : ni récents globaux, ni sections Catégories/Dossiers (hors périmètre). */
+    @Test
+    fun scoped_hidesRecentsAndCrossSections() {
+        membersFlow.value = listOf(person("Alice"))
+        categoriesFlow.value = listOf(Category(name = "Amis"))
+        groupsFlow.value = listOf(CategoryGroup(id = 1, name = "Amicale"))
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle(mapOf("categoryId" to SCOPED_ID)))
+        vm.onQueryChanged("ami")
+        awaitValue(vm.results) { vm.query.value == "ami" }
+        assertThat(vm.recents.value).isEmpty()
+        assertThat(vm.categoryResults.value).isEmpty()
+        assertThat(vm.groupResults.value).isEmpty()
+    }
+
+    /** Sans argument de route : comportement GLOBAL d'origine (non-régression accueil). */
+    @Test
+    fun unscoped_isGlobal_asBefore() {
+        activeFlow.value = listOf(person("Alice"), person("Bob"))
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle())
+        assertThat(vm.isScoped).isFalse()
+        val res = awaitValue(vm.results) { it.size == 2 }
+        assertThat(res.map { it.firstName }).containsExactly("Alice", "Bob")
+    }
+
+    private companion object {
+        const val SCOPED_ID = "cat-scope-1"
     }
 }

@@ -32,6 +32,7 @@
     <string name="recents_title">最近</string>
     <!-- v7.1.73 — harmonized search: result section headers -->
     <string name="search_section_contacts">联系人</string>
+    <string name="search_in_category">在 %1$s 中搜索</string>
     <string name="search_section_categories">分类</string>
     <string name="search_section_folders">文件夹</string>
     <string name="home_fab_add_person">添加联系人</string>

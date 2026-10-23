@@ -32,6 +32,7 @@
     <string name="recents_title">الأخيرة</string>
     <!-- v7.1.73 — harmonized search: result section headers -->
     <string name="search_section_contacts">جهات الاتصال</string>
+    <string name="search_in_category">البحث في %1$s</string>
     <string name="search_section_categories">الفئات</string>
     <string name="search_section_folders">المجلدات</string>
     <string name="home_fab_add_person">إضافة شخص</string>

@@ -79,6 +79,17 @@ object Routes {
     // v7.1.69 — écran de recherche dédié (ouvert depuis la loupe de l'accueil)
     const val SEARCH = "search"
 
+    /**
+     * v7.1.85 — MÊME écran, avec un `categoryId` OPTIONNEL : la loupe d'une catégorie
+     * ouvre la page dédiée SCOPÉE à cette catégorie. Le motif à argument optionnel
+     * accepte aussi [SEARCH] tel quel (argument absent ⇒ `null` ⇒ recherche globale,
+     * comportement de l'accueil strictement inchangé).
+     */
+    const val SEARCH_ROUTE = "search?categoryId={categoryId}"
+    const val ARG_SEARCH_CATEGORY_ID = "categoryId"
+
+    fun searchInCategory(categoryId: String) = "search?categoryId=$categoryId"
+
     fun personDetail(personId: String) = "person_detail/$personId"
     fun categoryDetail(categoryId: String) = "category_detail/$categoryId"
     fun categoryGroupDetail(groupId: Long) = "category_group_detail/$groupId"
@@ -485,6 +496,11 @@ fun JTRMainScaffold(
                     // sélection (aucun dialogue), retour automatique après validation.
                     onAddExistingContacts = {
                         navController.navigate(Routes.selectContacts(categoryId))
+                    },
+                    // v7.1.85 — la loupe ouvre la MÊME page de recherche que l'accueil,
+                    // scopée à cette catégorie.
+                    onNavigateToScopedSearch = { id ->
+                        navController.navigate(Routes.searchInCategory(id))
                     }
                 )
             }
@@ -522,7 +538,14 @@ fun JTRMainScaffold(
             // Recherche dédiée (v7.1.69) : plein écran, retour → accueil. La barre d'onglets
             // n'apparaît pas (SEARCH n'est pas une destination de premier niveau).
             composable(
-                route = Routes.SEARCH,
+                route = Routes.SEARCH_ROUTE,
+                arguments = listOf(
+                    navArgument(Routes.ARG_SEARCH_CATEGORY_ID) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                ),
                 enterTransition = { slideInHorizontally(initialOffsetX = { rtlSign * it }) },
                 exitTransition = { slideOutHorizontally(targetOffsetX = { -rtlSign * it / 3 }) },
                 popEnterTransition = { slideInHorizontally(initialOffsetX = { -rtlSign * it / 3 }) },

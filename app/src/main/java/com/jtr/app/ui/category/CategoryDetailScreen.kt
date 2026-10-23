@@ -32,6 +32,8 @@ fun CategoryDetailScreen(
     onNavigateToPersonDetail: (String) -> Unit,
     onNavigateToAddPerson: () -> Unit,
     onAddExistingContacts: () -> Unit = {},
+    // v7.1.85 — ouverture de la page de recherche dédiée, SCOPÉE à cette catégorie.
+    onNavigateToScopedSearch: (String) -> Unit = {},
     viewModel: CategoryDetailViewModel = viewModel()
 ) {
     val persons by viewModel.persons.collectAsStateWithLifecycle()
@@ -57,8 +59,6 @@ fun CategoryDetailScreen(
     var showEditDialog by remember { mutableStateOf(false) }
     var showTrashConfirm by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
-    // Mode recherche de la TopAppBar (état d'UI local ; la query vient du ViewModel).
-    var searchActive by remember { mutableStateOf(false) }
 
     // v7.1.70 — snackbar d'annulation du retrait en lot de contacts (« Retirer de … »).
     val snackbarHostState = remember { SnackbarHostState() }
@@ -206,8 +206,12 @@ fun CategoryDetailScreen(
                     title = categoryName.ifBlank { stringResource(R.string.category_detail_default_title) },
                     searchQuery = searchQuery,
                     onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
-                    searchActive = searchActive,
-                    onSearchActiveChange = { searchActive = it },
+                    // v7.1.85 — la loupe NAVIGUE vers la page de recherche dédiée SCOPÉE à
+                    // cette catégorie (comme l'accueil depuis v7.1.69) : la recherche inline
+                    // n'est plus déclenchable, d'où l'état figé à false.
+                    searchActive = false,
+                    onSearchActiveChange = {},
+                    onSearchClick = { onNavigateToScopedSearch(viewModel.categoryId) },
                     searchPlaceholder = stringResource(R.string.category_detail_search_placeholder),
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {

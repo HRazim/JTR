@@ -99,6 +99,9 @@ fun SearchScreen(
     val categoryCounts by viewModel.categoryCounts.collectAsStateWithLifecycle()
     val recents by viewModel.recents.collectAsStateWithLifecycle()
     val socialLinksMap by viewModel.socialLinksMap.collectAsStateWithLifecycle()
+    // v7.1.85 — périmètre : nom de la catégorie quand la page est ouverte depuis elle.
+    val scopedName by viewModel.scopedCategoryName.collectAsStateWithLifecycle()
+    val isScoped = viewModel.isScoped
 
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -134,7 +137,15 @@ fun SearchScreen(
                     TextField(
                         value = query,
                         onValueChange = viewModel::onQueryChanged,
-                        placeholder = { Text(stringResource(R.string.home_search_placeholder)) },
+                        placeholder = {
+                            Text(
+                                // Scopé : le périmètre est NOMMÉ dans le champ lui-même
+                                // (le slot « titre » de la barre porte déjà la saisie).
+                                if (isScoped && scopedName.isNotBlank())
+                                    stringResource(R.string.search_in_category, scopedName)
+                                else stringResource(R.string.home_search_placeholder)
+                            )
+                        },
                         singleLine = true,
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
@@ -174,7 +185,29 @@ fun SearchScreen(
         }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            if (query.isBlank()) {
+            if (isScoped) {
+                // v7.1.85 — PÉRIMÈTRE CATÉGORIE : une seule liste, celle des membres,
+                // filtrée en direct. Ni récents ni sections Catégories/Dossiers (globaux,
+                // hors périmètre) ; `results` vaut déjà les membres quand la requête est vide.
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    if (results.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = stringResource(R.string.home_empty_title),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        PersonListContent(
+                            viewMode = viewModel.viewMode,
+                            persons = results,
+                            socialLinksMap = socialLinksMap,
+                            onClick = { openPerson(it.id) }
+                        )
+                    }
+                }
+            } else if (query.isBlank()) {
                 // ÉTAT VIDE : UNIQUEMENT la rangée « Récents » (stories), aucune liste de contacts.
                 // Rendue en enfant DIRECT de la Column (pas via le slot `header` de PersonListContent) :
                 // sa visibilité réagit de façon fiable à la première émission du Flow `recents`.

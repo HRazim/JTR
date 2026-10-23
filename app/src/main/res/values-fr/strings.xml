@@ -32,6 +32,7 @@
     <string name="recents_title">Récents</string>
     <!-- v7.1.73 — harmonized search: result section headers -->
     <string name="search_section_contacts">Contacts</string>
+    <string name="search_in_category">Rechercher dans %1$s</string>
     <string name="search_section_categories">Catégories</string>
     <string name="search_section_folders">Dossiers</string>
     <string name="home_fab_add_person">Ajouter une personne</string>
