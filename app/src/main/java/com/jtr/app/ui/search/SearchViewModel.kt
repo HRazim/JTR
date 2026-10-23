@@ -21,6 +21,7 @@ import com.jtr.app.utils.matchesSearch
 import com.jtr.app.utils.normalizeForSearch
 import com.jtr.app.utils.searchTokens
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -63,13 +67,31 @@ class SearchViewModel(
      * filtrage reste le même.
      */
     val scopedCategoryId: String? = savedStateHandle[Routes.ARG_SEARCH_CATEGORY_ID]
-    val isScoped: Boolean = scopedCategoryId != null
 
-    /** Nom de la catégorie de périmètre (titre/placeholder contextuels) ; vide si global. */
+    /**
+     * v7.1.87 — périmètre DOSSIER : la loupe d'un dossier cherche les contacts de TOUT son
+     * sous-arbre (ses catégories + celles de ses sous-dossiers, à n'importe quelle
+     * profondeur). L'argument de route est une chaîne nullable — seul un type nullable
+     * permet « absent ⇒ null » —, d'où la conversion ici.
+     */
+    val scopedGroupId: Long? =
+        savedStateHandle.get<String>(Routes.ARG_SEARCH_GROUP_ID)?.toLongOrNull()
+
+    /** Périmètre actif, quel qu'il soit : catégorie XOR dossier. Sinon recherche globale. */
+    val isScoped: Boolean = scopedCategoryId != null || scopedGroupId != null
+
+    /** Nom de la catégorie de périmètre (placeholder contextuel) ; vide si hors de ce mode. */
     val scopedCategoryName: StateFlow<String> =
         if (scopedCategoryId == null) MutableStateFlow("")
         else categoryRepository.getAllActive()
             .map { list -> list.firstOrNull { it.id == scopedCategoryId }?.name ?: "" }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
+    /** Nom du dossier de périmètre (placeholder contextuel) ; vide si hors de ce mode. */
+    val scopedGroupName: StateFlow<String> =
+        if (scopedGroupId == null) MutableStateFlow("")
+        else categoryRepository.getGroups()
+            .map { list -> list.firstOrNull { it.id == scopedGroupId }?.name ?: "" }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     private val _query = MutableStateFlow("")
@@ -79,6 +101,9 @@ class SearchViewModel(
     /**
      * Mode d'affichage MIROIR de l'écran d'origine (lecture seule) : l'accueil en global,
      * le détail de catégorie en scopé — la page ressemble à l'écran d'où l'on vient.
+     * Le périmètre DOSSIER lit la même préférence : la page liste des CONTACTS, pas des
+     * tuiles de catégories, donc c'est le mode « détail de catégorie » qui a du sens ici
+     * (`groups_view_mode` décrit l'affichage des catégories du dossier, sans rapport).
      */
     val viewMode: JtrViewMode = JtrViewMode.fromPref(
         prefs.getString(if (isScoped) "category_detail_view_mode" else "home_view_mode", null),
@@ -121,15 +146,38 @@ class SearchViewModel(
         _query.debounce { if (it.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
 
     /**
+     * SOURCE de la recherche, seule chose qui change selon le périmètre (v7.1.85/87) :
+     * tous les contacts actifs (global), les membres d'une catégorie, ou les contacts de
+     * TOUT le sous-arbre d'un dossier. Le moteur de filtrage, le débounce et le tri qui
+     * suivent sont rigoureusement identiques dans les trois cas.
+     *
+     * Dossier : l'arbre des groupes est déjà en mémoire (flux `getGroups`), donc le
+     * sous-arbre se calcule côté Kotlin ([categoryIdsUnderGroup]) — aucune récursion SQL,
+     * aucun changement de schéma. [distinctUntilChanged] évite de relancer la requête
+     * quand un flux réémet sans que la liste d'IDs ait bougé.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val source: Flow<List<Person>> = when {
+        scopedCategoryId != null -> repository.getByCategory(scopedCategoryId)
+        scopedGroupId != null ->
+            combine(categoryRepository.getAllActive(), categoryRepository.getGroups()) { cats, groups ->
+                categoryIdsUnderGroup(scopedGroupId, cats, groups)
+            }
+                .distinctUntilChanged()
+                .flatMapLatest { ids ->
+                    if (ids.isEmpty()) flowOf(emptyList()) else repository.getByCategories(ids)
+                }
+        else -> repository.getAllActive()
+    }
+
+    /**
      * Résultats : liste active filtrée via le moteur central (ET sur tokens / OU sur champs).
      * Requête vide → liste complète. Filtrage + tri hors thread principal ([flowOn]).
      */
     val results: StateFlow<List<Person>> = combine(
-        // v7.1.85 — SEULE la source change selon le périmètre ; le filtrage, le tri et le
-        // débounce restent identiques. Requête vide ⇒ la source entière, c'est-à-dire la
-        // liste complète (global) ou les MEMBRES de la catégorie (scopé).
-        if (scopedCategoryId == null) repository.getAllActive()
-        else repository.getByCategory(scopedCategoryId),
+        // Requête vide ⇒ la source entière : tous les contacts (global), les membres de la
+        // catégorie, ou tous les contacts du dossier (sous-arbre compris).
+        source,
         debouncedQuery
     ) { list, q ->
         val tokens = q.searchTokens()
@@ -186,4 +234,30 @@ class SearchViewModel(
         /** Délai d'inactivité avant de relancer le filtre (ms) — aligné sur l'accueil. */
         private const val SEARCH_DEBOUNCE_MS = 250L
     }
+}
+
+/**
+ * v7.1.87 — IDs des catégories situées SOUS un dossier, sous-dossiers compris, à n'importe
+ * quelle profondeur. Parcours en largeur de l'arbre des groupes déjà chargé en mémoire :
+ * aucune requête récursive, aucun changement de schéma.
+ *
+ * L'ensemble [seen] sert aussi de garde-fou : une hiérarchie accidentellement cyclique
+ * (groupe se retrouvant son propre ancêtre) ne boucle pas à l'infini.
+ *
+ * Fonction PURE, donc testable sans ViewModel ni base.
+ */
+internal fun categoryIdsUnderGroup(
+    rootGroupId: Long,
+    categories: List<Category>,
+    groups: List<CategoryGroup>
+): List<String> {
+    val seen = mutableSetOf(rootGroupId)
+    val queue = ArrayDeque(listOf(rootGroupId))
+    while (queue.isNotEmpty()) {
+        val current = queue.removeFirst()
+        groups.forEach { g ->
+            if (g.parentGroupId == current && seen.add(g.id)) queue.add(g.id)
+        }
+    }
+    return categories.filter { c -> c.parentGroupId?.let { it in seen } == true }.map { it.id }
 }

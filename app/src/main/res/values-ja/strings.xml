@@ -33,6 +33,7 @@
     <!-- v7.1.73 — harmonized search: result section headers -->
     <string name="search_section_contacts">連絡先</string>
     <string name="search_in_category">%1$s 内を検索</string>
+    <string name="search_in_folder">%1$s 内を検索</string>
     <string name="search_section_categories">カテゴリー</string>
     <string name="search_section_folders">フォルダ</string>
     <string name="home_fab_add_person">人を追加</string>

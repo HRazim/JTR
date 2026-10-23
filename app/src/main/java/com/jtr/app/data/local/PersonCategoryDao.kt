@@ -64,6 +64,22 @@ interface PersonCategoryDao {
     fun getActivePersonsInCategory(categoryId: String): Flow<List<Person>>
 
     /**
+     * v7.1.87 — mêmes contrats que [getActivePersonsInCategory], mais pour PLUSIEURS
+     * catégories : source de la recherche scopée à un DOSSIER (ses catégories et celles
+     * de tous ses sous-dossiers). `DISTINCT` est indispensable — un contact rattaché à
+     * deux catégories du même dossier ne doit apparaître QU'UNE fois.
+     * Lecture seule, aucun changement de schéma.
+     */
+    @Query("""
+        SELECT DISTINCT p.* FROM persons p
+        INNER JOIN person_category_join pcj ON pcj.personId = p.id
+        INNER JOIN categories c ON c.id = pcj.categoryId
+        WHERE pcj.categoryId IN (:categoryIds) AND p.deletedAt IS NULL AND c.deletedAt IS NULL
+        ORDER BY p.isFavorite DESC, p.firstName ASC
+    """)
+    fun getActivePersonsInCategories(categoryIds: List<String>): Flow<List<Person>>
+
+    /**
      * Liens dont la CATÉGORIE est active (v7.1.71) — pour les comptes/activité des vues actives,
      * afin qu'une catégorie en corbeille ne porte plus de clé fantôme. `getAllJoins` (TOUS les
      * liens) reste réservé à l'écran Corbeille.

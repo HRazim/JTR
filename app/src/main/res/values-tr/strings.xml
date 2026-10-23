@@ -33,6 +33,7 @@
     <!-- v7.1.73 — harmonized search: result section headers -->
     <string name="search_section_contacts">Kişiler</string>
     <string name="search_in_category">%1$s içinde ara</string>
+    <string name="search_in_folder">%1$s içinde ara</string>
     <string name="search_section_categories">Kategoriler</string>
     <string name="search_section_folders">Klasörler</string>
     <string name="home_fab_add_person">Kişi ekle</string>

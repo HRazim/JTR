@@ -31,7 +31,8 @@ class CategoryGroupDetailViewModel(
 ) : AndroidViewModel(application) {
 
     private val repo = CategoryRepository(application.applicationContext)
-    private val groupId: Long = savedStateHandle.get<Long>("groupId") ?: -1L
+    // v7.1.87 — public : l'écran le passe à la recherche scopée (comme CategoryDetailViewModel).
+    val groupId: Long = savedStateHandle.get<Long>("groupId") ?: -1L
     private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
 
     // ── Recherche / tri / affichage (TopAppBar harmonisée) ─────────────────────

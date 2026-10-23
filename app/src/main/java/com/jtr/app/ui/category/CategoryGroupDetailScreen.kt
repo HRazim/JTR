@@ -61,6 +61,8 @@ fun CategoryGroupDetailScreen(
     onNavigateBack: () -> Unit,
     onCategoryClick: (String) -> Unit,
     onGroupClick: (Long) -> Unit = {},
+    // v7.1.87 — ouverture de la page de recherche dédiée, SCOPÉE à ce dossier.
+    onNavigateToScopedSearch: (Long) -> Unit = {},
     viewModel: CategoryGroupDetailViewModel = viewModel()
 ) {
     val group by viewModel.group.collectAsStateWithLifecycle()
@@ -76,8 +78,6 @@ fun CategoryGroupDetailScreen(
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
 
     var addMenu by remember { mutableStateOf(false) }
-    // Mode recherche de la TopAppBar (état d'UI local ; la query vient du ViewModel).
-    var searchActive by remember { mutableStateOf(false) }
     var showAddExisting by remember { mutableStateOf(false) }
     var showGroupTrashConfirm by remember { mutableStateOf(false) }
     var showCreate by remember { mutableStateOf(false) }
@@ -403,8 +403,13 @@ fun CategoryGroupDetailScreen(
                     title = group?.name ?: stringResource(R.string.categories_title),
                     searchQuery = searchQuery,
                     onSearchQueryChange = { viewModel.setSearchQuery(it) },
-                    searchActive = searchActive,
-                    onSearchActiveChange = { searchActive = it },
+                    // v7.1.87 — la loupe NAVIGUE vers la page de recherche dédiée, scopée
+                    // aux CONTACTS de tout ce dossier (l'ancienne recherche inline filtrait
+                    // les catégories/sous-dossiers par nom : elle n'est plus déclenchable,
+                    // d'où l'état figé à false et le retrait de l'état local).
+                    searchActive = false,
+                    onSearchActiveChange = {},
+                    onSearchClick = { onNavigateToScopedSearch(viewModel.groupId) },
                     searchPlaceholder = stringResource(R.string.home_search_placeholder),
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {

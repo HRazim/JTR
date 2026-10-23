@@ -99,8 +99,9 @@ fun SearchScreen(
     val categoryCounts by viewModel.categoryCounts.collectAsStateWithLifecycle()
     val recents by viewModel.recents.collectAsStateWithLifecycle()
     val socialLinksMap by viewModel.socialLinksMap.collectAsStateWithLifecycle()
-    // v7.1.85 — périmètre : nom de la catégorie quand la page est ouverte depuis elle.
+    // v7.1.85/87 — périmètre : nom de la catégorie OU du dossier d'où l'on vient.
     val scopedName by viewModel.scopedCategoryName.collectAsStateWithLifecycle()
+    val scopedFolderName by viewModel.scopedGroupName.collectAsStateWithLifecycle()
     val isScoped = viewModel.isScoped
 
     val focusRequester = remember { FocusRequester() }
@@ -141,7 +142,10 @@ fun SearchScreen(
                             Text(
                                 // Scopé : le périmètre est NOMMÉ dans le champ lui-même
                                 // (le slot « titre » de la barre porte déjà la saisie).
-                                if (isScoped && scopedName.isNotBlank())
+                                // Les deux périmètres s'excluent : au plus un nom est non vide.
+                                if (scopedFolderName.isNotBlank())
+                                    stringResource(R.string.search_in_folder, scopedFolderName)
+                                else if (scopedName.isNotBlank())
                                     stringResource(R.string.search_in_category, scopedName)
                                 else stringResource(R.string.home_search_placeholder)
                             )

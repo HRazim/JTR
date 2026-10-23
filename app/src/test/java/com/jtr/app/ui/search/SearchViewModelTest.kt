@@ -57,6 +57,9 @@ class SearchViewModelTest {
     /** v7.1.85 — membres de la catégorie de périmètre (source de la recherche SCOPÉE). */
     private val membersFlow = MutableStateFlow<List<Person>>(emptyList())
 
+    /** v7.1.87 — contacts du SOUS-ARBRE d'un dossier (source de la recherche scopée dossier). */
+    private val folderMembersFlow = MutableStateFlow<List<Person>>(emptyList())
+
     @Before
     fun setUp() {
         // viewModelScope = Main.immediate ; Unconfined exécute inline mais respecte les delays réels.
@@ -75,6 +78,8 @@ class SearchViewModelTest {
         every { personCategoryDao.getActiveCategoryJoins() } returns flowOf(emptyList())
         // v7.1.85 — source du mode SCOPÉ (PersonRepository.getByCategory → ce DAO).
         every { personCategoryDao.getActivePersonsInCategory(SCOPED_ID) } returns membersFlow
+        // v7.1.87 — source du périmètre DOSSIER (PersonRepository.getByCategories → ce DAO).
+        every { personCategoryDao.getActivePersonsInCategories(any()) } returns folderMembersFlow
 
         val db = mockk<AppDatabase>(relaxed = true)
         every { db.personDao() } returns personDao
@@ -281,6 +286,91 @@ class SearchViewModelTest {
         assertThat(vm.isScoped).isFalse()
         val res = awaitValue(vm.results) { it.size == 2 }
         assertThat(res.map { it.firstName }).containsExactly("Alice", "Bob")
+    }
+
+    // ── v7.1.87 — recherche SCOPÉE à un DOSSIER (sous-arbre complet) ──────────────
+
+    /**
+     * Le sous-arbre descend à TOUTE profondeur : catégories du dossier, de ses sous-dossiers,
+     * et des sous-sous-dossiers. Une catégorie hors du dossier, ou à la racine, est exclue.
+     */
+    @Test
+    fun categoryIdsUnderGroup_collectsWholeSubtree() {
+        val groups = listOf(
+            CategoryGroup(id = 1, name = "Racine"),
+            CategoryGroup(id = 2, name = "Enfant", parentGroupId = 1),
+            CategoryGroup(id = 3, name = "Petit-enfant", parentGroupId = 2),
+            CategoryGroup(id = 9, name = "Ailleurs")
+        )
+        val cats = listOf(
+            Category(id = "a", name = "A", parentGroupId = 1),
+            Category(id = "b", name = "B", parentGroupId = 2),
+            Category(id = "c", name = "C", parentGroupId = 3),
+            Category(id = "x", name = "X", parentGroupId = 9),
+            Category(id = "r", name = "R")  // racine, sans dossier
+        )
+        assertThat(categoryIdsUnderGroup(1L, cats, groups)).containsExactly("a", "b", "c")
+    }
+
+    /** Hiérarchie accidentellement cyclique : la collecte s'arrête au lieu de boucler. */
+    @Test
+    fun categoryIdsUnderGroup_cycleDoesNotHang() {
+        val groups = listOf(
+            CategoryGroup(id = 1, name = "Un", parentGroupId = 2),
+            CategoryGroup(id = 2, name = "Deux", parentGroupId = 1)
+        )
+        val cats = listOf(Category(id = "a", name = "A", parentGroupId = 2))
+        assertThat(categoryIdsUnderGroup(1L, cats, groups)).containsExactly("a")
+    }
+
+    /** Scopé dossier, requête vide : les contacts du dossier, pas tous les contacts actifs. */
+    @Test
+    fun folderScoped_emptyQuery_showsOnlyFolderContacts() {
+        activeFlow.value = listOf(person("Alice"), person("Bob"), person("Carla"))
+        categoriesFlow.value = listOf(Category(id = "a", name = "A", parentGroupId = 7))
+        groupsFlow.value = listOf(CategoryGroup(id = 7, name = "Carrefour"))
+        folderMembersFlow.value = listOf(person("Alice"), person("Carla"))
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle(mapOf("groupId" to "7")))
+        assertThat(vm.isScoped).isTrue()
+        assertThat(vm.scopedGroupId).isEqualTo(7L)
+        val res = awaitValue(vm.results) { it.size == 2 }
+        assertThat(res.map { it.firstName }).containsExactly("Alice", "Carla")
+    }
+
+    /** Scopé dossier : un contact hors du dossier ne remonte JAMAIS, même s'il matche. */
+    @Test
+    fun folderScoped_query_neverLeaksContactOutsideTheFolder() {
+        activeFlow.value = listOf(person("Bob"), person("Boris"))
+        categoriesFlow.value = listOf(Category(id = "a", name = "A", parentGroupId = 7))
+        groupsFlow.value = listOf(CategoryGroup(id = 7, name = "Carrefour"))
+        folderMembersFlow.value = listOf(person("Boris"))
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle(mapOf("groupId" to "7")))
+        vm.onQueryChanged("bo")
+        val res = awaitValue(vm.results) { r -> r.map { it.firstName } == listOf("Boris") }
+        assertThat(res.map { it.firstName }).containsExactly("Boris")
+        assertThat(res.map { it.firstName }).doesNotContain("Bob")
+    }
+
+    /** Scopé dossier : ni récents globaux, ni sections Catégories/Dossiers. */
+    @Test
+    fun folderScoped_hidesRecentsAndCrossSections() {
+        categoriesFlow.value = listOf(Category(id = "a", name = "Amis", parentGroupId = 7))
+        groupsFlow.value = listOf(CategoryGroup(id = 7, name = "Amicale"))
+        folderMembersFlow.value = listOf(person("Alice"))
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle(mapOf("groupId" to "7")))
+        vm.onQueryChanged("ami")
+        awaitValue(vm.results) { vm.query.value == "ami" }
+        assertThat(vm.recents.value).isEmpty()
+        assertThat(vm.categoryResults.value).isEmpty()
+        assertThat(vm.groupResults.value).isEmpty()
+    }
+
+    /** Non-régression du lot 1 : le périmètre CATÉGORIE reste exclusif du périmètre dossier. */
+    @Test
+    fun categoryScope_leavesGroupScopeNull() {
+        val vm = SearchViewModel(fakeApp(), SavedStateHandle(mapOf("categoryId" to SCOPED_ID)))
+        assertThat(vm.scopedGroupId).isNull()
+        assertThat(vm.scopedCategoryId).isEqualTo(SCOPED_ID)
     }
 
     private companion object {

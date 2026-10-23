@@ -51,6 +51,7 @@
     <!-- v7.1.73 — harmonized search: result section headers -->
     <string name="search_section_contacts">Kontak</string>
     <string name="search_in_category">Cari di %1$s</string>
+    <string name="search_in_folder">Cari di %1$s</string>
     <string name="search_section_categories">Kategori</string>
     <string name="search_section_folders">Folder</string>
     <string name="home_fab_add_person">Tambah orang</string>

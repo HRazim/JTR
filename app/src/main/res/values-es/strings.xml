@@ -33,6 +33,7 @@
     <!-- v7.1.73 — harmonized search: result section headers -->
     <string name="search_section_contacts">Contactos</string>
     <string name="search_in_category">Buscar en %1$s</string>
+    <string name="search_in_folder">Buscar en %1$s</string>
     <string name="search_section_categories">Categorías</string>
     <string name="search_section_folders">Carpetas</string>
     <string name="home_fab_add_person">Agregar una persona</string>

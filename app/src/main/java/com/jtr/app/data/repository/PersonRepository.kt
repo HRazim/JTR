@@ -50,6 +50,13 @@ class PersonRepository(context: Context) {
     fun getByCategory(categoryId: String): Flow<List<Person>> =
         categoryDao.getActivePersonsInCategory(categoryId)
 
+    /**
+     * v7.1.87 — contacts actifs de PLUSIEURS catégories, DÉDOUBLONNÉS : périmètre d'un
+     * dossier (ses catégories + celles de ses sous-dossiers). Lecture seule.
+     */
+    fun getByCategories(categoryIds: List<String>): Flow<List<Person>> =
+        categoryDao.getActivePersonsInCategories(categoryIds)
+
     fun getDeleted(): Flow<List<Person>> = dao.getDeleted()
 
     /** Tous les liens personne-catégorie (utilisé par TrashViewModel pour le regroupement). */

@@ -33,6 +33,7 @@
     <!-- v7.1.73 — harmonized search: result section headers -->
     <string name="search_section_contacts">연락처</string>
     <string name="search_in_category">%1$s에서 검색</string>
+    <string name="search_in_folder">%1$s에서 검색</string>
     <string name="search_section_categories">카테고리</string>
     <string name="search_section_folders">폴더</string>
     <string name="home_fab_add_person">사람 추가</string>

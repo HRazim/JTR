@@ -85,10 +85,18 @@ object Routes {
      * accepte aussi [SEARCH] tel quel (argument absent ⇒ `null` ⇒ recherche globale,
      * comportement de l'accueil strictement inchangé).
      */
-    const val SEARCH_ROUTE = "search?categoryId={categoryId}"
+    const val SEARCH_ROUTE = "search?categoryId={categoryId}&groupId={groupId}"
     const val ARG_SEARCH_CATEGORY_ID = "categoryId"
 
+    /**
+     * v7.1.87 — second périmètre OPTIONNEL : la loupe d'un DOSSIER cherche les contacts de
+     * tout son sous-arbre. Les deux scopes s'EXCLUENT (catégorie XOR dossier XOR global) ;
+     * les deux absents ⇒ recherche globale, accueil strictement inchangé.
+     */
+    const val ARG_SEARCH_GROUP_ID = "groupId"
+
     fun searchInCategory(categoryId: String) = "search?categoryId=$categoryId"
+    fun searchInGroup(groupId: Long) = "search?groupId=$groupId"
 
     fun personDetail(personId: String) = "person_detail/$personId"
     fun categoryDetail(categoryId: String) = "category_detail/$categoryId"
@@ -474,6 +482,11 @@ fun JTRMainScaffold(
                     },
                     onGroupClick = { subGroupId ->
                         navController.navigate(Routes.categoryGroupDetail(subGroupId))
+                    },
+                    // v7.1.87 — la loupe ouvre la MÊME page de recherche que l'accueil,
+                    // scopée aux contacts de tout le sous-arbre de ce dossier.
+                    onNavigateToScopedSearch = { id ->
+                        navController.navigate(Routes.searchInGroup(id))
                     }
                 )
             }
@@ -541,6 +554,13 @@ fun JTRMainScaffold(
                 route = Routes.SEARCH_ROUTE,
                 arguments = listOf(
                     navArgument(Routes.ARG_SEARCH_CATEGORY_ID) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                    // v7.1.87 — StringType nullable (et NON LongType) : seul un type
+                    // nullable autorise « argument absent ⇒ null » ; le ViewModel convertit.
+                    navArgument(Routes.ARG_SEARCH_GROUP_ID) {
                         type = NavType.StringType
                         nullable = true
                         defaultValue = null
