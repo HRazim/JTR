@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 
 
 
@@ -66,6 +67,13 @@ import java.util.Locale
 /** Plage d'années proposée autour de l'année en cours — assez large pour une vieille photo. */
 private const val YEAR_SPAN_BACK = 80
 private const val YEAR_SPAN_FORWARD = 5
+
+/** Lignes d'aperçu de la description au repos : au-delà, « … » (v7.1.97). */
+private const val DESCRIPTION_PREVIEW_LINES = 4
+
+/** Surface d'écriture de l'éditeur de description : généreuse, mais bornée pour le clavier. */
+private val EDITOR_MIN_HEIGHT = 220.dp
+private val EDITOR_MAX_HEIGHT = 380.dp
 
 /** Quelle ligne est en cours d'édition — une seule à la fois, le reste reste au repos. */
 private enum class EditTarget { NONE, DATE_TIME, DESCRIPTION }
@@ -140,6 +148,25 @@ internal fun ImageDetailsSheet(
                 .padding(horizontal = 8.dp)
                 .padding(bottom = 24.dp)
         ) {
+            // ÉDITION DE LA DESCRIPTION : elle prend TOUT le panneau (v7.1.97). Une note peut
+            // faire plusieurs centaines de mots ; un champ coincé sous sa ligne, entre les
+            // autres rangées, est inécrivable. En mode plein panneau, le champ dispose d'une
+            // vraie surface et le reste s'efface le temps de la saisie. La date et l'heure, à
+            // l'inverse, gardent leur éditeur SOUS leur ligne : les molettes sont petites et
+            // tirent profit du contexte resté visible.
+            if (editing == EditTarget.DESCRIPTION) {
+                DescriptionEditor(
+                    draft = draft,
+                    onDraftChange = { draft = it },
+                    focusRequester = focusRequester,
+                    onDone = {
+                        commitCaption()
+                        editing = EditTarget.NONE
+                    }
+                )
+                return@Column
+            }
+
             Text(
                 text = stringResource(R.string.gallery_details_title),
                 style = MaterialTheme.typography.titleLarge,
@@ -172,45 +199,15 @@ internal fun ImageDetailsSheet(
                 label = stringResource(R.string.gallery_details_description),
                 value = caption.ifBlank { stringResource(R.string.gallery_details_description_hint) },
                 isPlaceholder = caption.isBlank(),
+                // TRONCATURE : une note de mille mots ne doit pas étirer le panneau. Au
+                // repos on en montre l'amorce, « … » signale la suite, et la hauteur du
+                // panneau reste la même quelle que soit la longueur du texte.
+                maxLines = DESCRIPTION_PREVIEW_LINES,
                 onClick = {
-                    if (editing == EditTarget.DESCRIPTION) {
-                        commitCaption()
-                        editing = EditTarget.NONE
-                    } else {
-                        draft = caption
-                        editing = EditTarget.DESCRIPTION
-                    }
+                    draft = caption
+                    editing = EditTarget.DESCRIPTION
                 }
             )
-            AnimatedVisibility(visible = editing == EditTarget.DESCRIPTION) {
-                Column(modifier = Modifier.padding(start = 56.dp, end = 16.dp, bottom = 8.dp)) {
-                    OutlinedTextField(
-                        value = draft,
-                        onValueChange = { draft = it },
-                        placeholder = {
-                            Text(stringResource(R.string.gallery_details_description_hint))
-                        },
-                        // Compact : 2 lignes au repos, borné — ce n'est plus le gros bloc
-                        // permanent de la 1re version.
-                        minLines = 2,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 160.dp)
-                            .focusRequester(focusRequester)
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = {
-                            commitCaption()
-                            editing = EditTarget.NONE
-                        }) { Text(stringResource(R.string.common_done)) }
-                    }
-                }
-                // Le clavier arrive sur le champ sans tap supplémentaire.
-                LaunchedEffect(Unit) { focusRequester.requestFocus() }
-            }
 
             // ── LIEU ────────────────────────────────────────────────────────────────
             val hasLocation = image.latitude != null && image.longitude != null
@@ -274,6 +271,53 @@ internal fun ImageDetailsSheet(
 }
 
 /**
+ * ÉDITEUR DE DESCRIPTION plein panneau (v7.1.97) — conçu pour du texte LONG.
+ *
+ * Il remplace le champ exigu coincé sous sa ligne : ici le champ occupe une vraie surface
+ * ([EDITOR_MIN_HEIGHT] au minimum), **défile en interne** au-delà, et laisse de la place au
+ * clavier. Un en-tête discret rappelle ce qu'on édite et porte le bouton de validation, à
+ * portée de pouce. Rien d'autre n'est affiché : on écrit, c'est tout.
+ */
+@Composable
+private fun DescriptionEditor(
+    draft: String,
+    onDraftChange: (String) -> Unit,
+    focusRequester: FocusRequester,
+    onDone: () -> Unit
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.gallery_details_description),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onDone) {
+                Text(stringResource(R.string.common_done))
+            }
+        }
+        OutlinedTextField(
+            value = draft,
+            onValueChange = onDraftChange,
+            placeholder = { Text(stringResource(R.string.gallery_details_description_hint)) },
+            // Hauteur GÉNÉREUSE et bornée : confortable pour écrire, sans jamais pousser le
+            // panneau au-delà de l'écran quand le clavier est ouvert. Au-delà, le champ
+            // défile tout seul — c'est ce qui rend les textes très longs supportables.
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = EDITOR_MIN_HEIGHT, max = EDITOR_MAX_HEIGHT)
+                .focusRequester(focusRequester),
+            textStyle = MaterialTheme.typography.bodyLarge
+        )
+    }
+    // Le clavier arrive sur le champ sans tap supplémentaire.
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+}
+
+/**
  * Une ligne du panneau : petite icône discrète + valeur, cliquable sur toute sa largeur.
  * Hauteur minimale 56 dp → cible tactile largement au-dessus des 48 dp requis. La valeur
  * ABSENTE (p. ex. « Ajouter une description ») s'affiche en couleur atténuée, pour qu'un
@@ -286,6 +330,7 @@ private fun DetailRow(
     value: String,
     isPlaceholder: Boolean,
     onClick: () -> Unit,
+    maxLines: Int = Int.MAX_VALUE,
     trailing: (@Composable () -> Unit)? = null
 ) {
     Row(
@@ -321,7 +366,9 @@ private fun DetailRow(
                 text = value,
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (isPlaceholder) MaterialTheme.colorScheme.onSurfaceVariant
-                else MaterialTheme.colorScheme.onSurface
+                else MaterialTheme.colorScheme.onSurface,
+                maxLines = maxLines,
+                overflow = TextOverflow.Ellipsis
             )
         }
         // Action secondaire éventuelle, HORS de la zone cliquable principale pour qu'elle
