@@ -22,25 +22,38 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** Sens d'affichage de la galerie (v7.1.101) — un seul critère aujourd'hui, `createdAt`. */
-enum class GallerySortOrder { CREATED_ASC, CREATED_DESC }
+/**
+ * Sens d'affichage de la galerie (v7.1.101) : `createdAt`, et depuis v7.1.103 la date de
+ * MODIFICATION — lue en `COALESCE(modifiedAt, createdAt)`, une image jamais éditée se
+ * classant par sa création.
+ */
+enum class GallerySortOrder { CREATED_ASC, CREATED_DESC, MODIFIED_ASC, MODIFIED_DESC }
 
 /**
  * Critères de tri de la galerie — le MÊME modèle à deux axes que l'Accueil et les Catégories
- * ([jtrSortCriterion]) : « Date de création », sélectionnée en permanence (unique critère),
- * re-tap = inversion du sens. Un futur critère s'ajouterait à cette liste sans rien changer.
+ * ([jtrSortCriterion]) : re-tap du critère actif = inversion du sens. Ordre des critères
+ * aligné sur le reste de l'app (v6.2.6) : « Date de modification » puis « Date de création ».
  */
 internal fun gallerySortCriteria(
     current: GallerySortOrder,
     onSelect: (GallerySortOrder) -> Unit
 ): List<JtrSortCriterion> = listOf(
+    jtrSortCriterion(R.string.sort_criterion_modified, current,
+        GallerySortOrder.MODIFIED_ASC, GallerySortOrder.MODIFIED_DESC,
+        defaultDescending = true, onSelect = onSelect),
     jtrSortCriterion(R.string.sort_criterion_created, current,
         GallerySortOrder.CREATED_ASC, GallerySortOrder.CREATED_DESC,
         defaultDescending = true, onSelect = onSelect),
 )
 
 /**
- * Applique le tri choisi. Tri STABLE : à `createdAt` égal, l'ordre DAO (`position` puis
+ * Clé du tri « Date de modification » : `COALESCE(modifiedAt, createdAt)` — `modifiedAt`
+ * reste `null` tant que les métadonnées n'ont jamais été éditées (v25, pas de backfill).
+ */
+private fun GalleryImage.modifiedSortKey(): Long = modifiedAt ?: createdAt
+
+/**
+ * Applique le tri choisi. Tri STABLE : à clé égale, l'ordre DAO (`position` puis
  * `createdAt`) départage, donc les photos d'un même import gardent leur ordre d'ajout.
  */
 internal fun sortGalleryImages(
@@ -49,6 +62,8 @@ internal fun sortGalleryImages(
 ): List<GalleryImage> = when (order) {
     GallerySortOrder.CREATED_ASC -> list.sortedBy { it.createdAt }
     GallerySortOrder.CREATED_DESC -> list.sortedByDescending { it.createdAt }
+    GallerySortOrder.MODIFIED_ASC -> list.sortedBy { it.modifiedSortKey() }
+    GallerySortOrder.MODIFIED_DESC -> list.sortedByDescending { it.modifiedSortKey() }
 }
 
 /**

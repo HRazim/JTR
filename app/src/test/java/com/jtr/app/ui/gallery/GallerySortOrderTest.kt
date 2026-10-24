@@ -29,12 +29,14 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * v7.1.101 — tri d'AFFICHAGE de la galerie par date de création (aucune migration) :
+ * v7.1.101 — tri d'AFFICHAGE de la galerie par date de création, puis v7.1.103 — par date
+ * de MODIFICATION (aucune migration, `modifiedAt` posé en v25) :
  *
- *  - [sortGalleryImages] ordonne par `createdAt` dans le sens choisi, et le tri est STABLE :
- *    à date égale, l'ordre DAO (`position` puis `createdAt`) départage ;
- *  - [gallerySortCriteria] expose l'UNIQUE critère « Date de création » dans le même modèle
- *    à deux axes que l'Accueil/Catégories : toujours sélectionné, re-tap = inversion du sens ;
+ *  - [sortGalleryImages] ordonne par `createdAt`, ou par `COALESCE(modifiedAt, createdAt)`
+ *    pour le critère « modifié » (une image jamais éditée se classe par sa création), dans
+ *    le sens choisi ; tri STABLE : à clé égale, l'ordre DAO (`position`/`createdAt`) départage ;
+ *  - [gallerySortCriteria] expose « Date de modification » puis « Date de création » (ordre
+ *    de l'Accueil/Catégories), modèle à deux axes : re-tap du critère actif = inversion ;
  *  - pref `gallery_sort` : inconnue → fallback CREATED_ASC (l'ordre historique du DAO,
  *    aucun changement perçu) ; persistée → restaurée ; [GalleryViewModel.setSortOrder]
  *    écrit la pref ; le flow [GalleryViewModel.images] rediffuse la liste dans le tri choisi.
@@ -47,9 +49,11 @@ class GallerySortOrderTest {
 
     // ── Fabrique d'images ───────────────────────────────────────────────────────
 
-    private fun img(id: Long, createdAt: Long, position: Int = 0) = GalleryImage(
-        id = id, personId = "p1", path = "f$id.jpg", position = position, createdAt = createdAt
-    )
+    private fun img(id: Long, createdAt: Long, position: Int = 0, modifiedAt: Long? = null) =
+        GalleryImage(
+            id = id, personId = "p1", path = "f$id.jpg", position = position,
+            createdAt = createdAt, modifiedAt = modifiedAt
+        )
 
     // ── sortGalleryImages ───────────────────────────────────────────────────────
 
@@ -81,24 +85,78 @@ class GallerySortOrderTest {
             .containsExactly(10L, 11L, 12L).inOrder()
     }
 
-    // ── Critère du menu de tri ──────────────────────────────────────────────────
+    // ── Tri « Date de modification » (v7.1.103) — COALESCE(modifiedAt, createdAt) ──
 
     @Test
-    fun criteria_singleCreatedCriterion_alwaysSelected_tapInverts() {
-        var selected: GallerySortOrder? = null
-        val asc = gallerySortCriteria(GallerySortOrder.CREATED_ASC) { selected = it }
-        assertThat(asc).hasSize(1)
-        assertThat(asc.single().labelRes).isEqualTo(R.string.sort_criterion_created)
-        assertThat(asc.single().selected).isTrue()
-        assertThat(asc.single().direction).isEqualTo(JtrSortDirection.ASC)
-        // Re-tap du critère actif = INVERSION du sens (modèle à deux axes, v6.2.6).
-        asc.single().onClick()
-        assertThat(selected).isEqualTo(GallerySortOrder.CREATED_DESC)
+    fun modifiedDesc_editedLeads_neverEditedFallsBackToCreatedAt() {
+        val images = listOf(
+            img(1, createdAt = 100),                            // jamais éditée → clé 100
+            img(2, createdAt = 300),                            // jamais éditée → clé 300
+            img(3, createdAt = 200, modifiedAt = 900),          // éditée        → clé 900
+            img(4, createdAt = 400, modifiedAt = 250)           // éditée        → clé 250
+        )
+        val sorted = sortGalleryImages(images, GallerySortOrder.MODIFIED_DESC)
+        // 900 (éditée) > 300 (création) > 250 (éditée) > 100 (création) : le COALESCE
+        // entremêle bien les deux populations sur une seule échelle.
+        assertThat(sorted.map { it.id }).containsExactly(3L, 2L, 4L, 1L).inOrder()
+    }
 
-        val desc = gallerySortCriteria(GallerySortOrder.CREATED_DESC) { selected = it }
-        assertThat(desc.single().direction).isEqualTo(JtrSortDirection.DESC)
-        desc.single().onClick()
-        assertThat(selected).isEqualTo(GallerySortOrder.CREATED_ASC)
+    @Test
+    fun modifiedAsc_isTheExactReverse() {
+        val images = listOf(
+            img(1, createdAt = 100),
+            img(2, createdAt = 300),
+            img(3, createdAt = 200, modifiedAt = 900),
+            img(4, createdAt = 400, modifiedAt = 250)
+        )
+        val sorted = sortGalleryImages(images, GallerySortOrder.MODIFIED_ASC)
+        assertThat(sorted.map { it.id }).containsExactly(1L, 4L, 2L, 3L).inOrder()
+    }
+
+    @Test
+    fun modifiedSort_equalKeys_tieKeepsDaoOrder() {
+        // Une éditée et une jamais-éditée peuvent partager la MÊME clé (modifiedAt de l'une
+        // == createdAt de l'autre) : l'ordre DAO (position) départage, dans les deux sens.
+        val daoOrder = listOf(
+            img(10, createdAt = 500, position = 0),
+            img(11, createdAt = 100, position = 1, modifiedAt = 500)
+        )
+        assertThat(sortGalleryImages(daoOrder, GallerySortOrder.MODIFIED_ASC).map { it.id })
+            .containsExactly(10L, 11L).inOrder()
+        assertThat(sortGalleryImages(daoOrder, GallerySortOrder.MODIFIED_DESC).map { it.id })
+            .containsExactly(10L, 11L).inOrder()
+    }
+
+    // ── Critères du menu de tri ─────────────────────────────────────────────────
+
+    @Test
+    fun criteria_modifiedThenCreated_selectionAndTapInvertPerCriterion() {
+        var selected: GallerySortOrder? = null
+        // Ordre des critères aligné sur l'Accueil/Catégories : Modification puis Création.
+        val onCreatedAsc = gallerySortCriteria(GallerySortOrder.CREATED_ASC) { selected = it }
+        assertThat(onCreatedAsc).hasSize(2)
+        assertThat(onCreatedAsc[0].labelRes).isEqualTo(R.string.sort_criterion_modified)
+        assertThat(onCreatedAsc[1].labelRes).isEqualTo(R.string.sort_criterion_created)
+        // Seule « Date de création » est active ; son re-tap inverse le sens.
+        assertThat(onCreatedAsc[0].selected).isFalse()
+        assertThat(onCreatedAsc[1].selected).isTrue()
+        assertThat(onCreatedAsc[1].direction).isEqualTo(JtrSortDirection.ASC)
+        onCreatedAsc[1].onClick()
+        assertThat(selected).isEqualTo(GallerySortOrder.CREATED_DESC)
+        // Taper l'AUTRE critère le sélectionne à son sens par défaut (descendant).
+        onCreatedAsc[0].onClick()
+        assertThat(selected).isEqualTo(GallerySortOrder.MODIFIED_DESC)
+
+        // Côté « Date de modification » active : re-tap = inversion, et l'autre critère
+        // repart à son sens par défaut.
+        val onModifiedDesc = gallerySortCriteria(GallerySortOrder.MODIFIED_DESC) { selected = it }
+        assertThat(onModifiedDesc[0].selected).isTrue()
+        assertThat(onModifiedDesc[0].direction).isEqualTo(JtrSortDirection.DESC)
+        assertThat(onModifiedDesc[1].selected).isFalse()
+        onModifiedDesc[0].onClick()
+        assertThat(selected).isEqualTo(GallerySortOrder.MODIFIED_ASC)
+        onModifiedDesc[1].onClick()
+        assertThat(selected).isEqualTo(GallerySortOrder.CREATED_DESC)
     }
 
     // ── ViewModel : pref persistée, fallback, flow trié ─────────────────────────
@@ -157,6 +215,8 @@ class GallerySortOrderTest {
     fun storedPref_isRestored() {
         assertThat(vm(storedSort = "CREATED_DESC").sortOrder.value)
             .isEqualTo(GallerySortOrder.CREATED_DESC)
+        assertThat(vm(storedSort = "MODIFIED_DESC").sortOrder.value)
+            .isEqualTo(GallerySortOrder.MODIFIED_DESC)
     }
 
     @Test

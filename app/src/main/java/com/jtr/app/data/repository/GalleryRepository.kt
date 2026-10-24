@@ -59,14 +59,18 @@ class GalleryRepository(context: Context) {
      * v7.1.94 — enregistre la DESCRIPTION d'une image. Une chaîne vide (ou blanche) est
      * normalisée en `null` : « pas de description » n'a qu'UNE représentation en base, ce qui
      * évite qu'un champ vidé puis relu ressorte comme une chaîne vide significative.
+     * v7.1.103 — toute édition de métadonnée stampe `modifiedAt = maintenant` (idem pour la
+     * date et la localisation ci-dessous) ; l'AJOUT d'une image, lui, ne stampe pas.
      */
     suspend fun setCaption(id: Long, caption: String?) = withContext(Dispatchers.IO) {
-        dao.updateCaption(id, caption?.trim()?.takeIf { it.isNotEmpty() })
+        dao.updateCaption(
+            id, caption?.trim()?.takeIf { it.isNotEmpty() }, System.currentTimeMillis()
+        )
     }
 
     /** v7.1.94 — enregistre la DATE + HEURE d'une image (epoch millis). */
     suspend fun setCreatedAt(id: Long, createdAt: Long) = withContext(Dispatchers.IO) {
-        dao.updateCreatedAt(id, createdAt)
+        dao.updateCreatedAt(id, createdAt, System.currentTimeMillis())
     }
 
     /**
@@ -80,7 +84,10 @@ class GalleryRepository(context: Context) {
         longitude: Double?,
         placeLabel: String?
     ) = withContext(Dispatchers.IO) {
-        dao.updateLocation(id, latitude, longitude, placeLabel?.trim()?.takeIf { it.isNotEmpty() })
+        dao.updateLocation(
+            id, latitude, longitude, placeLabel?.trim()?.takeIf { it.isNotEmpty() },
+            System.currentTimeMillis()
+        )
     }
 
     /**

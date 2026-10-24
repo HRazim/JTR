@@ -42,27 +42,33 @@ interface GalleryImageDao {
      * v7.1.94 — DESCRIPTION de l'image. Écrit la seule colonne `caption`, jamais la ligne
      * entière : une mise à jour partielle ne peut pas écraser par mégarde un `path` ou un
      * `createdAt` lus plus tôt dans l'UI. `null` efface la description.
+     * v7.1.103 — chaque édition de métadonnée STAMPE aussi `modifiedAt` (= [now]) : c'est la
+     * matière du tri « Date de modification » (`COALESCE(modifiedAt, createdAt)`).
      */
-    @Query("UPDATE gallery_images SET caption = :caption WHERE id = :id")
-    suspend fun updateCaption(id: Long, caption: String?)
+    @Query("UPDATE gallery_images SET caption = :caption, modifiedAt = :now WHERE id = :id")
+    suspend fun updateCaption(id: Long, caption: String?, now: Long)
 
     /**
      * v7.1.94 — DATE + HEURE de l'image (epoch millis). ⚠️ `createdAt` est aussi le critère
      * de tri secondaire de [observeByPerson] : la modifier RÉORDONNE la galerie et peut donc
      * changer la vignette « la plus récente » du carré d'entrée. C'est voulu.
+     * v7.1.103 — stampe aussi `modifiedAt` (cf. [updateCaption]).
      */
-    @Query("UPDATE gallery_images SET createdAt = :createdAt WHERE id = :id")
-    suspend fun updateCreatedAt(id: Long, createdAt: Long)
+    @Query("UPDATE gallery_images SET createdAt = :createdAt, modifiedAt = :now WHERE id = :id")
+    suspend fun updateCreatedAt(id: Long, createdAt: Long, now: Long)
 
     /**
      * v7.1.95 — LOCALISATION de l'image (colonnes posées en v24). Les trois valeurs vont
      * ENSEMBLE : passer `null` partout retire le lieu, et il n'existe aucun chemin par
      * lequel une coordonnée survivrait à son libellé, ou l'inverse.
+     * v7.1.103 — stampe aussi `modifiedAt` (cf. [updateCaption]) — retirer le lieu EST une
+     * édition.
      */
     @Query(
         """
         UPDATE gallery_images
-        SET latitude = :latitude, longitude = :longitude, placeLabel = :placeLabel
+        SET latitude = :latitude, longitude = :longitude, placeLabel = :placeLabel,
+            modifiedAt = :now
         WHERE id = :id
         """
     )
@@ -70,7 +76,8 @@ interface GalleryImageDao {
         id: Long,
         latitude: Double?,
         longitude: Double?,
-        placeLabel: String?
+        placeLabel: String?,
+        now: Long
     )
 
     /** Toutes les lignes — lecture ponctuelle pour l'export `.jtr`. */
