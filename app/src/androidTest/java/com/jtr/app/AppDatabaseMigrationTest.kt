@@ -731,6 +731,130 @@ class AppDatabaseMigrationTest {
     }
 
     /**
+     * v24 → v25 (v7.1.102) — DATE DE MODIFICATION d'image : une colonne nullable ajoutée à
+     * `gallery_images`. Ce que ce test prouve, et qui est tout ce qui compte pour la vraie
+     * base de HR (208 contacts, 35 images) :
+     *  1. **Rien n'est perdu** : contact ET **ligne de galerie préexistante** (avec sa
+     *     `position`, sa `caption`, son `createdAt` et sa LOCALISATION v24) ressortent INTACTS.
+     *  2. La colonne existe et vaut **NULL** sur les lignes d'avant — « jamais édité »,
+     *     aucun horodatage inventé (un backfill à `now` fausserait le futur tri « modifié »).
+     *  3. Elle est écrivable : un `modifiedAt` posé se relit tel quel, et le
+     *     `COALESCE(modifiedAt, createdAt)` du futur tri classe bien une ligne éditée par sa
+     *     date d'édition et une ligne jamais éditée par sa date de création.
+     *
+     * `runMigrationsAndValidate(..., true, ...)` valide en prime la conformité STRUCTURELLE
+     * à `25.json` — le « Migration didn't properly handle » qui ferait planter l'app au
+     * premier lancement sur la vraie base.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate24To25_addsNullModifiedAtAndKeepsExistingGalleryRows() {
+        val personId = "person-pre-v25"
+        val createdAt = 1_700_000_000_000L
+        val existingPath = "/data/gallery/souvenir_avant_v25.jpg"
+
+        helper.createDatabase(testDb, 24).use { db ->
+            db.execSQL(
+                "INSERT INTO persons (id, firstName, lastName, birthdateNotify, cityNotify, " +
+                    "isFavorite, createdAt, updatedAt, noteSections, " +
+                    "birthdateReminderOffsetMinutes) " +
+                    "VALUES (?, 'Carla', 'Souvenir', 0, 0, 0, ?, ?, '[]', 0)",
+                arrayOf<Any?>(personId, createdAt, createdAt)
+            )
+            // Une image DÉJÀ en base avant la migration, localisation v24 comprise :
+            // c'est elle qui doit survivre, champ à champ.
+            db.execSQL(
+                "INSERT INTO gallery_images " +
+                    "(personId, path, position, caption, createdAt, latitude, longitude, placeLabel) " +
+                    "VALUES (?, ?, 7, 'Avant v25', ?, 48.8588897, 2.320041, 'Tour Eiffel, Paris, France')",
+                arrayOf<Any?>(personId, existingPath, createdAt)
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 25, true, AppDatabase.MIGRATION_24_25
+        )
+
+        // 1) RIEN N'EST PERDU — le contact et SA LIGNE DE GALERIE, localisation v24 comprise.
+        db.query("SELECT firstName FROM persons WHERE id = ?", arrayOf(personId)).use { c ->
+            assertTrue("Le contact doit survivre à la migration", c.moveToFirst())
+            assertEquals("Carla", c.getString(0))
+        }
+        db.query(
+            "SELECT path, position, caption, createdAt, latitude, longitude, placeLabel, " +
+                "modifiedAt FROM gallery_images WHERE personId = ?",
+            arrayOf(personId)
+        ).use { c ->
+            assertTrue("La ligne de galerie doit survivre", c.moveToFirst())
+            assertEquals(existingPath, c.getString(0))
+            assertEquals(7, c.getInt(1))
+            assertEquals("Avant v25", c.getString(2))
+            assertEquals(createdAt, c.getLong(3))
+            assertEquals(48.8588897, c.getDouble(4), 0.0000001)
+            assertEquals(2.320041, c.getDouble(5), 0.0000001)
+            assertEquals("Tour Eiffel, Paris, France", c.getString(6))
+            // 2) La colonne naît VIDE : « jamais édité », aucun horodatage inventé.
+            assertTrue("modifiedAt doit être NULL sur une ligne d'avant v25", c.isNull(7))
+        }
+
+        // 3) La colonne est utilisable, et le contrat du futur tri « modifié » tient :
+        //    COALESCE(modifiedAt, createdAt) classe l'éditée par son édition, l'autre par
+        //    sa création.
+        val editedAt = 1_800_000_000_000L
+        db.execSQL(
+            "INSERT INTO gallery_images (personId, path, position, createdAt) " +
+                "VALUES (?, '/data/gallery/jamais_editee.jpg', 8, ?)",
+            arrayOf<Any?>(personId, createdAt + 1)
+        )
+        db.execSQL(
+            "UPDATE gallery_images SET modifiedAt = ? WHERE path = ?",
+            arrayOf<Any?>(editedAt, existingPath)
+        )
+        db.query(
+            "SELECT path, COALESCE(modifiedAt, createdAt) AS sortKey FROM gallery_images " +
+                "WHERE personId = ? ORDER BY sortKey DESC",
+            arrayOf(personId)
+        ).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("La ligne ÉDITÉE doit mener le tri « modifié »",
+                existingPath, c.getString(0))
+            assertEquals(editedAt, c.getLong(1))
+            assertTrue(c.moveToNext())
+            assertEquals("La ligne jamais éditée se classe par sa CRÉATION",
+                createdAt + 1, c.getLong(1))
+        }
+    }
+
+    /**
+     * CONTRÔLE NÉGATIF de la v24 → v25 : une migration qui déclarerait `modifiedAt` en
+     * `NOT NULL DEFAULT 0` (au lieu de nullable sans défaut) DOIT être REJETÉE par la
+     * validation de schéma — même filet que le contrôle négatif de la v23 → v24.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate24To25_negativeControl_wrongNullabilityIsRejected() {
+        helper.createDatabase(testDb, 24).close()
+
+        val wrong = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `gallery_images` ADD COLUMN `modifiedAt` INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        try {
+            helper.runMigrationsAndValidate(testDb, 25, true, wrong)
+            fail("Une colonne NOT NULL DEFAULT 0 au lieu de nullable doit être REJETÉE")
+        } catch (e: IllegalStateException) {
+            assertTrue(
+                "Le rejet doit désigner gallery_images, or le message est : ${e.message}",
+                e.message?.contains("gallery_images") == true
+            )
+        }
+    }
+
+    /**
      * CONTRÔLE NÉGATIF de la v23 → v24 : une migration qui déclarerait `latitude` en
      * `NOT NULL DEFAULT 0` (au lieu de nullable sans défaut) DOIT être REJETÉE par la
      * validation de schéma. Sans ce test, rien ne prouverait que

@@ -30,6 +30,11 @@ import androidx.room.PrimaryKey
  * libellé composé**. Pas de `address` + `placeName` séparés — rien dans la chaîne ne les
  * produit distinctement, `MapViewModel` compose déjà un libellé unique (POI, numéro + rue,
  * localité, pays) qu'il renvoie avec les coordonnées.
+ *
+ * v7.1.102 (DB v25) — [modifiedAt], posée AVANT son UI (même discipline). NULLABLE et
+ * SANS backfill : `null` = « métadonnées jamais éditées », et le futur tri « modifié »
+ * lira `COALESCE(modifiedAt, createdAt)` — les lignes d'avant v25 se classent donc par
+ * leur date de création, sans qu'aucune donnée ne soit inventée à la migration.
  */
 @Entity(
     tableName = "gallery_images",
@@ -61,5 +66,10 @@ data class GalleryImage(
     /** Longitude du lieu associé, `null` tant qu'aucun lieu n'est posé (v24). */
     val longitude: Double? = null,
     /** Libellé lisible du lieu, composé par le sélecteur de carte — jamais recalculé (v24). */
-    val placeLabel: String? = null
+    val placeLabel: String? = null,
+    /**
+     * Dernière ÉDITION des métadonnées (description, date, lieu), epoch millis — `null` tant
+     * qu'aucune édition n'a eu lieu (v25). Aucune UI ne l'écrit encore (v7.1.103).
+     */
+    val modifiedAt: Long? = null
 )

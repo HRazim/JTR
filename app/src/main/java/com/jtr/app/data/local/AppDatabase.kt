@@ -18,8 +18,15 @@ import org.json.JSONArray
 import java.util.Locale
 
 /**
- * AppDatabase — Version 24.
+ * AppDatabase — Version 25.
  *
+ * v25 : Date de modification d'image (v7.1.102). UNE colonne NULLABLE sur `gallery_images` —
+ *       `modifiedAt` INTEGER (epoch millis de la dernière édition des métadonnées). Migration
+ *       PUREMENT ADDITIVE : un seul `ALTER TABLE … ADD COLUMN`, aucune table recréée, aucune
+ *       ligne lue ni réécrite → ZÉRO perte possible ([MIGRATION_24_25]). PAS de backfill :
+ *       `null` = « jamais édité », et le tri « modifié » à venir lira
+ *       `COALESCE(modifiedAt, createdAt)`. Posée AVANT toute UI (v7.1.103 branchera
+ *       l'écriture à l'édition et le tri), même discipline que v23/v24.
  * v24 : Localisation d'image (v7.1.93). Trois colonnes NULLABLES sur `gallery_images` —
  *       `latitude` REAL, `longitude` REAL, `placeLabel` TEXT. Migration PUREMENT ADDITIVE :
  *       trois `ALTER TABLE … ADD COLUMN`, qui ne touchent que l'en-tête de schéma — aucune
@@ -82,7 +89,7 @@ import java.util.Locale
 @Database(
     entities = [Person::class, Category::class, CategoryGroup::class,
         PersonCategoryJoin::class, SocialLinkEntity::class, GalleryImage::class],
-    version = 24,
+    version = 25,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -426,6 +433,26 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration v24 → v25, ZÉRO perte de données — date de modification d'image (v7.1.102).
+         *
+         * PUREMENT ADDITIVE, même forme que [MIGRATION_23_24] : un seul `ALTER TABLE …
+         * ADD COLUMN`, qui en SQLite n'écrit QUE l'en-tête de schéma — aucune table recréée,
+         * aucune ligne lue ni réécrite. Les lignes existantes reçoivent `NULL` (« jamais
+         * édité ») : PAS de backfill, le tri « modifié » à venir lira
+         * `COALESCE(modifiedAt, createdAt)`.
+         *
+         * ⚠️ NULLABLE et SANS DEFAUT : exactement ce que Room attend d'un `Long?` sans
+         * `@ColumnInfo(defaultValue = …)` — un `NOT NULL` ou un `DEFAULT` ferait diverger le
+         * schéma de `25.json` et lèverait « Migration didn't properly handle » au premier
+         * lancement (piège prouvé par contrôle négatif en v7.1.88 et re-prouvé ici).
+         */
+        val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `gallery_images` ADD COLUMN `modifiedAt` INTEGER")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -436,7 +463,7 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                         MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
                         MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
-                        MIGRATION_22_23, MIGRATION_23_24)
+                        MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
                     // v7.1.63 — AUCUN FALLBACK DESTRUCTIF : la base n'est PLUS JAMAIS
                     // effacée silencieusement, quel que soit le scénario.
                     //
