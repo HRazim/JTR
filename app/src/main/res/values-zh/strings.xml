@@ -375,7 +375,6 @@
     <string name="city_map_hint">点击地图图标以确认精确地址。</string>
     <string name="location_denied_settings">定位权限已被拒绝。请前往手机设置进行授权。</string>
     <string name="location_off_settings">请在系统设置中开启定位以使用此提醒。</string>
-    <string name="favorites_category">收藏</string>
     <string name="action_move_to_trash">移至回收站</string>
     <string name="action_trash_short">回收站</string>
     <string name="category_trash_confirm_title">将此分类移至回收站？</string>

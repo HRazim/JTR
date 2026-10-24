@@ -377,7 +377,6 @@
     <string name="city_map_hint">Нажмите значок карты, чтобы подтвердить точный адрес.</string>
     <string name="location_denied_settings">Доступ к геолокации запрещён. Разрешите его в настройках телефона.</string>
     <string name="location_off_settings">Включите геолокацию в настройках, чтобы использовать это оповещение.</string>
-    <string name="favorites_category">Избранное</string>
     <string name="action_move_to_trash">Переместить в корзину</string>
     <string name="action_trash_short">Корзина</string>
     <string name="category_trash_confirm_title">Переместить эту категорию в корзину?</string>

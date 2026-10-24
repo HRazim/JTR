@@ -395,7 +395,6 @@
     <string name="city_map_hint">Ketuk ikon peta untuk memvalidasi alamat yang tepat.</string>
     <string name="location_denied_settings">Izin lokasi ditolak. Buka pengaturan ponsel untuk mengizinkannya.</string>
     <string name="location_off_settings">Aktifkan lokasi di pengaturan untuk memakai peringatan ini.</string>
-    <string name="favorites_category">Favorit</string>
     <string name="action_move_to_trash">Pindahkan ke sampah</string>
     <string name="action_trash_short">Sampah</string>
     <string name="category_trash_confirm_title">Pindahkan kategori ini ke sampah?</string>

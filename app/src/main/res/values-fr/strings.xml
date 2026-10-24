@@ -375,7 +375,6 @@
     <string name="city_map_hint">Appuyez sur l\'icône carte pour valider l\'adresse précise.</string>
     <string name="location_denied_settings">La permission de localisation a été refusée. Allez dans les paramètres de votre téléphone pour l\'autoriser.</string>
     <string name="location_off_settings">Activez la localisation dans les paramètres pour utiliser cette alerte.</string>
-    <string name="favorites_category">Favoris</string>
     <string name="action_move_to_trash">Mettre à la corbeille</string>
     <string name="action_trash_short">Corbeille</string>
     <string name="category_trash_confirm_title">Mettre cette catégorie à la corbeille ?</string>

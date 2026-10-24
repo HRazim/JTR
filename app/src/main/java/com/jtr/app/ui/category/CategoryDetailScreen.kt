@@ -68,8 +68,6 @@ fun CategoryDetailScreen(
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val category by viewModel.category.collectAsStateWithLifecycle()
-    // Catégorie virtuelle « Favoris » : lecture seule (ni ajout, ni édition, ni retrait).
-    val isVirtual = viewModel.isVirtualFavorites
 
     val lastModified by viewModel.lastModified.collectAsStateWithLifecycle()
 
@@ -299,50 +297,45 @@ fun CategoryDetailScreen(
                         }
                     },
                     actions = {
-                        if (!isVirtual) {
-                            AddContactMenu(
-                                onAddExisting = onAddExistingContacts,
-                                onCreateNew = onNavigateToAddPerson
-                            )
-                        }
+                        AddContactMenu(
+                            onAddExisting = onAddExistingContacts,
+                            onCreateNew = onNavigateToAddPerson
+                        )
                         JtrOverflowMenu(
                             sortCriteria = contactSortCriteria(sortOrder) { viewModel.setSortOrder(it) },
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
                         ) { dismiss ->
-                            // Actions sur la catégorie elle-même (v5.3) — masquées
-                            // pour la catégorie virtuelle « Favoris ».
-                            if (!isVirtual) {
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.common_edit)) },
-                                    leadingIcon = { Icon(Icons.Default.Edit, null) },
-                                    onClick = { dismiss(); showEditDialog = true }
-                                )
-                                DropdownMenuItem(
-                                    // `person_info_title` (« Information ») et NON
-                                    // `person_info_menu`, qui vaut « Profile information » /
-                                    // « Informations du profil » — spécifique au contact, faux
-                                    // pour une catégorie. Le libellé neutre sert ici de titre
-                                    // d'entrée de menu ET de titre de dialogue.
-                                    text = { Text(stringResource(R.string.person_info_title)) },
-                                    leadingIcon = { Icon(Icons.Default.Info, null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                    onClick = { dismiss(); showInfoDialog = true }
-                                )
-                                // v7.1.70 — « Supprimer » (icône corbeille + rouge), MÊME action
-                                // visuelle que le footer de l'écran Catégories (#2). La confirmation
-                                // (inchangée) décrit honnêtement le passage en corbeille.
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(stringResource(R.string.common_delete),
-                                            color = MaterialTheme.colorScheme.error)
-                                    },
-                                    leadingIcon = { Icon(Icons.Default.Delete, null,
-                                        tint = MaterialTheme.colorScheme.error) },
-                                    onClick = { dismiss(); showTrashConfirm = true }
-                                )
-                            }
+                            // Actions sur la catégorie elle-même (v5.3).
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.common_edit)) },
+                                leadingIcon = { Icon(Icons.Default.Edit, null) },
+                                onClick = { dismiss(); showEditDialog = true }
+                            )
+                            DropdownMenuItem(
+                                // `person_info_title` (« Information ») et NON
+                                // `person_info_menu`, qui vaut « Profile information » /
+                                // « Informations du profil » — spécifique au contact, faux
+                                // pour une catégorie. Le libellé neutre sert ici de titre
+                                // d'entrée de menu ET de titre de dialogue.
+                                text = { Text(stringResource(R.string.person_info_title)) },
+                                leadingIcon = { Icon(Icons.Default.Info, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                onClick = { dismiss(); showInfoDialog = true }
+                            )
+                            // v7.1.70 — « Supprimer » (icône corbeille + rouge), MÊME action
+                            // visuelle que le footer de l'écran Catégories (#2). La confirmation
+                            // (inchangée) décrit honnêtement le passage en corbeille.
+                            DropdownMenuItem(
+                                text = {
+                                    Text(stringResource(R.string.common_delete),
+                                        color = MaterialTheme.colorScheme.error)
+                                },
+                                leadingIcon = { Icon(Icons.Default.Delete, null,
+                                    tint = MaterialTheme.colorScheme.error) },
+                                onClick = { dismiss(); showTrashConfirm = true }
+                            )
                         }
                     }
                 )
@@ -362,32 +355,30 @@ fun CategoryDetailScreen(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ) {
-                    // « Retirer » : enlève SEULEMENT le lien → NEUTRE + undo (snackbar nommant la
-                    // catégorie). Sans objet pour la catégorie virtuelle « Favoris ».
-                    if (!isVirtual) {
-                        val removedMsg = stringResource(
-                            R.string.category_detail_removed_snackbar, categoryName)
-                        Box(Modifier.weight(1f).fillMaxHeight()) {
-                            FooterActionColumn(
-                                Icons.Default.LinkOff,
-                                stringResource(R.string.category_detail_btn_remove),
-                                enabled = true,
-                                onClick = {
-                                    val removed = selectedIds.toList()
-                                    viewModel.removeSelectedFromCategory()
-                                    scope.launch {
-                                        val res = snackbarHostState.showSnackbar(
-                                            message = removedMsg,
-                                            actionLabel = undoLabel,
-                                            duration = SnackbarDuration.Short
-                                        )
-                                        if (res == SnackbarResult.ActionPerformed) {
-                                            viewModel.undoRemoveFromCategory(removed)
-                                        }
+                    // « Retirer » : enlève SEULEMENT le lien → NEUTRE + undo (snackbar nommant
+                    // la catégorie).
+                    val removedMsg = stringResource(
+                        R.string.category_detail_removed_snackbar, categoryName)
+                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                        FooterActionColumn(
+                            Icons.Default.LinkOff,
+                            stringResource(R.string.category_detail_btn_remove),
+                            enabled = true,
+                            onClick = {
+                                val removed = selectedIds.toList()
+                                viewModel.removeSelectedFromCategory()
+                                scope.launch {
+                                    val res = snackbarHostState.showSnackbar(
+                                        message = removedMsg,
+                                        actionLabel = undoLabel,
+                                        duration = SnackbarDuration.Short
+                                    )
+                                    if (res == SnackbarResult.ActionPerformed) {
+                                        viewModel.undoRemoveFromCategory(removed)
                                     }
                                 }
-                            )
-                        }
+                            }
+                        )
                     }
                     // « Déplacer » (vrai déplacement : retire de CETTE catégorie, ajoute à la
                     // cible choisie) → NEUTRE.

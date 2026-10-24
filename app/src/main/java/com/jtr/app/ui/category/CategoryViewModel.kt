@@ -122,9 +122,6 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
      * Nombre de contacts favoris actifs — pilote la catégorie VIRTUELLE
      * « Favoris » (affichée en tête dès 2 favoris, cf. TopEntriesBrowser).
      */
-    val favoritePersonCount: StateFlow<Int> = personRepo.getAllActive()
-        .map { list -> list.count { it.isFavorite } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()

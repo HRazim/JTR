@@ -377,7 +377,6 @@
     <string name="city_map_hint">Tam adresi doğrulamak için harita simgesine dokun.</string>
     <string name="location_denied_settings">Konum izni reddedildi. İzin vermek için telefonunun ayarlarına git.</string>
     <string name="location_off_settings">Bu uyarıyı kullanmak için ayarlardan konumu aç.</string>
-    <string name="favorites_category">Favoriler</string>
     <string name="action_move_to_trash">Çöp kutusuna taşı</string>
     <string name="action_trash_short">Çöp Kutusu</string>
     <string name="category_trash_confirm_title">Bu kategori çöp kutusuna taşınsın mı?</string>

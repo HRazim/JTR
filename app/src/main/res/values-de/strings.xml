@@ -377,7 +377,6 @@
     <string name="city_map_hint">Tippe auf das Kartensymbol, um die genaue Adresse zu bestätigen.</string>
     <string name="location_denied_settings">Standortberechtigung wurde verweigert. Erlaube sie in den Einstellungen deines Telefons.</string>
     <string name="location_off_settings">Aktiviere den Standort in den Einstellungen, um diese Benachrichtigung zu nutzen.</string>
-    <string name="favorites_category">Favoriten</string>
     <string name="action_move_to_trash">In den Papierkorb verschieben</string>
     <string name="action_trash_short">Papierkorb</string>
     <string name="category_trash_confirm_title">Diese Kategorie in den Papierkorb verschieben?</string>

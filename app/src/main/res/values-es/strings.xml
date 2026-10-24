@@ -375,7 +375,6 @@
     <string name="city_map_hint">Pulsa el icono del mapa para validar la dirección precisa.</string>
     <string name="location_denied_settings">El permiso de ubicación fue denegado. Ve a los ajustes del teléfono para permitirlo.</string>
     <string name="location_off_settings">Activa la ubicación en los ajustes para usar esta alerta.</string>
-    <string name="favorites_category">Favoritos</string>
     <string name="action_move_to_trash">Mover a la papelera</string>
     <string name="action_trash_short">Papelera</string>
     <string name="category_trash_confirm_title">¿Mover esta categoría a la papelera?</string>

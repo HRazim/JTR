@@ -176,7 +176,6 @@ fun CategoriesScreen(
     val categoryActivity by viewModel.categoryActivity.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
-    val favoritePersonCount by viewModel.favoritePersonCount.collectAsStateWithLifecycle()
     // Mode d'affichage persistant (LIST / GRID / DETAIL), restauré depuis jtr_prefs.
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
@@ -763,13 +762,7 @@ fun CategoriesScreen(
                     onCategoryLongClick = { startSelectionCategory(it) },
                     onGroupLongClick = { startSelectionGroup(it) },
                     listState = topListState,
-                    gridState = topGridState,
-                    // Tuile virtuelle « Favoris » : hors recherche et hors mode cible
-                    // (elle ne peut pas recevoir de contacts déplacés).
-                    favoritesCount = if (isSearching || isPickingMoveTarget) 0 else favoritePersonCount,
-                    onFavoritesClick = {
-                        onCategoryClick(CategoryDetailViewModel.FAVORITES_CATEGORY_ID)
-                    }
+                    gridState = topGridState
                 )
             }
         }
@@ -990,16 +983,16 @@ internal fun TopEntriesBrowser(
     onGroupClick: (Long) -> Unit,
     onCategoryLongClick: (String) -> Unit,
     onGroupLongClick: (Long) -> Unit,
-    favoritesCount: Int = 0,
-    onFavoritesClick: () -> Unit = {},
     // États de défilement hoistés (v7.1.72) pour le FAB « remonter en haut ». LIST/DETAIL
     // partagent [listState] (LazyColumn), GRID a [gridState]. Défauts = aucun appelant impacté.
     listState: LazyListState = rememberLazyListState(),
     gridState: LazyGridState = rememberLazyGridState()
 ) {
-    // Catégorie VIRTUELLE « Favoris » : visible dès 2 contacts favoris, toujours
-    // en tête (les favoris restent par ailleurs premiers dans leurs catégories).
-    val showFavorites = favoritesCount >= 2
+    // v7.1.100 — la tuile virtuelle « Favoris » a été retirée. Elle s'insérait ICI, en
+    // tête, alors que le mode sélection rend la MÊME liste sans elle : les deux vues
+    // partageant le même état de défilement (v7.1.81), tout glissait d'une cellule à
+    // l'appui long. Ce navigateur et le réordonnable affichent désormais exactement
+    // les mêmes entrées. Les favoris restent portés par `isFavorite` (étoile + tri).
     when (viewMode) {
         JtrViewMode.GRID -> LazyVerticalGrid(
             state = gridState,
@@ -1009,11 +1002,6 @@ internal fun TopEntriesBrowser(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (showFavorites) {
-                item(key = "jtr_favorites") {
-                    FavoritesGridTile(count = favoritesCount, onClick = onFavoritesClick)
-                }
-            }
             items(entries, key = { topEntryKey(it) }) { entry ->
                 when (entry) {
                     is TopEntry.Folder -> FolderGridTile(
@@ -1038,12 +1026,6 @@ internal fun TopEntriesBrowser(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (showFavorites) {
-                item(key = "jtr_favorites") {
-                    FavoritesRow(count = favoritesCount, showCount = true,
-                        onClick = onFavoritesClick)
-                }
-            }
             items(entries, key = { topEntryKey(it) }) { entry ->
                 when (entry) {
                     is TopEntry.Folder -> FolderListRow(
@@ -1066,12 +1048,6 @@ internal fun TopEntriesBrowser(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            if (showFavorites) {
-                item(key = "jtr_favorites") {
-                    FavoritesRow(count = favoritesCount, showCount = false,
-                        onClick = onFavoritesClick)
-                }
-            }
             items(entries, key = { topEntryKey(it) }) { entry ->
                 when (entry) {
                     is TopEntry.Folder -> EntryCompactRow(
@@ -1093,105 +1069,6 @@ internal fun TopEntriesBrowser(
                             onClick = { onCategoryClick(entry.category.id) },
                             onLongClick = { onCategoryLongClick(entry.category.id) })
                     }
-                }
-            }
-        }
-    }
-}
-
-/** Tuile (grille) de la catégorie virtuelle « Favoris » : or + étoile + compteur. */
-@Composable
-private fun FavoritesGridTile(count: Int, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(Color(0xFFFFD54F), Color(0xFFFFA000))
-                )
-            )
-            .clickable(onClick = onClick)
-    ) {
-        Icon(
-            Icons.Default.Star,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.9f),
-            modifier = Modifier.size(56.dp).align(Alignment.Center)
-        )
-        Box(modifier = Modifier.fillMaxSize().bottomScrim())
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .padding(12.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.favorites_category),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-            Text(
-                text = pluralStringResource(R.plurals.categories_person_count, count, count),
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.8f),
-                maxLines = 1
-            )
-        }
-    }
-}
-
-/** Ligne (liste/détail) de la catégorie virtuelle « Favoris ». */
-@Composable
-private fun FavoritesRow(count: Int, showCount: Boolean, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        // Surface ACCORDÉE à la palette (même token que l'accueil/Paramètres/mode Détails),
-        // au lieu du `surfaceContainerHighest` par défaut du Card (neutre/lavande en clair).
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(if (showCount) 48.dp else 40.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(Color(0xFFFFD54F), Color(0xFFFFA000))
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Star, contentDescription = null,
-                    tint = Color.White, modifier = Modifier.size(22.dp))
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.favorites_category),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-                if (showCount) {
-                    Text(
-                        text = pluralStringResource(R.plurals.categories_person_count, count, count),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
                 }
             }
         }

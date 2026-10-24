@@ -377,7 +377,6 @@
     <string name="city_map_hint">اضغط رمز الخريطة لتأكيد العنوان الدقيق.</string>
     <string name="location_denied_settings">تم رفض إذن الموقع. انتقل إلى إعدادات هاتفك للسماح به.</string>
     <string name="location_off_settings">فعّل تحديد الموقع في الإعدادات لاستخدام هذا التنبيه.</string>
-    <string name="favorites_category">المفضّلة</string>
     <string name="action_move_to_trash">نقل إلى سلة المهملات</string>
     <string name="action_trash_short">سلة المهملات</string>
     <string name="category_trash_confirm_title">نقل هذه الفئة إلى سلة المهملات؟</string>

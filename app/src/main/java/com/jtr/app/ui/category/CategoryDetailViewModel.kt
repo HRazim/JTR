@@ -79,14 +79,6 @@ class CategoryDetailViewModel(
     private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
     private val sortPrefKey = "cat_sort_$categoryId"
 
-    /**
-     * Catégorie VIRTUELLE « Favoris » : générée dynamiquement (≥ 2 favoris) en
-     * tête de l'écran Catégories — aucune ligne Room, donc ni édition, ni
-     * corbeille, ni retrait/ajout de membres : seuls la consultation, le tri et
-     * la recherche s'appliquent.
-     */
-    val isVirtualFavorites: Boolean = categoryId == FAVORITES_CATEGORY_ID
-
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -137,10 +129,9 @@ class CategoryDetailViewModel(
     val groups: StateFlow<List<com.jtr.app.domain.model.CategoryGroup>> = categoryRepo.getGroups()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** Catégorie observée en direct (null pour la virtuelle « Favoris »). */
+    /** Catégorie observée en direct. */
     val category: StateFlow<Category?> =
-        if (isVirtualFavorites) MutableStateFlow(null)
-        else categoryDao.observeById(categoryId)
+        categoryDao.observeById(categoryId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     /**
@@ -154,29 +145,21 @@ class CategoryDetailViewModel(
      * identique) ; `null` si même `createdAt` vaut 0 → la ligne est MASQUÉE côté écran.
      */
     val lastModified: StateFlow<Long?> =
-        if (isVirtualFavorites) MutableStateFlow(null)
-        else combine(category, categoryRepo.getCategoryLastActivity()) { cat, activity ->
+        combine(category, categoryRepo.getCategoryLastActivity()) { cat, activity ->
             cat?.let { categoryLastModified(it, activity[categoryId]).takeIf { v -> v > 0L } }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val categoryName: StateFlow<String> =
-        if (isVirtualFavorites) {
-            MutableStateFlow(application.getString(R.string.favorites_category))
-        } else {
-            category.map { it?.name ?: "" }
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-        }
+        category.map { it?.name ?: "" }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     // Libellés localisés des types de relation (moteur multi-critères partagé).
     private val relationTypeLabels: Map<String, String> =
         FieldTypes.RELATION.filter { it.key != FieldTypes.CUSTOM }
             .associate { it.key to application.getString(it.labelRes).normalizeForSearch() }
 
-    // Source : membres de la catégorie, OU tous les favoris pour la virtuelle.
-    private val personsSource =
-        if (isVirtualFavorites) repository.getAllActive()
-            .map { list -> list.filter { it.isFavorite } }
-        else repository.getByCategory(categoryId)
+    // Source : membres de la catégorie.
+    private val personsSource = repository.getByCategory(categoryId)
 
     // Filtrage multi-critères + tri sur Dispatchers.Default (UI 120 Hz préservée).
     val persons: StateFlow<List<Person>> = combine(
@@ -195,13 +178,11 @@ class CategoryDetailViewModel(
 
     /** Met à jour nom / couleur / image de la catégorie (menu « Modifier »). */
     fun updateCategory(updated: Category) {
-        if (isVirtualFavorites) return
         viewModelScope.launch { categoryRepo.update(updated) }
     }
 
     /** Met la catégorie À LA CORBEILLE (cascade : ses contacts aussi). */
     fun deleteCategoryToTrash() {
-        if (isVirtualFavorites) return
         viewModelScope.launch { categoryRepo.softDeleteCategory(categoryId) }
     }
 
@@ -333,8 +314,5 @@ class CategoryDetailViewModel(
 
         /** Délai d'inactivité avant de relancer le filtre de recherche (ms). */
         private const val SEARCH_DEBOUNCE_MS = 250L
-
-        /** Id sentinelle de la catégorie virtuelle « Favoris » (aucune ligne Room). */
-        const val FAVORITES_CATEGORY_ID = "jtr_favorites"
     }
 }

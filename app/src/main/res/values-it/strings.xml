@@ -377,7 +377,6 @@
     <string name="city_map_hint">Tocca l\'icona della mappa per confermare l\'indirizzo preciso.</string>
     <string name="location_denied_settings">Autorizzazione alla posizione negata. Vai nelle impostazioni del telefono per consentirla.</string>
     <string name="location_off_settings">Attiva la posizione nelle impostazioni per usare questo avviso.</string>
-    <string name="favorites_category">Preferiti</string>
     <string name="action_move_to_trash">Sposta nel cestino</string>
     <string name="action_trash_short">Cestino</string>
     <string name="category_trash_confirm_title">Spostare questa categoria nel cestino?</string>
