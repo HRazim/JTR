@@ -273,16 +273,10 @@ fun JtrOverflowMenu(
     }
 
     if (showSortSheet) {
-        JtrOptionsSheet(
-            title = stringResource(R.string.sort_title),
+        JtrSortSheet(
+            sortCriteria = sortCriteria,
             onDismiss = { showSortSheet = false }
-        ) {
-            // La feuille reste OUVERTE au clic : on sélectionne un critère puis on
-            // peut le re-taper pour inverser le sens, sans la rouvrir (fermeture au scrim).
-            sortCriteria.forEach { criterion ->
-                JtrSheetCriterionRow(criterion)
-            }
-        }
+        )
     }
 
     if (showViewSheet) {
@@ -298,6 +292,28 @@ fun JtrOverflowMenu(
                     onClick = { onViewModeChange(mode); showViewSheet = false }
                 )
             }
+        }
+    }
+}
+
+/**
+ * Feuille « Tri » partagée (v7.1.101) — extraite de [JtrOverflowMenu] pour que la GALERIE,
+ * qui n'a ni mode d'affichage ni menu 3 points, ouvre exactement la MÊME feuille depuis sa
+ * propre icône de tri : une seule grammaire de tri dans toute l'app.
+ */
+@Composable
+fun JtrSortSheet(
+    sortCriteria: List<JtrSortCriterion>,
+    onDismiss: () -> Unit
+) {
+    JtrOptionsSheet(
+        title = stringResource(R.string.sort_title),
+        onDismiss = onDismiss
+    ) {
+        // La feuille reste OUVERTE au clic : on sélectionne un critère puis on
+        // peut le re-taper pour inverser le sens, sans la rouvrir (fermeture au scrim).
+        sortCriteria.forEach { criterion ->
+            JtrSheetCriterionRow(criterion)
         }
     }
 }

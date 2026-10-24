@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -81,6 +82,7 @@ import com.jtr.app.domain.model.GalleryImage
 import com.jtr.app.ui.category.FooterActionColumn
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrSelectionCheck
+import com.jtr.app.ui.components.JtrSortSheet
 import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
 import com.jtr.app.ui.components.ScrollToTopFab
 import com.jtr.app.ui.components.SelectAllToggle
@@ -109,6 +111,11 @@ fun GalleryScreen(
     val images by viewModel.images.collectAsStateWithLifecycle()
     val personName by viewModel.personName.collectAsStateWithLifecycle()
     val isImporting by viewModel.isImporting.collectAsStateWithLifecycle()
+    val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
+
+    // v7.1.101 — feuille « Tri » (la MÊME que l'Accueil et les Catégories), ouverte par
+    // l'icône de tri de la barre. État local à l'écran, comme le menu 3 points ailleurs.
+    var showSortSheet by remember { mutableStateOf(false) }
 
     // Index de l'image ouverte en plein écran ; null = grille seule.
     var viewerIndex by remember { mutableStateOf<Int?>(null) }
@@ -199,33 +206,43 @@ fun GalleryScreen(
                     }
                 },
                 actions = {
-                    when {
-                        isSelectionActive -> {
-                            // ⓘ UNIQUEMENT sur une sélection d'UNE image : des détails n'ont
-                            // de sens que pour une photo précise. Même bouton, même panneau
-                            // que depuis la visionneuse — aucune variante.
-                            if (selectedIds.size == 1) {
-                                IconButton(onClick = { detailsImageId = selectedIds.first() }) {
-                                    Icon(Icons.Outlined.Info,
-                                        contentDescription =
-                                            stringResource(R.string.gallery_details_open))
-                                }
-                            }
-                            // v7.1.98 — « Annuler » en TEXTE, comme les 4 autres écrans :
-                            // une croix seule se confond avec « supprimer » à cet endroit.
-                            TextButton(onClick = { exitSelection() }) {
-                                Text(stringResource(R.string.common_cancel),
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    if (isSelectionActive) {
+                        // ⓘ UNIQUEMENT sur une sélection d'UNE image : des détails n'ont
+                        // de sens que pour une photo précise. Même bouton, même panneau
+                        // que depuis la visionneuse — aucune variante.
+                        if (selectedIds.size == 1) {
+                            IconButton(onClick = { detailsImageId = selectedIds.first() }) {
+                                Icon(Icons.Outlined.Info,
+                                    contentDescription =
+                                        stringResource(R.string.gallery_details_open))
                             }
                         }
-                        isImporting -> CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp).padding(end = 8.dp),
-                            strokeWidth = 2.dp
-                        )
-                        // Le « + » DISPARAÎT en sélection, comme partout ailleurs dans l'app.
-                        else -> IconButton(onClick = pickImages) {
-                            Icon(Icons.Default.Add,
-                                contentDescription = stringResource(R.string.gallery_add))
+                        // v7.1.98 — « Annuler » en TEXTE, comme les 4 autres écrans :
+                        // une croix seule se confond avec « supprimer » à cet endroit.
+                        TextButton(onClick = { exitSelection() }) {
+                            Text(stringResource(R.string.common_cancel),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        }
+                    } else {
+                        // v7.1.101 — TRI à gauche du « + » : la galerie n'a ni recherche
+                        // inline ni mode d'affichage, donc pas de menu 3 points ; l'icône
+                        // ouvre DIRECTEMENT la même feuille « Tri » que les autres écrans.
+                        // Elle reste visible pendant un import (seul le « + » s'efface).
+                        IconButton(onClick = { showSortSheet = true }) {
+                            Icon(Icons.AutoMirrored.Filled.Sort,
+                                contentDescription = stringResource(R.string.sort_title))
+                        }
+                        if (isImporting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp).padding(end = 8.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            // Le « + » DISPARAÎT en sélection, comme partout ailleurs dans l'app.
+                            IconButton(onClick = pickImages) {
+                                Icon(Icons.Default.Add,
+                                    contentDescription = stringResource(R.string.gallery_add))
+                            }
                         }
                     }
                 },
@@ -304,6 +321,15 @@ fun GalleryScreen(
                 }
             }
         }
+    }
+
+    // FEUILLE DE TRI (v7.1.101) — composant partagé [JtrSortSheet], unique critère
+    // « Date de création » à deux sens (re-tap = inversion), persisté par le ViewModel.
+    if (showSortSheet) {
+        JtrSortSheet(
+            sortCriteria = gallerySortCriteria(sortOrder) { viewModel.setSortOrder(it) },
+            onDismiss = { showSortSheet = false }
+        )
     }
 
     // PANNEAU DE DÉTAILS ouvert depuis la GRILLE (sélection d'une seule image) — le MÊME
