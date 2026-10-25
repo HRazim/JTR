@@ -3,15 +3,11 @@ package com.jtr.app.ui.person
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -20,12 +16,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import coil.request.ImageRequest
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -34,11 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
 import com.jtr.app.R
 import com.jtr.app.domain.model.NOTE_ICON_NOTES
 import com.jtr.app.domain.model.NoteSection
-import com.jtr.app.ui.components.rememberSystemPhotoPicker
+import com.jtr.app.ui.components.FormPhotoHeader
 import com.jtr.app.utils.LocationUtils
 import com.jtr.app.utils.getSocialIcon
 import kotlinx.coroutines.launch
@@ -195,13 +186,6 @@ fun AddPersonScreen(
         }
     }
 
-    // Photo Picker système (v7.1.66) — aucune permission d'accès à la photothèque.
-    // L'URI choisie passe TOUJOURS par le recadrage (cercle = photo de profil)
-    // AVANT d'être appliquée. pendingCropUri (présence) arme le dialogue à chaque
-    // sélection, même URI identique ; le sélecteur s'est déjà fermé → pas de course.
-    var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
-    val photoPicker = rememberSystemPhotoPicker { uri -> pendingCropUri = uri }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -265,45 +249,22 @@ fun AddPersonScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // ── Photo ────────────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .size(96.dp)
-                    .clip(CircleShape)
-                    .then(
-                        if (photoUri == null)
-                            Modifier.background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.secondary
-                                    )
-                                )
-                            )
-                        else Modifier.background(MaterialTheme.colorScheme.primaryContainer)
-                    )
-                    .clickable { photoPicker() },
-                contentAlignment = Alignment.Center
-            ) {
-                if (photoUri != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(photoUri).crossfade(300).build(),
-                        contentDescription = stringResource(R.string.person_photo_cd),
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.AddAPhoto, contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp))
-                        Text(stringResource(R.string.common_photo),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White)
-                    }
-                }
-            }
+            // ── Photo (v7.1.111, G3a) : l'en-tête v7.1.79 partagé remplace le disque
+            // saturé au blanc codé en dur. MÊME plomberie qu'avant : Photo Picker système →
+            // recadrage CERCLE obligatoire → copie `photos/profile_<uuid>.jpg` (le hook C1
+            // efface l'ancien fichier au remplacement comme au retrait, via le REPLACE du
+            // brouillon). Nouveau au passage : zoom Remplacer/Retirer, repli initiale du
+            // prénom, couleurs du THÈME (contraste garanti sur toutes les palettes).
+            FormPhotoHeader(
+                photo = photoUri,
+                accent = MaterialTheme.colorScheme.primary,
+                fallbackIcon = Icons.Default.Person,
+                photoContentDescription = stringResource(R.string.person_photo_cd),
+                cropShape = CropShape.CIRCLE,
+                onPhotoCropped = { croppedUri -> viewModel.onPhotoSelected(croppedUri) },
+                onPhotoRemoved = { viewModel.onPhotoRemoved() },
+                fallbackInitialFrom = firstName
+            )
 
             HorizontalDivider()
 
@@ -431,18 +392,6 @@ fun AddPersonScreen(
             AddSocialLinkDialog(
                 onConfirm = { url -> viewModel.addPendingLink(url) },
                 onDismiss = { showAddLinkDialog = false }
-            )
-        }
-
-        pendingCropUri?.let { uri ->
-            ImageCropDialog(
-                sourceUri = uri,
-                cropShape = CropShape.CIRCLE,
-                onCropComplete = { croppedUri ->
-                    viewModel.onPhotoSelected(croppedUri)
-                    pendingCropUri = null
-                },
-                onDismiss = { pendingCropUri = null }
             )
         }
         }

@@ -192,6 +192,17 @@ class AddPersonViewModel(
     }
 
     /**
+     * v7.1.111 (G3a) — RETRAIT de la photo (« Retirer » de la visionneuse du nouvel
+     * en-tête). Aucune suppression de fichier ici : le flush du brouillon ré-insère en
+     * REPLACE et [PersonRepository.add] efface l'ancien fichier via le hook C1
+     * (`deleteReplacedFile(ancien, null)`) — même chemin qu'un remplacement.
+     */
+    fun onPhotoRemoved() {
+        _photoUri.value = null
+        markDirty()
+    }
+
+    /**
      * Construit la [Person] depuis l'état du formulaire, avec un [id] STABLE (réutilisé entre le
      * brouillon auto-sauvegardé et la sauvegarde manuelle → jamais de doublon). Réutilise la
      * canonisation ISO des dates (v7.1.0), les sections JSON et les projections scalaires.

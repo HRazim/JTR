@@ -65,6 +65,7 @@ import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.ui.components.FavoriteStar
+import com.jtr.app.ui.components.FormPhotoHeader
 import com.jtr.app.ui.components.PhotoZoomDialog
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
@@ -2293,46 +2294,6 @@ private fun CategoryFormDialog(
     }
     var selectedColor by remember { mutableStateOf(initialColor) }
     var imagePath by remember { mutableStateOf(initialImagePath) }
-    var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
-    // v7.1.49 — visionneuse plein écran de l'image de catégorie (même composant que
-    // l'avatar de contact), ouverte PAR-DESSUS ce formulaire (Dialog sur Dialog).
-    var showImageZoom by remember { mutableStateOf(false) }
-
-    // Photo Picker système (v7.1.66) — aucune permission requise.
-    val photoPicker = rememberSystemPhotoPicker { uri -> pendingCropUri = uri }
-
-    // Le formulaire RESTE en composition sous la visionneuse (Dialog empilé) : `name`,
-    // `selectedColor` et `imagePath` sont des `remember` de CE composable, donc fermer la
-    // visionneuse ne recompose rien — le brouillon d'édition est préservé par construction.
-    if (showImageZoom) {
-        imagePath?.let { current ->
-            PhotoZoomDialog(
-                photoUri = current,
-                onDismiss = { showImageZoom = false },
-                // ⚠️ On ferme la visionneuse AVANT d'ouvrir le sélecteur : sans cela le
-                // crop viendrait s'empiler en 3e dialogue au-dessus d'elle.
-                onReplace = { showImageZoom = false; photoPicker() },
-                onRemove = { showImageZoom = false; imagePath = null }
-            )
-        }
-    }
-
-    pendingCropUri?.let { uri ->
-        ImageCropDialog(
-            sourceUri = uri,
-            cropShape = CropShape.RECTANGLE,
-            onCropComplete = { croppedUri ->
-                scope.launch {
-                    val path = withContext(Dispatchers.IO) {
-                        copyCategoryPhotoToStorage(context, croppedUri)
-                    }
-                    if (path != null) imagePath = path
-                }
-                pendingCropUri = null
-            },
-            onDismiss = { pendingCropUri = null }
-        )
-    }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val accent = rememberCategoryColor(selectedColor)
@@ -2354,67 +2315,26 @@ private fun CategoryFormDialog(
             Text(title, style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(16.dp))
 
-            // ── APERÇU VIVANT : ce que la catégorie aura l'air d'être, en temps réel —
-            // image si présente, sinon initiale du nom sur teinte douce + anneau d'accent
-            // (même langage que le sélecteur v7.1.77). Fini l'aplat saturé permanent.
-            Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, accent.copy(alpha = 0.55f), CircleShape)
-                        .background(accent.copy(alpha = 0.16f))
-                        // Image présente → visionneuse (Remplacer/Retirer, v7.1.49) ;
-                        // absente → rien à zoomer, on va droit au Photo Picker.
-                        .clickable { if (imagePath != null) showImageZoom = true else photoPicker() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (imagePath != null) {
-                        AsyncImage(
-                            model = imagePath,
-                            contentDescription = stringResource(R.string.categories_image_cd),
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        // codePointAt : initiale emoji/arabe (surrogate pair) entière.
-                        val initial = name.trim().let {
-                            if (it.isEmpty()) "" else String(Character.toChars(it.codePointAt(0))).uppercase()
+            // ── APERÇU VIVANT (v7.1.79, extrait en v7.1.111) : image si présente, sinon
+            // initiale du nom sur teinte douce + anneau d'accent — le composant partagé
+            // porte aussi le zoom (Remplacer/Retirer), le Photo Picker et le recadrage.
+            FormPhotoHeader(
+                photo = imagePath,
+                accent = accent,
+                fallbackIcon = Icons.Default.Folder,
+                photoContentDescription = stringResource(R.string.categories_image_cd),
+                cropShape = CropShape.RECTANGLE,
+                onPhotoCropped = { croppedUri ->
+                    scope.launch {
+                        val path = withContext(Dispatchers.IO) {
+                            copyCategoryPhotoToStorage(context, croppedUri)
                         }
-                        if (initial.isEmpty()) {
-                            Icon(Icons.Default.Folder, contentDescription = null,
-                                modifier = Modifier.size(36.dp), tint = accent)
-                        } else {
-                            Text(initial,
-                                style = MaterialTheme.typography.displaySmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = accent)
-                        }
+                        if (path != null) imagePath = path
                     }
-                }
-                // Badge caméra en coin : l'ajout d'image est l'action CENTRALE de la tuile.
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .clickable { if (imagePath != null) showImageZoom = true else photoPicker() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        if (imagePath != null) Icons.Default.Edit else Icons.Default.AddAPhoto,
-                        contentDescription = stringResource(R.string.common_photo),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-            // Bouton photo EXPLICITE (en plus du tap sur l'aperçu) — même routage.
-            TextButton(
-                onClick = { if (imagePath != null) showImageZoom = true else photoPicker() },
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            ) { Text(stringResource(R.string.common_photo)) }
+                },
+                onPhotoRemoved = { imagePath = null },
+                fallbackInitialFrom = name
+            )
             Spacer(Modifier.height(8.dp))
 
             val focusRequester = remember { FocusRequester() }
