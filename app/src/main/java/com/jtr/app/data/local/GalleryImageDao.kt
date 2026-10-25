@@ -85,6 +85,27 @@ interface GalleryImageDao {
     suspend fun getAllSync(): List<GalleryImage>
 
     /**
+     * v7.1.105 (lot C1) — chemins des fichiers d'un contact, lus AVANT son hard-delete :
+     * la CASCADE FK efface les lignes avec le contact, il serait trop tard après.
+     */
+    @Query("SELECT path FROM gallery_images WHERE personId = :personId")
+    suspend fun pathsForPerson(personId: String): List<String>
+
+    /** v7.1.105 — chemins galerie de TOUS les contacts en corbeille (vidage corbeille). */
+    @Query(
+        "SELECT path FROM gallery_images WHERE personId IN " +
+            "(SELECT id FROM persons WHERE deletedAt IS NOT NULL)"
+    )
+    suspend fun pathsForDeletedPersons(): List<String>
+
+    /** v7.1.105 — chemins galerie des contacts en corbeille depuis plus de [cutoff] (purge). */
+    @Query(
+        "SELECT path FROM gallery_images WHERE personId IN " +
+            "(SELECT id FROM persons WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff)"
+    )
+    suspend fun pathsForPersonsDeletedBefore(cutoff: Long): List<String>
+
+    /**
      * v7.1.89 — plus grande `position` déjà utilisée pour ce contact ; `-1` s'il n'a aucune
      * image, de sorte que la première ajoutée prenne la position 0. Permet d'ajouter EN FIN
      * de liste sans relire toute la galerie.

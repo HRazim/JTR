@@ -1,6 +1,7 @@
 package com.jtr.app.data.repository
 
 import android.content.Context
+import com.jtr.app.data.files.ImageFileStore
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
@@ -21,6 +22,7 @@ class CategoryRepository(context: Context) {
     private val categoryGroupDao = db.categoryGroupDao()
     private val personDao = db.personDao()
     private val personCategoryDao = db.personCategoryDao()
+    private val appContext = context.applicationContext
 
     fun getAllActive(): Flow<List<Category>> = categoryDao.getAll()
 
@@ -44,8 +46,14 @@ class CategoryRepository(context: Context) {
      * (la même requête sert à [deleteGroup], qui désassigne EN MASSE). Les mouvements de membres
      * sont dérivés à la lecture par [getCategoryLastActivity] — aucune écriture.
      */
-    suspend fun update(category: Category) =
+    suspend fun update(category: Category) {
+        // v7.1.105 (lot C1) — une image REMPLACÉE efface son ancien fichier (après
+        // l'écriture, no-op si inchangée) : avant, chaque changement d'image laissait
+        // l'ancien `photos/category_…` orphelin (11 mesurés à l'audit).
+        val old = categoryDao.getById(category.id)
         categoryDao.update(category.copy(updatedAt = System.currentTimeMillis()))
+        old?.let { ImageFileStore.deleteReplacedFile(appContext, it.imagePath, category.imagePath) }
+    }
 
     // ── v4.5 : favoris, tri personnalisé, regroupement et actions de masse ──────
     fun getGroups(): Flow<List<CategoryGroup>> = categoryGroupDao.getAll()
@@ -94,16 +102,30 @@ class CategoryRepository(context: Context) {
     suspend fun setGroupFavorite(id: Long, favorite: Boolean) =
         categoryGroupDao.setFavorite(id, favorite)
 
-    suspend fun updateGroup(group: CategoryGroup) = categoryGroupDao.update(group)
-
-    /** Dissout un groupe : détache ses catégories puis supprime le groupe. */
-    suspend fun deleteGroup(groupId: Long, memberIds: List<String>) {
-        categoryDao.assignGroup(memberIds, null)
-        categoryGroupDao.delete(groupId)
+    suspend fun updateGroup(group: CategoryGroup) {
+        // v7.1.105 — même règle que [update] : l'ancienne image de couverture remplacée
+        // est effacée après l'écriture (no-op pour les updates d'organisation, qui ne
+        // touchent pas `imagePath`).
+        val old = categoryGroupDao.getById(group.id)
+        categoryGroupDao.update(group)
+        old?.let { ImageFileStore.deleteReplacedFile(appContext, it.imagePath, group.imagePath) }
     }
 
-    /** Supprime la SEULE ligne de groupe (membres déjà réaffectés ailleurs — fusion). */
-    suspend fun deleteGroupRow(groupId: Long) = categoryGroupDao.delete(groupId)
+    /** Dissout un groupe : détache ses catégories puis supprime le groupe (et son image). */
+    suspend fun deleteGroup(groupId: Long, memberIds: List<String>) {
+        categoryDao.assignGroup(memberIds, null)
+        deleteGroupRow(groupId)
+    }
+
+    /**
+     * Supprime la SEULE ligne de groupe (membres déjà réaffectés ailleurs — fusion).
+     * v7.1.105 — l'image de couverture est lue AVANT le DELETE et son fichier effacé APRÈS.
+     */
+    suspend fun deleteGroupRow(groupId: Long) {
+        val imagePath = categoryGroupDao.getById(groupId)?.imagePath
+        categoryGroupDao.delete(groupId)
+        ImageFileStore.deleteFileIfOwned(appContext, imagePath)
+    }
 
     /**
      * Persiste l'ordre GLOBAL des entrées de premier niveau (dossiers + catégories
@@ -146,11 +168,19 @@ class CategoryRepository(context: Context) {
      * double la CASCADE FK sur categoryId (comportement explicite et testable).
      */
     suspend fun hardDeleteCategory(categoryId: String) {
+        // v7.1.105 — l'image est lue AVANT le hard-delete, son fichier effacé APRÈS.
+        val imagePath = categoryDao.getById(categoryId)?.imagePath
         personCategoryDao.removeAllFromCategory(categoryId)
         categoryDao.hardDelete(categoryId)
+        ImageFileStore.deleteFileIfOwned(appContext, imagePath)
     }
 
-    suspend fun hardDeleteAllDeleted() = categoryDao.hardDeleteAllDeleted()
+    suspend fun hardDeleteAllDeleted() {
+        // v7.1.105 — images lues AVANT le vidage de la corbeille, effacées APRÈS.
+        val imagePaths = categoryDao.getDeletedImagePaths()
+        categoryDao.hardDeleteAllDeleted()
+        imagePaths.forEach { ImageFileStore.deleteFileIfOwned(appContext, it) }
+    }
 
     /**
      * AUTO-PURGE de la corbeille des catégories (v7.1.70) : supprime définitivement les catégories
@@ -165,8 +195,12 @@ class CategoryRepository(context: Context) {
         val cutoff = System.currentTimeMillis() - THIRTY_DAYS_MS
         val expired = categoryDao.getDeletedIdsOlderThan(cutoff)
         expired.forEach { id ->
+            // v7.1.105 — l'image de chaque catégorie purgée part avec elle (lue avant,
+            // effacée après — même règle que hardDeleteCategory).
+            val imagePath = categoryDao.getById(id)?.imagePath
             personCategoryDao.removeAllFromCategory(id)
             categoryDao.hardDelete(id)
+            ImageFileStore.deleteFileIfOwned(appContext, imagePath)
         }
     }
 

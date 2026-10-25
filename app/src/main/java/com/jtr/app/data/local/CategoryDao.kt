@@ -67,4 +67,11 @@ interface CategoryDao {
      */
     @Query("SELECT id FROM categories WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
     suspend fun getDeletedIdsOlderThan(cutoff: Long): List<String>
+
+    /**
+     * v7.1.105 (lot C1) — images des catégories en corbeille, lues AVANT le vidage :
+     * leurs fichiers `photos/category_…` sont effacés après le hard-delete.
+     */
+    @Query("SELECT imagePath FROM categories WHERE deletedAt IS NOT NULL AND imagePath IS NOT NULL")
+    suspend fun getDeletedImagePaths(): List<String>
 }

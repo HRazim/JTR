@@ -90,6 +90,21 @@ interface PersonDao {
     @Query("DELETE FROM persons WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
     suspend fun purgeOldDeleted(cutoff: Long)
 
+    /**
+     * v7.1.105 (lot C1) — photos de profil des contacts en corbeille, lues AVANT le vidage
+     * ou la purge : après le DELETE il n'y a plus rien à lire, et les fichiers resteraient
+     * orphelins (c'était la fuite mesurée par l'audit du lot C).
+     */
+    @Query("SELECT photoUri FROM persons WHERE deletedAt IS NOT NULL AND photoUri IS NOT NULL")
+    suspend fun getDeletedPhotoUris(): List<String>
+
+    /** v7.1.105 — variante de [getDeletedPhotoUris] limitée à la purge 30 jours. */
+    @Query(
+        "SELECT photoUri FROM persons WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff " +
+            "AND photoUri IS NOT NULL"
+    )
+    suspend fun getDeletedPhotoUrisOlderThan(cutoff: Long): List<String>
+
     @Query("UPDATE persons SET deletedAt = NULL WHERE id = :id")
     suspend fun restore(id: String)
 
