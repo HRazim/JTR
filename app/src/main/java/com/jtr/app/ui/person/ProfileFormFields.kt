@@ -51,6 +51,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.domain.model.DynamicLine
+import com.jtr.app.ui.components.FormTextField
 import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.utils.DateCanonical
 import com.jtr.app.utils.matchesAllTokens
@@ -258,10 +259,10 @@ fun ProfileFormFields(
 
                 // 5.6 Origine — juste AU-DESSUS de la ville (miroir du mode lecture)
                 var localOrigin by remember(origin) { mutableStateOf(origin) }
-                SoftTextField(
+                FormTextField(
                     value = localOrigin,
                     onValueChange = { localOrigin = it; onOriginChange(it) },
-                    placeholder = stringResource(R.string.person_origin_label),
+                    label = stringResource(R.string.person_origin_label),
                     leadingIcon = Icons.Default.Public,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     keyboardActions = KeyboardActions(
@@ -276,10 +277,10 @@ fun ProfileFormFields(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.Top
                 ) {
-                    SoftTextField(
+                    FormTextField(
                         value = localCity,
                         onValueChange = { localCity = it; onCityChange(it) },
-                        placeholder = stringResource(R.string.person_city_label),
+                        label = stringResource(R.string.person_city_label),
                         leadingIcon = Icons.Default.LocationOn,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(
@@ -328,7 +329,12 @@ fun ProfileFormFields(
 // Champ « carte souple » réutilisable (v7.0.2) — TextField rempli léger
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Couleurs du champ souple : conteneur teinté discret (surfaceVariant), sans soulignement. */
+/**
+ * Couleurs du champ souple : conteneur teinté discret (surfaceVariant), sans soulignement.
+ * v7.1.112 (G3b-1) — ne sert plus qu'à l'ÉDITEUR DE NOTES ([NoteSectionsEditor]) : les
+ * champs texte du formulaire sont passés au style v7.1.79 ([FormTextField] partagé), et
+ * `SoftTextField` a disparu avec eux. Le chrome des notes migrera au lot G3b-2.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun softFieldColors() = TextFieldDefaults.colors(
@@ -345,46 +351,6 @@ internal fun softFieldColors() = TextFieldDefaults.colors(
     // laissaient fuir une poignée émeraude au tout premier focus (captures de premier
     // rendu M3/foundation — mécanique détaillée dans Theme.kt).
 )
-
-/**
- * Champ de texte « carte souple » : conteneur léger arrondi, icône en tête, libellé
- * en placeholder. Habillage commun à tous les champs simples du formulaire (v7.0.2).
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun SoftTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    leadingIcon: ImageVector?,
-    modifier: Modifier = Modifier,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions.Default,
-    singleLine: Boolean = true,
-    minLines: Int = 1,
-    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
-    isError: Boolean = false,
-    supportingText: @Composable (() -> Unit)? = null,
-    trailingIcon: @Composable (() -> Unit)? = null
-) {
-    TextField(
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = { Text(placeholder) },
-        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
-        trailingIcon = trailingIcon,
-        singleLine = singleLine,
-        minLines = minLines,
-        maxLines = maxLines,
-        isError = isError,
-        supportingText = supportingText,
-        shape = RoundedCornerShape(16.dp),
-        colors = softFieldColors(),
-        keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
-        modifier = modifier
-    )
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // En-tête d'accordéon réutilisable (Dates, Relations, Téléphones, Emails)
@@ -522,7 +488,7 @@ private fun NameSection(
         // Chevron de dépliage des sous-champs DANS la carte du nom (bord de fin), façon
         // pilule Google (icône + champ + chevron) — plus de bouton circulaire externe.
         // RTL : le trailingIcon est placé du bon côté automatiquement par le TextField.
-        SoftTextField(
+        FormTextField(
             value = displayName,
             onValueChange = { input ->
                 displayName = input
@@ -530,7 +496,7 @@ private fun NameSection(
                 onFirstNameChange(f)
                 onLastNameChange(l)
             },
-            placeholder = stringResource(R.string.person_full_name_label),
+            label = stringResource(R.string.person_full_name_label),
             leadingIcon = Icons.Default.Badge,
             isError = firstNameError,
             supportingText = if (firstNameError) ({
@@ -585,11 +551,10 @@ private fun NameSection(
 @Composable
 private fun NameSubField(label: String, value: String, onChange: (String) -> Unit) {
     val focusManager = LocalFocusManager.current
-    SoftTextField(
+    FormTextField(
         value = value,
         onValueChange = onChange,
-        placeholder = label,
-        leadingIcon = null,
+        label = label,
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
@@ -650,28 +615,28 @@ private fun JobSection(
         }
         AnimatedVisibility(visible = expanded) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SoftTextField(
+                FormTextField(
                     value = jobTitle,
                     onValueChange = onJobTitleChange,
-                    placeholder = stringResource(R.string.person_job_title_label),
+                    label = stringResource(R.string.person_job_title_label),
                     leadingIcon = Icons.Default.Work,
                     keyboardOptions = opts,
                     keyboardActions = actions,
                     modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
                 )
-                SoftTextField(
+                FormTextField(
                     value = department,
                     onValueChange = onDepartmentChange,
-                    placeholder = stringResource(R.string.person_department_label),
+                    label = stringResource(R.string.person_department_label),
                     leadingIcon = Icons.Default.Apartment,
                     keyboardOptions = opts,
                     keyboardActions = actions,
                     modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
                 )
-                SoftTextField(
+                FormTextField(
                     value = company,
                     onValueChange = onCompanyChange,
-                    placeholder = stringResource(R.string.person_company_label),
+                    label = stringResource(R.string.person_company_label),
                     leadingIcon = Icons.Default.Business,
                     keyboardOptions = opts,
                     keyboardActions = actions,
@@ -1073,8 +1038,7 @@ private fun DynamicLineRow(
     }
 }
 
-/** Champ de valeur simple (carte souple) — téléphones, emails, dates. */
-@OptIn(ExperimentalMaterial3Api::class)
+/** Champ de valeur d'une ligne dynamique — téléphones, emails, dates (v7.1.112 : outline). */
 @Composable
 private fun ValueField(
     value: String,
@@ -1088,21 +1052,17 @@ private fun ValueField(
     onImeNext: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Placeholder visible quand le champ est vide : masque de date si fourni, sinon
-    // le libellé du champ (le libellé flottant est supprimé — habillage « carte souple »).
-    val hint = placeholder ?: valueLabel
-
-    TextField(
+    // Le libellé du champ redevient FLOTTANT (style v7.1.79) ; le masque de date, lui,
+    // reste un placeholder — visible champ vide/focalisé, distinct du libellé.
+    FormTextField(
         value = value,
         onValueChange = onValueChange,
-        placeholder = { Text(hint) },
-        singleLine = true,
+        label = valueLabel,
+        placeholder = placeholder,
         isError = isError,
         supportingText = if (isError && errorMessage != null) {
             { Text(errorMessage) }
         } else null,
-        shape = RoundedCornerShape(16.dp),
-        colors = softFieldColors(),
         visualTransformation = visualTransformation,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(onNext = { onImeNext() }),
@@ -1143,13 +1103,10 @@ private fun RelationValueField(
         onExpandedChange = { expanded = it },
         modifier = modifier
     ) {
-        TextField(
+        FormTextField(
             value = value,
             onValueChange = { onTextChange(it); expanded = true },
-            placeholder = { Text(hint) },
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            colors = softFieldColors(),
+            label = hint,
             trailingIcon = if (linkedPersonId != null) {
                 {
                     Icon(Icons.Default.CheckCircle,

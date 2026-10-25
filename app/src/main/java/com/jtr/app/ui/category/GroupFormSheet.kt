@@ -47,6 +47,7 @@ import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.ui.components.FormPhotoHeader
+import com.jtr.app.ui.components.FormTextField
 import com.jtr.app.ui.person.CropShape
 import com.jtr.app.ui.person.PickerThumbnail
 import kotlinx.coroutines.Dispatchers
@@ -135,11 +136,12 @@ fun CreateGroupSheet(
                 Spacer(Modifier.height(8.dp))
 
                 val focusRequester = remember { FocusRequester() }
-                OutlinedTextField(
+                // v7.1.112 — champ consolidé sur FormTextField (même rendu : il EST la
+                // version factorisée de cet OutlinedTextField).
+                FormTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.categories_group_name_hint)) },
-                    singleLine = true,
+                    label = stringResource(R.string.categories_group_name_hint),
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester)

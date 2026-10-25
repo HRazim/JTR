@@ -66,6 +66,7 @@ import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.FormPhotoHeader
+import com.jtr.app.ui.components.FormTextField
 import com.jtr.app.ui.components.PhotoZoomDialog
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
@@ -2338,11 +2339,12 @@ private fun CategoryFormDialog(
             Spacer(Modifier.height(8.dp))
 
             val focusRequester = remember { FocusRequester() }
-            OutlinedTextField(
+            // v7.1.112 — champ consolidé sur FormTextField (même rendu : il EST la version
+            // factorisée de cet OutlinedTextField).
+            FormTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text(stringResource(R.string.common_name_label)) },
-                singleLine = true,
+                label = stringResource(R.string.common_name_label),
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
