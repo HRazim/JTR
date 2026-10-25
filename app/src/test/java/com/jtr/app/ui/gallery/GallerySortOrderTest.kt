@@ -37,8 +37,8 @@ import org.junit.Test
  *    le sens choisi ; tri STABLE : à clé égale, l'ordre DAO (`position`/`createdAt`) départage ;
  *  - [gallerySortCriteria] expose « Date de modification » puis « Date de création » (ordre
  *    de l'Accueil/Catégories), modèle à deux axes : re-tap du critère actif = inversion ;
- *  - pref `gallery_sort` : inconnue → fallback CREATED_ASC (l'ordre historique du DAO,
- *    aucun changement perçu) ; persistée → restaurée ; [GalleryViewModel.setSortOrder]
+ *  - pref `gallery_sort` : absente ou inconnue → fallback CREATED_DESC (v7.1.109, plus
+ *    récent en haut) ; persistée → restaurée telle quelle ; [GalleryViewModel.setSortOrder]
  *    écrit la pref ; le flow [GalleryViewModel.images] rediffuse la liste dans le tri choisi.
  *
  * Pilote le VRAI GalleryViewModel contre des DAO mockés (même grammaire que
@@ -206,9 +206,13 @@ class GallerySortOrderTest {
         runBlocking { withTimeout(2_000) { flow.first(predicate) } }
 
     @Test
-    fun unknownPref_fallsBackToCreatedAsc() {
+    fun unknownOrMissingPref_fallsBackToCreatedDesc() {
+        // v7.1.109 — le DÉFAUT (pref absente ou illisible) est CREATED_DESC ; une pref
+        // stockée, elle, reste lue telle quelle (test suivant).
         assertThat(vm(storedSort = "GARBAGE").sortOrder.value)
-            .isEqualTo(GallerySortOrder.CREATED_ASC)
+            .isEqualTo(GallerySortOrder.CREATED_DESC)
+        assertThat(vm(storedSort = null).sortOrder.value)
+            .isEqualTo(GallerySortOrder.CREATED_DESC)
     }
 
     @Test

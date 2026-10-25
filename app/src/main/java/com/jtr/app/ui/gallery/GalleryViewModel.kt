@@ -82,11 +82,13 @@ class GalleryViewModel(
     val personId: String = checkNotNull(savedStateHandle["personId"])
 
     // v7.1.101 — tri d'AFFICHAGE persisté (préférence, aucune écriture en base), même
-    // mécanisme que `home_sort_order`. Défaut CREATED_ASC = l'ordre historique du DAO
-    // (`position` puis `createdAt` croissants) : rien ne bouge tant qu'on n'a pas trié.
+    // mécanisme que `home_sort_order`. v7.1.109 — défaut CREATED_DESC (dernière photo
+    // prise en haut, façon Google Photos) : pertinent depuis que `createdAt` est la
+    // vraie date de prise de vue (v7.1.108). SEUL LE REPLI change — une pref déjà
+    // stockée est lue telle quelle et n'est jamais réécrite ici.
     private val _sortOrder = MutableStateFlow(
         runCatching { GallerySortOrder.valueOf(prefs.getString(SORT_PREF_KEY, null) ?: "") }
-            .getOrDefault(GallerySortOrder.CREATED_ASC)
+            .getOrDefault(GallerySortOrder.CREATED_DESC)
     )
     val sortOrder: StateFlow<GallerySortOrder> = _sortOrder.asStateFlow()
 
