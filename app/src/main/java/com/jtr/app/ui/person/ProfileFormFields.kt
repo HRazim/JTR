@@ -27,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusEvent
-import androidx.compose.ui.graphics.Color
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -325,32 +324,10 @@ fun ProfileFormFields(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Champ « carte souple » réutilisable (v7.0.2) — TextField rempli léger
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Couleurs du champ souple : conteneur teinté discret (surfaceVariant), sans soulignement.
- * v7.1.112 (G3b-1) — ne sert plus qu'à l'ÉDITEUR DE NOTES ([NoteSectionsEditor]) : les
- * champs texte du formulaire sont passés au style v7.1.79 ([FormTextField] partagé), et
- * `SoftTextField` a disparu avec eux. Le chrome des notes migrera au lot G3b-2.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun softFieldColors() = TextFieldDefaults.colors(
-    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-    errorContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-    focusedIndicatorColor = Color.Transparent,
-    unfocusedIndicatorColor = Color.Transparent,
-    disabledIndicatorColor = Color.Transparent,
-    errorIndicatorColor = Color.Transparent
-    // v7.1.74 — les poignées de curseur/sélection (la « goutte ») sont transparentes pour
-    // TOUTE l'app via la racine du thème (cf. JTRTheme) : les masquages locaux par champ
-    // laissaient fuir une poignée émeraude au tout premier focus (captures de premier
-    // rendu M3/foundation — mécanique détaillée dans Theme.kt).
-)
+// v7.1.113 (G3b-2a) — `softFieldColors` (le dernier vestige du « champ carte souple »
+// v7.0.2) a disparu avec la migration de l'éditeur de notes : TOUS les champs texte de
+// l'app sont désormais sur le [FormTextField] partagé (style outlined v7.1.79). Les
+// poignées de curseur restent transparentes au niveau du THÈME (v7.1.74, cf. Theme.kt).
 
 // ─────────────────────────────────────────────────────────────────────────────
 // En-tête d'accordéon réutilisable (Dates, Relations, Téléphones, Emails)

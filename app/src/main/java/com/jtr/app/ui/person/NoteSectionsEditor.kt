@@ -61,7 +61,6 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -95,6 +94,7 @@ import com.jtr.app.domain.model.NOTE_ICON_NOTES
 import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.domain.model.combinedText
 import com.jtr.app.domain.model.withCombinedText
+import com.jtr.app.ui.components.FormTextField
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -703,7 +703,10 @@ private fun NoteContentField(
             }
     }
 
-    TextField(
+    // v7.1.113 (G3b-2a) — habillage outlined via la surcharge TextFieldValue du composant
+    // partagé, SANS label (le titre de la note est sa 1ʳᵉ ligne). Toute la mécanique
+    // (sélection, auto-grow, bringIntoView, suivi IME) reste ici, inchangée.
+    FormTextField(
         value = tfv,
         onValueChange = { newValue ->
             // Modif en fin de texte = ajout au bout (new commence par old) ou suppression au bout
@@ -716,12 +719,10 @@ private fun NoteContentField(
                 if (lastEditAtEnd) bringBottomIntoView()
             }
         },
-        placeholder = { Text(stringResource(R.string.note_section_content_hint)) },
+        placeholder = stringResource(R.string.note_section_content_hint),
         singleLine = false,
         minLines = 3,
         maxLines = Int.MAX_VALUE,
-        shape = RoundedCornerShape(16.dp),
-        colors = softFieldColors(),
         modifier = modifier
             // Champ qui GRANDIT (saut de ligne) ET dernière modif en fin → ré-amène le bas dans
             // la vue après la re-mesure → la nouvelle ligne reste au ras du clavier.

@@ -8,6 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 
 /**
@@ -45,6 +46,56 @@ internal fun FormTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
+        placeholder = placeholder?.let { { Text(it) } },
+        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
+        trailingIcon = trailingIcon,
+        singleLine = singleLine,
+        minLines = minLines,
+        maxLines = maxLines,
+        isError = isError,
+        supportingText = supportingText,
+        visualTransformation = visualTransformation,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        modifier = modifier
+    )
+}
+
+/**
+ * Surcharge **`TextFieldValue`** (v7.1.113, G3b-2a) — pour les champs qui pilotent la
+ * SÉLECTION en plus du texte : l'éditeur de notes fonde sa garde « curseur en fin »
+ * (auto-scroll) dessus. Même rendu que la surcharge `String` par CONSTRUCTION : aucune
+ * des deux ne personnalise quoi que ce soit, le style outlined EST le défaut M3 du thème —
+ * un seul moteur, deux signatures.
+ *
+ * [label] est ici OPTIONNEL : `null` = pas de label flottant, le [placeholder] seul fait
+ * l'invite (le champ de notes n'a pas de libellé propre — son titre est sa 1ʳᵉ ligne).
+ * Le [modifier] est passé TEL QUEL : c'est lui qui porte l'auto-grow (`onSizeChanged`),
+ * le `bringIntoViewRequester` et le focus de l'appelant ; rien n'est imposé ici (ni
+ * hauteur, ni scroll interne) qui casserait cette mécanique.
+ */
+@Composable
+internal fun FormTextField(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String? = null,
+    placeholder: String? = null,
+    leadingIcon: ImageVector? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
+    isError: Boolean = false,
+    supportingText: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    visualTransformation: VisualTransformation = VisualTransformation.None
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label?.let { { Text(it) } },
         placeholder = placeholder?.let { { Text(it) } },
         leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
         trailingIcon = trailingIcon,
