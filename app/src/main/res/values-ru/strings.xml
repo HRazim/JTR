@@ -393,16 +393,17 @@
     <string name="contact_selection_title">Выберите контакты</string>
     <string name="settings_backup_subtitle">Экспорт или восстановление данных (файл .jtr)</string>
     <!-- v7.1.106 — ручная очистка неиспользуемых (осиротевших) файлов изображений -->
-    <string name="settings_cleanup_title">Очистить неиспользуемые файлы</string>
+    <string name="settings_cleanup_title">Освободить место</string>
     <string name="settings_cleanup_subtitle">Удалить оставшиеся изображения, которые больше не используются</string>
     <string name="settings_cleanup_scanning">Сканирование…</string>
     <plurals name="settings_cleanup_confirm_message">
-        <item quantity="one">Будет удален %1$d неиспользуемый файл (%2$s). Фотографии ваших контактов не будут затронуты. Продолжить?</item>
-        <item quantity="few">Будут удалены %1$d неиспользуемых файла (%2$s). Фотографии ваших контактов не будут затронуты. Продолжить?</item>
-        <item quantity="many">Будет удалено %1$d неиспользуемых файлов (%2$s). Фотографии ваших контактов не будут затронуты. Продолжить?</item>
-        <item quantity="other">Будет удалено %1$d неиспользуемых файлов (%2$s). Фотографии ваших контактов не будут затронуты. Продолжить?</item>
+        <item quantity="one">%1$d оставшийся файл (%2$s) от удалённых или заменённых фото. Ваши контакты и их фото не затронуты.</item>
+        <item quantity="few">%1$d оставшихся файла (%2$s) от удалённых или заменённых фото. Ваши контакты и их фото не затронуты.</item>
+        <item quantity="many">%1$d оставшихся файлов (%2$s) от удалённых или заменённых фото. Ваши контакты и их фото не затронуты.</item>
+        <item quantity="other">%1$d оставшегося файла (%2$s) от удалённых или заменённых фото. Ваши контакты и их фото не затронуты.</item>
     </plurals>
-    <string name="settings_cleanup_none">Неиспользуемых файлов нет</string>
+    <string name="settings_cleanup_none">Нет оставшихся файлов</string>
+    <string name="settings_cleanup_confirm_button">Освободить %1$s</string>
     <string name="settings_cleanup_done">Освобождено %1$s</string>
     <string name="share_preview_loading">Загрузка изображений…</string>
     <string name="settings_notif_rationale_title">Разрешить уведомления?</string>

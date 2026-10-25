@@ -641,7 +641,16 @@ fun SettingsScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { settingsViewModel.confirmCleanup() }) {
-                        Text(stringResource(R.string.common_delete))
+                        // v7.1.116 (b) — le bouton nomme le GAIN (« Free up 71 MB »), pas
+                        // l'acte de suppression : clé dédiée (common_delete est partagé).
+                        Text(
+                            stringResource(
+                                R.string.settings_cleanup_confirm_button,
+                                android.text.format.Formatter.formatShortFileSize(
+                                    context, cleanup.plan.totalBytes
+                                )
+                            )
+                        )
                     }
                 },
                 dismissButton = {

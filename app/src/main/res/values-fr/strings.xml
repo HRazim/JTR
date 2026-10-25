@@ -394,15 +394,16 @@
     <!-- v5.5 — sauvegarde relocalisée dans Paramètres > Données -->
     <string name="settings_backup_subtitle">Exporter ou restaurer vos données (fichier .jtr)</string>
     <!-- v7.1.106 — nettoyage manuel des fichiers image orphelins -->
-    <string name="settings_cleanup_title">Nettoyer les fichiers inutilisés</string>
+    <string name="settings_cleanup_title">Libérer de l\'espace</string>
     <string name="settings_cleanup_subtitle">Supprimer les images résiduelles qui ne sont plus utilisées</string>
     <string name="settings_cleanup_scanning">Analyse…</string>
     <plurals name="settings_cleanup_confirm_message">
-        <item quantity="one">%1$d fichier inutilisé (%2$s) va être supprimé. Les photos de vos contacts ne sont pas affectées. Continuer ?</item>
-        <item quantity="many">%1$d fichiers inutilisés (%2$s) vont être supprimés. Les photos de vos contacts ne sont pas affectées. Continuer ?</item>
-        <item quantity="other">%1$d fichiers inutilisés (%2$s) vont être supprimés. Les photos de vos contacts ne sont pas affectées. Continuer ?</item>
+        <item quantity="one">%1$d fichier résiduel (%2$s) provenant de photos supprimées ou remplacées. Vos contacts et leurs photos ne sont pas affectés.</item>
+        <item quantity="many">%1$d fichiers résiduels (%2$s) provenant de photos supprimées ou remplacées. Vos contacts et leurs photos ne sont pas affectés.</item>
+        <item quantity="other">%1$d fichiers résiduels (%2$s) provenant de photos supprimées ou remplacées. Vos contacts et leurs photos ne sont pas affectés.</item>
     </plurals>
-    <string name="settings_cleanup_none">Aucun fichier inutilisé</string>
+    <string name="settings_cleanup_none">Aucun fichier résiduel</string>
+    <string name="settings_cleanup_confirm_button">Libérer %1$s</string>
     <string name="settings_cleanup_done">%1$s récupérés</string>
     <string name="share_preview_loading">Chargement des images…</string>
     <!-- v6.0.2 — flux de permission (piloté par le système) -->

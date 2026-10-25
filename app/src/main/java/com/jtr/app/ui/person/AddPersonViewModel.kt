@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.jtr.app.JTRApplication
+import com.jtr.app.data.files.ImageFileStore
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.NoteSection
@@ -185,7 +186,16 @@ class AddPersonViewModel(
 
     fun onPhotoSelected(uri: Uri) {
         viewModelScope.launch {
-            val path = withContext(Dispatchers.IO) { copyPhotoToStorage(uri) }
+            val path = withContext(Dispatchers.IO) {
+                val copied = copyPhotoToStorage(uri)
+                // v7.1.116 (a') — [uri] est le `crop_` du recadrage (sas filesDir/crops/,
+                // seul call-site : onPhotoCropped) : il part APRÈS la copie, succès OU
+                // échec, sinon chaque recadrage validé en création laissait un orphelin
+                // (l'édition, elle, nettoie déjà dans finalizePendingPhoto). Garde-fou
+                // canonique : hors de nos dossiers, deleteFileIfOwned est un no-op.
+                ImageFileStore.deleteFileIfOwned(getApplication(), uri.toString())
+                copied
+            }
             _photoUri.value = path
             markDirty()
         }

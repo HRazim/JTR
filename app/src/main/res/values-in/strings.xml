@@ -411,13 +411,14 @@
     <string name="contact_selection_title">Pilih kontak</string>
     <string name="settings_backup_subtitle">Ekspor atau pulihkan datamu (file .jtr)</string>
     <!-- v7.1.106 — pembersihan manual file gambar yatim -->
-    <string name="settings_cleanup_title">Bersihkan file yang tidak digunakan</string>
+    <string name="settings_cleanup_title">Kosongkan ruang</string>
     <string name="settings_cleanup_subtitle">Hapus gambar sisa yang tidak digunakan lagi</string>
     <string name="settings_cleanup_scanning">Memindai…</string>
     <plurals name="settings_cleanup_confirm_message">
-        <item quantity="other">%1$d file yang tidak digunakan (%2$s) akan dihapus. Foto kontakmu tidak terpengaruh. Lanjutkan?</item>
+        <item quantity="other">%1$d file sisa (%2$s) dari foto yang dihapus atau diganti. Kontak dan fotonya tidak terpengaruh.</item>
     </plurals>
-    <string name="settings_cleanup_none">Tidak ada file yang tidak digunakan</string>
+    <string name="settings_cleanup_none">Tidak ada file sisa</string>
+    <string name="settings_cleanup_confirm_button">Kosongkan %1$s</string>
     <string name="settings_cleanup_done">%1$s dibebaskan</string>
     <string name="share_preview_loading">Memuat gambar…</string>
     <string name="settings_notif_rationale_title">Izinkan notifikasi?</string>

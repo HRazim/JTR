@@ -394,13 +394,14 @@
     <!-- v5.5 — 备份已移至设置 > 数据 -->
     <string name="settings_backup_subtitle">导出或恢复您的数据（.jtr 文件）</string>
     <!-- v7.1.106 — 手动清理未使用的（孤立）图片文件 -->
-    <string name="settings_cleanup_title">清理未使用的文件</string>
+    <string name="settings_cleanup_title">释放空间</string>
     <string name="settings_cleanup_subtitle">删除不再使用的残留图片</string>
     <string name="settings_cleanup_scanning">正在扫描…</string>
     <plurals name="settings_cleanup_confirm_message">
-        <item quantity="other">将删除 %1$d 个未使用的文件（%2$s）。联系人照片不受影响。是否继续？</item>
+        <item quantity="other">来自已删除或已替换照片的 %1$d 个残留文件（%2$s）。您的联系人及其照片不受影响。</item>
     </plurals>
-    <string name="settings_cleanup_none">没有未使用的文件</string>
+    <string name="settings_cleanup_none">没有残留文件</string>
+    <string name="settings_cleanup_confirm_button">释放 %1$s</string>
     <string name="settings_cleanup_done">已释放 %1$s</string>
     <string name="share_preview_loading">正在加载图片…</string>
     <!-- v6.0.2 — 权限流程（由系统驱动） -->

@@ -393,14 +393,15 @@
     <string name="contact_selection_title">Kişileri seç</string>
     <string name="settings_backup_subtitle">Verilerini dışa aktar veya geri yükle (.jtr dosyası)</string>
     <!-- v7.1.106 — kullanılmayan (sahipsiz) görsel dosyalarının elle temizliği -->
-    <string name="settings_cleanup_title">Kullanılmayan dosyaları temizle</string>
+    <string name="settings_cleanup_title">Yer aç</string>
     <string name="settings_cleanup_subtitle">Artık kullanılmayan kalıntı görselleri sil</string>
     <string name="settings_cleanup_scanning">Taranıyor…</string>
     <plurals name="settings_cleanup_confirm_message">
-        <item quantity="one">%1$d kullanılmayan dosya (%2$s) silinecek. Kişilerinin fotoğrafları etkilenmez. Devam edilsin mi?</item>
-        <item quantity="other">%1$d kullanılmayan dosya (%2$s) silinecek. Kişilerinin fotoğrafları etkilenmez. Devam edilsin mi?</item>
+        <item quantity="one">Silinen veya değiştirilen fotoğraflardan kalan %1$d dosya (%2$s). Kişileriniz ve fotoğrafları etkilenmez.</item>
+        <item quantity="other">Silinen veya değiştirilen fotoğraflardan kalan %1$d dosya (%2$s). Kişileriniz ve fotoğrafları etkilenmez.</item>
     </plurals>
-    <string name="settings_cleanup_none">Kullanılmayan dosya yok</string>
+    <string name="settings_cleanup_none">Kalan dosya yok</string>
+    <string name="settings_cleanup_confirm_button">%1$s yer aç</string>
     <string name="settings_cleanup_done">%1$s geri kazanıldı</string>
     <string name="share_preview_loading">Görseller yükleniyor…</string>
     <string name="settings_notif_rationale_title">Bildirimlere izin verilsin mi?</string>

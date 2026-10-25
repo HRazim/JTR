@@ -399,14 +399,15 @@
     <!-- v5.5 — backup relocated to Settings > Data -->
     <string name="settings_backup_subtitle">Export or restore your data (.jtr file)</string>
     <!-- v7.1.106 — manual cleanup of unused (orphan) image files -->
-    <string name="settings_cleanup_title">Clean up unused files</string>
+    <string name="settings_cleanup_title">Free up space</string>
     <string name="settings_cleanup_subtitle">Delete leftover images that are no longer used</string>
     <string name="settings_cleanup_scanning">Scanning…</string>
     <plurals name="settings_cleanup_confirm_message">
-        <item quantity="one">%1$d unused file (%2$s) will be deleted. Your contacts\' photos are not affected. Continue?</item>
-        <item quantity="other">%1$d unused files (%2$s) will be deleted. Your contacts\' photos are not affected. Continue?</item>
+        <item quantity="one">%1$d leftover file (%2$s) from photos you deleted or replaced. Your contacts and their photos are not affected.</item>
+        <item quantity="other">%1$d leftover files (%2$s) from photos you deleted or replaced. Your contacts and their photos are not affected.</item>
     </plurals>
-    <string name="settings_cleanup_none">No unused files</string>
+    <string name="settings_cleanup_none">No leftover files</string>
+    <string name="settings_cleanup_confirm_button">Free up %1$s</string>
     <string name="settings_cleanup_done">%1$s recovered</string>
     <string name="share_preview_loading">Loading images…</string>
     <!-- v6.0.2 — permission flow (system-driven) -->

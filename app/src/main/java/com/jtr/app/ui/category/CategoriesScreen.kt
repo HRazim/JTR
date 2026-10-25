@@ -2,6 +2,7 @@ package com.jtr.app.ui.category
 
 import android.net.Uri
 import android.util.Log
+import com.jtr.app.data.files.ImageFileStore
 import com.jtr.app.ui.components.SelectAllToggle
 import com.jtr.app.ui.person.CropShape
 import com.jtr.app.ui.person.ImageCropDialog
@@ -2411,9 +2412,19 @@ private fun CategoryFormDialog(
     }
 }
 
-internal fun copyCategoryPhotoToStorage(context: android.content.Context, uri: Uri): String? = try {
-    val dir = File(context.filesDir, "photos").also { it.mkdirs() }
-    val dest = File(dir, "category_${UUID.randomUUID()}.jpg")
-    context.contentResolver.openInputStream(uri)?.use { it.copyTo(dest.outputStream()) }
-    dest.absolutePath
-} catch (_: Exception) { null }
+internal fun copyCategoryPhotoToStorage(context: android.content.Context, uri: Uri): String? {
+    val path = try {
+        val dir = File(context.filesDir, "photos").also { it.mkdirs() }
+        val dest = File(dir, "category_${UUID.randomUUID()}.jpg")
+        context.contentResolver.openInputStream(uri)?.use { it.copyTo(dest.outputStream()) }
+        dest.absolutePath
+    } catch (_: Exception) { null }
+    // v7.1.116 (a') — le `crop_` source (sas filesDir/crops/) part APRÈS la copie, succès
+    // OU échec : seul le flux d'édition de contact nettoyait son sas, les quatre call-sites
+    // de cette fonction (création/édition de catégorie et de groupe) laissaient chacun un
+    // orphelin par recadrage validé. L'effacement vit ICI pour qu'aucun futur appelant ne
+    // puisse l'oublier ; `deleteFileIfOwned` ne touche que nos dossiers (une URI de picker
+    // `content://` est refusée par construction) et un fichier déjà absent est un no-op.
+    ImageFileStore.deleteFileIfOwned(context, uri.toString())
+    return path
+}
