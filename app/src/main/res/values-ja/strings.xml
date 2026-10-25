@@ -393,6 +393,15 @@
     <string name="contact_selection_title">連絡先を選択</string>
     <!-- v5.5 — バックアップを設定 > データへ移動 -->
     <string name="settings_backup_subtitle">データのエクスポート / 復元（.jtr ファイル）</string>
+    <!-- v7.1.106 — 不要な（孤立した）画像ファイルの手動クリーンアップ -->
+    <string name="settings_cleanup_title">不要なファイルを削除</string>
+    <string name="settings_cleanup_subtitle">使われなくなった残存画像を削除します</string>
+    <string name="settings_cleanup_scanning">スキャン中…</string>
+    <plurals name="settings_cleanup_confirm_message">
+        <item quantity="other">未使用のファイル %1$d 件（%2$s）を削除します。連絡先の写真には影響しません。続行しますか？</item>
+    </plurals>
+    <string name="settings_cleanup_none">不要なファイルはありません</string>
+    <string name="settings_cleanup_done">%1$s を解放しました</string>
     <string name="share_preview_loading">画像を読み込み中…</string>
     <!-- v6.0.2 — 権限フロー（システム主導） -->
     <string name="settings_notif_rationale_title">通知を許可しますか？</string>

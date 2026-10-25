@@ -392,6 +392,15 @@
     <string name="welcome_select_button">가져올 연락처 선택</string>
     <string name="contact_selection_title">연락처 선택</string>
     <string name="settings_backup_subtitle">데이터 내보내기 또는 복원 (.jtr 파일)</string>
+    <!-- v7.1.106 — 사용하지 않는(고아) 이미지 파일 수동 정리 -->
+    <string name="settings_cleanup_title">사용하지 않는 파일 정리</string>
+    <string name="settings_cleanup_subtitle">더 이상 사용되지 않는 잔여 이미지를 삭제합니다</string>
+    <string name="settings_cleanup_scanning">검사 중…</string>
+    <plurals name="settings_cleanup_confirm_message">
+        <item quantity="other">사용하지 않는 파일 %1$d개(%2$s)를 삭제합니다. 연락처 사진은 영향을 받지 않습니다. 계속하시겠습니까?</item>
+    </plurals>
+    <string name="settings_cleanup_none">사용하지 않는 파일이 없습니다</string>
+    <string name="settings_cleanup_done">%1$s 확보됨</string>
     <string name="share_preview_loading">이미지 로드 중…</string>
     <string name="settings_notif_rationale_title">알림을 허용할까요?</string>
     <string name="settings_notif_rationale_message">JTR은 생일과 중요한 날짜에 대한 부드러운 알림을 휴대폰으로 바로 보내드립니다.</string>

@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -140,6 +141,8 @@ fun SettingsScreen(
     val notificationsEnabled by settingsViewModel.notificationsEnabled.collectAsStateWithLifecycle()
     val proximityEnabled by settingsViewModel.proximityEnabled.collectAsStateWithLifecycle()
     val birthdayEnabled by settingsViewModel.birthdayEnabled.collectAsStateWithLifecycle()
+    // Nettoyage des fichiers orphelins (v7.1.106, lot C2) : dry-run → confirmation → suppression.
+    val cleanupState by settingsViewModel.cleanupState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -516,6 +519,14 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_backup_subtitle),
                     onClick = { showBackupDialog = true }
                 )
+                // v7.1.106 (lot C2) — balayage MANUEL des fichiers orphelins : jamais au
+                // démarrage, jamais sans dry-run confirmé. Le scan ne supprime rien.
+                SettingsNavRow(
+                    icon = Icons.Default.CleaningServices,
+                    title = stringResource(R.string.settings_cleanup_title),
+                    subtitle = stringResource(R.string.settings_cleanup_subtitle),
+                    onClick = { settingsViewModel.scanUnusedFiles() }
+                )
                 SettingsNavRow(
                     icon = Icons.Default.Delete,
                     title = stringResource(R.string.settings_trash_title),
@@ -580,6 +591,102 @@ fun SettingsScreen(
 
     if (showBackupDialog) {
         BackupDialog(onDismiss = { showBackupDialog = false })
+    }
+
+    // ── Nettoyage des fichiers orphelins (v7.1.106, lot C2) ────────────────────
+    // Scan (dry-run) → confirmation avec nombre + taille → suppression → bilan.
+    // Pendant le travail, le dialogue n'est PAS annulable (onDismissRequest vide) :
+    // fermer en plein scan laisserait un plan fantôme, et rien n'est interruptible.
+    when (val cleanup = cleanupState) {
+        is CleanupUiState.Scanning, is CleanupUiState.Deleting -> {
+            AlertDialog(
+                onDismissRequest = {},
+                icon = { Icon(Icons.Default.CleaningServices, contentDescription = null) },
+                title = { Text(stringResource(R.string.settings_cleanup_title)) },
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            stringResource(
+                                if (cleanup is CleanupUiState.Scanning)
+                                    R.string.settings_cleanup_scanning
+                                else R.string.backup_working
+                            )
+                        )
+                    }
+                },
+                confirmButton = {}
+            )
+        }
+        is CleanupUiState.Confirm -> {
+            AlertDialog(
+                onDismissRequest = { settingsViewModel.dismissCleanup() },
+                icon = { Icon(Icons.Default.CleaningServices, contentDescription = null) },
+                title = { Text(stringResource(R.string.settings_cleanup_title)) },
+                text = {
+                    Text(
+                        // Forme pluralisée (v7.1.107) : « 1 unused file » vs « 2 unused
+                        // files » — chaque forme garde %1$d (lint ImpliedQuantity).
+                        pluralStringResource(
+                            R.plurals.settings_cleanup_confirm_message,
+                            cleanup.plan.count,
+                            cleanup.plan.count,
+                            // Taille localisée par l'OS (« 71 Mo », « 71 MB »…).
+                            android.text.format.Formatter.formatShortFileSize(
+                                context, cleanup.plan.totalBytes
+                            )
+                        )
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { settingsViewModel.confirmCleanup() }) {
+                        Text(stringResource(R.string.common_delete))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { settingsViewModel.dismissCleanup() }) {
+                        Text(stringResource(R.string.common_cancel))
+                    }
+                }
+            )
+        }
+        is CleanupUiState.Empty -> {
+            AlertDialog(
+                onDismissRequest = { settingsViewModel.dismissCleanup() },
+                icon = { Icon(Icons.Default.CleaningServices, contentDescription = null) },
+                title = { Text(stringResource(R.string.settings_cleanup_title)) },
+                text = { Text(stringResource(R.string.settings_cleanup_none)) },
+                confirmButton = {
+                    TextButton(onClick = { settingsViewModel.dismissCleanup() }) {
+                        Text(stringResource(R.string.common_ok))
+                    }
+                }
+            )
+        }
+        is CleanupUiState.Done -> {
+            AlertDialog(
+                onDismissRequest = { settingsViewModel.dismissCleanup() },
+                icon = { Icon(Icons.Default.CleaningServices, contentDescription = null) },
+                title = { Text(stringResource(R.string.settings_cleanup_title)) },
+                text = {
+                    Text(
+                        stringResource(
+                            R.string.settings_cleanup_done,
+                            android.text.format.Formatter.formatShortFileSize(
+                                context, cleanup.freedBytes
+                            )
+                        )
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { settingsViewModel.dismissCleanup() }) {
+                        Text(stringResource(R.string.common_ok))
+                    }
+                }
+            )
+        }
+        is CleanupUiState.Idle -> Unit
     }
 
     // ── Sécurité : configuration / changement / désactivation du verrou ────────

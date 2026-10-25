@@ -106,6 +106,14 @@ interface GalleryImageDao {
     suspend fun pathsForPersonsDeletedBefore(cutoff: Long): List<String>
 
     /**
+     * v7.1.106 (lot C2) — ensemble de référence du balayage d'orphelins : les chemins de
+     * TOUTES les images de galerie, y compris celles de contacts en corbeille (aucune
+     * jointure filtrante sur `persons.deletedAt`).
+     */
+    @Query("SELECT path FROM gallery_images")
+    suspend fun getAllPaths(): List<String>
+
+    /**
      * v7.1.89 — plus grande `position` déjà utilisée pour ce contact ; `-1` s'il n'a aucune
      * image, de sorte que la première ajoutée prenne la position 0. Permet d'ajouter EN FIN
      * de liste sans relire toute la galerie.

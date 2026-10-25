@@ -410,6 +410,15 @@
     <string name="welcome_select_button">Pilih kontak untuk diimpor</string>
     <string name="contact_selection_title">Pilih kontak</string>
     <string name="settings_backup_subtitle">Ekspor atau pulihkan datamu (file .jtr)</string>
+    <!-- v7.1.106 — pembersihan manual file gambar yatim -->
+    <string name="settings_cleanup_title">Bersihkan file yang tidak digunakan</string>
+    <string name="settings_cleanup_subtitle">Hapus gambar sisa yang tidak digunakan lagi</string>
+    <string name="settings_cleanup_scanning">Memindai…</string>
+    <plurals name="settings_cleanup_confirm_message">
+        <item quantity="other">%1$d file yang tidak digunakan (%2$s) akan dihapus. Foto kontakmu tidak terpengaruh. Lanjutkan?</item>
+    </plurals>
+    <string name="settings_cleanup_none">Tidak ada file yang tidak digunakan</string>
+    <string name="settings_cleanup_done">%1$s dibebaskan</string>
     <string name="share_preview_loading">Memuat gambar…</string>
     <string name="settings_notif_rationale_title">Izinkan notifikasi?</string>
     <string name="settings_notif_rationale_message">JTR mengirimkan pengingat lembut untuk ulang tahun dan tanggal penting — langsung ke ponselmu.</string>

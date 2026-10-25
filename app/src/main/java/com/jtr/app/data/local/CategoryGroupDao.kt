@@ -36,4 +36,11 @@ interface CategoryGroupDao {
 
     @Query("UPDATE category_groups SET position = :position WHERE id = :id")
     suspend fun setPosition(id: Long, position: Int)
+
+    /**
+     * v7.1.106 (lot C2) — ensemble de référence du balayage d'orphelins : TOUTES les images
+     * de couverture des dossiers (la table n'a pas de corbeille — toutes lignes = vivantes).
+     */
+    @Query("SELECT imagePath FROM category_groups WHERE imagePath IS NOT NULL")
+    suspend fun getAllImagePaths(): List<String>
 }

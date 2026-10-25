@@ -393,6 +393,17 @@
     <string name="contact_selection_title">Elegir contactos</string>
     <!-- v5.5 — copia de seguridad reubicada en Ajustes > Datos -->
     <string name="settings_backup_subtitle">Exporta o restaura tus datos (archivo .jtr)</string>
+    <!-- v7.1.106 — limpieza manual de archivos de imagen huérfanos -->
+    <string name="settings_cleanup_title">Limpiar archivos sin usar</string>
+    <string name="settings_cleanup_subtitle">Eliminar imágenes residuales que ya no se usan</string>
+    <string name="settings_cleanup_scanning">Analizando…</string>
+    <plurals name="settings_cleanup_confirm_message">
+        <item quantity="one">Se eliminará %1$d archivo sin usar (%2$s). Las fotos de tus contactos no se verán afectadas. ¿Continuar?</item>
+        <item quantity="many">Se eliminarán %1$d archivos sin usar (%2$s). Las fotos de tus contactos no se verán afectadas. ¿Continuar?</item>
+        <item quantity="other">Se eliminarán %1$d archivos sin usar (%2$s). Las fotos de tus contactos no se verán afectadas. ¿Continuar?</item>
+    </plurals>
+    <string name="settings_cleanup_none">No hay archivos sin usar</string>
+    <string name="settings_cleanup_done">%1$s recuperados</string>
     <string name="share_preview_loading">Cargando imágenes…</string>
     <!-- v6.0.2 — flujo de permisos (gestionado por el sistema) -->
     <string name="settings_notif_rationale_title">¿Permitir notificaciones?</string>

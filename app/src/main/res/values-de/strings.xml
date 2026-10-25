@@ -392,6 +392,16 @@
     <string name="welcome_select_button">Kontakte zum Importieren auswählen</string>
     <string name="contact_selection_title">Kontakte auswählen</string>
     <string name="settings_backup_subtitle">Exportiere oder stelle deine Daten wieder her (.jtr-Datei)</string>
+    <!-- v7.1.106 — manuelle Bereinigung verwaister Bilddateien -->
+    <string name="settings_cleanup_title">Nicht verwendete Dateien bereinigen</string>
+    <string name="settings_cleanup_subtitle">Zurückgebliebene Bilder löschen, die nicht mehr verwendet werden</string>
+    <string name="settings_cleanup_scanning">Analyse läuft…</string>
+    <plurals name="settings_cleanup_confirm_message">
+        <item quantity="one">%1$d nicht verwendete Datei (%2$s) wird gelöscht. Die Fotos deiner Kontakte sind nicht betroffen. Fortfahren?</item>
+        <item quantity="other">%1$d nicht verwendete Dateien (%2$s) werden gelöscht. Die Fotos deiner Kontakte sind nicht betroffen. Fortfahren?</item>
+    </plurals>
+    <string name="settings_cleanup_none">Keine nicht verwendeten Dateien</string>
+    <string name="settings_cleanup_done">%1$s freigegeben</string>
     <string name="share_preview_loading">Bilder werden geladen…</string>
     <string name="settings_notif_rationale_title">Benachrichtigungen erlauben?</string>
     <string name="settings_notif_rationale_message">JTR sendet dir sanfte Erinnerungen an Geburtstage und wichtige Termine – direkt auf dein Telefon.</string>

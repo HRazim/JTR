@@ -392,6 +392,17 @@
     <string name="welcome_select_button">Escolher contactos a importar</string>
     <string name="contact_selection_title">Escolher contactos</string>
     <string name="settings_backup_subtitle">Exporta ou restaura os teus dados (ficheiro .jtr)</string>
+    <!-- v7.1.106 — limpeza manual de ficheiros de imagem órfãos -->
+    <string name="settings_cleanup_title">Limpar ficheiros não utilizados</string>
+    <string name="settings_cleanup_subtitle">Eliminar imagens residuais que já não são utilizadas</string>
+    <string name="settings_cleanup_scanning">A analisar…</string>
+    <plurals name="settings_cleanup_confirm_message">
+        <item quantity="one">Será eliminado %1$d ficheiro não utilizado (%2$s). As fotos dos teus contactos não são afetadas. Continuar?</item>
+        <item quantity="many">Serão eliminados %1$d ficheiros não utilizados (%2$s). As fotos dos teus contactos não são afetadas. Continuar?</item>
+        <item quantity="other">Serão eliminados %1$d ficheiros não utilizados (%2$s). As fotos dos teus contactos não são afetadas. Continuar?</item>
+    </plurals>
+    <string name="settings_cleanup_none">Nenhum ficheiro não utilizado</string>
+    <string name="settings_cleanup_done">%1$s recuperados</string>
     <string name="share_preview_loading">A carregar imagens…</string>
     <string name="settings_notif_rationale_title">Permitir notificações?</string>
     <string name="settings_notif_rationale_message">O JTR envia lembretes suaves de aniversários e datas importantes — diretamente para o teu telemóvel.</string>

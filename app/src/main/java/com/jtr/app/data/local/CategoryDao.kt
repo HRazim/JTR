@@ -74,4 +74,11 @@ interface CategoryDao {
      */
     @Query("SELECT imagePath FROM categories WHERE deletedAt IS NOT NULL AND imagePath IS NOT NULL")
     suspend fun getDeletedImagePaths(): List<String>
+
+    /**
+     * v7.1.106 (lot C2) — ensemble de référence du balayage d'orphelins : TOUTES les images
+     * de catégorie, CORBEILLE INCLUSE (aucun filtre `deletedAt`).
+     */
+    @Query("SELECT imagePath FROM categories WHERE imagePath IS NOT NULL")
+    suspend fun getAllImagePaths(): List<String>
 }

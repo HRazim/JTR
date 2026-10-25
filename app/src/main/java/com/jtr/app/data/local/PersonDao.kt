@@ -105,6 +105,14 @@ interface PersonDao {
     )
     suspend fun getDeletedPhotoUrisOlderThan(cutoff: Long): List<String>
 
+    /**
+     * v7.1.106 (lot C2) — ensemble de référence du balayage d'orphelins : TOUTES les photos
+     * de profil, CORBEILLE INCLUSE (aucun filtre `deletedAt`). Un contact en corbeille
+     * possède encore sa photo — l'omettre, c'est la supprimer à tort.
+     */
+    @Query("SELECT photoUri FROM persons WHERE photoUri IS NOT NULL")
+    suspend fun getAllPhotoUris(): List<String>
+
     @Query("UPDATE persons SET deletedAt = NULL WHERE id = :id")
     suspend fun restore(id: String)
 
