@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -166,9 +167,11 @@ internal fun ImageDetailsSheet(
                 }
             )
             AnimatedVisibility(visible = editing == EditTarget.DATE_TIME) {
+                // v7.1.110 — l'éditeur n'écrit plus au cran : une seule écriture au « Done »
+                // (si changement), rien du tout si on ferme autrement.
                 DateTimeEditor(
                     millis = image.createdAt,
-                    onChange = onCreatedAtChange,
+                    onCommit = onCreatedAtChange,
                     onDone = { editing = EditTarget.NONE }
                 )
             }
@@ -375,13 +378,23 @@ private fun DetailRow(
 
 /**
  * Éditeur date/heure révélé au tap sur la ligne : un segment « Date | Heure » puis les
- * MOLETTES (3 roues mois/jour/année, ou 2 roues heure/minute). Chaque arrêt de roue écrit
- * immédiatement — ce qu'on voit au centre EST la valeur, comme une molette d'alarme.
+ * MOLETTES (3 roues mois/jour/année, ou 2 roues heure/minute).
+ *
+ * v7.1.110 — les crans ne touchent qu'un ÉTAT LOCAL ([pending]) : plus aucune écriture
+ * pendant le défilement (l'ancien comportement écrivait `createdAt` + stampait `modifiedAt`
+ * À CHAQUE CRAN, et sous un tri actif l'image se réordonnait PENDANT le réglage). La seule
+ * écriture part au « Done », et seulement si la valeur a changé ([commitDateIfChanged]) ;
+ * fermer l'éditeur ou le panneau sans « Done » jette [pending] — annulation naturelle.
+ * Les deux onglets lisent/écrivent le même [pending] : régler la date puis l'heure compose
+ * bien UNE valeur.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DateTimeEditor(millis: Long, onChange: (Long) -> Unit, onDone: () -> Unit) {
+private fun DateTimeEditor(millis: Long, onCommit: (Long) -> Unit, onDone: () -> Unit) {
     var tab by remember { mutableIntStateOf(0) }
+    // État local de l'édition — la clé `millis` le réinitialise si la ligne change sous
+    // nos pieds entre deux ouvertures (jamais PENDANT : l'édition n'écrit plus rien).
+    var pending by remember(millis) { mutableLongStateOf(millis) }
     Column(
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -398,12 +411,27 @@ private fun DateTimeEditor(millis: Long, onChange: (Long) -> Unit, onDone: () ->
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
             ) { Text(stringResource(R.string.gallery_details_time)) }
         }
-        if (tab == 0) DateWheels(millis = millis, onChange = onChange)
-        else TimeWheels(millis = millis, onChange = onChange)
+        if (tab == 0) DateWheels(millis = pending, onChange = { pending = it })
+        else TimeWheels(millis = pending, onChange = { pending = it })
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onDone) { Text(stringResource(R.string.common_done)) }
+            TextButton(onClick = {
+                commitDateIfChanged(original = millis, pending = pending, commit = onCommit)
+                onDone()
+            }) { Text(stringResource(R.string.common_done)) }
         }
     }
+}
+
+/**
+ * Décision d'écriture du « Done » (v7.1.110), extraite pour le test JVM : [commit] est
+ * appelé UNE fois avec [pending] si la valeur a changé, JAMAIS sinon (no-op silencieux —
+ * ni écriture ni stamp `modifiedAt` quand on rouvre l'éditeur juste pour regarder).
+ * Renvoie `true` si l'écriture est partie.
+ */
+internal fun commitDateIfChanged(original: Long, pending: Long, commit: (Long) -> Unit): Boolean {
+    if (pending == original) return false
+    commit(pending)
+    return true
 }
 
 /** Alias local : isole l'unique appel expérimental de Material3 pour ce fichier. */

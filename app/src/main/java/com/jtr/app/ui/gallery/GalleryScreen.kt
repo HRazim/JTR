@@ -505,6 +505,19 @@ private fun GalleryViewer(
     onLocationChange: (Long, Double?, Double?, String?) -> Unit
 ) {
     val pagerState = rememberPagerState(initialPage = startIndex) { images.size }
+    // v7.1.110 — ANCRAGE PAR ID : le pager est indexé sur la liste TRIÉE ; quand une
+    // édition de date (au « Done ») la réordonne, l'index courant désignerait une AUTRE
+    // image (le « saut » mesuré en v7.1.103). On mémorise donc l'id de l'image regardée
+    // (mis à jour au swipe) et, quand la liste change, on recolle le pager dessus.
+    var anchoredId by remember { mutableStateOf(images.getOrNull(startIndex)?.id) }
+    LaunchedEffect(pagerState.currentPage) {
+        anchoredId = images.getOrNull(pagerState.currentPage)?.id
+    }
+    LaunchedEffect(images) {
+        val id = anchoredId ?: return@LaunchedEffect
+        val index = images.indexOfFirst { it.id == id }
+        if (index >= 0 && index != pagerState.currentPage) pagerState.scrollToPage(index)
+    }
     // v7.1.94 — panneau de détails de l'image COURANTE (bouton ⓘ).
     var showDetails by remember { mutableStateOf(false) }
     // ⚠️ Direction RÉELLE de l'app, capturée AVANT le forçage LTR du Dialog ci-dessous. Ce
