@@ -11,7 +11,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,7 +25,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.focus.onFocusEvent
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -34,7 +32,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.edit
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -56,8 +53,6 @@ import com.jtr.app.utils.DateCanonical
 import com.jtr.app.utils.matchesAllTokens
 import com.jtr.app.utils.searchTokens
 import kotlin.math.roundToInt
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
 import java.util.Locale
 
 /**
@@ -266,7 +261,7 @@ fun ProfileFormFields(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     keyboardActions = KeyboardActions(
                         onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 // 5.7 Ville & mini-carte (toute fin des blocs structurés)
@@ -300,7 +295,7 @@ fun ProfileFormFields(
                                 fontWeight = FontWeight.SemiBold
                             )
                         }) else null,
-                        modifier = Modifier.weight(1f).bringIntoViewOnFocus()
+                        modifier = Modifier.weight(1f)
                     )
                     FilledTonalIconButton(
                         onClick = onNavigateToMap,
@@ -599,7 +594,7 @@ private fun JobSection(
                     leadingIcon = Icons.Default.Work,
                     keyboardOptions = opts,
                     keyboardActions = actions,
-                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
+                    modifier = Modifier.fillMaxWidth()
                 )
                 FormTextField(
                     value = department,
@@ -608,7 +603,7 @@ private fun JobSection(
                     leadingIcon = Icons.Default.Apartment,
                     keyboardOptions = opts,
                     keyboardActions = actions,
-                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
+                    modifier = Modifier.fillMaxWidth()
                 )
                 FormTextField(
                     value = company,
@@ -617,7 +612,7 @@ private fun JobSection(
                     leadingIcon = Icons.Default.Business,
                     keyboardOptions = opts,
                     keyboardActions = actions,
-                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
@@ -1044,7 +1039,7 @@ private fun ValueField(
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(onNext = { onImeNext() }),
         // Auto-scroll IME-synchronisé PARTAGÉ (v7.1.11) — source unique, plus de vide fantôme.
-        modifier = modifier.bringIntoViewOnFocus()
+        modifier = modifier
     )
 }
 
@@ -1099,7 +1094,6 @@ private fun RelationValueField(
                 .menuAnchor(MenuAnchorType.PrimaryEditable)
                 // Auto-scroll IME-synchronisé PARTAGÉ (v7.1.11) — même source unique que les
                 // autres champs mono-ligne ; plus de copie locale du bringIntoView one-shot.
-                .bringIntoViewOnFocus()
         )
         ExposedDropdownMenu(
             expanded = expanded && matches.isNotEmpty(),
@@ -1341,39 +1335,6 @@ internal fun rememberMoreInfoScroll(scrollState: ScrollState): MoreInfoScrollSta
     val state = remember(scrollState) { MoreInfoScrollState(scrollState) }
     LaunchedEffect(state.expanded) { state.animateOnToggle() }
     return state
-}
-
-/**
- * Ramène le champ porteur dans la zone visible (au-dessus du clavier) à la prise
- * de focus. Appliqué aux champs du bas du formulaire (Origine, Ville, Pro) ET, depuis
- * v7.1.1, aux sections de notes ([NoteSectionsEditor], même package) qui, sinon,
- * restaient masqués par l'IME selon l'ordre d'ouverture.
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-internal fun Modifier.bringIntoViewOnFocus(): Modifier {
-    val requester = remember { BringIntoViewRequester() }
-    val imeInsets = WindowInsets.ime
-    val density = LocalDensity.current
-    var isFocused by remember { mutableStateOf(false) }
-    // SOURCE UNIQUE du recentrage clavier (v7.1.11) — motif IME-SYNCHRONISÉ (généralisé depuis
-    // la note v7.1.3). Tant que le champ est focalisé, on rejoue bringIntoView à CHAQUE palier de
-    // l'inset clavier : l'émission INITIALE de snapshotFlow couvre « clavier déjà ouvert » (focus
-    // déplacé via Suivant), le flux ANIMÉ couvre « clavier qui monte ». collectLatest annule le
-    // bringIntoView animé en cours à chaque nouvelle valeur d'inset → le champ « monte avec » le
-    // clavier et se cale juste au-dessus. Plus de scroll one-shot PÉRIMÉ tiré au focus avant la fin
-    // de l'animation (cause du vide fantôme position-dépendant). Spec ANIMÉ par défaut (jamais snap).
-    // ⚠️ Amène TOUT le champ dans la vue → réservé aux champs MONO-LIGNE ; le contenu multi-ligne
-    // d'une note garde sa spécialisation (bande basse/curseur) dans NoteContentField.
-    LaunchedEffect(isFocused) {
-        if (!isFocused) return@LaunchedEffect
-        snapshotFlow { imeInsets.getBottom(density) }
-            .distinctUntilChanged()
-            .collectLatest { requester.bringIntoView() }
-    }
-    return this
-        .bringIntoViewRequester(requester)
-        .onFocusEvent { isFocused = it.isFocused }
 }
 
 /** Affordance d'ajout discrète : « + » + court libellé (v7.0.2). */

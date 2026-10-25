@@ -1,5 +1,10 @@
 package com.jtr.app.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -10,11 +15,21 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
  * STYLE COMMUN des deux surcharges (v7.1.114) — le seul endroit où la forme et la bordure
@@ -92,7 +107,12 @@ internal fun FormTextField(
         keyboardActions = keyboardActions,
         shape = FormFieldShape,
         colors = formFieldColors(),
-        modifier = modifier
+        // v7.1.115 — TOUT champ simple remonte au-dessus du clavier à la prise de focus
+        // (le Nom et ses sous-champs ne le faisaient pas : seuls quelques champs du bas
+        // portaient le modifier à la main). Intégré ICI, c'est désormais une garantie du
+        // composant. Dans un dialogue/feuille non défilant (catégorie/groupe), c'est un
+        // no-op inoffensif — la feuille remonte déjà par son imePadding.
+        modifier = modifier.bringIntoViewOnFocus()
     )
 }
 
@@ -146,4 +166,37 @@ internal fun FormTextField(
         colors = formFieldColors(),
         modifier = modifier
     )
+}
+
+/**
+ * Ramène le champ porteur dans la zone visible (au-dessus du clavier) à la prise de focus —
+ * SOURCE UNIQUE du recentrage clavier (v7.1.11), DÉPLACÉE ici depuis `ProfileFormFields` en
+ * v7.1.115 : la surcharge `String` de [FormTextField] l'applique d'office, plus aucun champ
+ * simple ne peut rester caché derrière l'IME par oubli du modifier.
+ *
+ * Motif IME-SYNCHRONISÉ : tant que le champ est focalisé, `bringIntoView` est rejoué à
+ * CHAQUE palier de l'inset clavier — l'émission initiale de `snapshotFlow` couvre « clavier
+ * déjà ouvert » (focus déplacé via Suivant), le flux animé couvre « clavier qui monte » ;
+ * `collectLatest` annule l'animation en cours à chaque palier, le champ « monte avec » le
+ * clavier et se cale juste au-dessus (jamais de scroll one-shot périmé → pas de vide
+ * fantôme). ⚠️ Amène TOUT le champ dans la vue → réservé aux champs MONO-LIGNE : la
+ * surcharge `TextFieldValue` (notes multi-lignes) garde sa spécialisation bande-basse/
+ * curseur dans `NoteContentField` et n'applique PAS ce modifier.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun Modifier.bringIntoViewOnFocus(): Modifier {
+    val requester = remember { BringIntoViewRequester() }
+    val imeInsets = WindowInsets.ime
+    val density = LocalDensity.current
+    var isFocused by remember { mutableStateOf(false) }
+    LaunchedEffect(isFocused) {
+        if (!isFocused) return@LaunchedEffect
+        snapshotFlow { imeInsets.getBottom(density) }
+            .distinctUntilChanged()
+            .collectLatest { requester.bringIntoView() }
+    }
+    return this
+        .bringIntoViewRequester(requester)
+        .onFocusEvent { isFocused = it.isFocused }
 }
