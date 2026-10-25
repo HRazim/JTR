@@ -1,15 +1,48 @@
 package com.jtr.app.ui.components
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+
+/**
+ * STYLE COMMUN des deux surcharges (v7.1.114) — le seul endroit où la forme et la bordure
+ * des champs de TOUTE l'app se règlent :
+ *  - [FormFieldShape] : coins à 16 dp — le rayon de l'ancien « champ carte souple »
+ *    (v7.0.2) dont HR aimait la rondeur, appliqué au style outlined (le défaut M3 à ~4 dp
+ *    rendait les champs « carrés/rigides ») ;
+ *  - [formFieldColors] : bordure NON focalisée en `outlineVariant` — en sombre, `outline`
+ *    (le défaut M3) est un gris si clair qu'il se lisait comme « un gros trait blanc »
+ *    à côté des icônes leading pleines. `outlineVariant` reste un repère discret dans les
+ *    deux modes ; l'état FOCALISÉ garde la bordure primaire 2 dp (le repère de focus).
+ *    Couleurs du THÈME uniquement, jamais codées en dur.
+ */
+private val FormFieldShape = RoundedCornerShape(16.dp)
+
+// REMPLISSAGE (correctif v7.1.114) : le container par défaut d'un OutlinedTextField est
+// TRANSPARENT — l'intérieur du champ prenait le fond de l'écran et se lisait « blanc ».
+// On remet la teinte de l'ancien champ souple que HR voulait : `surfaceVariant`, la même
+// couleur de thème qu'avant v7.1.112, un ton à peine plus soutenu que le fond — seul le
+// contour tranche, l'intérieur reste « couleur de l'appli ».
+@Composable
+private fun formFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
+    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    errorContainerColor = MaterialTheme.colorScheme.surfaceVariant
+)
 
 /**
  * CHAMP TEXTE de formulaire (v7.1.112, G3b-1) — le style v7.1.79 en un seul moteur, à côté
@@ -57,6 +90,8 @@ internal fun FormTextField(
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
+        shape = FormFieldShape,
+        colors = formFieldColors(),
         modifier = modifier
     )
 }
@@ -107,6 +142,8 @@ internal fun FormTextField(
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
+        shape = FormFieldShape,
+        colors = formFieldColors(),
         modifier = modifier
     )
 }
