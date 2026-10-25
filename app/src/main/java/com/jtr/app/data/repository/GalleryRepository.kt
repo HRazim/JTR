@@ -2,6 +2,7 @@ package com.jtr.app.data.repository
 
 import android.content.Context
 import android.net.Uri
+import com.jtr.app.data.gallery.CaptureDateResolver
 import com.jtr.app.data.gallery.GalleryImageStore
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.domain.model.GalleryImage
@@ -34,19 +35,26 @@ class GalleryRepository(context: Context) {
      * un ajout de 4 photos ne doit pas échouer en bloc à cause d'une seule.
      * [position] continue la liste existante pour que le réordonnancement du lot B2 parte
      * d'un ordre déjà stable. Renvoie le nombre d'images réellement ajoutées.
+     *
+     * v7.1.108 — `createdAt` = DATE DE PRISE DE VUE réelle ([CaptureDateResolver] : EXIF →
+     * DATE_TAKEN → date du fichier → heure d'import), résolue sur le URI SOURCE et AVANT
+     * [GalleryImageStore.importFrom] : la copie recompressée perd l'EXIF. Chaque image du
+     * lot est datée indépendamment ; `modifiedAt` n'est toujours PAS stampé à l'ajout.
+     * Go-forward : les lignes déjà en base gardent leur valeur (leur EXIF est perdu).
      */
     suspend fun addImages(personId: String, uris: List<Uri>): Int = withContext(Dispatchers.IO) {
         if (uris.isEmpty()) return@withContext 0
         var position = dao.maxPosition(personId) + 1
         var added = 0
         uris.forEach { uri ->
+            val capturedAt = CaptureDateResolver.resolveForUri(appContext, uri)
             val path = GalleryImageStore.importFrom(appContext, uri) ?: return@forEach
             dao.insert(
                 GalleryImage(
                     personId = personId,
                     path = path,
                     position = position,
-                    createdAt = System.currentTimeMillis()
+                    createdAt = capturedAt
                 )
             )
             position++
