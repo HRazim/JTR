@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -88,6 +89,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.jtr.app.R
@@ -730,6 +732,12 @@ private fun NoteContentField(
             }
         },
         placeholder = stringResource(R.string.note_section_content_hint),
+        // v7.1.126 — une note est de la PROSE : majuscule en début de champ et après un
+        // point, comme dans n'importe quelle application de notes. SEULE option ajoutée :
+        // la mécanique de ce champ (TextFieldValue, suivi du curseur, auto-grow,
+        // bringIntoView) est entièrement portée par les autres paramètres et n'est pas
+        // touchée — l'auto-majuscule est un service de l'IME, invisible du code.
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
         singleLine = false,
         minLines = 3,
         maxLines = Int.MAX_VALUE,

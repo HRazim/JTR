@@ -6,6 +6,7 @@ import com.jtr.app.data.files.ImageFileStore
 import com.jtr.app.ui.components.SelectAllToggle
 import com.jtr.app.ui.person.CropShape
 import com.jtr.app.ui.person.ImageCropDialog
+import com.jtr.app.ui.person.PickerThumbnail
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -916,26 +917,19 @@ fun CategoryListRow(
                     .padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Avatar : couverture si dispo, sinon cercle teinté + icône dans la couleur.
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(if (category.imagePath != null) accent else accent.copy(alpha = 0.16f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (category.imagePath != null) {
-                        AsyncImage(
-                            model = category.imagePath,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(Icons.Default.Folder, contentDescription = null, tint = accent,
-                            modifier = Modifier.size(22.dp))
-                    }
-                }
+                // v7.1.126 — MÊME vignette que les feuilles de sélection ([PickerThumbnail]),
+                // d'où un ANNEAU à la couleur de la catégorie autour de l'image. Avant, la
+                // couleur ne teintait que le FOND du disque — qu'une photo recouvrait
+                // entièrement : deux catégories illustrées ne se distinguaient plus que par
+                // la barre de 5 dp. L'anneau, lui, survit à l'image. Effet voulu du partage :
+                // sans photo, le repli devient l'INITIALE sur teinte douce, bien plus
+                // distinctive que l'icône de dossier identique pour toutes.
+                PickerThumbnail(
+                    imagePath = category.imagePath,
+                    name = category.name,
+                    colorHex = category.color,
+                    size = 44.dp
+                )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = category.name, style = MaterialTheme.typography.titleMedium,
@@ -1057,20 +1051,17 @@ internal fun TopEntriesBrowser(
                         name = entry.group.name,
                         isFavorite = entry.group.isFavorite,
                         imagePath = entry.group.imagePath,
-                        accent = MaterialTheme.colorScheme.primaryContainer,
+                        colorHex = null,
                         onClick = { onGroupClick(entry.group.id) },
                         onLongClick = { onGroupLongClick(entry.group.id) })
-                    is TopEntry.Single -> {
-                        val accent = rememberCategoryColor(entry.category.color)
-                        EntryCompactRow(
-                            isFolder = false,
-                            name = entry.category.name,
-                            isFavorite = entry.category.isFavorite,
-                            imagePath = entry.category.imagePath,
-                            accent = accent,
-                            onClick = { onCategoryClick(entry.category.id) },
-                            onLongClick = { onCategoryLongClick(entry.category.id) })
-                    }
+                    is TopEntry.Single -> EntryCompactRow(
+                        isFolder = false,
+                        name = entry.category.name,
+                        isFavorite = entry.category.isFavorite,
+                        imagePath = entry.category.imagePath,
+                        colorHex = entry.category.color,
+                        onClick = { onCategoryClick(entry.category.id) },
+                        onLongClick = { onCategoryLongClick(entry.category.id) })
                 }
             }
         }
@@ -1085,7 +1076,10 @@ private fun EntryCompactRow(
     name: String,
     isFavorite: Boolean,
     imagePath: String?,
-    accent: Color,
+    // v7.1.126 — la COULEUR STOCKÉE (hex), et non plus une couleur déjà résolue : la
+    // vignette partagée en tire l'anneau et sa teinte de repli. `null` pour un dossier,
+    // qui n'a pas de couleur propre et retombe donc sur un liseré neutre.
+    colorHex: String?,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -1103,23 +1097,24 @@ private fun EntryCompactRow(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(if (isFolder) RoundedCornerShape(10.dp) else CircleShape)
-                    .background(accent),
-                contentAlignment = Alignment.Center
-            ) {
-                if (imagePath != null) {
-                    AsyncImage(model = imagePath, contentDescription = null,
-                        modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                } else {
-                    Icon(Icons.Default.Folder, contentDescription = null,
-                        tint = if (isFolder) MaterialTheme.colorScheme.onPrimaryContainer
-                        else Color.White,
-                        modifier = Modifier.size(20.dp))
-                }
-            }
+            // v7.1.126 — c'est CE mode qui s'appelle « Liste », et c'est ici que la plainte
+            // portait : avatar de 40 dp dont le fond `accent` disparaissait sous l'image,
+            // ne laissant AUCUN indice de couleur. La vignette partagée des feuilles de
+            // sélection apporte l'ANNEAU, qui lui survit à la photo. La FORME est conservée
+            // telle quelle (carré arrondi = dossier, disque = catégorie) : c'est elle qui
+            // dit la nature de l'entrée, l'anneau ne dit que son identité.
+            PickerThumbnail(
+                imagePath = imagePath,
+                name = name,
+                colorHex = colorHex,
+                size = 40.dp,
+                shape = if (isFolder) RoundedCornerShape(10.dp) else CircleShape,
+                // Idem : dossier sans photo teinté comme avant le lot. Sans effet sur une
+                // catégorie, dont le repli est l'initiale (autre branche du composant).
+                folderContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                folderIconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                folderIconSize = 20.dp
+            )
             Spacer(Modifier.width(12.dp))
             Text(
                 text = name,
@@ -1379,20 +1374,23 @@ private fun FolderListRow(
                     .padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (group.imagePath != null) {
-                        AsyncImage(model = group.imagePath, contentDescription = null,
-                            modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    } else {
-                        Icon(Icons.Default.Folder, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(24.dp))
-                    }
-                }
+                // v7.1.126 — même vignette partagée que les catégories, pour que les deux
+                // lignes se lisent comme une famille. Un dossier n'a pas de couleur propre :
+                // `colorHex = null` lui donne un liseré neutre, et le carré arrondi continue
+                // de dire « dossier ».
+                PickerThumbnail(
+                    imagePath = group.imagePath,
+                    name = group.name,
+                    colorHex = null,
+                    size = 44.dp,
+                    shape = RoundedCornerShape(12.dp),
+                    // Habillage du dossier sans photo REPRIS DE L'AVANT-LOT : teinté par la
+                    // palette, pas neutre. Le neutre reste le défaut du composant, donc les
+                    // feuilles de sélection gardent le leur.
+                    folderContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    folderIconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    folderIconSize = 24.dp
+                )
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(group.name, style = MaterialTheme.typography.titleMedium,

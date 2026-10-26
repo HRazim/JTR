@@ -54,12 +54,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
@@ -433,7 +435,22 @@ internal fun PickerThumbnail(
     imagePath: String?,
     name: String,
     colorHex: String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // v7.1.126 — diamètre paramétrable : 36 dp dans les feuilles de sélection (défaut
+    // d'origine), 40/44 dp dans les listes de catégories. L'anneau et son liseré, eux, ne
+    // changent PAS avec la taille : un liseré qui grossit se lirait comme un cadre.
+    size: Dp = 36.dp,
+    // v7.1.126 — forme paramétrable pour servir AUSSI les dossiers, que les listes
+    // dessinent en carré arrondi (la forme est ce qui distingue un dossier d'une
+    // catégorie ; l'anneau ne doit pas effacer cette distinction).
+    shape: Shape = CircleShape,
+    // v7.1.126 — habillage du repli DOSSIER (ni photo, ni couleur propre). Les défauts
+    // sont le rendu NEUTRE de ce composant, celui des feuilles de sélection : elles ne
+    // passent rien et ne changent donc pas. Seules les listes de l'écran Catégories les
+    // surchargent, pour garder leur dossier TEINTÉ par la palette comme avant v7.1.126.
+    folderContainerColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    folderIconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    folderIconSize: Dp = 18.dp
 ) {
     // Itération 2 — ANNEAU d'accent discret autour de la vignette : la couleur stockée de
     // la catégorie reste visible même quand une image occupe le disque (avant, l'image
@@ -444,11 +461,11 @@ internal fun PickerThumbnail(
     val ring = accent?.copy(alpha = 0.55f) ?: MaterialTheme.colorScheme.outlineVariant
     Box(
         modifier = modifier
-            .size(36.dp)
-            .border(1.5.dp, ring, CircleShape)
+            .size(size)
+            .border(1.5.dp, ring, shape)
             // Fin espace entre l'anneau et le disque : lu comme un LISERÉ, pas un cadre.
             .padding(3.dp)
-            .clip(CircleShape),
+            .clip(shape),
         contentAlignment = Alignment.Center
     ) {
         when {
@@ -484,13 +501,13 @@ internal fun PickerThumbnail(
             else -> Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    .background(folderContainerColor),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Folder, null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    modifier = Modifier.size(folderIconSize),
+                    tint = folderIconTint
                 )
             }
         }

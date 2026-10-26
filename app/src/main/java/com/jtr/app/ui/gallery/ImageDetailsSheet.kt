@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -47,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 
 
@@ -299,6 +301,9 @@ private fun DescriptionEditor(
             // repos n'est plus là pour le faire.
             label = { Text(stringResource(R.string.gallery_details_description)) },
             placeholder = { Text(stringResource(R.string.gallery_details_description_hint)) },
+            // v7.1.126 — même traitement que les notes : une description est de la prose,
+            // majuscule en début de champ et après un point.
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             minLines = EDITOR_MIN_LINES,
             modifier = Modifier
                 .fillMaxWidth()
