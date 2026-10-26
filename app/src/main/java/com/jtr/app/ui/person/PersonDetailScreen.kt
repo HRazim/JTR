@@ -374,10 +374,16 @@ fun PersonDetailScreen(
                                 expanded = menuExpanded,
                                 onDismissRequest = { menuExpanded = false }
                             ) {
+                                // v7.1.129 — icônes des actions ORDINAIRES laissées au défaut
+                                // du menu (`onSurfaceVariant`). Elles étaient en `primary` :
+                                // sur une palette chaude (Corail), ce primaire est un rouge
+                                // brique que rien ne distingue du `error` de « Supprimer » —
+                                // le menu paraissait entièrement rouge et l'avertissement ne
+                                // voulait plus rien dire. Le rouge ne sert QU'À la destruction,
+                                // comme dans le « ⋮ » d'un dossier.
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.common_edit)) },
-                                    leadingIcon = { Icon(Icons.Default.Edit, null,
-                                        tint = MaterialTheme.colorScheme.primary) },
+                                    leadingIcon = { Icon(Icons.Default.Edit, null) },
                                     onClick = { menuExpanded = false; editVm.enterEditMode() }
                                 )
                                 // Libellé RÉACTIF : « Ajouter à une catégorie » si la personne
@@ -390,8 +396,7 @@ fun PersonDetailScreen(
                                             else R.string.person_manage_categories
                                         ))
                                     },
-                                    leadingIcon = { Icon(Icons.Default.Folder, null,
-                                        tint = MaterialTheme.colorScheme.primary) },
+                                    leadingIcon = { Icon(Icons.Default.Folder, null) },
                                     onClick = { menuExpanded = false; showCategoryDialog = true }
                                 )
                                 DropdownMenuItem(
