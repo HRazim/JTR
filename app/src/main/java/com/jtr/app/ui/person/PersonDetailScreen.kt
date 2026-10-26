@@ -44,7 +44,6 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import android.view.MotionEvent
 import android.widget.Toast
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -508,11 +507,16 @@ fun PersonDetailScreen(
                                 )
                             else Modifier.background(MaterialTheme.colorScheme.primaryContainer)
                         )
-                        .then(if (isEditing) Modifier.blur(8.dp) else Modifier)
+                        // v7.1.119 (G3b-3) — fin du traitement lourd du mode édition : plus de
+                        // flou, plus de voile ; le disque reste NET et devient la cible du
+                        // sélecteur (même geste qu'avant : taper l'avatar change la photo),
+                        // l'affordance visuelle est le badge en coin façon v7.1.79.
                         .then(
-                            if (!isEditing && photoSrc != null)
-                                Modifier.clickable { showPhotoZoom = true }
-                            else Modifier
+                            when {
+                                isEditing -> Modifier.clickable { photoPicker() }
+                                photoSrc != null -> Modifier.clickable { showPhotoZoom = true }
+                                else -> Modifier
+                            }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -536,9 +540,11 @@ fun PersonDetailScreen(
                     }
                 }
 
-                EditPhotoOverlay(isEditing = isEditing) {
-                    photoPicker()
-                }
+                EditPhotoBadge(
+                    isEditing = isEditing,
+                    hasPhoto = photoSrc != null,
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                ) { photoPicker() }
             }
 
                 Spacer(Modifier.width(12.dp))
@@ -900,23 +906,36 @@ fun PersonDetailScreen(
 
 
 @Composable
-private fun EditPhotoOverlay(isEditing: Boolean, onClick: () -> Unit) {
-    AnimatedVisibility(visible = isEditing, enter = fadeIn(), exit = fadeOut()) {
+private fun EditPhotoBadge(
+    isEditing: Boolean,
+    hasPhoto: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    // v7.1.119 (G3b-3) — remplace l'EditPhotoOverlay historique (voile Color.Black 45 % +
+    // flou + libellé blanc sur tout le disque) par le badge caméra v7.1.79 de
+    // [FormPhotoHeader] : 32 dp en coin, couleurs DU THÈME (primaryContainer — contraste
+    // garanti clair/sombre sur les 6 palettes, aucun noir/blanc codé en dur), Edit si une
+    // photo existe, AddAPhoto sinon. INSCRIT dans le coin du disque (pas d'offset négatif,
+    // v7.1.89) et miroité naturellement en RTL. Le geste historique est conservé : tout le
+    // disque reste cliquable vers le sélecteur, le badge n'est que l'affordance visible.
+    AnimatedVisibility(
+        visible = isEditing, enter = fadeIn(), exit = fadeOut(), modifier = modifier
+    ) {
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .size(32.dp)
                 .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.45f))
+                .background(MaterialTheme.colorScheme.primaryContainer)
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.CameraAlt, contentDescription = null,
-                    tint = Color.White, modifier = Modifier.size(24.dp))
-                Text(stringResource(R.string.person_edit_photo_label),
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall)
-            }
+            Icon(
+                if (hasPhoto) Icons.Default.Edit else Icons.Default.AddAPhoto,
+                contentDescription = stringResource(R.string.person_edit_photo_label),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }
