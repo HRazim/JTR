@@ -599,11 +599,12 @@ fun PersonDetailScreen(
                 onRemoveClick = { editVm.removeSocialLink(it) }
             )
 
-            // v7.1.118 — le filet entre réseaux sociaux et formulaire part (même traitement
-            // que la création) : la respiration seule sépare les blocs.
-            Spacer(Modifier.height(28.dp))
-
+            // v7.1.118 — en ÉDITION, le filet entre réseaux sociaux et formulaire reste
+            // parti (même traitement que la création) : la respiration seule sépare.
+            // v7.1.124 — en LECTURE il revient, mais SEULEMENT s'il sépare deux blocs
+            // réellement remplis ; l'espace de tête est donc décidé par chaque mode.
             if (isEditing) {
+                Spacer(Modifier.height(28.dp))
                 ProfileFormFields(
                     firstName = vmFirstName,
                     onFirstNameChange = { editVm.onFirstNameChanged(it) },
@@ -647,6 +648,12 @@ fun PersonDetailScreen(
                 )
             } else {
                 // ── Mode lecture : ordre IDENTIQUE au formulaire ─────────────────
+                // v7.1.124 — le contenu de CHAQUE bloc est résolu AVANT de dessiner quoi
+                // que ce soit : un filet ne se pose qu'entre deux blocs voisins REMPLIS,
+                // ce qui suppose de savoir si le suivant a du contenu. Les trois blocs de
+                // la fiche sont, dans l'ordre : l'en-tête (photo, nom, catégories, liens —
+                // TOUJOURS présent), les informations, puis les sections de notes.
+
                 // 2. Dates importantes — TOUTES, avec cloche si rappel actif (règle 2 max)
                 val dates = person.dateLines?.takeIf { it.isNotEmpty() }
                     ?: person.birthdate?.let {
@@ -656,12 +663,51 @@ fun PersonDetailScreen(
                             notify = person.birthdateNotify
                         ))
                     }
-                if (dates != null) DatesBlock(lines = dates)
-
                 // 3. Relations (règle 2 max) — cliquables → contact lié PAR IDENTIFIANT (v7.1.6).
                 // La navigation utilise linkedPersonId (repli SANS AMBIGUÏTÉ par nom pour l'hérité) :
                 // jamais d'ouverture devinée. Nom ambigu → « à vérifier » ; introuvable → message.
                 val relations = person.relationLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
+                // 4. Téléphones puis 5. Emails (repli scalaire pour profils legacy, règle 2 max)
+                val phones = person.phoneLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
+                    ?: person.phoneNumber?.takeIf { it.isNotBlank() }
+                        ?.let { listOf(DynamicLine(value = it, label = FieldTypes.PHONE_MOBILE)) }
+                val emails = person.emailLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
+                    ?: person.email?.takeIf { it.isNotBlank() }
+                        ?.let { listOf(DynamicLine(value = it, label = FieldTypes.EMAIL_HOME)) }
+                // 6. Informations professionnelles — bloc compact, masqué si vide
+                val at = stringResource(R.string.person_job_at)
+                val jobHead = when {
+                    !person.jobTitle.isNullOrBlank() && !person.company.isNullOrBlank() ->
+                        "${person.jobTitle} $at ${person.company}"
+                    !person.jobTitle.isNullOrBlank() -> person.jobTitle
+                    !person.company.isNullOrBlank() -> person.company
+                    else -> null
+                }
+                val jobSummary = listOfNotNull(
+                    jobHead, person.department?.takeIf { it.isNotBlank() }
+                ).joinToString(" · ")
+
+                // Le bloc « informations » est rempli dès qu'une seule de ses lignes l'est.
+                // Le genre hérité (rendu tout en bas, après les notes) en est EXCLU : le
+                // compter ici poserait un filet en tête alors que son contenu arrive après
+                // les notes — soit, pour une fiche sans informations, deux filets collés.
+                val hasInfoBlock = dates != null || relations != null || phones != null ||
+                    emails != null || jobSummary.isNotBlank() ||
+                    person.origin != null || person.city != null
+
+                // Filet en-tête ↔ informations. L'en-tête ne peut pas être vide, donc ce
+                // filet sépare toujours deux blocs remplis ; sans informations, aucun filet
+                // ici et c'est celui des notes qui jouera la séparation (jamais les deux).
+                if (hasInfoBlock) {
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(12.dp))
+                } else {
+                    Spacer(Modifier.height(28.dp))
+                }
+
+                if (dates != null) DatesBlock(lines = dates)
+
                 if (relations != null) {
                     val notFoundMsg = stringResource(R.string.relation_not_found)
                     val ambiguousMsg = stringResource(R.string.relation_ambiguous_toast)
@@ -685,10 +731,6 @@ fun PersonDetailScreen(
                     )
                 }
 
-                // 4. Téléphones puis 5. Emails (repli scalaire pour profils legacy, règle 2 max)
-                val phones = person.phoneLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
-                    ?: person.phoneNumber?.takeIf { it.isNotBlank() }
-                        ?.let { listOf(DynamicLine(value = it, label = FieldTypes.PHONE_MOBILE)) }
                 if (phones != null) {
                     ContactLinesBlock(
                         icon = Icons.Default.Phone,
@@ -703,9 +745,6 @@ fun PersonDetailScreen(
                         }
                     )
                 }
-                val emails = person.emailLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
-                    ?: person.email?.takeIf { it.isNotBlank() }
-                        ?.let { listOf(DynamicLine(value = it, label = FieldTypes.EMAIL_HOME)) }
                 if (emails != null) {
                     ContactLinesBlock(
                         icon = Icons.Default.Email,
@@ -721,18 +760,6 @@ fun PersonDetailScreen(
                     )
                 }
 
-                // 6. Informations professionnelles — bloc compact, masqué si vide
-                val at = stringResource(R.string.person_job_at)
-                val jobHead = when {
-                    !person.jobTitle.isNullOrBlank() && !person.company.isNullOrBlank() ->
-                        "${person.jobTitle} $at ${person.company}"
-                    !person.jobTitle.isNullOrBlank() -> person.jobTitle
-                    !person.company.isNullOrBlank() -> person.company
-                    else -> null
-                }
-                val jobSummary = listOfNotNull(
-                    jobHead, person.department?.takeIf { it.isNotBlank() }
-                ).joinToString(" · ")
                 if (jobSummary.isNotBlank()) {
                     DetailRow(icon = Icons.Default.Work,
                         label = stringResource(R.string.section_work),
@@ -762,6 +789,8 @@ fun PersonDetailScreen(
                 val readSections = person.effectiveNoteSections(notesTitle, likesTitle)
                     .filter { it.combinedText().isNotBlank() }
                 if (readSections.isNotEmpty()) {
+                    // Second intervalle de la même règle : ce filet sépare les notes du
+                    // bloc rempli qui précède — les informations, ou l'en-tête à défaut.
                     Spacer(Modifier.height(4.dp))
                     HorizontalDivider()
                     Spacer(Modifier.height(4.dp))
