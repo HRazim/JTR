@@ -177,7 +177,10 @@ class PersonRepository(context: Context) {
     }
 
     suspend fun updateWithGeocoding(person: Person, oldCity: String?): Person {
-        val enriched = if (person.city != null && person.city != oldCity) {
+        // v7.1.122 — géocode aussi une ville INCHANGÉE mais sans coordonnées : l'auto-save
+        // (qui ne géocode jamais, design v7.1.4) peut avoir persisté la ville avant le save
+        // manuel ; elle n'est alors plus « changée » mais attend toujours ses coordonnées.
+        val enriched = if (person.city != null && (person.city != oldCity || !person.hasGeoCoordinates)) {
             try {
                 val coords = GeocodingRepository().getCityCoordinates(person.city)
                 if (coords != null) person.copy(cityLat = coords.latitude, cityLng = coords.longitude)

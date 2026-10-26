@@ -385,10 +385,16 @@ class EditPersonViewModel(
             // Photo en attente persistée ici aussi (le bouton « Enregistrer » = flush immédiat).
             finalizePendingPhoto()
             val updated = buildUpdatedPerson(p)
-            if (_city.value.trim() != (p.city ?: "") && _cityLat.value == null) {
+            // v7.1.122 — géocode dès que la ville est présente SANS coordonnées, plus seulement
+            // « changée » : rattrape la ville déjà persistée par l'auto-save avant ce save
+            // (l'auto-save ne géocode jamais). Une ville inchangée AVEC coordonnées, ou posée
+            // par la carte (coords connues), ne re-géocode pas. Le résultat enrichi est repris
+            // dans l'état, sinon un save suivant re-géocoderait pour rien.
+            val saved = if (shouldGeocodeCity(_city.value, _cityLat.value)) {
                 repository.updateWithGeocoding(updated, p.city)
             } else {
                 repository.update(updated)
+                updated
             }
             // Propagation du renommage AVANT la synchro miroir : les fiches qui citent
             // ce contact en relation affichent immédiatement le nouveau nom (source de
@@ -397,7 +403,9 @@ class EditPersonViewModel(
             // Relations miroirs (v5.4.1) : reflète les ajouts/retraits de
             // relations sur les fiches liées (diff avec la snapshot d'avant édition).
             repository.syncMirrorRelations(updated, p.relationLines)
-            _person.value = updated
+            _person.value = saved
+            _cityLat.value = saved.cityLat
+            _cityLng.value = saved.cityLng
             dirty.set(false)
             _isEditing.value = false
             // Réarme les rappels (délais par date) immédiatement après l'écriture en base :
@@ -413,9 +421,30 @@ class EditPersonViewModel(
      * Appelé par le retour Android et la croix de la barre en mode édition.
      */
     fun exitEdit() {
-        autoSave.flush()
+        // v7.1.122 — la sortie par Back/croix ne passe pas par [commitAllEdits] : le flush
+        // persiste la ville mais sans géocodage. La continuation (même coroutine, donc APRÈS
+        // le persist) rattrape une ville restée sans coordonnées, async et tolérante à l'échec.
+        autoSave.flush(afterPersist = { geocodeCityIfMissing() })
         _firstNameError.value = false
         _isEditing.value = false
+    }
+
+    /**
+     * v7.1.122 — rattrapage de sortie : la fiche porte une ville SANS coordonnées (saisie
+     * quittée par Back, ou fiche ancienne jamais géocodée) → géocode maintenant via
+     * [PersonRepository.updateWithGeocoding]. Best-effort : en cas d'échec réseau les
+     * coordonnées restent absentes et seront re-tentées au prochain save ou à la prochaine
+     * sortie. Jamais appelé par l'auto-save de frappe (design v7.1.4 : pas d'I/O réseau).
+     */
+    private suspend fun geocodeCityIfMissing() {
+        val p = _person.value ?: return
+        if (!shouldGeocodeCity(p.city, p.cityLat)) return
+        runCatching {
+            val enriched = repository.updateWithGeocoding(p, p.city)
+            _person.value = enriched
+            _cityLat.value = enriched.cityLat
+            _cityLng.value = enriched.cityLng
+        }
     }
 
     /**
@@ -521,3 +550,11 @@ class EditPersonViewModel(
         dest.absolutePath
     } catch (_: Exception) { null }
 }
+
+/**
+ * v7.1.122 — « faut-il géocoder ? » : vrai quand une ville est présente mais n'a pas encore de
+ * coordonnées (une ville posée par la carte arrive avec ses coordonnées → faux). Pure et
+ * testable ; évaluée au save manuel et à la sortie d'édition, jamais par l'auto-save de frappe.
+ */
+internal fun shouldGeocodeCity(city: String?, cityLat: Double?): Boolean =
+    !city.isNullOrBlank() && cityLat == null

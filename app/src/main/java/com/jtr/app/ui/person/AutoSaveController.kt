@@ -64,9 +64,17 @@ class AutoSaveController(
     /** À appeler à CHAQUE modification d'un champ éditable (idempotent, non bloquant). */
     fun markDirty() { signal.tryEmit(Unit) }
 
-    /** Écriture immédiate du pending dans le scope SURVIVANT (sortie / arrière-plan / save manuel). */
-    fun flush() {
-        appScope.launch { runCatching { mutex.withLock { persist(true) } } }
+    /**
+     * Écriture immédiate du pending dans le scope SURVIVANT (sortie / arrière-plan / save manuel).
+     * [afterPersist] (v7.1.122) : suite exécutée dans la MÊME coroutine, donc ordonnée APRÈS le
+     * persist (ex. géocodage de rattrapage à la sortie d'édition). Best-effort : son échec ne
+     * remet pas en cause l'écriture déjà faite, et elle ne bloque jamais l'appelant.
+     */
+    fun flush(afterPersist: (suspend () -> Unit)? = null) {
+        appScope.launch {
+            runCatching { mutex.withLock { persist(true) } }
+            afterPersist?.let { runCatching { it() } }
+        }
     }
 
     /** À appeler depuis `onCleared` : flush final garanti + désenregistre l'observateur. */
