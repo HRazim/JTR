@@ -73,18 +73,12 @@
     <string name="person_add_title">Kişi ekle</string>
     <string name="person_edit_title">Kişiyi düzenle</string>
     <string name="person_photo_cd">Profil fotoğrafı</string>
-    <string name="person_first_name_label">Ad *</string>
-    <string name="person_first_name_error">Ad gerekli</string>
     <string name="person_first_name_required">Gerekli</string>
-    <string name="person_last_name_label">Soyad</string>
     <string name="person_gender_label">Cinsiyet</string>
     <string name="person_gender_male">Erkek</string>
     <string name="person_gender_female">Kadın</string>
     <string name="person_gender_nonbinary">İkili olmayan</string>
     <string name="person_gender_nonbinary_short">İkili dışı</string>
-    <string name="person_birthday_label">Doğum günü</string>
-    <string name="person_birthday_select">Tarih seç</string>
-    <string name="person_birthday_modify">Tarihi değiştir</string>
     <string name="person_birthday_clear">Temizle</string>
     <string name="person_birthday_notify">Doğum gününde bildir</string>
     <string name="person_birthday_invalid">Geçersiz tarih</string>
@@ -100,12 +94,10 @@
     <string name="person_social_links_title">Sosyal ağlar</string>
     <string name="person_add_social_link">Sosyal bağlantı ekle</string>
     <string name="person_social_delete_cd">Sil</string>
-    <string name="person_personal_info_title">Kişisel bilgiler</string>
     <string name="person_origin_label">Köken</string>
     <string name="person_likes_label">Nelerden hoşlanır</string>
     <string name="person_notes_label">Diğer notlar</string>
     <string name="person_save">Kaydet</string>
-    <string name="person_save_changes">Değişiklikleri kaydet</string>
 
     <!-- ── Person detail screen ───────────────────────────────────────────── -->
     <string name="person_not_found">Kişi bulunamadı</string>

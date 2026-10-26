@@ -73,18 +73,12 @@
     <string name="person_add_title">添加联系人</string>
     <string name="person_edit_title">编辑联系人</string>
     <string name="person_photo_cd">头像</string>
-    <string name="person_first_name_label">名 *</string>
-    <string name="person_first_name_error">名字为必填项</string>
     <string name="person_first_name_required">必填</string>
-    <string name="person_last_name_label">姓</string>
     <string name="person_gender_label">性别</string>
     <string name="person_gender_male">男</string>
     <string name="person_gender_female">女</string>
     <string name="person_gender_nonbinary">非二元</string>
     <string name="person_gender_nonbinary_short">非二元</string>
-    <string name="person_birthday_label">生日</string>
-    <string name="person_birthday_select">选择日期</string>
-    <string name="person_birthday_modify">修改日期</string>
     <string name="person_birthday_clear">清除</string>
     <string name="person_birthday_notify">生日当天提醒</string>
     <string name="person_birthday_invalid">日期无效</string>
@@ -100,12 +94,10 @@
     <string name="person_social_links_title">社交网络</string>
     <string name="person_add_social_link">添加社交链接</string>
     <string name="person_social_delete_cd">删除</string>
-    <string name="person_personal_info_title">个人信息</string>
     <string name="person_origin_label">籍贯</string>
     <string name="person_likes_label">兴趣爱好</string>
     <string name="person_notes_label">其他备注</string>
     <string name="person_save">保存</string>
-    <string name="person_save_changes">保存修改</string>
 
     <!-- ── Person detail screen ───────────────────────────────────────────── -->
     <string name="person_not_found">未找到该联系人</string>

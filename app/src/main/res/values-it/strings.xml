@@ -73,18 +73,12 @@
     <string name="person_add_title">Aggiungi una persona</string>
     <string name="person_edit_title">Modifica contatto</string>
     <string name="person_photo_cd">Foto del profilo</string>
-    <string name="person_first_name_label">Nome *</string>
-    <string name="person_first_name_error">Il nome è obbligatorio</string>
     <string name="person_first_name_required">Obbligatorio</string>
-    <string name="person_last_name_label">Cognome</string>
     <string name="person_gender_label">Genere</string>
     <string name="person_gender_male">Maschile</string>
     <string name="person_gender_female">Femminile</string>
     <string name="person_gender_nonbinary">Non binario</string>
     <string name="person_gender_nonbinary_short">Non bin.</string>
-    <string name="person_birthday_label">Compleanno</string>
-    <string name="person_birthday_select">Seleziona una data</string>
-    <string name="person_birthday_modify">Cambia data</string>
     <string name="person_birthday_clear">Cancella</string>
     <string name="person_birthday_notify">Avvisa il giorno del compleanno</string>
     <string name="person_birthday_invalid">Data non valida</string>
@@ -100,12 +94,10 @@
     <string name="person_social_links_title">Social network</string>
     <string name="person_add_social_link">Aggiungi un link social</string>
     <string name="person_social_delete_cd">Elimina</string>
-    <string name="person_personal_info_title">Informazioni personali</string>
     <string name="person_origin_label">Origine</string>
     <string name="person_likes_label">Cosa ama</string>
     <string name="person_notes_label">Altre note</string>
     <string name="person_save">Salva</string>
-    <string name="person_save_changes">Salva modifiche</string>
 
     <!-- ── Person detail screen ───────────────────────────────────────────── -->
     <string name="person_not_found">Persona non trovata</string>

@@ -73,18 +73,12 @@
     <string name="person_add_title">إضافة شخص</string>
     <string name="person_edit_title">تعديل جهة الاتصال</string>
     <string name="person_photo_cd">صورة الملف الشخصي</string>
-    <string name="person_first_name_label">الاسم الأول *</string>
-    <string name="person_first_name_error">الاسم الأول مطلوب</string>
     <string name="person_first_name_required">مطلوب</string>
-    <string name="person_last_name_label">اسم العائلة</string>
     <string name="person_gender_label">الجنس</string>
     <string name="person_gender_male">ذكر</string>
     <string name="person_gender_female">أنثى</string>
     <string name="person_gender_nonbinary">غير ثنائي</string>
     <string name="person_gender_nonbinary_short">غير ثنائي</string>
-    <string name="person_birthday_label">عيد الميلاد</string>
-    <string name="person_birthday_select">اختر تاريخًا</string>
-    <string name="person_birthday_modify">تغيير التاريخ</string>
     <string name="person_birthday_clear">مسح</string>
     <string name="person_birthday_notify">تنبيه في عيد الميلاد</string>
     <string name="person_birthday_invalid">تاريخ غير صالح</string>
@@ -100,12 +94,10 @@
     <string name="person_social_links_title">الشبكات الاجتماعية</string>
     <string name="person_add_social_link">إضافة رابط اجتماعي</string>
     <string name="person_social_delete_cd">حذف</string>
-    <string name="person_personal_info_title">المعلومات الشخصية</string>
     <string name="person_origin_label">الأصل</string>
     <string name="person_likes_label">ما يحبّه</string>
     <string name="person_notes_label">ملاحظات أخرى</string>
     <string name="person_save">حفظ</string>
-    <string name="person_save_changes">حفظ التغييرات</string>
 
     <!-- ── Person detail screen ───────────────────────────────────────────── -->
     <string name="person_not_found">لم يُعثر على الشخص</string>

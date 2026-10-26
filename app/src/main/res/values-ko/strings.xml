@@ -73,18 +73,12 @@
     <string name="person_add_title">사람 추가</string>
     <string name="person_edit_title">연락처 편집</string>
     <string name="person_photo_cd">프로필 사진</string>
-    <string name="person_first_name_label">이름 *</string>
-    <string name="person_first_name_error">이름은 필수입니다</string>
     <string name="person_first_name_required">필수</string>
-    <string name="person_last_name_label">성</string>
     <string name="person_gender_label">성별</string>
     <string name="person_gender_male">남성</string>
     <string name="person_gender_female">여성</string>
     <string name="person_gender_nonbinary">논바이너리</string>
     <string name="person_gender_nonbinary_short">논바</string>
-    <string name="person_birthday_label">생일</string>
-    <string name="person_birthday_select">날짜 선택</string>
-    <string name="person_birthday_modify">날짜 변경</string>
     <string name="person_birthday_clear">지우기</string>
     <string name="person_birthday_notify">생일에 알림</string>
     <string name="person_birthday_invalid">잘못된 날짜</string>
@@ -100,12 +94,10 @@
     <string name="person_social_links_title">소셜 네트워크</string>
     <string name="person_add_social_link">소셜 링크 추가</string>
     <string name="person_social_delete_cd">삭제</string>
-    <string name="person_personal_info_title">개인 정보</string>
     <string name="person_origin_label">출신</string>
     <string name="person_likes_label">좋아하는 것</string>
     <string name="person_notes_label">기타 메모</string>
     <string name="person_save">저장</string>
-    <string name="person_save_changes">변경 사항 저장</string>
 
     <!-- ── Person detail screen ───────────────────────────────────────────── -->
     <string name="person_not_found">사람을 찾을 수 없습니다</string>

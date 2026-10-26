@@ -459,7 +459,11 @@ class EditPersonViewModel(
         savedStateHandle.remove<Uri>("pending_photo_uri")
     }
 
-    /** Sauvegarde et navigue — utilisé depuis EditPersonScreen. */
+    /**
+     * Sauvegarde et navigue — ancien chemin de l'édition plein écran, sans appelant depuis la
+     * purge de l'écran mort (v7.1.120). Conservé tel quel : garde-fou G3c, ce ViewModel est
+     * partagé avec le mode édition vivant de la fiche.
+     */
     fun updatePerson(onSuccess: () -> Unit) {
         val p = _person.value ?: return
         if (_firstName.value.isBlank()) { _firstNameError.value = true; return }

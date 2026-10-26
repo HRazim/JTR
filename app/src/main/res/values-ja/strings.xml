@@ -73,18 +73,12 @@
     <string name="person_add_title">人を追加</string>
     <string name="person_edit_title">連絡先を編集</string>
     <string name="person_photo_cd">プロフィール写真</string>
-    <string name="person_first_name_label">名 *</string>
-    <string name="person_first_name_error">名は必須です</string>
     <string name="person_first_name_required">必須</string>
-    <string name="person_last_name_label">姓</string>
     <string name="person_gender_label">性別</string>
     <string name="person_gender_male">男性</string>
     <string name="person_gender_female">女性</string>
     <string name="person_gender_nonbinary">ノンバイナリー</string>
     <string name="person_gender_nonbinary_short">N-bin.</string>
-    <string name="person_birthday_label">誕生日</string>
-    <string name="person_birthday_select">日付を選択</string>
-    <string name="person_birthday_modify">日付を変更</string>
     <string name="person_birthday_clear">クリア</string>
     <string name="person_birthday_notify">誕生日に通知</string>
     <string name="person_birthday_invalid">無効な日付</string>
@@ -100,12 +94,10 @@
     <string name="person_social_links_title">ソーシャルネットワーク</string>
     <string name="person_add_social_link">ソーシャルリンクを追加</string>
     <string name="person_social_delete_cd">削除</string>
-    <string name="person_personal_info_title">個人情報</string>
     <string name="person_origin_label">出身</string>
     <string name="person_likes_label">好きなこと</string>
     <string name="person_notes_label">メモ</string>
     <string name="person_save">保存</string>
-    <string name="person_save_changes">変更を保存</string>
 
     <!-- ── Person detail screen ───────────────────────────────────────────── -->
     <string name="person_not_found">人物が見つかりません</string>

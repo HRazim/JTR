@@ -73,18 +73,12 @@
     <string name="person_add_title">Добавить человека</string>
     <string name="person_edit_title">Изменить контакт</string>
     <string name="person_photo_cd">Фото профиля</string>
-    <string name="person_first_name_label">Имя *</string>
-    <string name="person_first_name_error">Имя обязательно</string>
     <string name="person_first_name_required">Обязательно</string>
-    <string name="person_last_name_label">Фамилия</string>
     <string name="person_gender_label">Пол</string>
     <string name="person_gender_male">Мужской</string>
     <string name="person_gender_female">Женский</string>
     <string name="person_gender_nonbinary">Небинарный</string>
     <string name="person_gender_nonbinary_short">Небин.</string>
-    <string name="person_birthday_label">День рождения</string>
-    <string name="person_birthday_select">Выберите дату</string>
-    <string name="person_birthday_modify">Изменить дату</string>
     <string name="person_birthday_clear">Очистить</string>
     <string name="person_birthday_notify">Уведомлять в день рождения</string>
     <string name="person_birthday_invalid">Неверная дата</string>
@@ -100,12 +94,10 @@
     <string name="person_social_links_title">Социальные сети</string>
     <string name="person_add_social_link">Добавить ссылку на соцсеть</string>
     <string name="person_social_delete_cd">Удалить</string>
-    <string name="person_personal_info_title">Личная информация</string>
     <string name="person_origin_label">Происхождение</string>
     <string name="person_likes_label">Что нравится</string>
     <string name="person_notes_label">Прочие заметки</string>
     <string name="person_save">Сохранить</string>
-    <string name="person_save_changes">Сохранить изменения</string>
 
     <!-- ── Person detail screen ───────────────────────────────────────────── -->
     <string name="person_not_found">Человек не найден</string>
