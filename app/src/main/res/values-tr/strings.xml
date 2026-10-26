@@ -302,7 +302,6 @@
     <string name="categories_unfavorite">Favorilerden çıkar</string>
     <string name="categories_create_group">Grup oluştur</string>
     <string name="categories_group_name_hint">Grup adı</string>
-    <string name="categories_rename">Yeniden adlandır</string>
     <string name="categories_change_image">Görseli değiştir</string>
     <string name="categories_delete_selected_title">%1$d kategori silinsin mi?</string>
     <string name="categories_delete_selected_text">Seçilen kategoriler çöp kutusuna taşınacak. Kişileriniz silinmez; yalnızca bu etiketleri kaybeder.</string>

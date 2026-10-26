@@ -302,7 +302,6 @@
     <string name="categories_unfavorite">Убрать из избранного</string>
     <string name="categories_create_group">Создать группу</string>
     <string name="categories_group_name_hint">Название группы</string>
-    <string name="categories_rename">Переименовать</string>
     <string name="categories_change_image">Изменить изображение</string>
     <string name="categories_delete_selected_title">Удалить %1$d категорий?</string>
     <string name="categories_delete_selected_text">Выбранные категории будут перемещены в корзину. Ваши контакты не удаляются, они лишь теряют эти метки.</string>

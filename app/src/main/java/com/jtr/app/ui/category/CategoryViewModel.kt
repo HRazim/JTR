@@ -248,6 +248,20 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { repo.renameGroup(group, trimmed) }
     }
 
+    /**
+     * v7.1.127 — nom ET image d'un dossier en UNE écriture, depuis le formulaire unifié.
+     * Passe par [CategoryRepository.updateGroup], qui libère l'ancienne couverture quand
+     * elle est remplacée ou retirée (v7.1.105) — ce que [setGroupImage] ne pouvait pas
+     * faire pour un retrait, son chemin étant non nul.
+     */
+    fun updateGroup(group: CategoryGroup, name: String, imagePath: String?) {
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch {
+            repo.updateGroup(group.copy(name = trimmed, imagePath = imagePath))
+        }
+    }
+
     /** Dissout un groupe (détache ses catégories, qui redeviennent indépendantes). */
     fun deleteGroup(group: CategoryGroup, memberIds: List<String>) {
         viewModelScope.launch { repo.deleteGroup(group.id, memberIds) }

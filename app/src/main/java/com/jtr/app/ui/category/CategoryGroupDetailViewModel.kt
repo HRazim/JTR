@@ -226,6 +226,15 @@ class CategoryGroupDetailViewModel(
         viewModelScope.launch { repo.updateGroup(g.copy(imagePath = path)) }
     }
 
+    /** v7.1.127 — nom ET image d'un sous-dossier en UNE écriture (formulaire unifié). */
+    fun updateGroup(g: CategoryGroup, name: String, imagePath: String?) {
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch {
+            repo.updateGroup(g.copy(name = trimmed, imagePath = imagePath))
+        }
+    }
+
     /** Favori de masse pour la sélection mixte (catégories + sous-groupes). */
     fun setFavoriteForSelection(categoryIds: List<String>, groupIds: List<Long>, favorite: Boolean) {
         viewModelScope.launch {

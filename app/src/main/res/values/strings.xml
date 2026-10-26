@@ -301,7 +301,6 @@
     <string name="categories_unfavorite">Remove from favorites</string>
     <string name="categories_create_group">Create group</string>
     <string name="categories_group_name_hint">Group name</string>
-    <string name="categories_rename">Rename</string>
     <string name="categories_change_image">Change image</string>
     <string name="categories_delete_selected_title">Delete %1$d categories?</string>
     <string name="categories_delete_selected_text">The selected categories will be moved to the trash. Your contacts are not deleted; they just lose these labels.</string>

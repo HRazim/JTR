@@ -296,7 +296,6 @@
     <string name="categories_unfavorite">取消收藏</string>
     <string name="categories_create_group">创建分组</string>
     <string name="categories_group_name_hint">分组名称</string>
-    <string name="categories_rename">重命名</string>
     <string name="categories_change_image">更换图片</string>
     <string name="categories_delete_selected_title">删除 %1$d 个分类？</string>
     <string name="categories_delete_selected_text">选中的分类将被移至回收站。您的联系人不会被删除，只是失去这些标签。</string>

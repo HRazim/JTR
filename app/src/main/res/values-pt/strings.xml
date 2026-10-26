@@ -302,7 +302,6 @@
     <string name="categories_unfavorite">Remover dos favoritos</string>
     <string name="categories_create_group">Criar grupo</string>
     <string name="categories_group_name_hint">Nome do grupo</string>
-    <string name="categories_rename">Mudar o nome</string>
     <string name="categories_change_image">Alterar imagem</string>
     <string name="categories_delete_selected_title">Eliminar %1$d categorias?</string>
     <string name="categories_delete_selected_text">As categorias selecionadas serão movidas para o lixo. Os seus contactos não são eliminados: apenas perdem estas etiquetas.</string>

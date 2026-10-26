@@ -320,7 +320,6 @@
     <string name="categories_unfavorite">Hapus dari favorit</string>
     <string name="categories_create_group">Buat grup</string>
     <string name="categories_group_name_hint">Nama grup</string>
-    <string name="categories_rename">Ganti nama</string>
     <string name="categories_change_image">Ganti gambar</string>
     <string name="categories_delete_selected_title">Hapus %1$d kategori?</string>
     <string name="categories_delete_selected_text">Kategori yang dipilih akan dipindahkan ke sampah. Kontak Anda tidak dihapus; hanya kehilangan label ini.</string>

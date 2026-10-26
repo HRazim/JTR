@@ -1,6 +1,5 @@
 package com.jtr.app.ui.category
 
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -26,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -43,12 +41,7 @@ import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
 import com.jtr.app.ui.components.ScrollToTopFab
 import com.jtr.app.ui.components.SelectAllToggle
-import com.jtr.app.ui.components.rememberSystemPhotoPicker
-import com.jtr.app.ui.person.CropShape
-import com.jtr.app.ui.person.ImageCropDialog
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Écran « intérieur d'un dossier » (drill-down RÉCURSIF). Affiche le contenu mixte
@@ -103,22 +96,17 @@ fun CategoryGroupDetailScreen(
         }
     }
     var showBulkDelete by remember { mutableStateOf(false) }
-    var renameTarget by remember { mutableStateOf<Category?>(null) }
-    var renameGroupTarget by remember { mutableStateOf<CategoryGroup?>(null) }
     var editTarget by remember { mutableStateOf<Category?>(null) }
+    // v7.1.127 — dossier en cours d'édition dans la feuille partagée (footer).
+    var editGroupTarget by remember { mutableStateOf<CategoryGroup?>(null) }
     var pendingMergeIds by remember { mutableStateOf<List<String>?>(null) }
     // v7.1.82 — création EXPLICITE d'un sous-dossier depuis le footer : état DISTINCT de
     // [pendingMergeIds] pour que le geste de FUSION garde son dialogue historique.
     var pendingCreateSubGroupIds by remember { mutableStateOf<List<String>?>(null) }
     // v7.1.83 — sélecteur de dossier CIBLE (« Déplacer vers un groupe… »).
     var showMoveToGroupPicker by remember { mutableStateOf(false) }
-    var groupImageTarget by remember { mutableStateOf<CategoryGroup?>(null) }
-    var pendingGroupCropUri by remember { mutableStateOf<Uri?>(null) }
 
-    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    // Photo Picker système (v7.1.66) — aucune permission requise.
-    val groupPhotoPicker = rememberSystemPhotoPicker { uri -> pendingGroupCropUri = uri }
 
     LaunchedEffect(members, subGroups) {
         selectedIds.retainAll(members.map { it.id }.toSet())
@@ -265,24 +253,16 @@ fun CategoryGroupDetailScreen(
             onDismiss = { pendingMergeIds = null }
         )
     }
-    renameTarget?.let { target ->
-        TextPromptDialog(
-            title = stringResource(R.string.categories_rename),
-            hint = stringResource(R.string.common_name_label),
-            initial = target.name,
-            confirmLabel = stringResource(R.string.common_save),
-            onConfirm = { name -> viewModel.rename(target, name); renameTarget = null; exitSelection() },
-            onDismiss = { renameTarget = null }
-        )
-    }
-    renameGroupTarget?.let { target ->
-        TextPromptDialog(
-            title = stringResource(R.string.categories_rename),
-            hint = stringResource(R.string.categories_group_name_hint),
-            initial = target.name,
-            confirmLabel = stringResource(R.string.common_save),
-            onConfirm = { name -> viewModel.renameGroup(target, name); renameGroupTarget = null; exitSelection() },
-            onDismiss = { renameGroupTarget = null }
+    // v7.1.127 — ÉDITION d'un dossier (nom + image) dans la feuille de sa création.
+    editGroupTarget?.let { target ->
+        EditGroupSheet(
+            group = target,
+            onConfirm = { name, imagePath ->
+                viewModel.updateGroup(target, name, imagePath)
+                editGroupTarget = null
+                exitSelection()
+            },
+            onDismiss = { editGroupTarget = null }
         )
     }
     editTarget?.let { target ->
@@ -293,22 +273,6 @@ fun CategoryGroupDetailScreen(
                 editTarget = null; exitSelection()
             },
             onDismiss = { editTarget = null }
-        )
-    }
-    pendingGroupCropUri?.let { uri ->
-        ImageCropDialog(
-            sourceUri = uri,
-            cropShape = CropShape.RECTANGLE,
-            onCropComplete = { cropped ->
-                groupImageTarget?.let { target ->
-                    scope.launch {
-                        val path = withContext(Dispatchers.IO) { copyCategoryPhotoToStorage(ctx, cropped) }
-                        if (path != null) viewModel.setGroupImage(target, path)
-                    }
-                }
-                pendingGroupCropUri = null; groupImageTarget = null; exitSelection()
-            },
-            onDismiss = { pendingGroupCropUri = null; groupImageTarget = null }
         )
     }
     if (showBulkDelete) {
@@ -501,25 +465,18 @@ fun CategoryGroupDetailScreen(
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
                         ) { dismiss ->
-                            // Actions sur le dossier lui-même (v5.3) : Modifier
-                            // (nom / image) et mise à la corbeille.
+                            // Actions sur le dossier lui-même (v5.3) : modifier et mise à
+                            // la corbeille. v7.1.127 — « Renommer » et « Changer l'image »
+                            // n'étaient que deux moitiés du même formulaire : une seule
+                            // entrée « Modifier » les remplace, comme dans le footer de
+                            // sélection et comme à l'intérieur d'une catégorie.
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.categories_rename)) },
-                                leadingIcon = { Icon(Icons.Default.DriveFileRenameOutline, null) },
+                                text = { Text(stringResource(R.string.common_edit)) },
+                                leadingIcon = { Icon(Icons.Default.Edit, null) },
                                 onClick = {
                                     dismiss()
-                                    group?.let { renameGroupTarget = it }
-                                })
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.categories_change_image)) },
-                                leadingIcon = { Icon(Icons.Default.Image, null) },
-                                onClick = {
-                                    dismiss()
-                                    group?.let {
-                                        groupImageTarget = it
-                                        groupPhotoPicker()
-                                    }
+                                    group?.let { editGroupTarget = it }
                                 })
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.categories_dissolve_group)) },
@@ -561,20 +518,11 @@ fun CategoryGroupDetailScreen(
                     onMoveToGroup = { showMoveToGroupPicker = true },
                     canDelete = totalSelected >= 1,
                     onDelete = { showBulkDelete = true },
-                    canRename = totalSelected == 1,
-                    onRename = {
-                        val cat = selectedCategories.singleOrNull()
-                        if (cat != null) renameTarget = cat
-                        else selectedGroups.singleOrNull()?.let { renameGroupTarget = it }
-                    },
-                    canChangeImage = totalSelected == 1,
-                    onChangeImage = {
+                    canEdit = totalSelected == 1,
+                    onEdit = {
                         val cat = selectedCategories.singleOrNull()
                         if (cat != null) editTarget = cat
-                        else selectedGroups.singleOrNull()?.let { g ->
-                            groupImageTarget = g
-                            groupPhotoPicker()
-                        }
+                        else selectedGroups.singleOrNull()?.let { editGroupTarget = it }
                     },
                     canMoveOut = totalSelected >= 1,
                     onMoveOut = {

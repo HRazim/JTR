@@ -5,7 +5,6 @@ import android.util.Log
 import com.jtr.app.data.files.ImageFileStore
 import com.jtr.app.ui.components.SelectAllToggle
 import com.jtr.app.ui.person.CropShape
-import com.jtr.app.ui.person.ImageCropDialog
 import com.jtr.app.ui.person.PickerThumbnail
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -76,7 +75,6 @@ import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.components.ReorderableGrid
 import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
 import com.jtr.app.ui.components.ScrollToTopFab
-import com.jtr.app.ui.components.rememberSystemPhotoPicker
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -196,17 +194,13 @@ fun CategoriesScreen(
     // v7.1.83 — sélecteur de dossier CIBLE (« Déplacer vers un groupe… »).
     var showMoveToGroupPicker by remember { mutableStateOf(false) }
     var showBulkDeleteDialog by remember { mutableStateOf(false) }
-    var renameTarget by remember { mutableStateOf<Category?>(null) }
-    var renameGroupTarget by remember { mutableStateOf<CategoryGroup?>(null) }
     // Fusion par superposition (drop d'une catégorie sur une autre) → nommer le groupe.
     var pendingMergeIds by remember { mutableStateOf<List<String>?>(null) }
-    // Changement d'image de couverture d'un dossier (mode sélection).
-    var groupImageTarget by remember { mutableStateOf<CategoryGroup?>(null) }
-    var pendingGroupCropUri by remember { mutableStateOf<Uri?>(null) }
-    val screenContext = LocalContext.current
+    // v7.1.127 — dossier en cours d'édition (nom + image) dans la feuille partagée, qui
+    // remplace l'ancien couple « Renommer » (mini-dialogue) + « Changer l'image »
+    // (sélecteur photo direct, suivi de son propre recadrage).
+    var editGroupTarget by remember { mutableStateOf<CategoryGroup?>(null) }
     val screenScope = rememberCoroutineScope()
-    // Photo Picker système (v7.1.66) — aucune permission requise.
-    val groupPhotoPicker = rememberSystemPhotoPicker { uri -> pendingGroupCropUri = uri }
 
     // Reporte l'état de sélection au conteneur (masque la nav globale).
     LaunchedEffect(isSelectionActive) { onSelectionModeChange(isSelectionActive) }
@@ -357,21 +351,6 @@ fun CategoriesScreen(
         )
     }
 
-    renameTarget?.let { target ->
-        TextPromptDialog(
-            title = stringResource(R.string.categories_rename),
-            hint = stringResource(R.string.common_name_label),
-            initial = target.name,
-            confirmLabel = stringResource(R.string.common_save),
-            onConfirm = { name ->
-                viewModel.rename(target, name)
-                renameTarget = null
-                exitSelection()
-            },
-            onDismiss = { renameTarget = null }
-        )
-    }
-
     // Fusion par geste : nommer le groupe créé à partir des 2 catégories superposées.
     pendingMergeIds?.let { ids ->
         TextPromptDialog(
@@ -385,21 +364,6 @@ fun CategoriesScreen(
                 exitSelection()
             },
             onDismiss = { pendingMergeIds = null }
-        )
-    }
-
-    renameGroupTarget?.let { target ->
-        TextPromptDialog(
-            title = stringResource(R.string.categories_rename),
-            hint = stringResource(R.string.categories_group_name_hint),
-            initial = target.name,
-            confirmLabel = stringResource(R.string.common_save),
-            onConfirm = { name ->
-                viewModel.renameGroup(target, name)
-                renameGroupTarget = null
-                exitSelection()
-            },
-            onDismiss = { renameGroupTarget = null }
         )
     }
 
@@ -451,27 +415,21 @@ fun CategoriesScreen(
         )
     }
 
-    pendingGroupCropUri?.let { uri ->
-        ImageCropDialog(
-            sourceUri = uri,
-            cropShape = CropShape.RECTANGLE,
-            onCropComplete = { cropped ->
-                groupImageTarget?.let { target ->
-                    screenScope.launch {
-                        val path = withContext(Dispatchers.IO) {
-                            copyCategoryPhotoToStorage(screenContext, cropped)
-                        }
-                        if (path != null) viewModel.setGroupImage(target, path)
-                    }
-                }
-                pendingGroupCropUri = null
-                groupImageTarget = null
+
+    // v7.1.127 — ÉDITION d'un dossier : la MÊME feuille que sa création, pré-remplie.
+    // Nom et image partent en UNE écriture (le fichier remplacé est libéré par le
+    // repository, cf. v7.1.105).
+    editGroupTarget?.let { target ->
+        EditGroupSheet(
+            group = target,
+            onConfirm = { name, imagePath ->
+                viewModel.updateGroup(target, name, imagePath)
+                editGroupTarget = null
                 exitSelection()
             },
-            onDismiss = { pendingGroupCropUri = null; groupImageTarget = null }
+            onDismiss = { editGroupTarget = null }
         )
     }
-
 
     pendingEditCategory?.let { category ->
         EditCategoryDialog(
@@ -641,21 +599,11 @@ fun CategoriesScreen(
                     onMoveToGroup = { showMoveToGroupPicker = true },
                     canDelete = totalSelected >= 1,
                     onDelete = { showBulkDeleteDialog = true },
-                    canRename = totalSelected == 1,
-                    onRename = {
+                    canEdit = totalSelected == 1,
+                    onEdit = {
                         val cat = selectedCategories.singleOrNull()
-                        if (cat != null) renameTarget = cat
-                        else selectedGroups.singleOrNull()?.let { renameGroupTarget = it }
-                    },
-                    canChangeImage = totalSelected == 1,
-                    onChangeImage = {
-                        val cat = selectedCategories.singleOrNull()
-                        if (cat != null) {
-                            pendingEditCategory = cat
-                        } else selectedGroups.singleOrNull()?.let { g ->
-                            groupImageTarget = g
-                            groupPhotoPicker()
-                        }
+                        if (cat != null) pendingEditCategory = cat
+                        else selectedGroups.singleOrNull()?.let { editGroupTarget = it }
                     }
                 )
             }
@@ -1158,15 +1106,15 @@ internal fun SelectionFooter(
     onMoveToGroup: () -> Unit,
     canDelete: Boolean,
     onDelete: () -> Unit,
-    canRename: Boolean,
-    onRename: () -> Unit,
-    canChangeImage: Boolean,
-    onChangeImage: () -> Unit,
+    // v7.1.127 — UNE action « Modifier » remplace le menu « ⋮ » (Renommer / Changer
+    // l'image) : les deux ouvraient en fait deux moitiés du même formulaire. L'appelant
+    // route vers le formulaire de CATÉGORIE ou celui de DOSSIER selon ce qui est coché.
+    canEdit: Boolean,
+    onEdit: () -> Unit,
     canMoveOut: Boolean = false,
     onMoveOut: (() -> Unit)? = null
 ) {
     var folderMenu by remember { mutableStateOf(false) }
-    var overflowMenu by remember { mutableStateOf(false) }
     val folderEnabled = canCreateGroup || canMove || (canMoveOut && onMoveOut != null)
     BottomAppBar(
         containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -1209,23 +1157,11 @@ internal fun SelectionFooter(
             FooterActionColumn(Icons.Default.Delete, stringResource(R.string.common_delete),
                 canDelete, onDelete, tintOverride = MaterialTheme.colorScheme.error)
         }
-        // Overflow (Renommer / Changer l'image).
+        // Modifier — le formulaire complet (nom + image, et la couleur pour une
+        // catégorie). Un seul élément coché, sinon rien à pré-remplir.
         Box(Modifier.weight(1f).fillMaxHeight()) {
-            FooterActionColumn(Icons.Default.MoreVert,
-                stringResource(R.string.common_more_actions),
-                enabled = canRename || canChangeImage, onClick = { overflowMenu = true })
-            DropdownMenu(expanded = overflowMenu, onDismissRequest = { overflowMenu = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.categories_rename)) },
-                    enabled = canRename,
-                    leadingIcon = { Icon(Icons.Default.DriveFileRenameOutline, null) },
-                    onClick = { overflowMenu = false; onRename() })
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.categories_change_image)) },
-                    enabled = canChangeImage,
-                    leadingIcon = { Icon(Icons.Default.Image, null) },
-                    onClick = { overflowMenu = false; onChangeImage() })
-            }
+            FooterActionColumn(Icons.Default.Edit, stringResource(R.string.common_edit),
+                enabled = canEdit, onClick = onEdit)
         }
     }
 }

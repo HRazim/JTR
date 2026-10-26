@@ -296,7 +296,6 @@
     <string name="categories_unfavorite">お気に入りから削除</string>
     <string name="categories_create_group">グループを作成</string>
     <string name="categories_group_name_hint">グループ名</string>
-    <string name="categories_rename">名前を変更</string>
     <string name="categories_change_image">画像を変更</string>
     <string name="categories_delete_selected_title">%1$d 個のカテゴリを削除しますか？</string>
     <string name="categories_delete_selected_text">選択したカテゴリはゴミ箱に移動されます。連絡先は削除されず、これらのラベルが外れるだけです。</string>

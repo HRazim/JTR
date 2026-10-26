@@ -302,7 +302,6 @@
     <string name="categories_unfavorite">즐겨찾기에서 제거</string>
     <string name="categories_create_group">그룹 만들기</string>
     <string name="categories_group_name_hint">그룹 이름</string>
-    <string name="categories_rename">이름 변경</string>
     <string name="categories_change_image">이미지 변경</string>
     <string name="categories_delete_selected_title">카테고리 %1$d개를 삭제할까요?</string>
     <string name="categories_delete_selected_text">선택한 카테고리가 휴지통으로 이동됩니다. 연락처는 삭제되지 않으며 이 라벨들만 사라집니다.</string>

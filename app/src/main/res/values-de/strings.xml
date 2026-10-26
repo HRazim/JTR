@@ -302,7 +302,6 @@
     <string name="categories_unfavorite">Aus Favoriten entfernen</string>
     <string name="categories_create_group">Gruppe erstellen</string>
     <string name="categories_group_name_hint">Gruppenname</string>
-    <string name="categories_rename">Umbenennen</string>
     <string name="categories_change_image">Bild ändern</string>
     <string name="categories_delete_selected_title">%1$d Kategorien löschen?</string>
     <string name="categories_delete_selected_text">Die ausgewählten Kategorien werden in den Papierkorb verschoben. Deine Kontakte werden nicht gelöscht; sie verlieren nur diese Zuordnungen.</string>

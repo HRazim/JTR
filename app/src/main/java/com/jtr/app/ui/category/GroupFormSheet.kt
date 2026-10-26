@@ -72,10 +72,12 @@ import kotlinx.coroutines.withContext
  *   l'`imePadding` étant porté par la colonne parente).
  *
  * Présentation pure (UDF) : l'appelant persiste via `createGroup`/`createSubGroup`.
- * Le renommage et le nommage d'un groupe né du geste de FUSION gardent le dialogue
- * historique (hors périmètre de cette V1).
+ *
+ * v7.1.127 — cette feuille sert MAINTENANT aussi l'ÉDITION, exactement comme
+ * `AddCategoryDialog`/`EditCategoryDialog` partagent `CategoryFormDialog` : deux façades
+ * ([CreateGroupSheet], [EditGroupSheet]) sur un seul corps paramétré, pour que renommer un
+ * dossier et changer son image passent par le MÊME formulaire que sa création.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateGroupSheet(
     members: List<Category>,
@@ -84,12 +86,68 @@ fun CreateGroupSheet(
     initialParentId: Long? = null,
     onConfirm: (name: String, imagePath: String?, parentGroupId: Long?) -> Unit,
     onDismiss: () -> Unit
+) = GroupFormSheet(
+    title = stringResource(R.string.categories_create_group),
+    initialName = "",
+    initialImagePath = null,
+    members = members,
+    groups = groups,
+    initialParentId = initialParentId,
+    showParentField = true,
+    autoFocusName = true,
+    confirmLabel = stringResource(R.string.common_create),
+    onConfirm = onConfirm,
+    onDismiss = onDismiss
+)
+
+/**
+ * v7.1.127 — ÉDITION d'un dossier : nom + image, dans la feuille de création. Remplace le
+ * couple « Renommer » (mini-dialogue d'un champ) + « Changer l'image » (sélecteur photo
+ * direct), qui obligeait à deux chemins pour une seule intention.
+ *
+ * PAS de sélecteur de dossier parent ici : déplacer reste l'action « Grouper / Déplacer »
+ * du footer, qui sait exclure les cibles créant un cycle — ce que ce formulaire ne saurait
+ * pas faire. Et pas d'auto-focus : on ouvre souvent pour changer l'image, pas le nom.
+ */
+@Composable
+fun EditGroupSheet(
+    group: CategoryGroup,
+    onConfirm: (name: String, imagePath: String?) -> Unit,
+    onDismiss: () -> Unit
+) = GroupFormSheet(
+    title = stringResource(R.string.common_edit),
+    initialName = group.name,
+    initialImagePath = group.imagePath,
+    members = emptyList(),
+    groups = emptyList(),
+    initialParentId = null,
+    showParentField = false,
+    autoFocusName = false,
+    confirmLabel = stringResource(R.string.common_save),
+    onConfirm = { name, imagePath, _ -> onConfirm(name, imagePath) },
+    onDismiss = onDismiss
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GroupFormSheet(
+    title: String,
+    initialName: String,
+    initialImagePath: String?,
+    members: List<Category>,
+    groups: List<CategoryGroup>,
+    initialParentId: Long?,
+    showParentField: Boolean,
+    autoFocusName: Boolean,
+    confirmLabel: String,
+    onConfirm: (name: String, imagePath: String?, parentGroupId: Long?) -> Unit,
+    onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var name by remember { mutableStateOf("") }
-    var imagePath by remember { mutableStateOf<String?>(null) }
+    var name by remember { mutableStateOf(initialName) }
+    var imagePath by remember { mutableStateOf(initialImagePath) }
     // v7.1.84 — dossier PARENT : null = racine. Pré-rempli avec le dossier courant quand
     // on crée depuis l'intérieur d'un dossier (sous-groupe), modifiable dans les deux cas.
     var parentId by remember { mutableStateOf(initialParentId) }
@@ -108,10 +166,7 @@ fun CreateGroupSheet(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp)
             ) {
-                Text(
-                    stringResource(R.string.categories_create_group),
-                    style = MaterialTheme.typography.headlineSmall
-                )
+                Text(title, style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(16.dp))
 
                 // ── Aperçu vivant du dossier (v7.1.79, extrait en v7.1.111) : le composant
@@ -146,67 +201,75 @@ fun CreateGroupSheet(
                         .fillMaxWidth()
                         .focusRequester(focusRequester)
                 )
-                LaunchedEffect(Unit) { focusRequester.requestFocus() }
+                // v7.1.127 — auto-focus en CRÉATION seulement (règle du Groupe 3) : en
+                // édition, le champ est déjà rempli et l'intention est souvent l'image.
+                if (autoFocusName) LaunchedEffect(Unit) { focusRequester.requestFocus() }
                 Spacer(Modifier.height(16.dp))
 
                 // ── Dossier PARENT : on crée directement AU BON ENDROIT (plus besoin de
                 // créer à la racine puis de déplacer). « Racine » = premier niveau.
-                val parentName = parentId?.let { id -> groups.firstOrNull { it.id == id }?.name }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(MaterialTheme.shapes.small)
-                        .clickable { showParentPicker = true }
-                        .padding(vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Folder, contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            stringResource(R.string.categories_parent_group),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                if (showParentField) {
+                    val parentName =
+                        parentId?.let { id -> groups.firstOrNull { it.id == id }?.name }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable { showParentPicker = true }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Folder, contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Text(
-                            parentName ?: stringResource(R.string.categories_parent_root),
-                            style = MaterialTheme.typography.bodyLarge
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                stringResource(R.string.categories_parent_group),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                parentName ?: stringResource(R.string.categories_parent_root),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Icon(
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Spacer(Modifier.height(12.dp))
                 }
-                Spacer(Modifier.height(12.dp))
 
                 // ── CE QU'ON GROUPE : compte + vignettes (on voit ce qui entre dans le
                 // dossier avant de valider — le dialogue historique ne le montrait pas).
-                Text(
-                    pluralStringResource(
-                        R.plurals.categories_selection_count, members.size, members.size
-                    ),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    members.forEach { category ->
-                        PickerThumbnail(
-                            imagePath = category.imagePath,
-                            name = category.name,
-                            colorHex = category.color
-                        )
+                // Rien à montrer en ÉDITION, où la feuille ne groupe personne.
+                if (members.isNotEmpty()) {
+                    Text(
+                        pluralStringResource(
+                            R.plurals.categories_selection_count, members.size, members.size
+                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        members.forEach { category ->
+                            PickerThumbnail(
+                                imagePath = category.imagePath,
+                                name = category.name,
+                                colorHex = category.color
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(16.dp))
@@ -219,7 +282,7 @@ fun CreateGroupSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 8.dp)
-            ) { Text(stringResource(R.string.common_create)) }
+            ) { Text(confirmLabel) }
             Spacer(Modifier.height(16.dp))
         }
     }
