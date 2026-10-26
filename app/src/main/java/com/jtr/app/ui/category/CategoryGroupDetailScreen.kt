@@ -34,6 +34,7 @@ import coil.compose.AsyncImage
 import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.ui.components.JtrAlertDialog
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
@@ -278,80 +279,60 @@ fun CategoryGroupDetailScreen(
     if (showBulkDelete) {
         val singleGroup = selectedGroups.singleOrNull()?.takeIf { selectedIds.isEmpty() }
         val singleGroupMembers = singleGroup?.let { g -> members.count { it.parentGroupId == g.id } } ?: 0
-        AlertDialog(
+        // v7.1.130 — même bascule « groupe unique / sélection » qu'à l'écran Catégories,
+        // résolue en `String` avant l'appel.
+        JtrAlertDialog(
             onDismissRequest = { showBulkDelete = false },
-            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = {
-                Text(
-                    if (singleGroup != null)
-                        stringResource(R.string.categories_delete_group_title, singleGroup.name)
-                    else stringResource(R.string.categories_delete_selected_title, totalSelected)
-                )
+            icon = Icons.Default.Warning,
+            title = if (singleGroup != null)
+                stringResource(R.string.categories_delete_group_title, singleGroup.name)
+            else stringResource(R.string.categories_delete_selected_title, totalSelected),
+            text = if (singleGroup != null)
+                stringResource(R.string.categories_delete_group_text, singleGroup.name, singleGroupMembers)
+            else stringResource(R.string.categories_delete_selected_text),
+            confirmLabel = stringResource(R.string.common_delete),
+            onConfirm = {
+                viewModel.deleteSelection(selectedIds.toList(), selectedGroups, members)
+                showBulkDelete = false; exitSelection()
             },
-            text = {
-                Text(
-                    if (singleGroup != null)
-                        stringResource(R.string.categories_delete_group_text, singleGroup.name, singleGroupMembers)
-                    else stringResource(R.string.categories_delete_selected_text)
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteSelection(selectedIds.toList(), selectedGroups, members)
-                        showBulkDelete = false; exitSelection()
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(stringResource(R.string.common_delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBulkDelete = false }) { Text(stringResource(R.string.common_cancel)) }
-            }
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
         )
     }
     // « Mettre à la corbeille » le dossier : catégories + contacts en corbeille,
     // sous-groupes remontés d'un niveau (confirmation explicite avant cascade).
     if (showGroupTrashConfirm) {
         val groupName = group?.name.orEmpty()
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { showGroupTrashConfirm = false },
-            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.categories_delete_group_title, groupName)) },
-            text = { Text(stringResource(R.string.categories_delete_group_text,
-                groupName, members.size)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showGroupTrashConfirm = false
-                        viewModel.deleteGroupToTrash()
-                        onNavigateBack()
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(stringResource(R.string.action_move_to_trash)) }
+            icon = Icons.Default.Warning,
+            title = stringResource(R.string.categories_delete_group_title, groupName),
+            text = stringResource(R.string.categories_delete_group_text, groupName, members.size),
+            confirmLabel = stringResource(R.string.action_move_to_trash),
+            onConfirm = {
+                showGroupTrashConfirm = false
+                viewModel.deleteGroupToTrash()
+                onNavigateBack()
             },
-            dismissButton = {
-                TextButton(onClick = { showGroupTrashConfirm = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
         )
     }
 
     if (showDissolveConfirm) {
-        AlertDialog(
+        // v7.1.130 — ⚠️ CHANGEMENT VISUEL ASSUMÉ : la confirmation passe en ROUGE. Elle était
+        // la SEULE des huit à garder un bouton neutre alors que son icône était déjà en `error`,
+        // incohérence d'autant plus gênante que dissoudre est irréversible. L'icône `FolderOff`
+        // (et non `Warning`) est conservée : elle dit ce que l'action fait, pas qu'elle alarme.
+        JtrAlertDialog(
             onDismissRequest = { showDissolveConfirm = false },
-            icon = { Icon(Icons.Default.FolderOff, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.categories_dissolve_group)) },
-            text = { Text(stringResource(R.string.categories_dissolve_confirm_text)) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.dissolve(); showDissolveConfirm = false; onNavigateBack() }) {
-                    Text(stringResource(R.string.categories_dissolve_group))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDissolveConfirm = false }) { Text(stringResource(R.string.common_cancel)) }
-            }
+            icon = Icons.Default.FolderOff,
+            title = stringResource(R.string.categories_dissolve_group),
+            text = stringResource(R.string.categories_dissolve_confirm_text),
+            confirmLabel = stringResource(R.string.categories_dissolve_group),
+            onConfirm = { viewModel.dissolve(); showDissolveConfirm = false; onNavigateBack() },
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
         )
     }
 

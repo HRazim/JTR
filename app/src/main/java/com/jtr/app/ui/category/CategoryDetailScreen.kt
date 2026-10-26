@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jtr.app.R
+import com.jtr.app.ui.components.JtrAlertDialog
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
@@ -162,27 +163,19 @@ fun CategoryDetailScreen(
 
     // « Mettre à la corbeille » : confirmation explicite (cascade sur les contacts).
     if (showTrashConfirm) {
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { showTrashConfirm = false },
-            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.category_trash_confirm_title)) },
-            text = { Text(stringResource(R.string.category_trash_confirm_text)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showTrashConfirm = false
-                        viewModel.deleteCategoryToTrash()
-                        onNavigateBack()
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(stringResource(R.string.action_move_to_trash)) }
+            icon = Icons.Default.Warning,
+            title = stringResource(R.string.category_trash_confirm_title),
+            text = stringResource(R.string.category_trash_confirm_text),
+            confirmLabel = stringResource(R.string.action_move_to_trash),
+            onConfirm = {
+                showTrashConfirm = false
+                viewModel.deleteCategoryToTrash()
+                onNavigateBack()
             },
-            dismissButton = {
-                TextButton(onClick = { showTrashConfirm = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
         )
     }
 

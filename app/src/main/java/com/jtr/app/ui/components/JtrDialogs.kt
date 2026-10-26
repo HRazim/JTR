@@ -34,6 +34,20 @@ import androidx.compose.ui.text.input.TextFieldValue
  */
 
 /**
+ * Couleurs du bouton d'ANNULATION, communes aux deux dialogues.
+ *
+ * v7.1.130 — un `TextButton` nu prend `primary`, et sur une palette chaude (Corail) ce
+ * primaire est un rouge brique que rien ne distingue du `error` de la confirmation : les
+ * deux boutons paraissaient destructifs et le rouge ne voulait plus rien dire. Annuler est
+ * l'action SÛRE : elle se tait, en `onSurfaceVariant`. Même raison qu'au « ⋮ » d'une fiche
+ * (v7.1.129), appliquée ici une seule fois pour les trente dialogues.
+ */
+@Composable
+private fun jtrDismissButtonColors() = ButtonDefaults.textButtonColors(
+    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+)
+
+/**
  * Dialogue à boutons : confirmation, information, action destructive.
  *
  * @param text corps SIMPLE. Pour un corps riche (listes, options, paires libellé/valeur),
@@ -88,7 +102,10 @@ fun JtrAlertDialog(
         },
         dismissButton = dismissLabel?.let { label ->
             {
-                TextButton(onClick = onDismiss ?: onDismissRequest) { Text(label) }
+                TextButton(
+                    onClick = onDismiss ?: onDismissRequest,
+                    colors = jtrDismissButtonColors()
+                ) { Text(label) }
             }
         }
     )
@@ -152,7 +169,10 @@ fun JtrPromptDialog(
             ) { Text(confirmLabel) }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) { Text(dismissLabel) }
+            TextButton(
+                onClick = onDismissRequest,
+                colors = jtrDismissButtonColors()
+            ) { Text(dismissLabel) }
         }
     )
 }

@@ -67,6 +67,7 @@ import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.FormPhotoHeader
 import com.jtr.app.ui.components.FormTextField
 import com.jtr.app.ui.components.PhotoZoomDialog
+import com.jtr.app.ui.components.JtrAlertDialog
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
@@ -374,45 +375,31 @@ fun CategoriesScreen(
         val singleGroupMemberCount = singleGroup?.let { g ->
             categories.count { it.parentGroupId == g.id }
         } ?: 0
-        AlertDialog(
+        // v7.1.130 — titre et texte choisis AVANT l'appel (le socle prend des `String`) ;
+        // la bascule « groupe unique / sélection » est exactement celle d'avant.
+        JtrAlertDialog(
             onDismissRequest = { showBulkDeleteDialog = false },
-            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = {
-                Text(
-                    if (singleGroup != null)
-                        stringResource(R.string.categories_delete_group_title, singleGroup.name)
-                    else stringResource(R.string.categories_delete_selected_title, totalSelected)
-                )
-            },
-            text = {
-                Text(
-                    if (singleGroup != null)
-                        stringResource(R.string.categories_delete_group_text,
-                            singleGroup.name, singleGroupMemberCount)
-                    else stringResource(R.string.categories_delete_selected_text)
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (selectedIds.isNotEmpty()) viewModel.deleteSelected(selectedIds.toList())
-                        // Suppression du groupe ET de son contenu (cascade).
-                        selectedGroups.forEach { g ->
-                            viewModel.deleteGroupWithContents(
-                                g, categories.filter { it.parentGroupId == g.id }.map { it.id })
-                        }
-                        showBulkDeleteDialog = false
-                        exitSelection()
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(stringResource(R.string.common_delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBulkDeleteDialog = false }) {
-                    Text(stringResource(R.string.common_cancel))
+            icon = Icons.Default.Warning,
+            title = if (singleGroup != null)
+                stringResource(R.string.categories_delete_group_title, singleGroup.name)
+            else stringResource(R.string.categories_delete_selected_title, totalSelected),
+            text = if (singleGroup != null)
+                stringResource(R.string.categories_delete_group_text,
+                    singleGroup.name, singleGroupMemberCount)
+            else stringResource(R.string.categories_delete_selected_text),
+            confirmLabel = stringResource(R.string.common_delete),
+            onConfirm = {
+                if (selectedIds.isNotEmpty()) viewModel.deleteSelected(selectedIds.toList())
+                // Suppression du groupe ET de son contenu (cascade).
+                selectedGroups.forEach { g ->
+                    viewModel.deleteGroupWithContents(
+                        g, categories.filter { it.parentGroupId == g.id }.map { it.id })
                 }
-            }
+                showBulkDeleteDialog = false
+                exitSelection()
+            },
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
         )
     }
 

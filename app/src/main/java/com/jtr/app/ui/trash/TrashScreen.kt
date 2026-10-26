@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import com.jtr.app.ui.category.rememberCategoryColor
+import com.jtr.app.ui.components.JtrAlertDialog
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -219,30 +220,21 @@ private fun DeletedCategoryGroupCard(
     var showDeleteGroupDialog by remember { mutableStateOf(false) }
 
     if (showDeleteGroupDialog) {
-        AlertDialog(
+        // v7.1.130 — le choix de phrase se fait AVANT l'appel : le socle prend un `String`,
+        // pas un slot composable. La condition « avec contacts / vide » est celle d'avant.
+        val n = group.persons.size
+        JtrAlertDialog(
             onDismissRequest = { showDeleteGroupDialog = false },
-            title = { Text(stringResource(R.string.trash_delete_dialog_title)) },
-            text = {
-                val n = group.persons.size
-                if (n > 0)
-                    Text(stringResource(R.string.trash_delete_category_with_contacts,
-                        group.category.name, n))
-                else
-                    Text(stringResource(R.string.trash_delete_category_empty,
-                        group.category.name))
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { onDeleteGroup(); showDeleteGroupDialog = false },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(stringResource(R.string.common_delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteGroupDialog = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+            title = stringResource(R.string.trash_delete_dialog_title),
+            text = if (n > 0)
+                stringResource(R.string.trash_delete_category_with_contacts,
+                    group.category.name, n)
+            else
+                stringResource(R.string.trash_delete_category_empty, group.category.name),
+            confirmLabel = stringResource(R.string.common_delete),
+            onConfirm = { onDeleteGroup(); showDeleteGroupDialog = false },
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
         )
     }
 
@@ -342,22 +334,14 @@ private fun TrashPersonRow(
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text(stringResource(R.string.trash_delete_dialog_title)) },
-            text = { Text(stringResource(R.string.trash_delete_person_text, person.fullName)) },
-            confirmButton = {
-                TextButton(
-                    onClick = { onDelete(); showDeleteDialog = false },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(stringResource(R.string.common_delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+            title = stringResource(R.string.trash_delete_dialog_title),
+            text = stringResource(R.string.trash_delete_person_text, person.fullName),
+            confirmLabel = stringResource(R.string.common_delete),
+            onConfirm = { onDelete(); showDeleteDialog = false },
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
         )
     }
 
@@ -432,39 +416,32 @@ private fun EmptyTrashDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    // v7.1.45 — plus AUCUNE concaténation de fragments. L'ancien montage collait deux
+    // pluriels avec un connecteur `separator_and` ; or AAPT ROGNE les espaces de tête/fin
+    // d'un <string> non guillemeté, donc « ␣and␣ » devenait « and » ⇒ « categoriesand10 »
+    // (en/es/fr). Chaque langue reçoit désormais une PHRASE COMPLÈTE : elle maîtrise son
+    // connecteur, ses espaces ET l'ordre des deux quantités. Sélection explicite des 3 cas
+    // ⇒ le cas « les deux à 0 » (phrase à trou) n'est plus représentable.
+    // v7.1.130 — les 3 cas sont désormais résolus AVANT l'appel, en `String` ; la sélection
+    // elle-même est inchangée.
+    val categories = pluralStringResource(
+        R.plurals.trash_empty_dialog_part_categories, categoryCount, categoryCount)
+    val contacts = pluralStringResource(
+        R.plurals.trash_empty_dialog_part_contacts, personCount, personCount)
+    JtrAlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Default.DeleteForever, contentDescription = null) },
-        title = { Text(stringResource(R.string.trash_empty_dialog_title)) },
-        text = {
-            // v7.1.45 — plus AUCUNE concaténation de fragments. L'ancien montage collait deux
-            // pluriels avec un connecteur `separator_and` ; or AAPT ROGNE les espaces de tête/fin
-            // d'un <string> non guillemeté, donc « ␣and␣ » devenait « and » ⇒ « categoriesand10 »
-            // (en/es/fr). Chaque langue reçoit désormais une PHRASE COMPLÈTE : elle maîtrise son
-            // connecteur, ses espaces ET l'ordre des deux quantités. Sélection explicite des 3 cas
-            // ⇒ le cas « les deux à 0 » (phrase à trou) n'est plus représentable.
-            val categories = pluralStringResource(
-                R.plurals.trash_empty_dialog_part_categories, categoryCount, categoryCount)
-            val contacts = pluralStringResource(
-                R.plurals.trash_empty_dialog_part_contacts, personCount, personCount)
-            Text(
-                when {
-                    categoryCount > 0 && personCount > 0 ->
-                        stringResource(R.string.trash_empty_dialog_text_both, categories, contacts)
-                    categoryCount > 0 -> stringResource(R.string.trash_empty_dialog_text, categories)
-                    else -> stringResource(R.string.trash_empty_dialog_text, contacts)
-                }
-            )
+        icon = Icons.Default.DeleteForever,
+        title = stringResource(R.string.trash_empty_dialog_title),
+        text = when {
+            categoryCount > 0 && personCount > 0 ->
+                stringResource(R.string.trash_empty_dialog_text_both, categories, contacts)
+            categoryCount > 0 -> stringResource(R.string.trash_empty_dialog_text, categories)
+            else -> stringResource(R.string.trash_empty_dialog_text, contacts)
         },
-        confirmButton = {
-            TextButton(onClick = onConfirm,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error)
-            ) { Text(stringResource(R.string.trash_empty_confirm)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-        }
+        confirmLabel = stringResource(R.string.trash_empty_confirm),
+        onConfirm = onConfirm,
+        dismissLabel = stringResource(R.string.common_cancel),
+        destructive = true
     )
 }
 
