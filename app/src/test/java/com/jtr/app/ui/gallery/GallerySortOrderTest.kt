@@ -11,6 +11,7 @@ import com.jtr.app.data.local.PersonDao
 import com.jtr.app.domain.model.GalleryImage
 import com.jtr.app.testing.MainDispatcherRule
 import com.jtr.app.ui.components.JtrSortDirection
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -283,5 +284,66 @@ class GallerySortOrderTest {
         vm.setSortOrder(GallerySortOrder.CREATED_ASC)
         val asc = awaitValue(vm.images) { it.map(GalleryImage::id) == listOf(1L, 3L, 2L) }
         assertThat(asc.map { it.id }).containsExactly(1L, 3L, 2L).inOrder()
+    }
+
+    // ── v7.1.125 (R-b) : ordre manuel du glisser-déposer ────────────────────────
+
+    /** Trois images, affichées en 2, 3, 1 sous CREATED_DESC (createdAt 100 / 300 / 200). */
+    private fun vmWithThreeImages(): GalleryViewModel {
+        every { galleryDao.observeByPerson("p1") } returns flowOf(
+            listOf(img(1, createdAt = 100), img(2, createdAt = 300), img(3, createdAt = 200))
+        )
+        return vm(storedSort = "CREATED_DESC")
+    }
+
+    /**
+     * Le drop écrit des positions DENSES 0..n-1 dans l'ordre déposé, puis bascule le tri sur
+     * « Personnalisé » — sans quoi le flux re-trierait aussitôt par date et le geste, pourtant
+     * écrit en base, resterait invisible. Calqué sur
+     * `CategorySortOrderTest.persistTopOrder_autoSwitchesSortToCustom_andPersistsIt`.
+     */
+    @Test
+    fun persistOrder_writesDensePositions_andSwitchesSortToCustom() {
+        val vm = vmWithThreeImages()
+        awaitValue(vm.images) { it.size == 3 }
+        assertThat(vm.sortOrder.value).isEqualTo(GallerySortOrder.CREATED_DESC)
+
+        vm.persistOrder(listOf(3L, 1L, 2L))
+
+        // La bascule est le DERNIER acte de la coroutine (après l'écriture, v7.1.125) :
+        // l'attendre garantit que les `setPosition` sont tous passés.
+        awaitValue(vm.sortOrder) { it == GallerySortOrder.CUSTOM }
+        coVerify { galleryDao.setPosition(3L, 0) }
+        coVerify { galleryDao.setPosition(1L, 1) }
+        coVerify { galleryDao.setPosition(2L, 2) }
+        // DENSE et rien d'autre : exactement une écriture par image, aucune colonne de plus.
+        coVerify(exactly = 3) { galleryDao.setPosition(any(), any()) }
+        verify { editor.putString("gallery_sort", "CUSTOM") }
+    }
+
+    /**
+     * NO-OP sur ordre inchangé. `detectDragGesturesAfterLongPress` appelle `onDragEnd` même
+     * quand le doigt se lève sans avoir bougé : un simple appui long sur une photo (le réflexe
+     * acquis HORS sélection, où il sert à y entrer) ne doit ni écrire n UPDATE, ni basculer la
+     * pref GLOBALE `gallery_sort` sur « Personnalisé ».
+     */
+    @Test
+    fun persistOrder_sameOrder_writesNothing_andKeepsSort() {
+        val vm = vmWithThreeImages()
+        val displayed = awaitValue(vm.images) { it.size == 3 }.map { it.id }
+        assertThat(displayed).containsExactly(2L, 3L, 1L).inOrder()
+
+        // Le geste qui ne déplace rien remonte l'ordre affiché TEL QUEL.
+        vm.persistOrder(displayed)
+
+        // BARRIÈRE : un VRAI réordonnancement, attendu jusqu'à son terme. Ce qu'un no-op non
+        // gardé aurait écrit a donc eu tout le temps de se produire — et se compterait ici.
+        vm.persistOrder(listOf(3L, 1L, 2L))
+        awaitValue(vm.sortOrder) { it == GallerySortOrder.CUSTOM }
+
+        // TROIS écritures en tout, celles de la barrière : l'appel no-op n'a rien écrit…
+        coVerify(exactly = 3) { galleryDao.setPosition(any(), any()) }
+        // …et n'a pas basculé le tri (une seule bascule, celle de la barrière).
+        verify(exactly = 1) { editor.putString("gallery_sort", "CUSTOM") }
     }
 }

@@ -175,6 +175,34 @@ class GalleryViewModel(
         }
     }
 
+    /**
+     * v7.1.125 (R-b) — ordre MANUEL déposé par le glisser-déposer : persiste les positions
+     * 0..n-1, puis BASCULE le tri sur [GallerySortOrder.CUSTOM].
+     *
+     * Cette bascule n'est pas un confort : sans elle, le flux réémettrait aussitôt la liste
+     * re-triée par date et le geste, pourtant bien écrit en base, resterait invisible à
+     * l'écran (leçon v6.1.3, reprise telle quelle des catégories en v7.1.78).
+     *
+     * Deux précautions, toutes deux issues de la revue de ce lot :
+     *  - ORDRE INCHANGÉ = NO-OP. `detectDragGesturesAfterLongPress` appelle `onDragEnd`
+     *    même quand le doigt s'est levé sans bouger d'un pixel : un simple appui long sur
+     *    une photo (le réflexe acquis HORS sélection, où il sert à y entrer) arrivait donc
+     *    ici et basculait la pref GLOBALE `gallery_sort` sur « Personnalisé » — en écrivant
+     *    n UPDATE pour rien. On compare à l'ordre affiché et on sort sans rien toucher.
+     *  - BASCULE APRÈS L'ÉCRITURE, dans la MÊME coroutine. Basculer avant laissait le flux
+     *    réémettre la liste porteuse des ANCIENNES `position` (CUSTOM est un pass-through) :
+     *    la grille revenait une fraction de seconde à l'ordre d'avant le geste, avant que
+     *    l'invalidation Room ne rétablisse le bon. Une seule transition, pas d'aller-retour.
+     */
+    fun persistOrder(orderedIds: List<Long>) {
+        if (orderedIds.isEmpty()) return
+        if (orderedIds == images.value.map { it.id }) return
+        viewModelScope.launch {
+            repository.persistOrder(orderedIds)
+            setSortOrder(GallerySortOrder.CUSTOM)
+        }
+    }
+
     /** Supprime une image : la ligne puis son fichier. */
     fun delete(image: GalleryImage) {
         viewModelScope.launch { repository.delete(image) }

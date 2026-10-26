@@ -64,6 +64,17 @@ class GalleryRepository(context: Context) {
     }
 
     /**
+     * v7.1.125 (R-b) — ordre MANUEL : réécrit les `position` en 0..n-1 selon l'ordre reçu.
+     * Renuméroter tout le lot (plutôt que les seules lignes déplacées) garde la suite dense
+     * et sans doublon quoi qu'il arrive avant — y compris après des suppressions, qui
+     * laissent des trous. UPDATE d'une seule colonne par ligne : aucune autre donnée n'est
+     * touchée, aucun fichier n'est lu ni effacé.
+     */
+    suspend fun persistOrder(orderedIds: List<Long>) = withContext(Dispatchers.IO) {
+        orderedIds.forEachIndexed { index, id -> dao.setPosition(id, index) }
+    }
+
+    /**
      * v7.1.94 — enregistre la DESCRIPTION d'une image. Une chaîne vide (ou blanche) est
      * normalisée en `null` : « pas de description » n'a qu'UNE représentation en base, ce qui
      * évite qu'un champ vidé puis relu ressorte comme une chaîne vide significative.

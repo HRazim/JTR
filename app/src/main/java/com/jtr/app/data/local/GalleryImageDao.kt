@@ -120,4 +120,14 @@ interface GalleryImageDao {
      */
     @Query("SELECT COALESCE(MAX(position), -1) FROM gallery_images WHERE personId = :personId")
     suspend fun maxPosition(personId: String): Int
+
+    /**
+     * v7.1.125 (R-b) — ordre MANUEL du glisser-déposer. Écrit la seule colonne `position`,
+     * jamais la ligne entière : un réordonnancement ne peut toucher ni un `path`, ni une
+     * date, ni une métadonnée — et ne supprime rien. Volontairement SANS `modifiedAt` :
+     * ranger ses photos n'est pas éditer leurs métadonnées, le tri « Date de modification »
+     * ne doit donc pas bouger sous un drag.
+     */
+    @Query("UPDATE gallery_images SET position = :position WHERE id = :id")
+    suspend fun setPosition(id: Long, position: Int)
 }

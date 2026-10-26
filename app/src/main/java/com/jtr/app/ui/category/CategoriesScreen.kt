@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -50,7 +49,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
@@ -74,6 +72,7 @@ import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.JtrViewMode
+import com.jtr.app.ui.components.ReorderableGrid
 import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
 import com.jtr.app.ui.components.ScrollToTopFab
 import com.jtr.app.ui.components.rememberSystemPhotoPicker
@@ -1423,17 +1422,11 @@ private fun FolderListRow(
  * niveau mélangées (dossiers + catégories). L'affichage reste STRICTEMENT une grille
  * de carrés ([LazyVerticalGrid]).
  *
- * `data` est une copie de travail re-synchronisée hors glissement. L'élément suivi
- * est translaté en X et Y pour rester sous le doigt (déplacement multi-directionnel) ;
- * les autres carrés se décalent via `animateItem()`. Au drop, l'ordre est persisté.
+ * v7.1.125 — n'est plus qu'un ADAPTATEUR : la mécanique du geste vit dans
+ * [ReorderableGrid] (copie de travail re-synchronisée hors glissement, élément suivi
+ * translaté en X et Y sous le doigt, voisins décalés par `animateItem()`, ordre persisté
+ * au drop). Ce qui reste ici est le métier des catégories.
  */
-/** Action différée déclenchée au Drop — traitée HORS du callback tactile (anti-crash). */
-private sealed interface DropAction {
-    data class Merge(val ids: List<String>) : DropAction
-    data class Insert(val categoryId: String, val groupId: Long) : DropAction
-    data class Reorder(val refs: List<TopOrderRef>) : DropAction
-}
-
 @Composable
 internal fun ReorderableTopGrid(
     entries: List<TopEntry>,
@@ -1451,308 +1444,98 @@ internal fun ReorderableTopGrid(
     // (« flash » + liste renvoyée tout en haut sous le doigt).
     gridState: LazyGridState = rememberLazyGridState()
 ) {
-    // Fix v7.1.81 (2e cause) — la copie de travail est SEMÉE dès sa création. Avec un
-    // `mutableStateListOf()` vide rempli seulement par le LaunchedEffect ci-dessous, la
-    // grille se posait une première fois avec ZÉRO item : l'état de défilement partagé
-    // était alors CLAMPÉ à l'index 0 (d'où le flash + le retour en haut), et le
-    // remplissage suivant n'y changeait plus rien.
-    val data = remember { mutableStateListOf<TopEntry>().apply { addAll(entries) } }
-    var draggingIndex by remember { mutableStateOf<Int?>(null) }
-    var initialOffset by remember { mutableStateOf(IntOffset.Zero) }
-    var delta by remember { mutableStateOf(Offset.Zero) }
-    // Position du doigt en coordonnées GLOBALES (Window) — stable, indépendante de la
-    // tuile déplacée. Base unique et fiable de la détection de collision.
-    var pointerWin by remember { mutableStateOf(Offset.Zero) }
-    // Coordonnées de la grille dans la fenêtre → conversion local ↔ window.
-    var gridCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    // Clé de la tuile « cible de fusion » (le doigt survole une autre tuile).
-    var mergeTargetKey by remember { mutableStateOf<String?>(null) }
-    // Action de Drop différée : assignée DANS le geste, TRAITÉE en dehors (anti-crash
-    // InputDispatcher — on ne déclenche jamais dialogue/Room dans le callback tactile).
-    var pendingDrop by remember { mutableStateOf<DropAction?>(null) }
-    // v7.1.78 — AUTO-DÉFILEMENT pendant le drag : vitesse courante en px/FRAME (signée,
-    // négative = vers le haut), posée par onDrag selon la proximité du bord du viewport
-    // et remise à zéro à la fin du geste. Appliquée par la boucle LaunchedEffect plus bas.
-    var autoScrollSpeed by remember { mutableFloatStateOf(0f) }
-    val autoDensity = LocalDensity.current
-    // Zone de déclenchement au bord (~64 dp) et pas MAXIMAL par frame (~10 dp ≈ 600 dp/s) :
-    // vitesse proportionnelle à la proximité du bord, bornée — contrôlable, pas d'emballement.
-    val autoScrollZonePx = with(autoDensity) { 64.dp.toPx() }
-    // Bord BAS : la grille s'étend SOUS le footer contextuel du mode sélection (le contenu
-    // passe sous les barres, v7.1.11 — mesuré : ~125 dp recouverts). Une zone de 64 dp
-    // ancrée au bas MESURÉ serait entièrement cachée derrière le footer : on l'élargit de
-    // la hauteur du footer pour qu'elle commence au-dessus de lui, dans la partie visible.
-    val autoScrollBottomZonePx = with(autoDensity) { 190.dp.toPx() }
-    val autoScrollMaxStepPx = with(autoDensity) { 10.dp.toPx() }
-
-    LaunchedEffect(entries) {
-        if (draggingIndex == null) { data.clear(); data.addAll(entries) }
+    // v7.1.125 — la mécanique du drag (copie de travail semée, hit-test en coordonnées
+    // fenêtre, auto-défilement, action de drop différée hors canal tactile) vit désormais
+    // dans [ReorderableGrid], partagé avec la galerie. Ne reste ici que le MÉTIER des
+    // catégories : ce qu'un drop au CENTRE veut dire (fusionner deux catégories, ou
+    // déposer une catégorie dans un dossier) et le rendu des tuiles.
+    val mergeAllowed: (TopEntry, TopEntry) -> Boolean = { dragged, _ ->
+        dragged is TopEntry.Single
     }
-
-    // Traite l'action de Drop hors du canal tactile (libéré) — ouvre le dialogue ou
-    // appelle le ViewModel sans stresser l'InputDispatcher.
-    LaunchedEffect(pendingDrop) {
-        when (val action = pendingDrop) {
-            is DropAction.Merge -> onMergeRequest(action.ids)
-            is DropAction.Insert -> onMoveToFolder(action.categoryId, action.groupId)
-            is DropAction.Reorder -> onPersistOrder(action.refs)
-            null -> {}
-        }
-        if (pendingDrop != null) pendingDrop = null
-    }
-
-    fun keyOf(e: TopEntry) = when (e) {
-        is TopEntry.Folder -> "g_${e.group.id}"
-        is TopEntry.Single -> "c_${e.category.id}"
-    }
-    fun refs(): List<TopOrderRef> = data.map {
-        when (it) {
-            is TopEntry.Folder -> TopOrderRef.Group(it.group.id)
-            is TopEntry.Single -> TopOrderRef.Cat(it.category.id)
-        }
-    }
-    fun draggedTranslation(): Offset {
-        val idx = draggingIndex ?: return Offset.Zero
-        val current = gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == idx }
-        val off = current?.offset ?: IntOffset.Zero
-        return Offset((initialOffset.x + delta.x) - off.x, (initialOffset.y + delta.y) - off.y)
-    }
-    // Coin haut-gauche d'une tuile (offset local de la grille) en coordonnées Window.
-    fun itemWindowTopLeft(localOffset: IntOffset): Offset {
-        val c = gridCoords ?: return Offset(localOffset.x.toFloat(), localOffset.y.toFloat())
-        return c.localToWindow(Offset(localOffset.x.toFloat(), localOffset.y.toFloat()))
-    }
-    // Trouve la tuile (≠ index `from`) dont la BBOX GLOBALE contient le doigt.
-    fun targetUnderFinger(from: Int) =
-        gridState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
-            if (info.index == from || info.index !in data.indices) return@firstOrNull false
-            val tl = itemWindowTopLeft(info.offset)
-            pointerWin.x >= tl.x && pointerWin.x <= tl.x + info.size.width &&
-                pointerWin.y >= tl.y && pointerWin.y <= tl.y + info.size.height
-        }
-    // Le doigt est-il dans la zone CENTRALE (50 % des deux axes) de la tuile ?
-    // → intention de fusion/insertion ; sur les bords → réordonnancement (les
-    // tuiles adjacentes se décalent en temps réel via animateItem()).
-    fun inMergeZone(info: androidx.compose.foundation.lazy.grid.LazyGridItemInfo): Boolean {
-        val tl = itemWindowTopLeft(info.offset)
-        val w = info.size.width.toFloat()
-        val h = info.size.height.toFloat()
-        return pointerWin.x >= tl.x + w * 0.25f && pointerWin.x <= tl.x + w * 0.75f &&
-            pointerWin.y >= tl.y + h * 0.25f && pointerWin.y <= tl.y + h * 0.75f
-    }
-    // CORRECTIF v5.5 (superposition) : le réordonnancement n'est déclenché qu'une
-    // fois le doigt passé AU-DELÀ du centre de la tuile survolée, du côté opposé
-    // à l'emplacement de la tuile déplacée (projection vectorielle en coordonnées
-    // Window). Avant, l'échange partait dès le bord proche (25 %) : la cible
-    // « fuyait » par swap avant que le doigt n'atteigne la zone centrale, rendant
-    // la fusion inaccessible (poursuite infinie). Bord proche neutre → fusion
-    // atteignable ; traversée complète → réordonnancement, comme un springboard.
-    fun fingerPastTargetCenter(from: Int, info: androidx.compose.foundation.lazy.grid.LazyGridItemInfo): Boolean {
-        val fromInfo = gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == from }
-            ?: return true
-        val fromTl = itemWindowTopLeft(fromInfo.offset)
-        val fromCenter = Offset(
-            fromTl.x + fromInfo.size.width / 2f, fromTl.y + fromInfo.size.height / 2f)
-        val tl = itemWindowTopLeft(info.offset)
-        val center = Offset(tl.x + info.size.width / 2f, tl.y + info.size.height / 2f)
-        val dirX = center.x - fromCenter.x
-        val dirY = center.y - fromCenter.y
-        return (pointerWin.x - center.x) * dirX + (pointerWin.y - center.y) * dirY >= 0f
-    }
-    // Résolution cible → fusion/réordonnancement. PARTAGÉE entre onDrag (le doigt bouge)
-    // et la boucle d'auto-défilement (la GRILLE glisse sous un doigt immobile : sans cette
-    // réévaluation à chaque pas de scroll, les échanges ne cascaderaient pas et la tuile
-    // déplacée sortirait du viewport au lieu de suivre le défilement).
-    fun resolveDragTarget() {
-        val from = draggingIndex ?: return
-        val target = targetUnderFinger(from)
-        val draggedIsSingle = data.getOrNull(from) is TopEntry.Single
-        if (enableMerge && draggedIsSingle && target != null && inMergeZone(target)) {
-            mergeTargetKey = keyOf(data[target.index])
-            Log.d("JTR_DRAG", "onDrag finger(win)=(${pointerWin.x},${pointerWin.y}) hover=${keyOf(data[target.index])} idx=${target.index} mergeTarget=$mergeTargetKey")
-        } else {
-            mergeTargetKey = null
-            if (target != null && fingerPastTargetCenter(from, target)) {
-                data.add(target.index, data.removeAt(from))
-                draggingIndex = target.index
+    ReorderableGrid(
+        items = entries,
+        key = { entry ->
+            when (entry) {
+                is TopEntry.Folder -> "g_${entry.group.id}"
+                is TopEntry.Single -> "c_${entry.category.id}"
             }
-        }
-    }
-    // v7.1.78 — pas d'auto-défilement (px/frame) selon la position du doigt : nul hors
-    // des zones de bord, proportionnel à la pénétration dans la zone (plus près = plus vite).
-    fun autoScrollStepFor(pointerY: Float): Float {
-        val c = gridCoords ?: return 0f
-        if (!c.isAttached) return 0f
-        val top = c.localToWindow(Offset.Zero).y
-        val bottom = top + c.size.height
-        // Plancher de 25 % : dès l'entrée en zone le défilement est FRANC (sans lui, la
-        // portion visible de la zone basse — au-dessus du footer — resterait trop lente).
-        return when {
-            pointerY <= top + autoScrollZonePx ->
-                -autoScrollMaxStepPx * ((top + autoScrollZonePx - pointerY) / autoScrollZonePx).coerceIn(0.25f, 1f)
-            pointerY >= bottom - autoScrollBottomZonePx ->
-                autoScrollMaxStepPx * ((pointerY - (bottom - autoScrollBottomZonePx)) / autoScrollBottomZonePx).coerceIn(0.25f, 1f)
-            else -> 0f
-        }
-    }
-
-    // v7.1.78 — boucle d'auto-défilement : UNE itération par frame tant qu'un drag est en
-    // cours. S'arrête d'elle-même hors zone (pas nul), au drop et à l'annulation (index
-    // null) ; en butée de liste, scrollBy ne consomme rien — aucun emballement possible.
-    LaunchedEffect(draggingIndex != null) {
-        while (draggingIndex != null) {
-            val step = autoScrollSpeed
-            if (step != 0f) {
-                gridState.scrollBy(step)
-                resolveDragTarget()
-            }
-            withFrameMillis { }
-        }
-    }
-
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        state = gridState,
-        modifier = Modifier
-            .fillMaxSize()
-            .onGloballyPositioned { gridCoords = it }
-            .pointerInput(Unit) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { offset ->
-                        val coords = gridCoords
-                        if (coords == null || !coords.isAttached)
-                            return@detectDragGesturesAfterLongPress
-                        // `offset` est local à la grille → on le passe en coordonnées Window.
-                        pointerWin = coords.localToWindow(offset)
-                        val hit = gridState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
-                            val tl = itemWindowTopLeft(info.offset)
-                            pointerWin.x >= tl.x && pointerWin.x <= tl.x + info.size.width &&
-                                pointerWin.y >= tl.y && pointerWin.y <= tl.y + info.size.height
-                        }
-                        if (hit != null) {
-                            draggingIndex = hit.index
-                            initialOffset = hit.offset
-                            delta = Offset.Zero
-                            mergeTargetKey = null
-                            autoScrollSpeed = 0f
-                            Log.d("JTR_DRAG", "onDragStart finger(win)=(${pointerWin.x},${pointerWin.y}) grab=${keyOf(data[hit.index])}")
-                        }
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        if (draggingIndex == null) return@detectDragGesturesAfterLongPress
-                        val coords = gridCoords
-                        if (coords == null || !coords.isAttached)
-                            return@detectDragGesturesAfterLongPress
-                        delta += dragAmount
-                        // Position GLOBALE (Window) du doigt — stable, indépendante de la
-                        // tuile en cours de déplacement.
-                        pointerWin = coords.localToWindow(change.position)
-                        // ZONE CENTRALE (50 %) : intention de fusion/insertion ; le
-                        // réordonnancement n'a lieu qu'APRÈS traversée du centre de la
-                        // cible — logique partagée avec l'auto-défilement (v7.1.78).
-                        resolveDragTarget()
-                        autoScrollSpeed = autoScrollStepFor(pointerWin.y)
-                    },
-                    onDragEnd = {
-                        // ANTI-CRASH : on NE déclenche RIEN ici (ni dialogue, ni Room).
-                        // On lit l'état figé, on calcule l'action, on la DÉPOSE dans
-                        // `pendingDrop`, et on libère immédiatement le canal tactile. Le
-                        // traitement réel est fait par le LaunchedEffect(pendingDrop).
-                        try {
-                            val coords = gridCoords
-                            if (coords == null || !coords.isAttached) {
-                                // Layout invalide au lâcher → on annule poliment, sans
-                                // forcer le moindre calcul de coordonnées.
-                                Log.d("JTR_DRAG", "onDragEnd ANNULÉ (layout détaché)")
-                            } else {
-                                val from = draggingIndex
-                                val dragged = from?.let { data.getOrNull(it) } as? TopEntry.Single
-                                var action: DropAction? = null
-                                if (enableMerge && from != null && dragged != null) {
-                                    // SEULE la cible figée pendant le survol (zone centrale)
-                                    // déclenche une fusion : un drop sur les bords reste un
-                                    // réordonnancement — pas de fusion accidentelle.
-                                    val te: TopEntry? = mergeTargetKey?.let { key ->
-                                        data.firstOrNull { keyOf(it) == key } }
-                                    when (val entry = te) {
-                                        is TopEntry.Single -> if (entry.category.id != dragged.category.id) {
-                                            Log.d("JTR_DRAG", "onDragEnd ACTION=MERGE ${dragged.category.id} + ${entry.category.id}")
-                                            action = DropAction.Merge(listOf(dragged.category.id, entry.category.id))
-                                        }
-                                        is TopEntry.Folder -> {
-                                            Log.d("JTR_DRAG", "onDragEnd ACTION=INSERT ${dragged.category.id} -> group ${entry.group.id}")
-                                            action = DropAction.Insert(dragged.category.id, entry.group.id)
-                                        }
-                                        else -> {}
-                                    }
-                                }
-                                if (action == null) {
-                                    Log.d("JTR_DRAG", "onDragEnd ACTION=REORDER (aucune cible)")
-                                    action = DropAction.Reorder(refs())
-                                }
-                                pendingDrop = action
-                            }
-                        } catch (e: Exception) {
-                            Log.e("JTR_ERROR", "Crash évité dans onDragEnd", e)
-                        } finally {
-                            // Réinitialisation défensive de l'état du geste.
-                            draggingIndex = null
-                            mergeTargetKey = null
-                            autoScrollSpeed = 0f
-                        }
-                    },
-                    onDragCancel = { draggingIndex = null; mergeTargetKey = null; autoScrollSpeed = 0f }
-                )
-            },
+        },
+        columns = 2,
+        gridState = gridState,
+        onPersistOrder = { ordered ->
+            onPersistOrder(
+                ordered.map {
+                    when (it) {
+                        is TopEntry.Folder -> TopOrderRef.Group(it.group.id)
+                        is TopEntry.Single -> TopOrderRef.Cat(it.category.id)
+                    }
+                }
+            )
+        },
         contentPadding = PaddingValues(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        itemsIndexed(data, key = { _, e -> keyOf(e) }) { index, entry ->
-            val isDragged = index == draggingIndex
-            val mod = if (isDragged) {
-                Modifier.zIndex(1f).graphicsLayer {
-                    val t = draggedTranslation(); translationX = t.x; translationY = t.y
-                }
-            } else {
-                Modifier.animateItem()
-            }
-            val mergeHighlight = mergeTargetKey == keyOf(entry)
-            when (entry) {
-                is TopEntry.Folder -> TopSelectionTile(
-                    isFolder = true,
-                    name = entry.group.name,
-                    isFavorite = entry.group.isFavorite,
-                    // Compteur enrichi : sous-catégories + cumul des contacts.
-                    subtitle = stringResource(R.string.categories_folder_counter,
-                        entry.members.size, entry.members.sumOf { countOf(it.id) }),
-                    imagePath = entry.group.imagePath,
-                    accent = MaterialTheme.colorScheme.primaryContainer,
-                    selected = isGroupSelected(entry.group.id),
-                    mergeHighlight = mergeHighlight,
-                    onClick = { onToggleGroup(entry.group.id) },
-                    modifier = mod
-                )
-                is TopEntry.Single -> {
-                    val accent = rememberCategoryColor(entry.category.color)
-                    val c = countOf(entry.category.id)
-                    TopSelectionTile(
-                        isFolder = false,
-                        name = entry.category.name,
-                        isFavorite = entry.category.isFavorite,
-                        subtitle = pluralStringResource(R.plurals.categories_person_count, c, c),
-                        imagePath = entry.category.imagePath,
-                        accent = accent,
-                        selected = isCategorySelected(entry.category.id),
-                        mergeHighlight = mergeHighlight,
-                        onClick = { onToggleCategory(entry.category.id) },
-                        modifier = mod
-                    )
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        // Le footer contextuel du mode sélection recouvre le bas de la grille (~125 dp) :
+        // la zone d'auto-défilement est élargie pour commencer au-dessus de lui.
+        autoScrollBottomZone = 190.dp,
+        canCenterDrop = if (enableMerge) mergeAllowed else null,
+        onCenterDrop = { dragged, target ->
+            val cat = (dragged as? TopEntry.Single)?.category
+            if (cat != null) {
+                when (target) {
+                    is TopEntry.Single ->
+                        if (target.category.id != cat.id) {
+                            onMergeRequest(listOf(cat.id, target.category.id))
+                        }
+                    is TopEntry.Folder -> onMoveToFolder(cat.id, target.group.id)
                 }
             }
         }
+    ) { entry, _, isCenterTarget, mod ->
+        when (entry) {
+            is TopEntry.Folder -> TopSelectionTile(
+                isFolder = true,
+                name = entry.group.name,
+                isFavorite = entry.group.isFavorite,
+                // Compteur enrichi : sous-categories + cumul des contacts.
+                subtitle = stringResource(R.string.categories_folder_counter,
+                    entry.members.size, entry.members.sumOf { countOf(it.id) }),
+                imagePath = entry.group.imagePath,
+                accent = MaterialTheme.colorScheme.primaryContainer,
+                selected = isGroupSelected(entry.group.id),
+                mergeHighlight = isCenterTarget,
+                onClick = { onToggleGroup(entry.group.id) },
+                modifier = mod
+            )
+            is TopEntry.Single -> {
+                val accent = rememberCategoryColor(entry.category.color)
+                val c = countOf(entry.category.id)
+                TopSelectionTile(
+                    isFolder = false,
+                    name = entry.category.name,
+                    isFavorite = entry.category.isFavorite,
+                    subtitle = pluralStringResource(R.plurals.categories_person_count, c, c),
+                    imagePath = entry.category.imagePath,
+                    accent = accent,
+                    selected = isCategorySelected(entry.category.id),
+                    mergeHighlight = isCenterTarget,
+                    onClick = { onToggleCategory(entry.category.id) },
+                    modifier = mod
+                )
+            }
+        }
     }
+}
+
+/**
+ * Action différée déclenchée au Drop — traitée HORS du callback tactile (anti-crash).
+ * v7.1.125 : ne sert plus qu'à la LISTE ; la grille, passée au moteur partagé
+ * [ReorderableGrid], porte désormais cette mécanique en interne.
+ */
+private sealed interface DropAction {
+    data class Merge(val ids: List<String>) : DropAction
+    data class Insert(val categoryId: String, val groupId: Long) : DropAction
+    data class Reorder(val refs: List<TopOrderRef>) : DropAction
 }
 
 /**

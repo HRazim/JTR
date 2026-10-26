@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -83,6 +84,7 @@ import com.jtr.app.ui.category.FooterActionColumn
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.JtrSortSheet
+import com.jtr.app.ui.components.ReorderableGrid
 import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
 import com.jtr.app.ui.components.ScrollToTopFab
 import com.jtr.app.ui.components.SelectAllToggle
@@ -285,6 +287,47 @@ fun GalleryScreen(
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             if (images.isEmpty()) {
                 GalleryEmptyState(onAdd = pickImages)
+            } else if (isSelectionActive) {
+                // v7.1.125 (R-b) — en mode SÉLECTION, la grille passe sur le moteur de
+                // glisser-déposer partagé : appui long + glissé réordonne, le tap continue
+                // de cocher. MÊME cohabitation des gestes que les catégories (v7.1.78),
+                // donc aucun conflit : hors sélection, l'appui long sert à y entrer.
+                // L'état de défilement est le MÊME que celui de la grille normale (fix
+                // v7.1.81) : entrer en sélection ne renvoie plus la grille en haut.
+                ReorderableGrid(
+                    items = images,
+                    key = { it.id },
+                    columns = 3,
+                    gridState = gridState,
+                    onPersistOrder = { ordered ->
+                        viewModel.persistOrder(ordered.map { it.id })
+                    },
+                    contentPadding = PaddingValues(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    // `autoScrollBottomZone` reste au DÉFAUT du moteur (64 dp) : ici le
+                    // footer ne recouvre PAS la grille. Cet écran garde les insets par
+                    // défaut du Scaffold (cf. ⚠️ plus haut) et applique `paddingValues`,
+                    // donc le bas MESURÉ de la grille est déjà au-dessus du footer. La
+                    // zone élargie des catégories (190 dp, où le contenu passe SOUS les
+                    // barres) mettrait ici le quart bas de la grille en défilement continu.
+                ) { image, _, _, itemModifier ->
+                    GalleryThumbnail(
+                        image = image,
+                        isSelectionActive = true,
+                        isSelected = image.id in selectedIds,
+                        onClick = {
+                            // Bascule ; vider la sélection ne quitte PAS le mode
+                            // (on peut re-cocher sans refaire un appui long).
+                            if (image.id in selectedIds) selectedIds.remove(image.id)
+                            else selectedIds.add(image.id)
+                        },
+                        // Pas d'appui long ici : il appartient à la grille, qui en fait
+                        // le départ du glissé.
+                        onLongClick = null,
+                        modifier = itemModifier
+                    )
+                }
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
@@ -298,23 +341,12 @@ fun GalleryScreen(
                         val index = images.indexOf(image)
                         GalleryThumbnail(
                             image = image,
-                            isSelectionActive = isSelectionActive,
-                            isSelected = image.id in selectedIds,
-                            onClick = {
-                                if (isSelectionActive) {
-                                    // Bascule ; vider la sélection ne quitte PAS le mode
-                                    // (on peut re-cocher sans refaire un appui long).
-                                    if (image.id in selectedIds) selectedIds.remove(image.id)
-                                    else selectedIds.add(image.id)
-                                } else {
-                                    viewerIndex = index
-                                }
-                            },
+                            isSelectionActive = false,
+                            isSelected = false,
+                            onClick = { viewerIndex = index },
                             onLongClick = {
-                                if (!isSelectionActive) {
-                                    isSelectionActive = true
-                                    selectedIds.add(image.id)
-                                }
+                                isSelectionActive = true
+                                selectedIds.add(image.id)
                             }
                         )
                     }
@@ -419,14 +451,27 @@ private fun GalleryThumbnail(
     isSelectionActive: Boolean,
     isSelected: Boolean,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    // `null` = la vignette NE capte PAS l'appui long. Indispensable dans la grille
+    // réordonnable (v7.1.125) : `combinedClickable` consomme le geste et la grille ne
+    // verrait jamais le `detectDragGesturesAfterLongPress` qui démarre un glissé — c'est
+    // d'ailleurs pourquoi les tuiles de catégorie n'ont jamais eu qu'un `clickable`.
+    onLongClick: (() -> Unit)?,
+    // v7.1.125 — porte la translation de la tuile suivie par le doigt, ou l'animation de
+    // décalage de ses voisines, quand la grille est réordonnable.
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .then(
+                if (onLongClick != null) {
+                    Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                } else {
+                    Modifier.clickable(onClick = onClick)
+                }
+            )
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
