@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.ui.components.FormTextField
+import com.jtr.app.ui.components.JtrPromptDialog
 import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.utils.DateCanonical
 import com.jtr.app.utils.matchesAllTokens
@@ -1197,29 +1198,16 @@ private fun CustomLabelDialog(
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var text by remember { mutableStateOf(initial) }
-    AlertDialog(
+    // v7.1.128 (L4a) — corps délégué au socle partagé. `trim()` CONSERVÉ à la validation :
+    // c'est lui qui empêche un libellé fait d'espaces d'être enregistré tel quel.
+    JtrPromptDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.custom_label_dialog_title)) },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text(stringResource(R.string.custom_label_dialog_hint)) },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(text.trim()) },
-                enabled = text.isNotBlank()
-            ) { Text(stringResource(R.string.common_ok)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-        }
+        title = stringResource(R.string.custom_label_dialog_title),
+        label = stringResource(R.string.custom_label_dialog_hint),
+        initialValue = initial,
+        confirmLabel = stringResource(R.string.common_ok),
+        onConfirm = { onConfirm(it.trim()) },
+        dismissLabel = stringResource(R.string.common_cancel)
     )
 }
 

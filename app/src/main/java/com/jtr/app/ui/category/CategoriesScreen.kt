@@ -70,6 +70,7 @@ import com.jtr.app.ui.components.PhotoZoomDialog
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
+import com.jtr.app.ui.components.JtrPromptDialog
 import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.ui.components.ReorderableGrid
@@ -1917,28 +1918,17 @@ internal fun TextPromptDialog(
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var text by remember { mutableStateOf(initial) }
-    AlertDialog(
+    // v7.1.128 (L4a) — corps délégué au socle partagé : le champ passe du dernier
+    // `OutlinedTextField` à 12 dp du fichier au `FormTextField` du formulaire, et la
+    // signature publique ne bouge pas (les deux appelants en profitent sans rien changer).
+    JtrPromptDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text(hint) },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(text) }, enabled = text.isNotBlank()) {
-                Text(confirmLabel)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-        }
+        title = title,
+        label = hint,
+        initialValue = initial,
+        confirmLabel = confirmLabel,
+        onConfirm = onConfirm,
+        dismissLabel = stringResource(R.string.common_cancel)
     )
 }
 

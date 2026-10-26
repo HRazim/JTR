@@ -36,7 +36,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -81,6 +80,7 @@ import coil.request.ImageRequest
 import com.jtr.app.R
 import com.jtr.app.domain.model.GalleryImage
 import com.jtr.app.ui.category.FooterActionColumn
+import com.jtr.app.ui.components.JtrAlertDialog
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.JtrSortSheet
@@ -409,30 +409,24 @@ fun GalleryScreen(
     // cas « 1 » se lit exactement comme avant.
     if (pendingDelete.isNotEmpty()) {
         val targets = pendingDelete
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { pendingDelete = emptyList() },
-            title = {
-                Text(pluralStringResource(
-                    R.plurals.gallery_delete_n_title, targets.size, targets.size))
+            title = pluralStringResource(
+                R.plurals.gallery_delete_n_title, targets.size, targets.size),
+            text = stringResource(R.string.gallery_delete_warning),
+            // v7.1.128 — la confirmation passe en ROUGE, comme les deux autres
+            // suppressions du lot : elle efface aussi les FICHIERS, c'est irréversible.
+            destructive = true,
+            confirmLabel = stringResource(R.string.gallery_delete_confirm),
+            onConfirm = {
+                viewModel.deleteAll(targets)
+                pendingDelete = emptyList()
+                // La visionneuse se referme (l'image affichée vient de disparaître) et
+                // le mode sélection se termine : plus rien à y faire.
+                viewerIndex = null
+                exitSelection()
             },
-            text = { Text(stringResource(R.string.gallery_delete_warning)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deleteAll(targets)
-                    pendingDelete = emptyList()
-                    // La visionneuse se referme (l'image affichée vient de disparaître) et
-                    // le mode sélection se termine : plus rien à y faire.
-                    viewerIndex = null
-                    exitSelection()
-                }) {
-                    Text(stringResource(R.string.gallery_delete_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDelete = emptyList() }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+            dismissLabel = stringResource(R.string.common_cancel)
         )
     }
 }

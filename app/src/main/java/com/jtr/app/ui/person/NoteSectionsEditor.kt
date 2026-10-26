@@ -98,6 +98,7 @@ import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.domain.model.combinedText
 import com.jtr.app.domain.model.withCombinedText
 import com.jtr.app.ui.components.FormTextField
+import com.jtr.app.ui.components.JtrAlertDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -432,32 +433,24 @@ fun NoteReorderFooter(
 
     // Confirmation de suppression (anti-perte accidentelle) — commune au footer ET au swipe.
     state.pendingDeleteId?.let { id ->
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { state.pendingDeleteId = null },
-            icon = { Icon(Icons.Default.DeleteOutline, null,
-                tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.note_section_delete_confirm_title)) },
-            text = { Text(stringResource(R.string.note_section_delete_confirm_text)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    val idx = sections.indexOfFirst { it.id == id }
-                    if (idx >= 0) {
-                        // Mémorise contenu + position pour l'annulation, puis retire.
-                        state.pendingUndo = DeletedNoteSection(sections[idx], idx)
-                        onSectionsChange(reindex(sections.filter { it.id != id }))
-                    }
-                    state.pendingDeleteId = null
-                    if (state.grabbedId == id) state.grabbedId = null
-                }) {
-                    Text(stringResource(R.string.common_delete),
-                        color = MaterialTheme.colorScheme.error)
+            icon = Icons.Default.DeleteOutline,
+            title = stringResource(R.string.note_section_delete_confirm_title),
+            text = stringResource(R.string.note_section_delete_confirm_text),
+            destructive = true,
+            confirmLabel = stringResource(R.string.common_delete),
+            onConfirm = {
+                val idx = sections.indexOfFirst { it.id == id }
+                if (idx >= 0) {
+                    // Mémorise contenu + position pour l'annulation, puis retire.
+                    state.pendingUndo = DeletedNoteSection(sections[idx], idx)
+                    onSectionsChange(reindex(sections.filter { it.id != id }))
                 }
+                state.pendingDeleteId = null
+                if (state.grabbedId == id) state.grabbedId = null
             },
-            dismissButton = {
-                TextButton(onClick = { state.pendingDeleteId = null }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+            dismissLabel = stringResource(R.string.common_cancel)
         )
     }
 

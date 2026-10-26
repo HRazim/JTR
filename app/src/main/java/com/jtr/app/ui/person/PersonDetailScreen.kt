@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.ui.components.FavoriteStar
+import com.jtr.app.ui.components.JtrAlertDialog
 import com.jtr.app.ui.components.PhotoZoomDialog
 import com.jtr.app.ui.components.rememberSystemPhotoPicker
 import com.jtr.app.utils.DateCanonical
@@ -879,11 +880,14 @@ fun PersonDetailScreen(
         // l'ancien pattern en dur « d MMMM yyyy, HH:mm » imposait l'ordre jour-mois-année et le
         // 24 h à TOUTES les langues (« 14 June 2026 » en anglais, ordre faux en japonais).
         val infoLocale = Locale.getDefault()
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { showInfoDialog = false },
-            icon = { Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary) },
-            title = { Text(stringResource(R.string.person_info_title)) },
-            text = {
+            icon = Icons.Default.Info,
+            title = stringResource(R.string.person_info_title),
+            confirmLabel = stringResource(R.string.common_ok),
+            onConfirm = { showInfoDialog = false },
+            // Corps RICHE (paires libellé/valeur) : `content`, pas `text`.
+            content = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column {
                         Text(stringResource(R.string.person_info_created),
@@ -902,32 +906,20 @@ fun PersonDetailScreen(
                             style = MaterialTheme.typography.bodyLarge)
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { showInfoDialog = false }) {
-                    Text(stringResource(R.string.common_ok))
-                }
             }
         )
     }
 
     if (showDeleteDialog) {
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.person_delete_dialog_title)) },
-            text = { Text(stringResource(R.string.person_delete_dialog_text)) },
-            confirmButton = {
-                TextButton(onClick = { showDeleteDialog = false; onDeleteClick() }) {
-                    Text(stringResource(R.string.common_delete),
-                        color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+            icon = Icons.Default.Delete,
+            title = stringResource(R.string.person_delete_dialog_title),
+            text = stringResource(R.string.person_delete_dialog_text),
+            destructive = true,
+            confirmLabel = stringResource(R.string.common_delete),
+            onConfirm = { showDeleteDialog = false; onDeleteClick() },
+            dismissLabel = stringResource(R.string.common_cancel)
         )
     }
 }
