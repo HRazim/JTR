@@ -15,6 +15,7 @@ import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.domain.model.Person
 import io.mockk.every
 import io.mockk.mockk
+import com.jtr.app.testing.MainDispatcherRule
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import kotlinx.coroutines.Dispatchers
@@ -25,10 +26,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 /**
@@ -60,11 +60,14 @@ class SearchViewModelTest {
     /** v7.1.87 — contacts du SOUS-ARBRE d'un dossier (source de la recherche scopée dossier). */
     private val folderMembersFlow = MutableStateFlow<List<Person>>(emptyList())
 
+    // viewModelScope = Main.immediate. La règle installe un dispatcher de test qui exécute
+    // inline (comme l'ancien Dispatchers.Unconfined) mais que l'on peut drainer en fin de
+    // test : sans cela, un collecteur survivant touchait Main pendant le test suivant.
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
     @Before
     fun setUp() {
-        // viewModelScope = Main.immediate ; Unconfined exécute inline mais respecte les delays réels.
-        Dispatchers.setMain(Dispatchers.Unconfined)
-
         val personDao = mockk<PersonDao>(relaxed = true)
         every { personDao.getAllActive() } returns activeFlow
         every { personDao.getRecent(any()) } returns flowOf(listOf(person("Zoe", opened = 100)))
@@ -94,7 +97,6 @@ class SearchViewModelTest {
     @After
     fun tearDown() {
         unmockkObject(AppDatabase.Companion)
-        Dispatchers.resetMain()
     }
 
     private fun person(name: String, opened: Long? = null) =

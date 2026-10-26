@@ -9,23 +9,22 @@ import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.data.local.GalleryImageDao
 import com.jtr.app.data.local.PersonDao
 import com.jtr.app.domain.model.GalleryImage
+import com.jtr.app.testing.MainDispatcherRule
 import com.jtr.app.ui.components.JtrSortDirection
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import io.mockk.verify
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 /**
@@ -200,10 +199,13 @@ class GallerySortOrderTest {
     private lateinit var editor: SharedPreferences.Editor
     private lateinit var galleryDao: GalleryImageDao
 
+    // Même garde que les autres tests de ViewModel : Main est tenu par la règle, drainé
+    // avant d'être rendu (cf. [MainDispatcherRule]).
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
     @Before
     fun setUp() {
-        Dispatchers.setMain(Dispatchers.Unconfined)
-
         galleryDao = mockk(relaxed = true)
         every { galleryDao.observeByPerson("p1") } returns flowOf(emptyList())
         val personDao = mockk<PersonDao>(relaxed = true)
@@ -219,7 +221,6 @@ class GallerySortOrderTest {
     @After
     fun tearDown() {
         unmockkObject(AppDatabase.Companion)
-        Dispatchers.resetMain()
     }
 
     private fun fakeApp(storedSort: String? = null): Application {

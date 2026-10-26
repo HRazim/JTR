@@ -12,19 +12,18 @@ import com.jtr.app.data.local.PersonDao
 import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.testing.MainDispatcherRule
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import io.mockk.verify
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 /**
@@ -142,10 +141,13 @@ class CategorySortOrderTest {
     private lateinit var categoryDao: CategoryDao
     private lateinit var groupDao: CategoryGroupDao
 
+    // Même garde que les autres tests de ViewModel : Main est tenu par la règle, drainé
+    // avant d'être rendu (cf. [MainDispatcherRule]).
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
     @Before
     fun setUp() {
-        Dispatchers.setMain(Dispatchers.Unconfined)
-
         val personDao = mockk<PersonDao>(relaxed = true)
         every { personDao.getAllActive() } returns flowOf(emptyList())
         categoryDao = mockk(relaxed = true)
@@ -166,7 +168,6 @@ class CategorySortOrderTest {
     @After
     fun tearDown() {
         unmockkObject(AppDatabase.Companion)
-        Dispatchers.resetMain()
     }
 
     private fun fakeApp(storedSort: String? = null): Application {
