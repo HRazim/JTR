@@ -154,7 +154,10 @@ fun ProfileFormFields(
         // TOUJOURS replié par défaut (essence Note-First) : même en édition d'un
         // profil déjà rempli, l'utilisateur l'ouvre lui-même pour voir le reste.
         var showMore by rememberSaveable { mutableStateOf(false) }
-        OutlinedButton(
+        // v7.1.118 — tonal plutôt qu'outlined : la bordure `outline` se lisait comme un trait
+        // clair marqué (le retour « gros trait blanc » v7.1.114) ; le fond tonal doux du thème
+        // porte l'affordance sans filet, cohérent avec les champs arrondis-doux.
+        FilledTonalButton(
             onClick = {
                 showMore = !showMore
                 // v7.1.58 — notifie l'écran hôte APRÈS la bascule (nouvelle valeur), pour qu'il
@@ -401,15 +404,20 @@ private fun AccordionSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
+            // v7.1.118 (G3b-2b) — en-tête AÉRÉ : hauteur min 48 dp (cible a11y + respiration,
+            // l'espace fait le travail des anciens filets) ; titre aligné sur le langage
+            // v7.1.79 (labelLarge SemiBold, comme « Social networks ») au lieu de bodyMedium.
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 48.dp)
                 .clickable { onExpandedChange(!expanded) },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(leadingIcon, contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(8.dp))
-            Text(title, style = MaterialTheme.typography.bodyMedium,
+            Text(title, style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f))
             Icon(
                 if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -565,8 +573,11 @@ private fun JobSection(
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
+            // v7.1.118 — même en-tête aéré qu'[AccordionSection] (48 dp, labelLarge SemiBold) :
+            // cette section garde son Row propre pour ses descriptions a11y dédiées.
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 48.dp)
                 .clickable { expansion.setExpanded(SectionKey.WORK, !expanded) },
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -575,7 +586,8 @@ private fun JobSection(
             Spacer(Modifier.width(8.dp))
             Text(
                 stringResource(R.string.section_work_title),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
             Icon(

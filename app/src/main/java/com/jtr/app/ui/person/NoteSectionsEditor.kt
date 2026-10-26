@@ -78,6 +78,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -534,9 +535,12 @@ private fun NoteSectionCard(
     )
     // Lift tonal sûr clair ET sombre — la carte saisie/active se distingue même si l'ombre est
     // discrète. Maintenu tant que la section est active (footer ouvert), pas seulement en glisser.
+    // v7.1.118 (G3b-2b) — au REPOS la carte devient TRANSPARENTE : son fond `surface` faisait
+    // la « boîte » claire autour du champ de note (le champ rempli suffit, rendu aéré). La Card
+    // reste STRUCTURELLE : cible du drag, échelle/ombre en glisser, lift + liseré en actif.
     val containerColor by animateColorAsState(
         targetValue = if (isDragging || isActive) MaterialTheme.colorScheme.surfaceVariant
-        else MaterialTheme.colorScheme.surface,
+        else Color.Transparent,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "noteSectionContainer"
     )
@@ -615,7 +619,13 @@ private fun SwipeDeleteBackground(direction: SwipeToDismissBoxValue) {
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.errorContainer)
+            // v7.1.118 — teinté SEULEMENT pendant un glissement : la carte au repos étant
+            // devenue transparente (fin de la « boîte »), un fond permanent transparaîtrait
+            // en rose sous chaque note. Au repos (Settled) le fond reste invisible.
+            .background(
+                if (direction != SwipeToDismissBoxValue.Settled)
+                    MaterialTheme.colorScheme.errorContainer else Color.Transparent
+            )
             .padding(horizontal = 24.dp),
         contentAlignment = alignment
     ) {

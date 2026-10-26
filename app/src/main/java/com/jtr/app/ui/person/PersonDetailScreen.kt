@@ -593,9 +593,9 @@ fun PersonDetailScreen(
                 onRemoveClick = { editVm.removeSocialLink(it) }
             )
 
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(12.dp))
+            // v7.1.118 — le filet entre réseaux sociaux et formulaire part (même traitement
+            // que la création) : la respiration seule sépare les blocs.
+            Spacer(Modifier.height(28.dp))
 
             if (isEditing) {
                 ProfileFormFields(

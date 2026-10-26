@@ -265,8 +265,8 @@ fun AddPersonScreen(
                 onPhotoRemoved = { viewModel.onPhotoRemoved() },
                 fallbackInitialFrom = firstName
             )
-
-            HorizontalDivider()
+            // v7.1.118 — plus de filet entre les blocs : l'espacement régulier du Column
+            // (16 dp) fait seul la séparation (« l'espace plutôt que les traits »).
 
             // ── Réseaux sociaux ──────────────────────────────────────────────
             Text(
@@ -329,8 +329,6 @@ fun AddPersonScreen(
                 Text(stringResource(R.string.person_add_social_link),
                     style = MaterialTheme.typography.labelLarge)
             }
-
-            HorizontalDivider()
 
             // ── Notes / Likes prioritaires + section repliable (PARTAGÉ avec l'édition) ──
             ProfileFormFields(
