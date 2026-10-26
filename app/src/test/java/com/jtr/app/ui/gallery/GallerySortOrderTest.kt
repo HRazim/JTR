@@ -127,16 +127,33 @@ class GallerySortOrderTest {
             .containsExactly(10L, 11L).inOrder()
     }
 
+    // ── Tri « Personnalisé » (v7.1.123, R-a) — pass-through de l'ordre DAO ────────
+
+    @Test
+    fun custom_keepsDaoOrder_ignoresDates() {
+        // L'ordre DAO (position) est VOLONTAIREMENT contraire aux dates : CUSTOM doit le
+        // rendre tel quel, sans aucun re-tri.
+        val daoOrder = listOf(
+            img(10, createdAt = 300, position = 0),
+            img(11, createdAt = 100, position = 1, modifiedAt = 900),
+            img(12, createdAt = 200, position = 2)
+        )
+        assertThat(sortGalleryImages(daoOrder, GallerySortOrder.CUSTOM))
+            .containsExactlyElementsIn(daoOrder).inOrder()
+    }
+
     // ── Critères du menu de tri ─────────────────────────────────────────────────
 
     @Test
     fun criteria_modifiedThenCreated_selectionAndTapInvertPerCriterion() {
         var selected: GallerySortOrder? = null
-        // Ordre des critères aligné sur l'Accueil/Catégories : Modification puis Création.
+        // Ordre des critères aligné sur l'Accueil/Catégories : Modification puis Création,
+        // puis « Personnalisé » (v7.1.123) en dernier, comme les catégories.
         val onCreatedAsc = gallerySortCriteria(GallerySortOrder.CREATED_ASC) { selected = it }
-        assertThat(onCreatedAsc).hasSize(2)
+        assertThat(onCreatedAsc).hasSize(3)
         assertThat(onCreatedAsc[0].labelRes).isEqualTo(R.string.sort_criterion_modified)
         assertThat(onCreatedAsc[1].labelRes).isEqualTo(R.string.sort_criterion_created)
+        assertThat(onCreatedAsc[2].labelRes).isEqualTo(R.string.type_custom)
         // Seule « Date de création » est active ; son re-tap inverse le sens.
         assertThat(onCreatedAsc[0].selected).isFalse()
         assertThat(onCreatedAsc[1].selected).isTrue()
@@ -157,6 +174,25 @@ class GallerySortOrderTest {
         assertThat(selected).isEqualTo(GallerySortOrder.MODIFIED_ASC)
         onModifiedDesc[1].onClick()
         assertThat(selected).isEqualTo(GallerySortOrder.CREATED_DESC)
+    }
+
+    @Test
+    fun customCriterion_isMonoDirection_andSelectsCustom() {
+        var selected: GallerySortOrder? = null
+        // Hors CUSTOM : non coché, jamais de sens affiché (mono-sens, v7.1.78/v7.1.123).
+        val onCreatedDesc = gallerySortCriteria(GallerySortOrder.CREATED_DESC) { selected = it }
+        assertThat(onCreatedDesc[2].selected).isFalse()
+        assertThat(onCreatedDesc[2].showDirection).isFalse()
+        onCreatedDesc[2].onClick()
+        assertThat(selected).isEqualTo(GallerySortOrder.CUSTOM)
+        // En CUSTOM : coché, toujours sans sens ; re-tap = reste CUSTOM (pas d'inversion).
+        val onCustom = gallerySortCriteria(GallerySortOrder.CUSTOM) { selected = it }
+        assertThat(onCustom[2].selected).isTrue()
+        assertThat(onCustom[2].showDirection).isFalse()
+        assertThat(onCustom[0].selected).isFalse()
+        assertThat(onCustom[1].selected).isFalse()
+        onCustom[2].onClick()
+        assertThat(selected).isEqualTo(GallerySortOrder.CUSTOM)
     }
 
     // ── ViewModel : pref persistée, fallback, flow trié ─────────────────────────
@@ -221,6 +257,9 @@ class GallerySortOrderTest {
             .isEqualTo(GallerySortOrder.CREATED_DESC)
         assertThat(vm(storedSort = "MODIFIED_DESC").sortOrder.value)
             .isEqualTo(GallerySortOrder.MODIFIED_DESC)
+        // v7.1.123 — « Personnalisé » persiste et se restaure comme les autres.
+        assertThat(vm(storedSort = "CUSTOM").sortOrder.value)
+            .isEqualTo(GallerySortOrder.CUSTOM)
     }
 
     @Test

@@ -12,6 +12,7 @@ import com.jtr.app.data.repository.GalleryRepository
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.GalleryImage
 import com.jtr.app.ui.components.JtrSortCriterion
+import com.jtr.app.ui.components.JtrSortDirection
 import com.jtr.app.ui.components.jtrSortCriterion
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,8 +27,13 @@ import kotlinx.coroutines.launch
  * Sens d'affichage de la galerie (v7.1.101) : `createdAt`, et depuis v7.1.103 la date de
  * MODIFICATION — lue en `COALESCE(modifiedAt, createdAt)`, une image jamais éditée se
  * classant par sa création.
+ *
+ * v7.1.123 (R-a) — [CUSTOM] : l'ordre MANUEL (`position`), même modèle que
+ * [CategorySortOrder.CUSTOM] (v7.1.78). Mono-sens (pas d'inverse utile) et PASS-THROUGH :
+ * le DAO émet déjà `position ASC, createdAt ASC`, ce mode n'applique donc AUCUN re-tri.
+ * Le drag & drop qui écrira ces positions arrive au lot R-b.
  */
-enum class GallerySortOrder { CREATED_ASC, CREATED_DESC, MODIFIED_ASC, MODIFIED_DESC }
+enum class GallerySortOrder { CREATED_ASC, CREATED_DESC, MODIFIED_ASC, MODIFIED_DESC, CUSTOM }
 
 /**
  * Critères de tri de la galerie — le MÊME modèle à deux axes que l'Accueil et les Catégories
@@ -44,6 +50,17 @@ internal fun gallerySortCriteria(
     jtrSortCriterion(R.string.sort_criterion_created, current,
         GallerySortOrder.CREATED_ASC, GallerySortOrder.CREATED_DESC,
         defaultDescending = true, onSelect = onSelect),
+    // v7.1.123 (R-a) — « Personnalisé », calqué sur le critère des catégories (v7.1.78) :
+    // même libellé partagé [R.string.type_custom] (présent dans les 13 locales, 0 chaîne
+    // nouvelle) et MONO-SENS (showDirection = false masque libellé de sens et chevron).
+    JtrSortCriterion(
+        labelRes = R.string.type_custom,
+        selected = current == GallerySortOrder.CUSTOM,
+        // Sans objet pour un critère mono-sens (masqué par showDirection = false).
+        direction = JtrSortDirection.ASC,
+        showDirection = false,
+        onClick = { onSelect(GallerySortOrder.CUSTOM) }
+    ),
 )
 
 /**
@@ -64,6 +81,9 @@ internal fun sortGalleryImages(
     GallerySortOrder.CREATED_DESC -> list.sortedByDescending { it.createdAt }
     GallerySortOrder.MODIFIED_ASC -> list.sortedBy { it.modifiedSortKey() }
     GallerySortOrder.MODIFIED_DESC -> list.sortedByDescending { it.modifiedSortKey() }
+    // v7.1.123 (R-a) — PASS-THROUGH : la liste arrive du DAO déjà en `position ASC,
+    // createdAt ASC` ; re-trier ici serait au mieux redondant, au pire divergent.
+    GallerySortOrder.CUSTOM -> list
 }
 
 /**
