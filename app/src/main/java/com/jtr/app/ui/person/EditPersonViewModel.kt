@@ -459,33 +459,6 @@ class EditPersonViewModel(
         savedStateHandle.remove<Uri>("pending_photo_uri")
     }
 
-    /**
-     * Sauvegarde et navigue — ancien chemin de l'édition plein écran, sans appelant depuis la
-     * purge de l'écran mort (v7.1.120). Conservé tel quel : garde-fou G3c, ce ViewModel est
-     * partagé avec le mode édition vivant de la fiche.
-     */
-    fun updatePerson(onSuccess: () -> Unit) {
-        val p = _person.value ?: return
-        if (_firstName.value.isBlank()) { _firstNameError.value = true; return }
-        // v7.0.5 — refuse une date importante incomplète/invalide (ex. année à 3 chiffres).
-        val dateSpec = resolveDateFormatSpec(Locale.getDefault())
-        if (_dateLines.value.any { !isDateLineValid(it.value, dateSpec, it.label) }) return
-        viewModelScope.launch {
-            val updated = buildUpdatedPerson(p)
-            if (_city.value.trim() != (p.city ?: "") && _cityLat.value == null) {
-                repository.updateWithGeocoding(updated, p.city)
-            } else {
-                repository.update(updated)
-            }
-            repository.propagateRelationNameChange(updated.id, p.fullName, updated.fullName)
-            repository.syncMirrorRelations(updated, p.relationLines)
-            // Réarme les rappels (délais par date) immédiatement après l'écriture en base :
-            // appel DIRECT (pas via WorkManager) → ni report Doze ni course avec la base. Une
-            // date déjà due aujourd'hui est rattrapée à l'instant par [rescheduleAll].
-            ReminderScheduler.rescheduleAll(getApplication())
-            onSuccess()
-        }
-    }
 
     private fun buildUpdatedPerson(p: Person): Person {
         // v7.1.0 — dates converties en ISO canonique (locale-libre) avant persistance.
