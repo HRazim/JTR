@@ -438,7 +438,7 @@ private fun RecoveryCodeContent(code: String, onDone: () -> Unit) {
         )
         Spacer(Modifier.height(20.dp))
         Surface(
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surfaceVariant
         ) {
             Text(

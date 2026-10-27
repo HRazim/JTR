@@ -386,14 +386,14 @@ fun PersonCard(
             .fillMaxWidth()
             .shadow(
                 elevation = if (isSelected) 8.dp else 3.dp,
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(16.dp),
                 clip = false,
                 ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
                 spotColor  = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
             )
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
                 MaterialTheme.colorScheme.secondaryContainer

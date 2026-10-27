@@ -264,7 +264,7 @@ fun MapScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                         focusedContainerColor = MaterialTheme.colorScheme.surface
@@ -274,7 +274,7 @@ fun MapScreen(
                 if (showResults && results.isNotEmpty()) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp),
+                        shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                     ) {
                         LazyColumn(modifier = Modifier.heightIn(max = 240.dp)) {

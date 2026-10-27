@@ -1206,7 +1206,7 @@ private fun CityDetailRow(city: String, cityLat: Double?, cityLng: Double?) {
     if (hasCoords) {
         AnimatedVisibility(visible = showMap, enter = expandVertically(), exit = shrinkVertically()) {
             Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
                 MapLibreMiniMap(lat = cityLat!!, lng = cityLng!!, cityName = city,
                     modifier = Modifier.fillMaxWidth().height(180.dp))
@@ -1292,7 +1292,7 @@ private fun MapLibreMiniMap(lat: Double, lng: Double, cityName: String, modifier
                 }
             }
         }
-    }, modifier = modifier.clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)))
+    }, modifier = modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)))
 }
 
 /** Libellé d'affichage d'une ligne : type connu localisé, sinon texte personnalisé. */
