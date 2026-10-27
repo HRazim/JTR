@@ -107,19 +107,25 @@ fun BackupDialog(
                     style = MaterialTheme.typography.bodyMedium)
 
                 when (val s = state) {
+                    // v7.1.136 — 24 dp comme [com.jtr.app.ui.components.JtrProgressDialog] :
+                    // deux tailles de cercle pour la même idée, c'est une de trop.
                     is BackupUiState.Working -> Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(10.dp))
                         Text(stringResource(R.string.backup_working),
                             style = MaterialTheme.typography.bodyMedium)
                     }
+                    // v7.1.136 — succès en `onSurfaceVariant` et non `primary` : en Corail,
+                    // `primary` est le rouge brique, et « sauvegarde exportée » s'affichait
+                    // donc en rouge, juste au-dessus du message d'échec. Le rouge reste au
+                    // seul `error` (ci-dessous) — 5e morsure de `primary`, même remède.
                     is BackupUiState.Success -> Text(
                         text = if (s.isExport)
                             pluralStringResource(R.plurals.backup_export_success, s.count, s.count)
                         else pluralStringResource(R.plurals.backup_import_success, s.count, s.count),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     is BackupUiState.Error -> Text(
                         text = stringResource(s.messageRes),

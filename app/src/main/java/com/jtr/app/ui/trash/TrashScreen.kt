@@ -181,6 +181,17 @@ fun TrashScreen(
     }
 }
 
+/**
+ * En-tête de section — v7.1.136 : MÊME langage que l'en-tête du formulaire de contact
+ * ([com.jtr.app.ui.person.ProfileFormFields], v7.1.118) : hauteur min 48 dp, icône
+ * d'accent, titre en `labelLarge` SemiBold, **et c'est tout**.
+ *
+ * Ce qui disparaît : la bande pleine en `surfaceVariant` — un fond continu sur toute la
+ * largeur, au milieu d'une liste de cartes, lisait comme une sixième carte plate ; l'espace
+ * fait désormais le même travail. Et le titre en `primary` — sur une palette chaude
+ * (Corail), ce primaire est un rouge brique : « Contacts (3) » paraissait une alerte. Seule
+ * l'icône garde l'accent, comme dans le formulaire.
+ */
 @Composable
 private fun TrashSectionHeader(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -190,18 +201,17 @@ private fun TrashSectionHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, contentDescription = null,
-            modifier = Modifier.size(16.dp),
             tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(8.dp))
         Text(
             text = "$title ($count)",
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
