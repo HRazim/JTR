@@ -518,7 +518,7 @@ fun ImageCropDialog(
  * rotation manuelle d'après [ExifInterface]. Les très grandes images sont
  * sous-échantillonnées (côté ≤ [MAX_DECODE_DIM]) pour fiabiliser la mémoire.
  */
-private fun decodeOrientedBitmap(context: Context, uri: Uri): Bitmap? = try {
+internal fun decodeOrientedBitmap(context: Context, uri: Uri): Bitmap? = try {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         val source = ImageDecoder.createSource(context.contentResolver, uri)
         ImageDecoder.decodeBitmap(source) { decoder, info, _ ->

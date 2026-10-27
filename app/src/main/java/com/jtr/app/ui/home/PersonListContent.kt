@@ -16,10 +16,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,14 +73,29 @@ fun PersonListContent(
     onLongClick: (Person) -> Unit = {},
     onFavoriteClick: (Person) -> Unit = {},
     /**
+     * États de défilement HOISTÉS (v7.1.72) : permettent à l'écran parent de piloter le FAB
+     * « remonter en haut ». [listState] sert aux modes LIST et DETAIL (tous deux LazyColumn,
+     * un seul rendu à la fois), [gridState] au mode GRID. Par défaut, chaque appelant garde un
+     * état propre (rememberLazy*State) → aucun appelant existant n'est impacté.
+     */
+    listState: LazyListState = rememberLazyListState(),
+    gridState: LazyGridState = rememberLazyGridState(),
+    /**
      * En-tête optionnel (hub des événements à venir…) rendu À L'INTÉRIEUR de la
      * liste/grille : il défile avec le contenu et, en mode Grille, s'étale sur
      * TOUTE la largeur via [GridItemSpan] (harmonie avec les tuiles carrées).
      */
-    header: (@Composable () -> Unit)? = null
+    header: (@Composable () -> Unit)? = null,
+    /**
+     * Pied de liste optionnel (v7.1.73 — sections Catégories/Dossiers de la recherche) rendu
+     * À L'INTÉRIEUR de la liste/grille, APRÈS les contacts : il défile avec le contenu et,
+     * en mode Grille, s'étale sur toute la largeur (même règle que [header]).
+     */
+    footer: (@Composable () -> Unit)? = null
 ) {
     when (viewMode) {
         JtrViewMode.LIST -> LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -91,9 +110,11 @@ fun PersonListContent(
                     onLongClick = { onLongClick(person) }
                 )
             }
+            footer?.let { item(key = "jtr_footer") { it() } }
         }
 
         JtrViewMode.GRID -> LazyVerticalGrid(
+            state = gridState,
             columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
@@ -113,9 +134,13 @@ fun PersonListContent(
                     onLongClick = { onLongClick(person) }
                 )
             }
+            footer?.let {
+                item(key = "jtr_footer", span = { GridItemSpan(maxLineSpan) }) { it() }
+            }
         }
 
         JtrViewMode.DETAIL -> LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -132,6 +157,7 @@ fun PersonListContent(
                     onFavoriteClick = { onFavoriteClick(person) }
                 )
             }
+            footer?.let { item(key = "jtr_footer") { it() } }
         }
     }
 }
@@ -149,9 +175,9 @@ private fun PersonCompactRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer
             else MaterialTheme.colorScheme.surface

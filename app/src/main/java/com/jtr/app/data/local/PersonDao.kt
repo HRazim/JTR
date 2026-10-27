@@ -16,6 +16,16 @@ interface PersonDao {
     @Query("SELECT * FROM persons WHERE deletedAt IS NULL ORDER BY isFavorite DESC, firstName ASC")
     fun getAllActive(): Flow<List<Person>>
 
+    /**
+     * Contacts RÉCEMMENT OUVERTS (v7.1.69) : actifs (même filtre `deletedAt IS NULL` que
+     * [getAllActive]), ayant déjà été ouverts au moins une fois (`lastContactedAt` non nul,
+     * estampillé à chaque ouverture de fiche — cf. Navigation.markAsContacted), les plus
+     * récents d'abord, plafonnés à [limit]. Aucune nouvelle colonne : lecture seule du champ
+     * existant. Alimente la rangée « Récents » en tête d'accueil.
+     */
+    @Query("SELECT * FROM persons WHERE deletedAt IS NULL AND lastContactedAt IS NOT NULL ORDER BY lastContactedAt DESC LIMIT :limit")
+    fun getRecent(limit: Int): Flow<List<Person>>
+
     /** Export intégral (sauvegarde .jtr) : TOUTES les lignes, corbeille incluse. */
     @Query("SELECT * FROM persons")
     suspend fun getAllSync(): List<Person>
@@ -79,6 +89,29 @@ interface PersonDao {
 
     @Query("DELETE FROM persons WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
     suspend fun purgeOldDeleted(cutoff: Long)
+
+    /**
+     * v7.1.105 (lot C1) — photos de profil des contacts en corbeille, lues AVANT le vidage
+     * ou la purge : après le DELETE il n'y a plus rien à lire, et les fichiers resteraient
+     * orphelins (c'était la fuite mesurée par l'audit du lot C).
+     */
+    @Query("SELECT photoUri FROM persons WHERE deletedAt IS NOT NULL AND photoUri IS NOT NULL")
+    suspend fun getDeletedPhotoUris(): List<String>
+
+    /** v7.1.105 — variante de [getDeletedPhotoUris] limitée à la purge 30 jours. */
+    @Query(
+        "SELECT photoUri FROM persons WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff " +
+            "AND photoUri IS NOT NULL"
+    )
+    suspend fun getDeletedPhotoUrisOlderThan(cutoff: Long): List<String>
+
+    /**
+     * v7.1.106 (lot C2) — ensemble de référence du balayage d'orphelins : TOUTES les photos
+     * de profil, CORBEILLE INCLUSE (aucun filtre `deletedAt`). Un contact en corbeille
+     * possède encore sa photo — l'omettre, c'est la supprimer à tort.
+     */
+    @Query("SELECT photoUri FROM persons WHERE photoUri IS NOT NULL")
+    suspend fun getAllPhotoUris(): List<String>
 
     @Query("UPDATE persons SET deletedAt = NULL WHERE id = :id")
     suspend fun restore(id: String)

@@ -31,7 +31,8 @@ class CategoryGroupDetailViewModel(
 ) : AndroidViewModel(application) {
 
     private val repo = CategoryRepository(application.applicationContext)
-    private val groupId: Long = savedStateHandle.get<Long>("groupId") ?: -1L
+    // v7.1.87 — public : l'écran le passe à la recherche scopée (comme CategoryDetailViewModel).
+    val groupId: Long = savedStateHandle.get<Long>("groupId") ?: -1L
     private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
 
     // ── Recherche / tri / affichage (TopAppBar harmonisée) ─────────────────────
@@ -112,6 +113,10 @@ class CategoryGroupDetailViewModel(
         .map { list -> list.filter { it.parentGroupId != groupId } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** v7.1.80 — TOUS les dossiers : hiérarchie du sélecteur moderne de rattachement. */
+    val allGroups: StateFlow<List<CategoryGroup>> = repo.getGroups()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     /** Rattache des catégories existantes à ce groupe. */
     fun addExisting(ids: List<String>) {
         if (ids.isEmpty()) return
@@ -189,10 +194,17 @@ class CategoryGroupDetailViewModel(
     // ── Sous-groupes imbriqués (création par superposition / insertion) ─────────
 
     /** Crée un SOUS-GROUPE dans ce dossier (fusion de 2 sous-catégories au centre). */
-    fun createSubGroup(name: String, ids: List<String>) {
+    fun createSubGroup(
+        name: String, ids: List<String>, imagePath: String? = null,
+        // v7.1.84 — parent choisi dans la feuille ; à défaut, CE dossier (comportement
+        // historique). `null` explicite = le groupe naît à la RACINE.
+        parentGroupId: Long? = groupId
+    ) {
         val trimmed = name.trim()
         if (trimmed.isBlank() || ids.isEmpty()) return
-        viewModelScope.launch { repo.createGroupWith(trimmed, ids, parentGroupId = groupId) }
+        viewModelScope.launch {
+            repo.createGroupWith(trimmed, ids, parentGroupId = parentGroupId, imagePath = imagePath)
+        }
     }
 
     /** Insère une catégorie dans un sous-groupe (drop d'une catégorie sur un dossier). */
@@ -212,6 +224,15 @@ class CategoryGroupDetailViewModel(
 
     fun setGroupImage(g: CategoryGroup, path: String) {
         viewModelScope.launch { repo.updateGroup(g.copy(imagePath = path)) }
+    }
+
+    /** v7.1.127 — nom ET image d'un sous-dossier en UNE écriture (formulaire unifié). */
+    fun updateGroup(g: CategoryGroup, name: String, imagePath: String?) {
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch {
+            repo.updateGroup(g.copy(name = trimmed, imagePath = imagePath))
+        }
     }
 
     /** Favori de masse pour la sélection mixte (catégories + sous-groupes). */

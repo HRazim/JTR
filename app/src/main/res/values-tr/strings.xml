@@ -29,22 +29,23 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Kişiler</string>
+    <string name="recents_title">Son görülenler</string>
+    <!-- v7.1.73 — harmonized search: result section headers -->
+    <string name="search_section_contacts">Kişiler</string>
+    <string name="search_in_category">%1$s içinde ara</string>
+    <string name="search_in_folder">%1$s içinde ara</string>
+    <string name="search_section_categories">Kategoriler</string>
+    <string name="search_section_folders">Klasörler</string>
     <string name="home_fab_add_person">Kişi ekle</string>
     <string name="home_location_warning">Yakınlık hatırlatmaları için konumu aç</string>
     <string name="home_search_placeholder">Kişi ara…</string>
     <string name="home_empty_title">Kişi bulunamadı</string>
     <string name="home_empty_subtitle">Kişi eklemek için + simgesine dokun</string>
-    <string name="home_btn_category">Kategori</string>
     <string name="home_btn_delete">Sil</string>
     <string name="home_favorite_cd">Favori</string>
 
     <!-- ── Category assign dialog ─────────────────────────────────────────── -->
     <string name="dialog_assign_category_title">Kategori ata</string>
-    <string name="dialog_new_category_title">Yeni kategori</string>
-    <string name="dialog_create_category_cd">Kategori oluştur</string>
-    <string name="dialog_create_new_category">Yeni kategori oluştur</string>
-    <string name="dialog_create_and_assign">Oluştur ve ata</string>
-    <string name="dialog_category_name_label">Kategori adı</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">Kategoriler</string>
@@ -64,6 +65,7 @@
     <string name="category_detail_empty_title">Bu kategoride üye yok</string>
     <string name="category_detail_empty_subtitle">Kişi eklemek için + simgesine dokun</string>
     <string name="category_detail_fab_add">Kişi ekle</string>
+    <string name="category_detail_removed_snackbar">%1$s kategorisinden çıkarıldı</string>
     <string name="category_detail_btn_remove">Kaldır</string>
     <string name="category_detail_default_title">Kategori</string>
 
@@ -71,18 +73,12 @@
     <string name="person_add_title">Kişi ekle</string>
     <string name="person_edit_title">Kişiyi düzenle</string>
     <string name="person_photo_cd">Profil fotoğrafı</string>
-    <string name="person_first_name_label">Ad *</string>
-    <string name="person_first_name_error">Ad gerekli</string>
     <string name="person_first_name_required">Gerekli</string>
-    <string name="person_last_name_label">Soyad</string>
     <string name="person_gender_label">Cinsiyet</string>
     <string name="person_gender_male">Erkek</string>
     <string name="person_gender_female">Kadın</string>
     <string name="person_gender_nonbinary">İkili olmayan</string>
     <string name="person_gender_nonbinary_short">İkili dışı</string>
-    <string name="person_birthday_label">Doğum günü</string>
-    <string name="person_birthday_select">Tarih seç</string>
-    <string name="person_birthday_modify">Tarihi değiştir</string>
     <string name="person_birthday_clear">Temizle</string>
     <string name="person_birthday_notify">Doğum gününde bildir</string>
     <string name="person_birthday_invalid">Geçersiz tarih</string>
@@ -98,12 +94,10 @@
     <string name="person_social_links_title">Sosyal ağlar</string>
     <string name="person_add_social_link">Sosyal bağlantı ekle</string>
     <string name="person_social_delete_cd">Sil</string>
-    <string name="person_personal_info_title">Kişisel bilgiler</string>
     <string name="person_origin_label">Köken</string>
     <string name="person_likes_label">Nelerden hoşlanır</string>
     <string name="person_notes_label">Diğer notlar</string>
     <string name="person_save">Kaydet</string>
-    <string name="person_save_changes">Değişiklikleri kaydet</string>
 
     <!-- ── Person detail screen ───────────────────────────────────────────── -->
     <string name="person_not_found">Kişi bulunamadı</string>
@@ -157,7 +151,6 @@
     <string name="trash_group_purge_imminent">yakında silinecek</string>
     <string name="trash_group_purge_1_day">1 gün kaldı</string>
     <string name="trash_group_purge_days">%1$d gün kaldı</string>
-    <string name="trash_group_status">%1$d kişi · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -309,10 +302,9 @@
     <string name="categories_unfavorite">Favorilerden çıkar</string>
     <string name="categories_create_group">Grup oluştur</string>
     <string name="categories_group_name_hint">Grup adı</string>
-    <string name="categories_rename">Yeniden adlandır</string>
     <string name="categories_change_image">Görseli değiştir</string>
     <string name="categories_delete_selected_title">%1$d kategori silinsin mi?</string>
-    <string name="categories_delete_selected_text">Seçilen kategoriler ve kişileri çöp kutusuna taşınacak.</string>
+    <string name="categories_delete_selected_text">Seçilen kategoriler çöp kutusuna taşınacak. Kişileriniz silinmez; yalnızca bu etiketleri kaybeder.</string>
     <string name="categories_drag_handle_cd">Yeniden sıralamak için sürükle</string>
     <string name="categories_group_empty">Bu klasör boş</string>
     <string name="relation_not_found">Profil bulunamadı</string>
@@ -323,27 +315,29 @@
     <string name="sort_direction_descending">Azalan</string>
     <string name="categories_fav_action">Favori</string>
     <string name="categories_group_action">Grupla</string>
-    <string name="categories_move_to">“%1$s” konumuna taşı</string>
+    <string name="categories_move_to_group">Bir gruba taşı…</string>
+    <string name="categories_parent_group">Üst grup</string>
+    <string name="categories_parent_root">Kök</string>
     <string name="categories_add_to_group_title">Gruba ekle</string>
     <string name="categories_add_existing">Mevcut kategorileri ekle</string>
     <string name="categories_create_here">Burada kategori oluştur</string>
     <string name="categories_dissolve_group">Grubu çöz</string>
     <string name="categories_dissolve_confirm_text">Kategoriler yeniden bağımsız olacak.</string>
-    <string name="categories_no_candidates">Uygun kategori yok</string>
     <string name="categories_group_counter">%1$d kategori, %2$d grup</string>
     <string name="categories_folder_counter">%1$d kat. · %2$d kişi</string>
     <string name="categories_move_out">Gruptan çıkar</string>
     <string name="categories_delete_group_title">“%1$s” grubu silinsin mi?</string>
     <string name="categories_delete_group_text">“%1$s” grubunu ve içindeki %2$d kategoriyi silmek istediğine emin misin?</string>
     <string name="select_all">Tümünü seç</string>
-    <string name="categories_selection_none">0 seçildi</string>
-    <string name="select_all_count">Tümünü seç (%1$d)</string>
+    <string name="select_all_short">Tümü</string>
+    <string name="select_none">Tüm seçimi kaldır</string>
     <string name="action_move">Taşı</string>
     <string name="move_pick_target_title">Kategori seç</string>
     <string name="category_detail_add_existing">Mevcut bir kişi ekle</string>
     <string name="category_detail_create_new">Yeni bir kişi oluştur</string>
     <string name="category_detail_no_candidates">Tüm kişiler zaten bu kategoride</string>
     <string name="action_search">Ara</string>
+    <string name="action_scroll_to_top">Yukarı kaydır</string>
     <string name="view_mode_title">Görünüm</string>
     <string name="view_mode_list">Liste</string>
     <string name="view_mode_grid">Izgara</string>
@@ -374,11 +368,10 @@
     <string name="city_map_hint">Tam adresi doğrulamak için harita simgesine dokun.</string>
     <string name="location_denied_settings">Konum izni reddedildi. İzin vermek için telefonunun ayarlarına git.</string>
     <string name="location_off_settings">Bu uyarıyı kullanmak için ayarlardan konumu aç.</string>
-    <string name="favorites_category">Favoriler</string>
     <string name="action_move_to_trash">Çöp kutusuna taşı</string>
     <string name="action_trash_short">Çöp Kutusu</string>
     <string name="category_trash_confirm_title">Bu kategori çöp kutusuna taşınsın mı?</string>
-    <string name="category_trash_confirm_text">Kategori ve kişileri çöp kutusuna taşınacak.</string>
+    <string name="category_trash_confirm_text">Kategori çöp kutusuna taşınacak. Kişileriniz silinmez; yalnızca bu etiketi kaybeder.</string>
     <string name="welcome_title">JTR\'ye hoş geldin</string>
     <string name="welcome_subtitle">JTR bir anı defteridir.</string>
     <string name="welcome_import_button">Telefon kişilerini içe aktar</string>
@@ -390,6 +383,17 @@
     <string name="welcome_select_button">İçe aktarılacak kişileri seç</string>
     <string name="contact_selection_title">Kişileri seç</string>
     <string name="settings_backup_subtitle">Verilerini dışa aktar veya geri yükle (.jtr dosyası)</string>
+    <!-- v7.1.106 — kullanılmayan (sahipsiz) görsel dosyalarının elle temizliği -->
+    <string name="settings_cleanup_title">Yer aç</string>
+    <string name="settings_cleanup_subtitle">Artık kullanılmayan kalıntı görselleri sil</string>
+    <string name="settings_cleanup_scanning">Taranıyor…</string>
+    <plurals name="settings_cleanup_confirm_message">
+        <item quantity="one">Silinen veya değiştirilen fotoğraflardan kalan %1$d dosya (%2$s). Kişileriniz ve fotoğrafları etkilenmez.</item>
+        <item quantity="other">Silinen veya değiştirilen fotoğraflardan kalan %1$d dosya (%2$s). Kişileriniz ve fotoğrafları etkilenmez.</item>
+    </plurals>
+    <string name="settings_cleanup_none">Kalan dosya yok</string>
+    <string name="settings_cleanup_confirm_button">%1$s yer aç</string>
+    <string name="settings_cleanup_done">%1$s geri kazanıldı</string>
     <string name="share_preview_loading">Görseller yükleniyor…</string>
     <string name="settings_notif_rationale_title">Bildirimlere izin verilsin mi?</string>
     <string name="settings_notif_rationale_message">JTR, doğum günleri ve önemli tarihler için nazik hatırlatmaları doğrudan telefonuna gönderir.</string>
@@ -451,7 +455,6 @@
     <string name="note_section_add">Bölüm ekle</string>
     <string name="note_section_default_notes">Notlar</string>
     <string name="note_section_address">Adres</string>
-    <string name="note_section_title_hint">Bölüm başlığı</string>
     <string name="note_section_content_hint">Bir şeyler yaz…</string>    <string name="note_section_delete_confirm_title">Bu bölüm silinsin mi?</string>
     <string name="note_section_delete_confirm_text">İçeriği kalıcı olarak silinecek.</string>
     <string name="note_section_icon_picker_title">Bir simge seç</string>
@@ -463,7 +466,7 @@
     <string name="person_category_new">Yeni kategori</string>
     <string name="person_categories_empty">Henüz kategori yok. Başlamak için bir tane oluşturun.</string>
     <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
-    <string name="person_categories_search_placeholder">Kategori ara…</string>
+    <string name="category_search_placeholder">Kategori ara…</string>
     <string name="person_categories_no_results">Aramanızla eşleşen kategori yok</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">Doğrulanmalı</string>
@@ -534,4 +537,34 @@
     <string name="import_contacts_done_message_updated">%1$d içe aktarıldı · %2$d güncellendi · %3$d atlandı</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">Doğum tarihi gelecekte olamaz</string>
+    <!-- v7.1.89 - galerie d'images par contact -->
+    <string name="gallery_title">Galeri</string>
+    <string name="gallery_add">Fotoğraf ekle</string>
+    <string name="gallery_empty_title">Henüz anı yok</string>
+    <string name="gallery_empty_subtitle">Bu kişi için ilk anınızı ekleyin.</string>
+    <string name="gallery_delete_confirm">Sil</string>
+    <string name="gallery_image_cd">Galeri fotoğrafı</string>
+    <string name="gallery_details_open">Ayrıntılar</string>
+    <string name="gallery_details_title">Fotoğraf ayrıntıları</string>
+    <string name="gallery_details_description">Açıklama</string>
+    <string name="gallery_details_description_hint">Açıklama ekle</string>
+    <string name="gallery_details_date">Tarih</string>
+    <string name="gallery_details_time">Saat</string>
+    <string name="gallery_details_month">Ay</string>
+    <string name="gallery_details_day">Gün</string>
+    <string name="gallery_details_year">Yıl</string>
+    <string name="gallery_details_hour">Saat</string>
+    <string name="gallery_details_minute">Dakika</string>
+    <string name="gallery_details_location">Konum</string>
+    <string name="gallery_details_location_add">Konum ekle</string>
+    <string name="gallery_details_location_remove">Konumu kaldır</string>
+    <plurals name="gallery_square_cd">
+        <item quantity="one">%1$s galerisi, 1 fotoğraf</item>
+        <item quantity="other">%1$s galerisi, %2$d fotoğraf</item>
+    </plurals>
+    <plurals name="gallery_delete_n_title">
+        <item quantity="one">%1$d fotoğraf silinsin mi?</item>
+        <item quantity="other">%1$d fotoğraf silinsin mi?</item>
+    </plurals>
+    <string name="gallery_delete_warning">Bu galeriden kaldırılacak ve cihazdan silinecek. Bu işlem geri alınamaz.</string>
 </resources>

@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.location.LocationManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jtr.app.data.repository.CategoryRepository
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
@@ -45,6 +46,7 @@ data class UpcomingEvent(
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = PersonRepository(application.applicationContext)
+    private val categoryRepository = CategoryRepository(application.applicationContext)
     private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
 
     private val _searchQuery = MutableStateFlow("")
@@ -63,9 +65,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedIds: StateFlow<Set<String>> = _selectedIds.asStateFlow()
 
-    val isSelectionMode: StateFlow<Boolean> = _selectedIds
-        .map { it.isNotEmpty() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    /**
+     * v7.1.98 — mode sélection EXPLICITE. Il était auparavant *dérivé* de « la sélection
+     * n'est pas vide », ce qui rendait impossible de tout décocher sans quitter le mode :
+     * la dernière case décochée refermait la barre. On entre par [startSelection] et on
+     * ne sort que par [exitSelection] (Annuler, Retour, ou fin d'une action groupée).
+     */
+    private val _isSelectionMode = MutableStateFlow(false)
+    val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
 
     val isLocationEnabled: StateFlow<Boolean> = locationEnabledFlow(getApplication())
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -187,6 +194,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.migrateFromJson()
             repository.purgeOldDeleted()
+            // v7.1.70 — auto-purge de la corbeille des CATÉGORIES (> 30 j). Les contacts ne sont
+            // jamais supprimés ici ; ceux mis en corbeille avec la catégorie le sont par le purge
+            // des contacts ci-dessus (même seuil).
+            categoryRepository.purgeOldDeletedCategories()
         }
     }
 
@@ -203,6 +214,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { repository.toggleFavorite(person) }
     }
 
+    /** Appui long : ouvre le mode sélection sur ce profil. */
+    fun startSelection(id: String) {
+        _isSelectionMode.value = true
+        _selectedIds.update { it + id }
+    }
+
     fun toggleSelection(id: String) {
         _selectedIds.update { if (id in it) it - id else it + id }
     }
@@ -215,14 +232,33 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _selectedIds.update { current -> current + persons.value.map { it.id } }
     }
 
+    /**
+     * Décoche les profils AFFICHÉS, et eux seuls : le pendant exact de [selectAll], qui
+     * n'ajoute que le visible. Sans cette symétrie, « tout décocher » sous une recherche
+     * emportait aussi les coches faites sous une autre requête (v7.1.98).
+     */
+    fun deselectVisible() {
+        val visible = persons.value.mapTo(HashSet()) { it.id }
+        _selectedIds.update { it - visible }
+    }
+
+    /** Vide la sélection SANS quitter le mode (barre conservée, compteur à zéro). */
     fun clearSelection() { _selectedIds.value = emptySet() }
+
+    /** Quitte le mode sélection : la seule sortie (Annuler, Retour, fin d'action groupée). */
+    fun exitSelection() {
+        _selectedIds.value = emptySet()
+        _isSelectionMode.value = false
+    }
 
     fun deleteSelected() {
         val ids = _selectedIds.value.toList()
         if (ids.isEmpty()) return
         viewModelScope.launch {
             repository.softDeleteMultiple(ids)
-            _selectedIds.value = emptySet()
+            // Fin d'action groupée : on referme explicitement. Le mode n'étant plus
+            // déduit de la sélection, vider les ids ne suffirait plus à sortir.
+            exitSelection()
         }
     }
 

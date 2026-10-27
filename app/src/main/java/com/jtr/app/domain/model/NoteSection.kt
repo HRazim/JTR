@@ -61,3 +61,42 @@ fun deriveNoteSections(
 fun Person.effectiveNoteSections(notesTitle: String, likesTitle: String): List<NoteSection> =
     noteSections.takeIf { it.isNotEmpty() }
         ?: deriveNoteSections(notes, likes, notesTitle, likesTitle)
+
+// ── v7.1.75 — notes simplifiées : UN champ par section, la 1re ligne = le titre ────────
+
+/**
+ * Texte UNIQUE d'une section (v7.1.75) : titre et contenu recombinés pour le champ
+ * d'édition unique (« 1re ligne = titre »). Concaténation PURE — aucun trim, aucune
+ * normalisation. Invariant avec [splitCombinedText] : `combined(split(x)) == x` pour
+ * tout x → le texte visible ne change jamais ; seule la répartition title/content peut
+ * être redistribuée, et elle est un point fixe dès la première passe (aucune dérive
+ * aux cycles d'édition suivants).
+ */
+fun NoteSection.combinedText(): String = when {
+    title.isEmpty() -> content
+    content.isEmpty() -> title
+    else -> title + "\n" + content
+}
+
+/**
+ * Découpe du champ unique (v7.1.75) : 1re ligne → titre, reste → contenu.
+ *  - pas de retour à la ligne → tout en titre ;
+ *  - 1re ligne BLANCHE → rien n'est promu, TOUT reste en contenu (règle ANTI-PERTE :
+ *    sans elle, une ligne vide de tête serait perdue au round-trip) ;
+ *  - découpe sur le PREMIER '\n' uniquement (indexOf/substring) : aucun trim — lignes
+ *    vides internes, CRLF importés, RTL, emojis (surrogate pairs) et espaces de
+ *    tête/queue sont préservés octet pour octet.
+ */
+fun splitCombinedText(text: String): Pair<String, String> {
+    val idx = text.indexOf('\n')
+    if (idx < 0) return text to ""
+    val first = text.substring(0, idx)
+    if (first.isBlank()) return "" to text
+    return first to text.substring(idx + 1)
+}
+
+/** Section mise à jour depuis le champ unique : title/content redistribués, reste intact. */
+fun NoteSection.withCombinedText(text: String): NoteSection {
+    val (t, c) = splitCombinedText(text)
+    return copy(title = t, content = c)
+}

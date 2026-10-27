@@ -47,22 +47,23 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">Kontak JTR</string>
+    <string name="recents_title">Terbaru</string>
+    <!-- v7.1.73 — harmonized search: result section headers -->
+    <string name="search_section_contacts">Kontak</string>
+    <string name="search_in_category">Cari di %1$s</string>
+    <string name="search_in_folder">Cari di %1$s</string>
+    <string name="search_section_categories">Kategori</string>
+    <string name="search_section_folders">Folder</string>
     <string name="home_fab_add_person">Tambah orang</string>
     <string name="home_location_warning">Aktifkan lokasi untuk pengingat kedekatan</string>
     <string name="home_search_placeholder">Cari kontak…</string>
     <string name="home_empty_title">Tidak ada kontak</string>
     <string name="home_empty_subtitle">Ketuk + untuk menambah orang</string>
-    <string name="home_btn_category">Kategori</string>
     <string name="home_btn_delete">Hapus</string>
     <string name="home_favorite_cd">Favorit</string>
 
     <!-- ── Category assign dialog ─────────────────────────────────────────── -->
     <string name="dialog_assign_category_title">Tetapkan kategori</string>
-    <string name="dialog_new_category_title">Kategori baru</string>
-    <string name="dialog_create_category_cd">Buat kategori</string>
-    <string name="dialog_create_new_category">Buat kategori baru</string>
-    <string name="dialog_create_and_assign">Buat dan tetapkan</string>
-    <string name="dialog_category_name_label">Nama kategori</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">Kategori</string>
@@ -82,6 +83,7 @@
     <string name="category_detail_empty_title">Tidak ada anggota di kategori ini</string>
     <string name="category_detail_empty_subtitle">Ketuk + untuk menambah kontak</string>
     <string name="category_detail_fab_add">Tambah kontak</string>
+    <string name="category_detail_removed_snackbar">Dikeluarkan dari %1$s</string>
     <string name="category_detail_btn_remove">Keluarkan</string>
     <string name="category_detail_default_title">Kategori</string>
 
@@ -89,18 +91,12 @@
     <string name="person_add_title">Tambah orang</string>
     <string name="person_edit_title">Edit kontak</string>
     <string name="person_photo_cd">Foto profil</string>
-    <string name="person_first_name_label">Nama depan *</string>
-    <string name="person_first_name_error">Nama depan wajib diisi</string>
     <string name="person_first_name_required">Wajib</string>
-    <string name="person_last_name_label">Nama belakang</string>
     <string name="person_gender_label">Jenis kelamin</string>
     <string name="person_gender_male">Laki-laki</string>
     <string name="person_gender_female">Perempuan</string>
     <string name="person_gender_nonbinary">Nonbiner</string>
     <string name="person_gender_nonbinary_short">NB</string>
-    <string name="person_birthday_label">Ulang tahun</string>
-    <string name="person_birthday_select">Pilih tanggal</string>
-    <string name="person_birthday_modify">Ubah tanggal</string>
     <string name="person_birthday_clear">Bersihkan</string>
     <string name="person_birthday_notify">Beri tahu saat ulang tahun</string>
     <string name="person_birthday_invalid">Tanggal tidak valid</string>
@@ -116,12 +112,10 @@
     <string name="person_social_links_title">Media sosial</string>
     <string name="person_add_social_link">Tambah tautan sosial</string>
     <string name="person_social_delete_cd">Hapus</string>
-    <string name="person_personal_info_title">Informasi pribadi</string>
     <string name="person_origin_label">Asal</string>
     <string name="person_likes_label">Yang disukai</string>
     <string name="person_notes_label">Catatan lain</string>
     <string name="person_save">Simpan</string>
-    <string name="person_save_changes">Simpan perubahan</string>
 
     <!-- ── Person detail screen ───────────────────────────────────────────── -->
     <string name="person_not_found">Orang tidak ditemukan</string>
@@ -175,7 +169,6 @@
     <string name="trash_group_purge_imminent">segera dihapus</string>
     <string name="trash_group_purge_1_day">sisa 1 hari</string>
     <string name="trash_group_purge_days">sisa %1$d hari</string>
-    <string name="trash_group_status">%1$d kontak · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -327,10 +320,9 @@
     <string name="categories_unfavorite">Hapus dari favorit</string>
     <string name="categories_create_group">Buat grup</string>
     <string name="categories_group_name_hint">Nama grup</string>
-    <string name="categories_rename">Ganti nama</string>
     <string name="categories_change_image">Ganti gambar</string>
     <string name="categories_delete_selected_title">Hapus %1$d kategori?</string>
-    <string name="categories_delete_selected_text">Kategori yang dipilih beserta kontaknya akan dipindahkan ke sampah.</string>
+    <string name="categories_delete_selected_text">Kategori yang dipilih akan dipindahkan ke sampah. Kontak Anda tidak dihapus; hanya kehilangan label ini.</string>
     <string name="categories_drag_handle_cd">Seret untuk mengurutkan ulang</string>
     <string name="categories_group_empty">Folder ini kosong</string>
     <string name="relation_not_found">Profil tidak ditemukan</string>
@@ -341,27 +333,29 @@
     <string name="sort_direction_descending">Menurun</string>
     <string name="categories_fav_action">Favorit</string>
     <string name="categories_group_action">Kelompokkan</string>
-    <string name="categories_move_to">Pindahkan ke “%1$s”</string>
+    <string name="categories_move_to_group">Pindahkan ke grup…</string>
+    <string name="categories_parent_group">Grup induk</string>
+    <string name="categories_parent_root">Akar</string>
     <string name="categories_add_to_group_title">Tambah ke grup</string>
     <string name="categories_add_existing">Tambah kategori yang ada</string>
     <string name="categories_create_here">Buat kategori di sini</string>
     <string name="categories_dissolve_group">Bubarkan grup</string>
     <string name="categories_dissolve_confirm_text">Kategori akan kembali berdiri sendiri.</string>
-    <string name="categories_no_candidates">Tidak ada kategori tersedia</string>
     <string name="categories_group_counter">%1$d kategori, %2$d grup</string>
     <string name="categories_folder_counter">%1$d kat. · %2$d kontak</string>
     <string name="categories_move_out">Keluarkan dari grup</string>
     <string name="categories_delete_group_title">Hapus grup “%1$s”?</string>
     <string name="categories_delete_group_text">Yakin ingin menghapus grup “%1$s” dan %2$d kategori di dalamnya?</string>
     <string name="select_all">Pilih semua</string>
-    <string name="categories_selection_none">0 dipilih</string>
-    <string name="select_all_count">Pilih semua (%1$d)</string>
+    <string name="select_all_short">Semua</string>
+    <string name="select_none">Batalkan semua pilihan</string>
     <string name="action_move">Pindahkan</string>
     <string name="move_pick_target_title">Pilih kategori</string>
     <string name="category_detail_add_existing">Tambah kontak yang ada</string>
     <string name="category_detail_create_new">Buat kontak baru</string>
     <string name="category_detail_no_candidates">Semua kontak sudah ada di kategori ini</string>
     <string name="action_search">Cari</string>
+    <string name="action_scroll_to_top">Gulir ke atas</string>
     <string name="view_mode_title">Tampilan</string>
     <string name="view_mode_list">Daftar</string>
     <string name="view_mode_grid">Kisi</string>
@@ -392,11 +386,10 @@
     <string name="city_map_hint">Ketuk ikon peta untuk memvalidasi alamat yang tepat.</string>
     <string name="location_denied_settings">Izin lokasi ditolak. Buka pengaturan ponsel untuk mengizinkannya.</string>
     <string name="location_off_settings">Aktifkan lokasi di pengaturan untuk memakai peringatan ini.</string>
-    <string name="favorites_category">Favorit</string>
     <string name="action_move_to_trash">Pindahkan ke sampah</string>
     <string name="action_trash_short">Sampah</string>
     <string name="category_trash_confirm_title">Pindahkan kategori ini ke sampah?</string>
-    <string name="category_trash_confirm_text">Kategori dan kontaknya akan dipindahkan ke sampah.</string>
+    <string name="category_trash_confirm_text">Kategori akan dipindahkan ke sampah. Kontak Anda tidak dihapus; hanya kehilangan label ini.</string>
     <string name="welcome_title">Selamat datang di JTR</string>
     <string name="welcome_subtitle">JTR adalah buku catatan kenangan.</string>
     <string name="welcome_import_button">Impor kontak ponsel</string>
@@ -408,6 +401,16 @@
     <string name="welcome_select_button">Pilih kontak untuk diimpor</string>
     <string name="contact_selection_title">Pilih kontak</string>
     <string name="settings_backup_subtitle">Ekspor atau pulihkan datamu (file .jtr)</string>
+    <!-- v7.1.106 — pembersihan manual file gambar yatim -->
+    <string name="settings_cleanup_title">Kosongkan ruang</string>
+    <string name="settings_cleanup_subtitle">Hapus gambar sisa yang tidak digunakan lagi</string>
+    <string name="settings_cleanup_scanning">Memindai…</string>
+    <plurals name="settings_cleanup_confirm_message">
+        <item quantity="other">%1$d file sisa (%2$s) dari foto yang dihapus atau diganti. Kontak dan fotonya tidak terpengaruh.</item>
+    </plurals>
+    <string name="settings_cleanup_none">Tidak ada file sisa</string>
+    <string name="settings_cleanup_confirm_button">Kosongkan %1$s</string>
+    <string name="settings_cleanup_done">%1$s dibebaskan</string>
     <string name="share_preview_loading">Memuat gambar…</string>
     <string name="settings_notif_rationale_title">Izinkan notifikasi?</string>
     <string name="settings_notif_rationale_message">JTR mengirimkan pengingat lembut untuk ulang tahun dan tanggal penting — langsung ke ponselmu.</string>
@@ -469,7 +472,6 @@
     <string name="note_section_add">Tambah bagian</string>
     <string name="note_section_default_notes">Catatan</string>
     <string name="note_section_address">Alamat</string>
-    <string name="note_section_title_hint">Judul bagian</string>
     <string name="note_section_content_hint">Tulis sesuatu…</string>    <string name="note_section_delete_confirm_title">Hapus bagian ini?</string>
     <string name="note_section_delete_confirm_text">Isinya akan dihapus permanen.</string>
     <string name="note_section_icon_picker_title">Pilih ikon</string>
@@ -481,7 +483,7 @@
     <string name="person_category_new">Kategori baru</string>
     <string name="person_categories_empty">Belum ada kategori. Buat satu untuk memulai.</string>
     <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
-    <string name="person_categories_search_placeholder">Cari kategori…</string>
+    <string name="category_search_placeholder">Cari kategori…</string>
     <string name="person_categories_no_results">Tidak ada kategori yang cocok</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">Perlu diperiksa</string>
@@ -542,4 +544,32 @@
     <string name="import_contacts_done_message_updated">%1$d diimpor · %2$d diperbarui · %3$d dilewati</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">Tanggal lahir tidak boleh di masa depan</string>
+    <!-- v7.1.89 - galerie d'images par contact -->
+    <string name="gallery_title">Galeri</string>
+    <string name="gallery_add">Tambah foto</string>
+    <string name="gallery_empty_title">Belum ada kenangan</string>
+    <string name="gallery_empty_subtitle">Tambahkan kenangan pertama untuk kontak ini.</string>
+    <string name="gallery_delete_confirm">Hapus</string>
+    <string name="gallery_image_cd">Foto galeri</string>
+    <string name="gallery_details_open">Detail</string>
+    <string name="gallery_details_title">Detail foto</string>
+    <string name="gallery_details_description">Deskripsi</string>
+    <string name="gallery_details_description_hint">Tambahkan deskripsi</string>
+    <string name="gallery_details_date">Tanggal</string>
+    <string name="gallery_details_time">Waktu</string>
+    <string name="gallery_details_month">Bulan</string>
+    <string name="gallery_details_day">Tanggal</string>
+    <string name="gallery_details_year">Tahun</string>
+    <string name="gallery_details_hour">Jam</string>
+    <string name="gallery_details_minute">Menit</string>
+    <string name="gallery_details_location">Lokasi</string>
+    <string name="gallery_details_location_add">Tambahkan lokasi</string>
+    <string name="gallery_details_location_remove">Hapus lokasi</string>
+    <plurals name="gallery_square_cd">
+        <item quantity="other">Galeri %1$s, %2$d foto</item>
+    </plurals>
+    <plurals name="gallery_delete_n_title">
+        <item quantity="other">Hapus %1$d foto?</item>
+    </plurals>
+    <string name="gallery_delete_warning">Dihapus dari galeri ini dan dari perangkat. Tindakan ini tidak dapat dibatalkan.</string>
 </resources>

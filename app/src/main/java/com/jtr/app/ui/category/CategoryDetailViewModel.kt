@@ -79,14 +79,6 @@ class CategoryDetailViewModel(
     private val prefs = application.getSharedPreferences("jtr_prefs", Context.MODE_PRIVATE)
     private val sortPrefKey = "cat_sort_$categoryId"
 
-    /**
-     * Catégorie VIRTUELLE « Favoris » : générée dynamiquement (≥ 2 favoris) en
-     * tête de l'écran Catégories — aucune ligne Room, donc ni édition, ni
-     * corbeille, ni retrait/ajout de membres : seuls la consultation, le tri et
-     * la recherche s'appliquent.
-     */
-    val isVirtualFavorites: Boolean = categoryId == FAVORITES_CATEGORY_ID
-
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -122,17 +114,24 @@ class CategoryDetailViewModel(
     private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedIds: StateFlow<Set<String>> = _selectedIds.asStateFlow()
 
-    val isSelectionMode: StateFlow<Boolean> = _selectedIds
-        .map { it.isNotEmpty() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    /**
+     * v7.1.98 — mode sélection EXPLICITE (même refonte que [com.jtr.app.ui.home.HomeViewModel]) :
+     * dérivé de « la sélection n'est pas vide », il se refermait dès la dernière case décochée.
+     * On entre par [startSelection], on ne sort que par [exitSelection].
+     */
+    private val _isSelectionMode = MutableStateFlow(false)
+    val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
 
     val categories: StateFlow<List<Category>> = categoryDao.getAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** Catégorie observée en direct (null pour la virtuelle « Favoris »). */
+    // v7.1.80 — dossiers pour le sélecteur de cible du « Move » (hiérarchie moderne).
+    val groups: StateFlow<List<com.jtr.app.domain.model.CategoryGroup>> = categoryRepo.getGroups()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Catégorie observée en direct. */
     val category: StateFlow<Category?> =
-        if (isVirtualFavorites) MutableStateFlow(null)
-        else categoryDao.observeById(categoryId)
+        categoryDao.observeById(categoryId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     /**
@@ -146,29 +145,21 @@ class CategoryDetailViewModel(
      * identique) ; `null` si même `createdAt` vaut 0 → la ligne est MASQUÉE côté écran.
      */
     val lastModified: StateFlow<Long?> =
-        if (isVirtualFavorites) MutableStateFlow(null)
-        else combine(category, categoryRepo.getCategoryLastActivity()) { cat, activity ->
+        combine(category, categoryRepo.getCategoryLastActivity()) { cat, activity ->
             cat?.let { categoryLastModified(it, activity[categoryId]).takeIf { v -> v > 0L } }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val categoryName: StateFlow<String> =
-        if (isVirtualFavorites) {
-            MutableStateFlow(application.getString(R.string.favorites_category))
-        } else {
-            category.map { it?.name ?: "" }
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-        }
+        category.map { it?.name ?: "" }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     // Libellés localisés des types de relation (moteur multi-critères partagé).
     private val relationTypeLabels: Map<String, String> =
         FieldTypes.RELATION.filter { it.key != FieldTypes.CUSTOM }
             .associate { it.key to application.getString(it.labelRes).normalizeForSearch() }
 
-    // Source : membres de la catégorie, OU tous les favoris pour la virtuelle.
-    private val personsSource =
-        if (isVirtualFavorites) repository.getAllActive()
-            .map { list -> list.filter { it.isFavorite } }
-        else repository.getByCategory(categoryId)
+    // Source : membres de la catégorie.
+    private val personsSource = repository.getByCategory(categoryId)
 
     // Filtrage multi-critères + tri sur Dispatchers.Default (UI 120 Hz préservée).
     val persons: StateFlow<List<Person>> = combine(
@@ -187,14 +178,12 @@ class CategoryDetailViewModel(
 
     /** Met à jour nom / couleur / image de la catégorie (menu « Modifier »). */
     fun updateCategory(updated: Category) {
-        if (isVirtualFavorites) return
         viewModelScope.launch { categoryRepo.update(updated) }
     }
 
     /** Met la catégorie À LA CORBEILLE (cascade : ses contacts aussi). */
     fun deleteCategoryToTrash() {
-        if (isVirtualFavorites) return
-        viewModelScope.launch { categoryRepo.softDeleteWithCascade(categoryId) }
+        viewModelScope.launch { categoryRepo.softDeleteCategory(categoryId) }
     }
 
     fun onSearchQueryChanged(query: String) { _searchQuery.value = query }
@@ -206,11 +195,35 @@ class CategoryDetailViewModel(
         viewModelScope.launch { repository.toggleFavorite(person) }
     }
 
+    /** Appui long : ouvre le mode sélection sur ce contact. */
+    fun startSelection(id: String) {
+        _isSelectionMode.value = true
+        _selectedIds.update { it + id }
+    }
+
     fun toggleSelection(id: String) {
         _selectedIds.update { if (id in it) it - id else it + id }
     }
 
+    /** Coche les contacts AFFICHÉS (recherche comprise) — additif, comme l'Accueil. */
+    fun selectAll() {
+        _selectedIds.update { current -> current + persons.value.map { it.id } }
+    }
+
+    /** Décoche les contacts AFFICHÉS, et eux seuls — pendant exact de [selectAll]. */
+    fun deselectVisible() {
+        val visible = persons.value.mapTo(HashSet()) { it.id }
+        _selectedIds.update { it - visible }
+    }
+
+    /** Vide la sélection SANS quitter le mode. */
     fun clearSelection() { _selectedIds.value = emptySet() }
+
+    /** Quitte le mode sélection : la seule sortie (Annuler, Retour, fin d'action groupée). */
+    fun exitSelection() {
+        _selectedIds.value = emptySet()
+        _isSelectionMode.value = false
+    }
 
     /**
      * Retire les contacts sélectionnés de CETTE catégorie uniquement.
@@ -221,8 +234,17 @@ class CategoryDetailViewModel(
         if (ids.isEmpty()) return
         viewModelScope.launch {
             repository.removeFromCategory(ids, categoryId)
-            _selectedIds.value = emptySet()
+            exitSelection()
         }
+    }
+
+    /**
+     * Annule un retrait en lot (v7.1.70) : ré-ajoute [ids] à CETTE catégorie. Les contacts
+     * n'ayant jamais quitté la base, c'est une simple ré-association du lien de jointure.
+     */
+    fun undoRemoveFromCategory(ids: List<String>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch { repository.assignCategory(ids, categoryId) }
     }
 
     /** Supprime définitivement (soft-delete) les contacts sélectionnés. */
@@ -231,7 +253,7 @@ class CategoryDetailViewModel(
         if (ids.isEmpty()) return
         viewModelScope.launch {
             repository.softDeleteMultiple(ids)
-            _selectedIds.value = emptySet()
+            exitSelection()
         }
     }
 
@@ -242,7 +264,7 @@ class CategoryDetailViewModel(
             val category = Category(name = name, color = color)
             categoryRepo.add(category)
             repository.assignCategory(ids, category.id)
-            _selectedIds.value = emptySet()
+            exitSelection()
         }
     }
 
@@ -251,7 +273,39 @@ class CategoryDetailViewModel(
         if (ids.isEmpty()) return
         viewModelScope.launch {
             repository.assignCategory(ids, newCategoryId)
-            _selectedIds.value = emptySet()
+            exitSelection()
+        }
+    }
+
+    /**
+     * VRAI DÉPLACEMENT (v7.1.70) : retire les contacts sélectionnés de CETTE catégorie (source)
+     * et les ajoute à [targetId], de façon atomique ([PersonRepository.moveToCategory]). `source ==
+     * cible` ⇒ no-op. Les autres appartenances des contacts ne sont pas touchées. Pour la catégorie
+     * virtuelle « Favoris » (aucune ligne Room), le retrait de la source est sans effet → se
+     * comporte comme un ajout.
+     */
+    fun moveSelectedToCategory(targetId: String) {
+        val ids = _selectedIds.value.toList()
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            repository.moveToCategory(ids, categoryId, targetId)
+            exitSelection()
+        }
+    }
+
+    /**
+     * Crée une catégorie puis Y DÉPLACE les contacts sélectionnés (retrait de la source
+     * inclus). v7.1.80 — [imagePath] : la création passe par la feuille unifiée
+     * (AddCategoryDialog), image de couverture comprise — dernier doublon supprimé.
+     */
+    fun createCategoryAndMoveToSelected(name: String, color: String, imagePath: String? = null) {
+        val ids = _selectedIds.value.toList()
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            val category = Category(name = name, color = color, imagePath = imagePath)
+            categoryRepo.add(category)
+            repository.moveToCategory(ids, categoryId, category.id)
+            exitSelection()
         }
     }
 
@@ -260,8 +314,5 @@ class CategoryDetailViewModel(
 
         /** Délai d'inactivité avant de relancer le filtre de recherche (ms). */
         private const val SEARCH_DEBOUNCE_MS = 250L
-
-        /** Id sentinelle de la catégorie virtuelle « Favoris » (aucune ligne Room). */
-        const val FAVORITES_CATEGORY_ID = "jtr_favorites"
     }
 }

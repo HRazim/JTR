@@ -8,6 +8,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,8 +29,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
-import androidx.core.graphics.toColorInt
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
@@ -41,6 +43,7 @@ import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.ui.components.SelectAllToggle
 import com.jtr.app.ui.person.FieldTypes
 import com.jtr.app.ui.person.formatStoredDateLong
 import com.jtr.app.utils.DateCanonical
@@ -50,7 +53,11 @@ import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
+import com.jtr.app.ui.components.JtrViewMode
+import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
+import com.jtr.app.ui.components.ScrollToTopFab
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
+import kotlinx.coroutines.launch
 import com.jtr.app.ui.share.PersonsSharePreview
 import com.jtr.app.ui.share.ShareFormatSheet
 import com.jtr.app.ui.share.ShareUtils
@@ -65,6 +72,8 @@ fun HomeScreen(
     onNavigateToPersonDetail: (String) -> Unit,
     onSelectionModeChange: (Boolean) -> Unit = {},
     onMoveSelectionToCategory: (List<String>) -> Unit = {},
+    /** v7.1.69 — la loupe ouvre l'écran de recherche dédié (plus de recherche inline ici). */
+    onNavigateToSearch: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     val persons by viewModel.persons.collectAsStateWithLifecycle()
@@ -85,10 +94,34 @@ fun HomeScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    // Bouton Retour en mode sélection : annule la sélection (événement remonté au
-    // ViewModel) au lieu de quitter l'écran. Inactif si rien n'est sélectionné →
-    // la navigation standard reprend normalement.
-    BackHandler(enabled = isSelectionMode) { viewModel.clearSelection() }
+    // FAB « remonter en haut » (v7.1.72) : états de défilement hoistés ici pour piloter le FAB.
+    // LIST/DETAIL partagent [listState] (LazyColumn, un seul rendu à la fois) ; GRID a [gridState].
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+    val scrollScope = rememberCoroutineScope()
+    // derivedStateOf (reclé sur viewMode) : ne recompose qu'au FRANCHISSEMENT du seuil, pas à
+    // chaque pixel défilé → pas de clignotement. firstVisibleItemIndex ne change qu'aux frontières.
+    val showScrollToTop by remember(viewMode) {
+        derivedStateOf {
+            val index = if (viewMode == JtrViewMode.GRID) gridState.firstVisibleItemIndex
+            else listState.firstVisibleItemIndex
+            index > SCROLL_TO_TOP_THRESHOLD
+        }
+    }
+
+    // v7.1.98 — priorité du bouton Retour, identique sur les 5 écrans de sélection :
+    // 1) la recherche inline est ouverte → on la ferme, la sélection SURVIT ;
+    // 2) sinon on quitte la sélection ; 3) sinon la navigation reprend normalement.
+    // Avant, Back fermait la sélection sans voir la recherche : on cherchait « Florian »,
+    // on le cochait, et Back faisait disparaître les deux d'un coup.
+    BackHandler(enabled = searchActive || isSelectionMode) {
+        if (searchActive) {
+            searchActive = false
+            viewModel.clearSearch()
+        } else {
+            viewModel.exitSelection()
+        }
+    }
 
     // Cible du partage contextuel : instantané des profils cochés au moment du clic.
     var shareTargets by remember { mutableStateOf<List<Person>?>(null) }
@@ -140,12 +173,26 @@ fun HomeScreen(
             } else if (isSelectionMode) {
                 // Gauche : « Tout sélectionner (n) » · Droite : Loupe + « Annuler ».
                 TopAppBar(
-                    title = { Text(stringResource(R.string.select_all_count, selectedIds.size)) },
+                    title = {
+                        // v7.1.98 — « N selected », comme les 4 autres écrans. L'ancien
+                        // « Select all (N) » décrivait un bouton, pas un état, et se lisait
+                        // mal à côté du bouton « All » voisin. Le plural couvre aussi 0.
+                        Text(
+                            pluralStringResource(
+                                R.plurals.home_selection_count, selectedIds.size, selectedIds.size
+                            )
+                        )
+                    },
                     navigationIcon = {
-                        IconButton(onClick = { viewModel.selectAll() }) {
-                            Icon(Icons.Default.SelectAll,
-                                contentDescription = stringResource(R.string.select_all))
-                        }
+                        // v7.1.98 — bascule partagée, portée sur le VISIBLE : `persons` est
+                        // déjà la liste filtrée, donc cocher et décocher jouent sur le même
+                        // périmètre et les coches hors recherche sont préservées.
+                        SelectAllToggle(
+                            allSelected = persons.isNotEmpty() &&
+                                persons.all { it.id in selectedIds },
+                            onSelectAll = { viewModel.selectAll() },
+                            onDeselectAll = { viewModel.deselectVisible() }
+                        )
                     },
                     actions = {
                         // Loupe accessible EN mode sélection (grands volumes) : on
@@ -154,7 +201,7 @@ fun HomeScreen(
                             Icon(Icons.Default.Search,
                                 contentDescription = stringResource(R.string.action_search))
                         }
-                        TextButton(onClick = { viewModel.clearSelection() }) {
+                        TextButton(onClick = { viewModel.exitSelection() }) {
                             Text(stringResource(R.string.common_cancel),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
@@ -168,7 +215,8 @@ fun HomeScreen(
                 )
             } else {
                 // Barre harmonisée : loupe (à gauche du « + ») + ajout + menu 3 points
-                // (sous-sections Tri / Affichage).
+                // (sous-sections Tri / Affichage). v7.1.69 — la loupe NAVIGUE vers l'écran
+                // de recherche dédié (onSearchClick) au lieu d'ouvrir une recherche inline.
                 JtrSearchableTopAppBar(
                     title = stringResource(R.string.home_title),
                     searchQuery = searchQuery,
@@ -176,6 +224,7 @@ fun HomeScreen(
                     searchActive = searchActive,
                     onSearchActiveChange = { searchActive = it },
                     searchPlaceholder = stringResource(R.string.home_search_placeholder),
+                    onSearchClick = onNavigateToSearch,
                     actions = {
                         // Header minimaliste (v5.3.1) : Loupe → « + » → 3 points.
                         // Tri et Affichage vivent EXCLUSIVEMENT dans le menu 3 points.
@@ -244,6 +293,21 @@ fun HomeScreen(
                     }
                 }
             }
+        },
+        // FAB secondaire « remonter en haut » (v7.1.72) : positionné bas-fin par le Scaffold,
+        // au-dessus de la barre de navigation globale (déjà exclue par le padding racine).
+        // L'ajout de contact étant une icône « + » dans la TopAppBar, aucun FAB à chevaucher.
+        // Masqué en mode sélection (le footer contextuel occupe alors le bas).
+        floatingActionButton = {
+            ScrollToTopFab(
+                visible = showScrollToTop && !isSelectionMode,
+                onClick = {
+                    scrollScope.launch {
+                        if (viewMode == JtrViewMode.GRID) gridState.animateScrollToItem(0)
+                        else listState.animateScrollToItem(0)
+                    }
+                }
+            )
         }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
@@ -272,6 +336,8 @@ fun HomeScreen(
                     socialLinksMap = socialLinksMap,
                     selectedIds = selectedIds,
                     isSelectionMode = isSelectionMode,
+                    listState = listState,
+                    gridState = gridState,
                     onClick = { person ->
                         if (isSelectionMode) {
                             viewModel.toggleSelection(person.id)
@@ -282,7 +348,7 @@ fun HomeScreen(
                             onNavigateToPersonDetail(person.id)
                         }
                     },
-                    onLongClick = { viewModel.toggleSelection(it.id) },
+                    onLongClick = { viewModel.startSelection(it.id) },
                     onFavoriteClick = { viewModel.toggleFavorite(it) },
                     header = if (!isSelectionMode && upcomingEvents.isNotEmpty()) {
                         {
@@ -296,158 +362,6 @@ fun HomeScreen(
             }
         }
     }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Dialogue d'assignation / création de catégorie à la volée
-// ─────────────────────────────────────────────────────────────────────────────
-
-private enum class CategoryDialogMode { SELECT, CREATE }
-
-@Composable
-fun AssignCategoryDialog(
-    categories: List<Category>,
-    onDismiss: () -> Unit,
-    onCategorySelected: (String) -> Unit,
-    onCreateAndAssign: (name: String, color: String) -> Unit
-) {
-    var mode by remember {
-        mutableStateOf(if (categories.isEmpty()) CategoryDialogMode.CREATE else CategoryDialogMode.SELECT)
-    }
-
-    var newName by remember { mutableStateOf("") }
-    val colorOptions = listOf("#2E86C1", "#E74C3C", "#27AE60", "#F39C12", "#8E44AD", "#16A085")
-    var selectedColor by remember { mutableStateOf(colorOptions.first()) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = if (mode == CategoryDialogMode.SELECT)
-                        stringResource(R.string.dialog_assign_category_title)
-                    else
-                        stringResource(R.string.dialog_new_category_title),
-                    modifier = Modifier.weight(1f)
-                )
-                if (mode == CategoryDialogMode.SELECT) {
-                    IconButton(
-                        onClick = { mode = CategoryDialogMode.CREATE },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(Icons.Default.AddCircleOutline,
-                            contentDescription = stringResource(R.string.dialog_create_category_cd),
-                            tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
-            }
-        },
-        text = {
-            when (mode) {
-                CategoryDialogMode.SELECT -> {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        categories.forEach { category ->
-                            TextButton(
-                                onClick = { onCategorySelected(category.id) },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(14.dp)
-                                            .clip(CircleShape)
-                                            .background(parseCategoryColor(category.color))
-                                    )
-                                    Spacer(Modifier.width(10.dp))
-                                    Text(category.name,
-                                        style = MaterialTheme.typography.bodyLarge)
-                                }
-                            }
-                        }
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        TextButton(
-                            onClick = { mode = CategoryDialogMode.CREATE },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null,
-                                modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.dialog_create_new_category))
-                        }
-                    }
-                }
-
-                CategoryDialogMode.CREATE -> {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = newName,
-                            onValueChange = { newName = it },
-                            label = { Text(stringResource(R.string.dialog_category_name_label)) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Text(stringResource(R.string.common_color_label),
-                            style = MaterialTheme.typography.labelMedium)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            colorOptions.forEach { color ->
-                                val isSelected = selectedColor == color
-                                Surface(
-                                    onClick = { selectedColor = color },
-                                    shape = CircleShape,
-                                    color = parseCategoryColor(color),
-                                    modifier = Modifier.size(34.dp),
-                                    border = if (isSelected)
-                                        androidx.compose.foundation.BorderStroke(
-                                            2.dp, MaterialTheme.colorScheme.onSurface)
-                                    else null
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        if (isSelected) {
-                                            Icon(Icons.Default.Check,
-                                                contentDescription = null,
-                                                tint = Color.White,
-                                                modifier = Modifier.size(18.dp))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            when (mode) {
-                CategoryDialogMode.SELECT -> {}
-                CategoryDialogMode.CREATE -> {
-                    TextButton(
-                        onClick = {
-                            if (newName.isNotBlank()) onCreateAndAssign(newName.trim(), selectedColor)
-                        },
-                        enabled = newName.isNotBlank()
-                    ) { Text(stringResource(R.string.dialog_create_and_assign)) }
-                }
-            }
-        },
-        dismissButton = {
-            if (mode == CategoryDialogMode.CREATE && categories.isNotEmpty()) {
-                TextButton(onClick = { mode = CategoryDialogMode.SELECT }) {
-                    Text(stringResource(R.string.common_back))
-                }
-            } else {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-            }
-        }
-    )
-}
-
-private fun parseCategoryColor(hex: String): Color = try {
-    Color(hex.toColorInt())
-} catch (_: Exception) {
-    Color.Gray
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -472,14 +386,14 @@ fun PersonCard(
             .fillMaxWidth()
             .shadow(
                 elevation = if (isSelected) 8.dp else 3.dp,
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(16.dp),
                 clip = false,
                 ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
                 spotColor  = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
             )
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
                 MaterialTheme.colorScheme.secondaryContainer

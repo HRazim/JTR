@@ -3,15 +3,11 @@ package com.jtr.app.ui.person
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -20,12 +16,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import coil.request.ImageRequest
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -34,11 +26,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
 import com.jtr.app.R
 import com.jtr.app.domain.model.NOTE_ICON_NOTES
 import com.jtr.app.domain.model.NoteSection
-import com.jtr.app.ui.components.rememberSystemPhotoPicker
+import com.jtr.app.ui.components.FormPhotoHeader
+import com.jtr.app.ui.components.JtrAlertDialog
 import com.jtr.app.utils.LocationUtils
 import com.jtr.app.utils.getSocialIcon
 import kotlinx.coroutines.launch
@@ -152,28 +144,22 @@ fun AddPersonScreen(
     }
 
     if (showBackgroundRationale) {
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { showBackgroundRationale = false },
-            icon = { Icon(Icons.Default.LocationOn, null,
-                tint = MaterialTheme.colorScheme.primary) },
-            title = { Text(stringResource(R.string.settings_location_bg_title)) },
-            text = { Text(stringResource(R.string.settings_location_bg_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showBackgroundRationale = false
-                    // R+ : la requête runtime est un no-op → redirection Réglages (logique
-                    // partagée avec le flux Paramètres via LocationUtils, plus de divergence).
-                    LocationUtils.requestBackgroundLocation(context) {
-                        backgroundPermissionLauncher.launch(
-                            Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                    }
-                }) { Text(stringResource(R.string.permission_allow)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBackgroundRationale = false }) {
-                    Text(stringResource(R.string.common_cancel))
+            icon = Icons.Default.LocationOn,
+            title = stringResource(R.string.settings_location_bg_title),
+            text = stringResource(R.string.settings_location_bg_message),
+            confirmLabel = stringResource(R.string.permission_allow),
+            onConfirm = {
+                showBackgroundRationale = false
+                // R+ : la requête runtime est un no-op → redirection Réglages (logique
+                // partagée avec le flux Paramètres via LocationUtils, plus de divergence).
+                LocationUtils.requestBackgroundLocation(context) {
+                    backgroundPermissionLauncher.launch(
+                        Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 }
-            }
+            },
+            dismissLabel = stringResource(R.string.common_cancel)
         )
     }
 
@@ -183,11 +169,10 @@ fun AddPersonScreen(
         onMapResultConsumed()
     }
 
-    // Nouveau contact : démarre avec UNE section vide prête à remplir — titre VIDE (v7.1.33)
-    // → le champ affiche le placeholder Material 3 « Titre de la section » (note_section_title_hint)
-    // au lieu de préremplir la VRAIE valeur « Notes » que l'utilisateur devait effacer. Idempotent
-    // (ne re-sème pas si la liste n'est pas vide). Le titre reste vide tant que l'utilisateur n'écrit
-    // rien ; il n'est jamais persisté tel quel (placeholder natif M3).
+    // Nouveau contact : démarre avec UNE section vide prête à remplir — texte VIDE (v7.1.33,
+    // repris v7.1.75 champ unique) → le champ affiche son placeholder au lieu de préremplir
+    // une vraie valeur que l'utilisateur devrait effacer. Idempotent (ne re-sème pas si la
+    // liste n'est pas vide) ; une section restée vide est éliminée par sanitizeNoteSections.
     LaunchedEffect(Unit) {
         if (viewModel.noteSections.value.isEmpty()) {
             viewModel.onNoteSectionsChanged(
@@ -195,13 +180,6 @@ fun AddPersonScreen(
             )
         }
     }
-
-    // Photo Picker système (v7.1.66) — aucune permission d'accès à la photothèque.
-    // L'URI choisie passe TOUJOURS par le recadrage (cercle = photo de profil)
-    // AVANT d'être appliquée. pendingCropUri (présence) arme le dialogue à chaque
-    // sélection, même URI identique ; le sélecteur s'est déjà fermé → pas de course.
-    var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
-    val photoPicker = rememberSystemPhotoPicker { uri -> pendingCropUri = uri }
 
     Scaffold(
         topBar = {
@@ -231,9 +209,14 @@ fun AddPersonScreen(
                             contentDescription = stringResource(R.string.person_save))
                     }
                 },
+                // v7.1.140 — `navigationIconContentColor` MANQUAIT : la flèche de retour
+                // retombait sur le défaut M3 (`onSurfaceVariant`) alors que le fond de la
+                // barre est `primaryContainer`. Le bloc est désormais celui du socle
+                // [com.jtr.app.ui.components.JtrSearchableTopAppBar], aux quatre couleurs.
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
@@ -266,54 +249,35 @@ fun AddPersonScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // ── Photo ────────────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .size(96.dp)
-                    .clip(CircleShape)
-                    .then(
-                        if (photoUri == null)
-                            Modifier.background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.secondary
-                                    )
-                                )
-                            )
-                        else Modifier.background(MaterialTheme.colorScheme.primaryContainer)
-                    )
-                    .clickable { photoPicker() },
-                contentAlignment = Alignment.Center
-            ) {
-                if (photoUri != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(photoUri).crossfade(300).build(),
-                        contentDescription = stringResource(R.string.person_photo_cd),
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.AddAPhoto, contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp))
-                        Text(stringResource(R.string.common_photo),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White)
-                    }
-                }
-            }
-
-            HorizontalDivider()
+            // ── Photo (v7.1.111, G3a) : l'en-tête v7.1.79 partagé remplace le disque
+            // saturé au blanc codé en dur. MÊME plomberie qu'avant : Photo Picker système →
+            // recadrage CERCLE obligatoire → copie `photos/profile_<uuid>.jpg` (le hook C1
+            // efface l'ancien fichier au remplacement comme au retrait, via le REPLACE du
+            // brouillon). Nouveau au passage : zoom Remplacer/Retirer, repli initiale du
+            // prénom, couleurs du THÈME (contraste garanti sur toutes les palettes).
+            FormPhotoHeader(
+                photo = photoUri,
+                accent = MaterialTheme.colorScheme.primary,
+                fallbackIcon = Icons.Default.Person,
+                photoContentDescription = stringResource(R.string.person_photo_cd),
+                cropShape = CropShape.CIRCLE,
+                onPhotoCropped = { croppedUri -> viewModel.onPhotoSelected(croppedUri) },
+                onPhotoRemoved = { viewModel.onPhotoRemoved() },
+                fallbackInitialFrom = firstName
+            )
+            // v7.1.118 — plus de filet entre les blocs : l'espacement régulier du Column
+            // (16 dp) fait seul la séparation (« l'espace plutôt que les traits »).
 
             // ── Réseaux sociaux ──────────────────────────────────────────────
             Text(
+                // v7.1.140 — titre NEUTRE : c'était le dernier en-tête de section coloré
+                // en `primary` du formulaire, alors que les accordéons voisins
+                // (ProfileFormFields, v7.1.118) laissent le titre à la couleur du texte et
+                // ne gardent l'accent que sur l'icône. En Corail, `primary` est un rouge
+                // brique : « Social networks » s'affichait comme une alerte.
                 stringResource(R.string.person_social_links_title),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.align(Alignment.Start)
             )
             if (pendingLinks.isNotEmpty()) {
@@ -369,8 +333,6 @@ fun AddPersonScreen(
                 Text(stringResource(R.string.person_add_social_link),
                     style = MaterialTheme.typography.labelLarge)
             }
-
-            HorizontalDivider()
 
             // ── Notes / Likes prioritaires + section repliable (PARTAGÉ avec l'édition) ──
             ProfileFormFields(
@@ -432,18 +394,6 @@ fun AddPersonScreen(
             AddSocialLinkDialog(
                 onConfirm = { url -> viewModel.addPendingLink(url) },
                 onDismiss = { showAddLinkDialog = false }
-            )
-        }
-
-        pendingCropUri?.let { uri ->
-            ImageCropDialog(
-                sourceUri = uri,
-                cropShape = CropShape.CIRCLE,
-                onCropComplete = { croppedUri ->
-                    viewModel.onPhotoSelected(croppedUri)
-                    pendingCropUri = null
-                },
-                onDismiss = { pendingCropUri = null }
             )
         }
         }

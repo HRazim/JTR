@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.maplibre.android.MapLibre
+import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 /**
@@ -36,6 +37,11 @@ class JTRApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Timber (v7.1.107) : arbre planté UNIQUEMENT en debug — en release, les
+        // Timber.i/d de l'app (dont le dry-run du balayage d'orphelins, qui liste des
+        // chemins porteurs de noms de contacts) ne sortent nulle part. Planté avant
+        // toute autre initialisation pour couvrir leurs éventuels logs.
+        if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
         MapLibre.getInstance(this)
         geofenceManager = GeofenceManager(this)
         createNotificationChannels()

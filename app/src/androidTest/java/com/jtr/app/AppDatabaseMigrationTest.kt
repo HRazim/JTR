@@ -1,12 +1,15 @@
 package com.jtr.app
 
+import androidx.room.migration.Migration
 import androidx.room.testing.MigrationTestHelper
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.jtr.app.data.local.AppDatabase
 import org.json.JSONArray
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -555,6 +558,332 @@ class AppDatabaseMigrationTest {
             assertEquals(createdAt, c.getLong(1))
             // Backfill : updatedAt == createdAt (et surtout PAS l'horodatage de migration).
             assertEquals(createdAt, c.getLong(2))
+        }
+    }
+
+    /**
+     * Migration v22 → v23 — galerie d'images par contact (v7.1.88).
+     *
+     * Elle est PUREMENT ADDITIVE : un CREATE TABLE + un CREATE INDEX. Ce test vérifie donc
+     * les deux moitiés du contrat :
+     *  1. **Rien n'est perdu** : un contact, une catégorie et leur lien, écrits en v22,
+     *     ressortent INTACTS en v23 (c'est la seule chose qui compte pour la vraie base).
+     *  2. **La table est utilisable** : `gallery_images` existe, est VIDE, accepte une
+     *     ligne, et son AUTOINCREMENT fonctionne.
+     *
+     * `runMigrationsAndValidate(..., true, ...)` valide en prime la conformité STRUCTURELLE
+     * à `23.json` : c'est ce qui attraperait une divergence de type, de DEFAULT, de clé
+     * étrangère ou d'index — autrement dit le « Migration didn't properly handle » qui
+     * ferait planter l'app au premier lancement sur la vraie base.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate22To23_addsEmptyGalleryTableAndKeepsEverythingElse() {
+        val personId = "person-pre-v23"
+        val categoryId = "cat-pre-v23"
+        val createdAt = 1_700_000_000_000L
+
+        helper.createDatabase(testDb, 22).use { db ->
+            db.execSQL(
+                "INSERT INTO persons (id, firstName, lastName, birthdateNotify, cityNotify, " +
+                    "isFavorite, createdAt, updatedAt, noteSections, " +
+                    "birthdateReminderOffsetMinutes) " +
+                    "VALUES (?, 'Alice', 'Souvenir', 0, 0, 0, ?, ?, '[]', 0)",
+                arrayOf<Any?>(personId, createdAt, createdAt)
+            )
+            db.execSQL(
+                "INSERT INTO categories " +
+                    "(id, name, color, icon, imagePath, `order`, isFavorite, position, " +
+                    "parentGroupId, createdAt, updatedAt, deletedAt) " +
+                    "VALUES (?, 'Vacances', '#2E86C1', 'folder', NULL, 0, 0, 0, NULL, ?, ?, NULL)",
+                arrayOf<Any?>(categoryId, createdAt, createdAt)
+            )
+            db.execSQL(
+                "INSERT INTO person_category_join (personId, categoryId, addedAt) " +
+                    "VALUES (?, ?, ?)",
+                arrayOf<Any?>(personId, categoryId, createdAt)
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 23, true, AppDatabase.MIGRATION_22_23
+        )
+
+        // 1) RIEN N'EST PERDU — contact, catégorie et lien intacts.
+        db.query("SELECT firstName, lastName, createdAt FROM persons WHERE id = ?",
+            arrayOf(personId)).use { c ->
+            assertTrue("Le contact doit survivre à la migration", c.moveToFirst())
+            assertEquals("Alice", c.getString(0))
+            assertEquals("Souvenir", c.getString(1))
+            assertEquals(createdAt, c.getLong(2))
+        }
+        db.query("SELECT name FROM categories WHERE id = ?", arrayOf(categoryId)).use { c ->
+            assertTrue("La catégorie doit survivre", c.moveToFirst())
+            assertEquals("Vacances", c.getString(0))
+        }
+        db.query("SELECT COUNT(*) FROM person_category_join WHERE personId = ?",
+            arrayOf(personId)).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(1, c.getInt(0))
+        }
+
+        // 2) La table existe et naît VIDE (aucune donnée inventée par la migration).
+        db.query("SELECT COUNT(*) FROM gallery_images").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("gallery_images doit naître VIDE", 0, c.getInt(0))
+        }
+
+        // 3) Elle est écrivable, avec AUTOINCREMENT et les défauts attendus.
+        db.execSQL(
+            "INSERT INTO gallery_images (personId, path, createdAt) VALUES (?, ?, ?)",
+            arrayOf<Any?>(personId, "/data/photos/souvenir.jpg", createdAt)
+        )
+        db.query("SELECT id, personId, path, position, caption, createdAt FROM gallery_images")
+            .use { c ->
+                assertTrue("La ligne insérée doit être relue", c.moveToFirst())
+                assertTrue("AUTOINCREMENT doit attribuer un id > 0", c.getLong(0) > 0L)
+                assertEquals(personId, c.getString(1))
+                assertEquals("/data/photos/souvenir.jpg", c.getString(2))
+                assertEquals(0, c.getInt(3))          // DEFAULT 0
+                assertTrue("caption est nullable", c.isNull(4))
+                assertEquals(createdAt, c.getLong(5))
+            }
+    }
+
+    /**
+     * v23 → v24 (v7.1.93) — LOCALISATION d'image : trois colonnes nullables ajoutées à
+     * `gallery_images`. Ce que ce test prouve, et qui est tout ce qui compte pour la vraie
+     * base de HR (202 contacts, 35 images) :
+     *  1. **Rien n'est perdu** : contact, catégorie, lien ET **ligne de galerie préexistante**
+     *     (avec sa `position`, sa `caption` et son `createdAt`) ressortent INTACTS.
+     *  2. Les trois colonnes existent et valent **NULL** sur les lignes d'avant — la
+     *     migration n'invente aucune coordonnée.
+     *  3. Elles sont écrivables : une localisation posée se relit telle quelle.
+     *
+     * `runMigrationsAndValidate(..., true, ...)` valide en prime la conformité STRUCTURELLE
+     * à `24.json` : c'est ce qui attraperait un `NOT NULL` ou un `DEFAULT` de trop dans les
+     * `ALTER TABLE` — le « Migration didn't properly handle » qui ferait planter l'app au
+     * premier lancement sur la vraie base.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate23To24_addsNullLocationColumnsAndKeepsExistingGalleryRows() {
+        val personId = "person-pre-v24"
+        val createdAt = 1_700_000_000_000L
+        val existingPath = "/data/gallery/souvenir_avant_v24.jpg"
+
+        helper.createDatabase(testDb, 23).use { db ->
+            db.execSQL(
+                "INSERT INTO persons (id, firstName, lastName, birthdateNotify, cityNotify, " +
+                    "isFavorite, createdAt, updatedAt, noteSections, " +
+                    "birthdateReminderOffsetMinutes) " +
+                    "VALUES (?, 'Bob', 'Lieu', 0, 0, 0, ?, ?, '[]', 0)",
+                arrayOf<Any?>(personId, createdAt, createdAt)
+            )
+            // Une image DÉJÀ en base avant la migration : c'est elle qui doit survivre.
+            db.execSQL(
+                "INSERT INTO gallery_images (personId, path, position, caption, createdAt) " +
+                    "VALUES (?, ?, 7, 'Avant v24', ?)",
+                arrayOf<Any?>(personId, existingPath, createdAt)
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 24, true, AppDatabase.MIGRATION_23_24
+        )
+
+        // 1) RIEN N'EST PERDU — le contact et SA LIGNE DE GALERIE, champs d'origine compris.
+        db.query("SELECT firstName FROM persons WHERE id = ?", arrayOf(personId)).use { c ->
+            assertTrue("Le contact doit survivre à la migration", c.moveToFirst())
+            assertEquals("Bob", c.getString(0))
+        }
+        db.query(
+            "SELECT path, position, caption, createdAt, latitude, longitude, placeLabel " +
+                "FROM gallery_images WHERE personId = ?",
+            arrayOf(personId)
+        ).use { c ->
+            assertTrue("La ligne de galerie doit survivre", c.moveToFirst())
+            assertEquals(existingPath, c.getString(0))
+            assertEquals(7, c.getInt(1))
+            assertEquals("Avant v24", c.getString(2))
+            assertEquals(createdAt, c.getLong(3))
+            // 2) Les trois colonnes naissent VIDES : aucune coordonnée inventée.
+            assertTrue("latitude doit être NULL sur une ligne d'avant v24", c.isNull(4))
+            assertTrue("longitude doit être NULL sur une ligne d'avant v24", c.isNull(5))
+            assertTrue("placeLabel doit être NULL sur une ligne d'avant v24", c.isNull(6))
+        }
+
+        // 3) Les colonnes sont utilisables : une localisation posée se relit à l'identique.
+        db.execSQL(
+            "UPDATE gallery_images SET latitude = ?, longitude = ?, placeLabel = ? " +
+                "WHERE personId = ?",
+            arrayOf<Any?>(48.8588897, 2.320041, "Tour Eiffel, Paris, France", personId)
+        )
+        db.query(
+            "SELECT latitude, longitude, placeLabel FROM gallery_images WHERE personId = ?",
+            arrayOf(personId)
+        ).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(48.8588897, c.getDouble(0), 0.0000001)
+            assertEquals(2.320041, c.getDouble(1), 0.0000001)
+            assertEquals("Tour Eiffel, Paris, France", c.getString(2))
+        }
+    }
+
+    /**
+     * v24 → v25 (v7.1.102) — DATE DE MODIFICATION d'image : une colonne nullable ajoutée à
+     * `gallery_images`. Ce que ce test prouve, et qui est tout ce qui compte pour la vraie
+     * base de HR (208 contacts, 35 images) :
+     *  1. **Rien n'est perdu** : contact ET **ligne de galerie préexistante** (avec sa
+     *     `position`, sa `caption`, son `createdAt` et sa LOCALISATION v24) ressortent INTACTS.
+     *  2. La colonne existe et vaut **NULL** sur les lignes d'avant — « jamais édité »,
+     *     aucun horodatage inventé (un backfill à `now` fausserait le futur tri « modifié »).
+     *  3. Elle est écrivable : un `modifiedAt` posé se relit tel quel, et le
+     *     `COALESCE(modifiedAt, createdAt)` du futur tri classe bien une ligne éditée par sa
+     *     date d'édition et une ligne jamais éditée par sa date de création.
+     *
+     * `runMigrationsAndValidate(..., true, ...)` valide en prime la conformité STRUCTURELLE
+     * à `25.json` — le « Migration didn't properly handle » qui ferait planter l'app au
+     * premier lancement sur la vraie base.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate24To25_addsNullModifiedAtAndKeepsExistingGalleryRows() {
+        val personId = "person-pre-v25"
+        val createdAt = 1_700_000_000_000L
+        val existingPath = "/data/gallery/souvenir_avant_v25.jpg"
+
+        helper.createDatabase(testDb, 24).use { db ->
+            db.execSQL(
+                "INSERT INTO persons (id, firstName, lastName, birthdateNotify, cityNotify, " +
+                    "isFavorite, createdAt, updatedAt, noteSections, " +
+                    "birthdateReminderOffsetMinutes) " +
+                    "VALUES (?, 'Carla', 'Souvenir', 0, 0, 0, ?, ?, '[]', 0)",
+                arrayOf<Any?>(personId, createdAt, createdAt)
+            )
+            // Une image DÉJÀ en base avant la migration, localisation v24 comprise :
+            // c'est elle qui doit survivre, champ à champ.
+            db.execSQL(
+                "INSERT INTO gallery_images " +
+                    "(personId, path, position, caption, createdAt, latitude, longitude, placeLabel) " +
+                    "VALUES (?, ?, 7, 'Avant v25', ?, 48.8588897, 2.320041, 'Tour Eiffel, Paris, France')",
+                arrayOf<Any?>(personId, existingPath, createdAt)
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            testDb, 25, true, AppDatabase.MIGRATION_24_25
+        )
+
+        // 1) RIEN N'EST PERDU — le contact et SA LIGNE DE GALERIE, localisation v24 comprise.
+        db.query("SELECT firstName FROM persons WHERE id = ?", arrayOf(personId)).use { c ->
+            assertTrue("Le contact doit survivre à la migration", c.moveToFirst())
+            assertEquals("Carla", c.getString(0))
+        }
+        db.query(
+            "SELECT path, position, caption, createdAt, latitude, longitude, placeLabel, " +
+                "modifiedAt FROM gallery_images WHERE personId = ?",
+            arrayOf(personId)
+        ).use { c ->
+            assertTrue("La ligne de galerie doit survivre", c.moveToFirst())
+            assertEquals(existingPath, c.getString(0))
+            assertEquals(7, c.getInt(1))
+            assertEquals("Avant v25", c.getString(2))
+            assertEquals(createdAt, c.getLong(3))
+            assertEquals(48.8588897, c.getDouble(4), 0.0000001)
+            assertEquals(2.320041, c.getDouble(5), 0.0000001)
+            assertEquals("Tour Eiffel, Paris, France", c.getString(6))
+            // 2) La colonne naît VIDE : « jamais édité », aucun horodatage inventé.
+            assertTrue("modifiedAt doit être NULL sur une ligne d'avant v25", c.isNull(7))
+        }
+
+        // 3) La colonne est utilisable, et le contrat du futur tri « modifié » tient :
+        //    COALESCE(modifiedAt, createdAt) classe l'éditée par son édition, l'autre par
+        //    sa création.
+        val editedAt = 1_800_000_000_000L
+        db.execSQL(
+            "INSERT INTO gallery_images (personId, path, position, createdAt) " +
+                "VALUES (?, '/data/gallery/jamais_editee.jpg', 8, ?)",
+            arrayOf<Any?>(personId, createdAt + 1)
+        )
+        db.execSQL(
+            "UPDATE gallery_images SET modifiedAt = ? WHERE path = ?",
+            arrayOf<Any?>(editedAt, existingPath)
+        )
+        db.query(
+            "SELECT path, COALESCE(modifiedAt, createdAt) AS sortKey FROM gallery_images " +
+                "WHERE personId = ? ORDER BY sortKey DESC",
+            arrayOf(personId)
+        ).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("La ligne ÉDITÉE doit mener le tri « modifié »",
+                existingPath, c.getString(0))
+            assertEquals(editedAt, c.getLong(1))
+            assertTrue(c.moveToNext())
+            assertEquals("La ligne jamais éditée se classe par sa CRÉATION",
+                createdAt + 1, c.getLong(1))
+        }
+    }
+
+    /**
+     * CONTRÔLE NÉGATIF de la v24 → v25 : une migration qui déclarerait `modifiedAt` en
+     * `NOT NULL DEFAULT 0` (au lieu de nullable sans défaut) DOIT être REJETÉE par la
+     * validation de schéma — même filet que le contrôle négatif de la v23 → v24.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate24To25_negativeControl_wrongNullabilityIsRejected() {
+        helper.createDatabase(testDb, 24).close()
+
+        val wrong = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `gallery_images` ADD COLUMN `modifiedAt` INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        try {
+            helper.runMigrationsAndValidate(testDb, 25, true, wrong)
+            fail("Une colonne NOT NULL DEFAULT 0 au lieu de nullable doit être REJETÉE")
+        } catch (e: IllegalStateException) {
+            assertTrue(
+                "Le rejet doit désigner gallery_images, or le message est : ${e.message}",
+                e.message?.contains("gallery_images") == true
+            )
+        }
+    }
+
+    /**
+     * CONTRÔLE NÉGATIF de la v23 → v24 : une migration qui déclarerait `latitude` en
+     * `NOT NULL DEFAULT 0` (au lieu de nullable sans défaut) DOIT être REJETÉE par la
+     * validation de schéma. Sans ce test, rien ne prouverait que
+     * [migrate23To24_addsNullLocationColumnsAndKeepsExistingGalleryRows] valide réellement
+     * quelque chose — il passerait tout aussi bien avec une validation inopérante.
+     */
+    @Test
+    @Throws(IOException::class)
+    fun migrate23To24_negativeControl_wrongNullabilityIsRejected() {
+        helper.createDatabase(testDb, 23).close()
+
+        val wrong = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `gallery_images` ADD COLUMN `latitude` REAL NOT NULL DEFAULT 0"
+                )
+                db.execSQL("ALTER TABLE `gallery_images` ADD COLUMN `longitude` REAL")
+                db.execSQL("ALTER TABLE `gallery_images` ADD COLUMN `placeLabel` TEXT")
+            }
+        }
+
+        try {
+            helper.runMigrationsAndValidate(testDb, 24, true, wrong)
+            fail("Une colonne NOT NULL DEFAULT 0 au lieu de nullable doit être REJETÉE")
+        } catch (e: IllegalStateException) {
+            assertTrue(
+                "Le rejet doit désigner gallery_images, or le message est : ${e.message}",
+                e.message?.contains("gallery_images") == true
+            )
         }
     }
 }

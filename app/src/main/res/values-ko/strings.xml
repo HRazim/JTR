@@ -29,22 +29,23 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR 연락처</string>
+    <string name="recents_title">최근</string>
+    <!-- v7.1.73 — harmonized search: result section headers -->
+    <string name="search_section_contacts">연락처</string>
+    <string name="search_in_category">%1$s에서 검색</string>
+    <string name="search_in_folder">%1$s에서 검색</string>
+    <string name="search_section_categories">카테고리</string>
+    <string name="search_section_folders">폴더</string>
     <string name="home_fab_add_person">사람 추가</string>
     <string name="home_location_warning">근접 알림을 위해 위치를 켜세요</string>
     <string name="home_search_placeholder">연락처 검색…</string>
     <string name="home_empty_title">연락처가 없습니다</string>
     <string name="home_empty_subtitle">+를 눌러 사람을 추가하세요</string>
-    <string name="home_btn_category">카테고리</string>
     <string name="home_btn_delete">삭제</string>
     <string name="home_favorite_cd">즐겨찾기</string>
 
     <!-- ── Category assign dialog ─────────────────────────────────────────── -->
     <string name="dialog_assign_category_title">카테고리 지정</string>
-    <string name="dialog_new_category_title">새 카테고리</string>
-    <string name="dialog_create_category_cd">카테고리 만들기</string>
-    <string name="dialog_create_new_category">새 카테고리 만들기</string>
-    <string name="dialog_create_and_assign">만들고 지정</string>
-    <string name="dialog_category_name_label">카테고리 이름</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">카테고리</string>
@@ -64,6 +65,7 @@
     <string name="category_detail_empty_title">이 카테고리에 구성원이 없습니다</string>
     <string name="category_detail_empty_subtitle">+를 눌러 연락처를 추가하세요</string>
     <string name="category_detail_fab_add">연락처 추가</string>
+    <string name="category_detail_removed_snackbar">%1$s에서 제거됨</string>
     <string name="category_detail_btn_remove">제거</string>
     <string name="category_detail_default_title">카테고리</string>
 
@@ -71,18 +73,12 @@
     <string name="person_add_title">사람 추가</string>
     <string name="person_edit_title">연락처 편집</string>
     <string name="person_photo_cd">프로필 사진</string>
-    <string name="person_first_name_label">이름 *</string>
-    <string name="person_first_name_error">이름은 필수입니다</string>
     <string name="person_first_name_required">필수</string>
-    <string name="person_last_name_label">성</string>
     <string name="person_gender_label">성별</string>
     <string name="person_gender_male">남성</string>
     <string name="person_gender_female">여성</string>
     <string name="person_gender_nonbinary">논바이너리</string>
     <string name="person_gender_nonbinary_short">논바</string>
-    <string name="person_birthday_label">생일</string>
-    <string name="person_birthday_select">날짜 선택</string>
-    <string name="person_birthday_modify">날짜 변경</string>
     <string name="person_birthday_clear">지우기</string>
     <string name="person_birthday_notify">생일에 알림</string>
     <string name="person_birthday_invalid">잘못된 날짜</string>
@@ -98,12 +94,10 @@
     <string name="person_social_links_title">소셜 네트워크</string>
     <string name="person_add_social_link">소셜 링크 추가</string>
     <string name="person_social_delete_cd">삭제</string>
-    <string name="person_personal_info_title">개인 정보</string>
     <string name="person_origin_label">출신</string>
     <string name="person_likes_label">좋아하는 것</string>
     <string name="person_notes_label">기타 메모</string>
     <string name="person_save">저장</string>
-    <string name="person_save_changes">변경 사항 저장</string>
 
     <!-- ── Person detail screen ───────────────────────────────────────────── -->
     <string name="person_not_found">사람을 찾을 수 없습니다</string>
@@ -157,7 +151,6 @@
     <string name="trash_group_purge_imminent">곧 삭제됨</string>
     <string name="trash_group_purge_1_day">1일 남음</string>
     <string name="trash_group_purge_days">%1$d일 남음</string>
-    <string name="trash_group_status">연락처 %1$d명 · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -309,10 +302,9 @@
     <string name="categories_unfavorite">즐겨찾기에서 제거</string>
     <string name="categories_create_group">그룹 만들기</string>
     <string name="categories_group_name_hint">그룹 이름</string>
-    <string name="categories_rename">이름 변경</string>
     <string name="categories_change_image">이미지 변경</string>
     <string name="categories_delete_selected_title">카테고리 %1$d개를 삭제할까요?</string>
-    <string name="categories_delete_selected_text">선택한 카테고리와 그 연락처가 휴지통으로 이동됩니다.</string>
+    <string name="categories_delete_selected_text">선택한 카테고리가 휴지통으로 이동됩니다. 연락처는 삭제되지 않으며 이 라벨들만 사라집니다.</string>
     <string name="categories_drag_handle_cd">끌어서 순서 변경</string>
     <string name="categories_group_empty">이 폴더는 비어 있습니다</string>
     <string name="relation_not_found">프로필을 찾을 수 없습니다</string>
@@ -323,27 +315,29 @@
     <string name="sort_direction_descending">내림차순</string>
     <string name="categories_fav_action">즐겨찾기</string>
     <string name="categories_group_action">그룹</string>
-    <string name="categories_move_to">“%1$s”(으)로 이동</string>
+    <string name="categories_move_to_group">그룹으로 이동…</string>
+    <string name="categories_parent_group">상위 그룹</string>
+    <string name="categories_parent_root">루트</string>
     <string name="categories_add_to_group_title">그룹에 추가</string>
     <string name="categories_add_existing">기존 카테고리 추가</string>
     <string name="categories_create_here">여기에 카테고리 만들기</string>
     <string name="categories_dissolve_group">그룹 해제</string>
     <string name="categories_dissolve_confirm_text">카테고리가 다시 독립됩니다.</string>
-    <string name="categories_no_candidates">사용 가능한 카테고리가 없습니다</string>
     <string name="categories_group_counter">카테고리 %1$d개, 그룹 %2$d개</string>
     <string name="categories_folder_counter">카테고리 %1$d개 · 연락처 %2$d명</string>
     <string name="categories_move_out">그룹에서 꺼내기</string>
     <string name="categories_delete_group_title">그룹 “%1$s”을(를) 삭제할까요?</string>
     <string name="categories_delete_group_text">그룹 “%1$s”과(와) 그 안의 카테고리 %2$d개를 삭제하시겠습니까?</string>
     <string name="select_all">모두 선택</string>
-    <string name="categories_selection_none">0개 선택됨</string>
-    <string name="select_all_count">모두 선택 (%1$d)</string>
+    <string name="select_all_short">전체</string>
+    <string name="select_none">전체 선택 해제</string>
     <string name="action_move">이동</string>
     <string name="move_pick_target_title">카테고리 선택</string>
     <string name="category_detail_add_existing">기존 연락처 추가</string>
     <string name="category_detail_create_new">새 연락처 만들기</string>
     <string name="category_detail_no_candidates">모든 연락처가 이미 이 카테고리에 있습니다</string>
     <string name="action_search">검색</string>
+    <string name="action_scroll_to_top">맨 위로</string>
     <string name="view_mode_title">보기</string>
     <string name="view_mode_list">목록</string>
     <string name="view_mode_grid">그리드</string>
@@ -374,11 +368,10 @@
     <string name="city_map_hint">정확한 주소를 확인하려면 지도 아이콘을 누르세요.</string>
     <string name="location_denied_settings">위치 권한이 거부되었습니다. 휴대폰 설정에서 허용하세요.</string>
     <string name="location_off_settings">이 알림을 사용하려면 설정에서 위치를 켜세요.</string>
-    <string name="favorites_category">즐겨찾기</string>
     <string name="action_move_to_trash">휴지통으로 이동</string>
     <string name="action_trash_short">휴지통</string>
     <string name="category_trash_confirm_title">이 카테고리를 휴지통으로 이동할까요?</string>
-    <string name="category_trash_confirm_text">카테고리와 그 연락처가 휴지통으로 이동됩니다.</string>
+    <string name="category_trash_confirm_text">카테고리가 휴지통으로 이동됩니다. 연락처는 삭제되지 않으며 이 라벨만 사라집니다.</string>
     <string name="welcome_title">JTR에 오신 것을 환영합니다</string>
     <string name="welcome_subtitle">JTR은 추억을 기록하는 노트입니다.</string>
     <string name="welcome_import_button">휴대폰 연락처 가져오기</string>
@@ -390,6 +383,16 @@
     <string name="welcome_select_button">가져올 연락처 선택</string>
     <string name="contact_selection_title">연락처 선택</string>
     <string name="settings_backup_subtitle">데이터 내보내기 또는 복원 (.jtr 파일)</string>
+    <!-- v7.1.106 — 사용하지 않는(고아) 이미지 파일 수동 정리 -->
+    <string name="settings_cleanup_title">공간 확보</string>
+    <string name="settings_cleanup_subtitle">더 이상 사용되지 않는 잔여 이미지를 삭제합니다</string>
+    <string name="settings_cleanup_scanning">검사 중…</string>
+    <plurals name="settings_cleanup_confirm_message">
+        <item quantity="other">삭제하거나 교체한 사진에서 남은 파일 %1$d개(%2$s)입니다. 연락처와 사진은 영향을 받지 않습니다.</item>
+    </plurals>
+    <string name="settings_cleanup_none">남은 파일 없음</string>
+    <string name="settings_cleanup_confirm_button">%1$s 확보</string>
+    <string name="settings_cleanup_done">%1$s 확보됨</string>
     <string name="share_preview_loading">이미지 로드 중…</string>
     <string name="settings_notif_rationale_title">알림을 허용할까요?</string>
     <string name="settings_notif_rationale_message">JTR은 생일과 중요한 날짜에 대한 부드러운 알림을 휴대폰으로 바로 보내드립니다.</string>
@@ -451,7 +454,6 @@
     <string name="note_section_add">섹션 추가</string>
     <string name="note_section_default_notes">메모</string>
     <string name="note_section_address">주소</string>
-    <string name="note_section_title_hint">섹션 제목</string>
     <string name="note_section_content_hint">내용을 입력하세요…</string>    <string name="note_section_delete_confirm_title">이 섹션을 삭제할까요?</string>
     <string name="note_section_delete_confirm_text">내용이 영구적으로 삭제됩니다.</string>
     <string name="note_section_icon_picker_title">아이콘 선택</string>
@@ -463,7 +465,7 @@
     <string name="person_category_new">새 카테고리</string>
     <string name="person_categories_empty">아직 카테고리가 없습니다. 하나 만들어 시작하세요.</string>
     <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
-    <string name="person_categories_search_placeholder">카테고리 검색…</string>
+    <string name="category_search_placeholder">카테고리 검색…</string>
     <string name="person_categories_no_results">검색과 일치하는 카테고리가 없습니다</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">확인 필요</string>
@@ -524,4 +526,32 @@
     <string name="import_contacts_done_message_updated">%1$d개 가져옴 · %2$d개 업데이트 · %3$d개 건너뜀</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">생일은 미래일 수 없습니다</string>
+    <!-- v7.1.89 - galerie d'images par contact -->
+    <string name="gallery_title">갤러리</string>
+    <string name="gallery_add">사진 추가</string>
+    <string name="gallery_empty_title">아직 추억이 없습니다</string>
+    <string name="gallery_empty_subtitle">이 연락처의 첫 추억을 추가하세요.</string>
+    <string name="gallery_delete_confirm">삭제</string>
+    <string name="gallery_image_cd">갤러리 사진</string>
+    <string name="gallery_details_open">세부정보</string>
+    <string name="gallery_details_title">사진 세부정보</string>
+    <string name="gallery_details_description">설명</string>
+    <string name="gallery_details_description_hint">설명 추가</string>
+    <string name="gallery_details_date">날짜</string>
+    <string name="gallery_details_time">시간</string>
+    <string name="gallery_details_month">월</string>
+    <string name="gallery_details_day">일</string>
+    <string name="gallery_details_year">년</string>
+    <string name="gallery_details_hour">시</string>
+    <string name="gallery_details_minute">분</string>
+    <string name="gallery_details_location">위치</string>
+    <string name="gallery_details_location_add">위치 추가</string>
+    <string name="gallery_details_location_remove">위치 삭제</string>
+    <plurals name="gallery_square_cd">
+        <item quantity="other">%1$s의 갤러리, 사진 %2$d장</item>
+    </plurals>
+    <plurals name="gallery_delete_n_title">
+        <item quantity="other">사진 %1$d장을 삭제할까요?</item>
+    </plurals>
+    <string name="gallery_delete_warning">갤러리에서 제거되고 기기에서도 삭제됩니다. 되돌릴 수 없습니다.</string>
 </resources>

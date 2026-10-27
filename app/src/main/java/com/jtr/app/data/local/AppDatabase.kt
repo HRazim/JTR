@@ -9,6 +9,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.domain.model.GalleryImage
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
@@ -17,8 +18,29 @@ import org.json.JSONArray
 import java.util.Locale
 
 /**
- * AppDatabase — Version 22.
+ * AppDatabase — Version 25.
  *
+ * v25 : Date de modification d'image (v7.1.102). UNE colonne NULLABLE sur `gallery_images` —
+ *       `modifiedAt` INTEGER (epoch millis de la dernière édition des métadonnées). Migration
+ *       PUREMENT ADDITIVE : un seul `ALTER TABLE … ADD COLUMN`, aucune table recréée, aucune
+ *       ligne lue ni réécrite → ZÉRO perte possible ([MIGRATION_24_25]). PAS de backfill :
+ *       `null` = « jamais édité », et le tri « modifié » à venir lira
+ *       `COALESCE(modifiedAt, createdAt)`. Posée AVANT toute UI (v7.1.103 branchera
+ *       l'écriture à l'édition et le tri), même discipline que v23/v24.
+ * v24 : Localisation d'image (v7.1.93). Trois colonnes NULLABLES sur `gallery_images` —
+ *       `latitude` REAL, `longitude` REAL, `placeLabel` TEXT. Migration PUREMENT ADDITIVE :
+ *       trois `ALTER TABLE … ADD COLUMN`, qui ne touchent que l'en-tête de schéma — aucune
+ *       table recréée, aucune ligne lue ni réécrite → ZÉRO perte possible ([MIGRATION_23_24]).
+ *       Posées AVANT toute UI, sur le modèle de `Person` (2 coordonnées + 1 libellé composé),
+ *       pour que le panneau de détails d'image n'exige JAMAIS d'autre migration.
+ * v23 : Galerie d'images par contact (v7.1.88). Nouvelle table `gallery_images`
+ *       (id AUTOINCREMENT, personId TEXT FK → persons(id) ON DELETE CASCADE + index,
+ *       path TEXT, position/createdAt INTEGER NOT NULL DEFAULT 0, caption TEXT).
+ *       Migration PUREMENT ADDITIVE : un seul CREATE TABLE + un CREATE INDEX, aucune
+ *       table existante touchée, aucune ligne lue ni écrite → ZÉRO perte possible
+ *       ([MIGRATION_22_23]). `position` et `caption` sont provisionnés dès maintenant
+ *       bien qu'aucune UI ne les exploite, pour que le réordonnancement et les légendes
+ *       n'exigent JAMAIS d'autre migration.
  * v22 : Métadonnées de catégorie (v7.1.48). Ajout de Category.updatedAt (INTEGER NOT NULL
  *       DEFAULT 0) — dernière modification du CONTENU (nom / couleur / image), en parité
  *       avec Person.updatedAt (v14). Les lignes préexistantes sont backfillées depuis
@@ -66,14 +88,15 @@ import java.util.Locale
  */
 @Database(
     entities = [Person::class, Category::class, CategoryGroup::class,
-        PersonCategoryJoin::class, SocialLinkEntity::class],
-    version = 22,
+        PersonCategoryJoin::class, SocialLinkEntity::class, GalleryImage::class],
+    version = 25,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun personDao(): PersonDao
+    abstract fun galleryImageDao(): GalleryImageDao
     abstract fun categoryDao(): CategoryDao
     abstract fun categoryGroupDao(): CategoryGroupDao
     abstract fun personCategoryDao(): PersonCategoryDao
@@ -350,6 +373,86 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration v22 → v23, ZÉRO perte de données — galerie d'images par contact (v7.1.88).
+         *
+         * PUREMENT ADDITIVE : un `CREATE TABLE` et un `CREATE INDEX`, rien d'autre. Aucune
+         * table existante n'est recréée, altérée ni lue ; aucune ligne n'est écrite. Il n'y a
+         * donc littéralement aucun chemin par lequel une donnée préexistante pourrait être
+         * perdue — contrairement aux migrations qui recréent une table pour changer une
+         * contrainte.
+         *
+         * ⚠️ Le SQL ci-dessous doit correspondre AU CARACTÈRE PRÈS à ce que Room génère pour
+         * [GalleryImage] (cf. `schemas/.../23.json`, champ `createSql`) : Room revalide le
+         * schéma obtenu au premier lancement et lève « Migration didn't properly handle »
+         * à la moindre divergence (type, NOT NULL, DEFAULT, ordre des colonnes, nom d'index).
+         * `personId` est un **TEXT** : `Person.id` est un UUID String, et la table parente
+         * s'appelle `persons`.
+         */
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `gallery_images` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`personId` TEXT NOT NULL, " +
+                        "`path` TEXT NOT NULL, " +
+                        "`position` INTEGER NOT NULL DEFAULT 0, " +
+                        "`caption` TEXT, " +
+                        "`createdAt` INTEGER NOT NULL DEFAULT 0, " +
+                        "FOREIGN KEY(`personId`) REFERENCES `persons`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE )"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_gallery_images_personId` " +
+                        "ON `gallery_images` (`personId`)"
+                )
+            }
+        }
+
+        /**
+         * Migration v23 → v24, ZÉRO perte de données — localisation d'image (v7.1.93).
+         *
+         * PUREMENT ADDITIVE, et de la forme la plus sûre qui soit : trois `ALTER TABLE …
+         * ADD COLUMN`, qui en SQLite n'écrivent QUE l'en-tête de schéma — aucune table n'est
+         * recréée, aucune ligne n'est lue ni réécrite. Les lignes de galerie existantes
+         * reçoivent simplement `NULL` dans les trois nouvelles colonnes.
+         *
+         * ⚠️ Les trois colonnes sont NULLABLES et SANS DEFAUT : c'est exactement ce que Room
+         * attend d'un `Double?`/`String?` sans `@ColumnInfo(defaultValue = …)`. Ajouter un
+         * `DEFAULT` ou un `NOT NULL` ici ferait diverger le schéma obtenu de `24.json` et
+         * lèverait « Migration didn't properly handle » au premier lancement (c'est le piège
+         * qui avait été prouvé par contrôle négatif en v7.1.88).
+         *
+         * SQLite n'accepte qu'UNE colonne par `ALTER TABLE` → trois instructions distinctes.
+         */
+        val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `gallery_images` ADD COLUMN `latitude` REAL")
+                db.execSQL("ALTER TABLE `gallery_images` ADD COLUMN `longitude` REAL")
+                db.execSQL("ALTER TABLE `gallery_images` ADD COLUMN `placeLabel` TEXT")
+            }
+        }
+
+        /**
+         * Migration v24 → v25, ZÉRO perte de données — date de modification d'image (v7.1.102).
+         *
+         * PUREMENT ADDITIVE, même forme que [MIGRATION_23_24] : un seul `ALTER TABLE …
+         * ADD COLUMN`, qui en SQLite n'écrit QUE l'en-tête de schéma — aucune table recréée,
+         * aucune ligne lue ni réécrite. Les lignes existantes reçoivent `NULL` (« jamais
+         * édité ») : PAS de backfill, le tri « modifié » à venir lira
+         * `COALESCE(modifiedAt, createdAt)`.
+         *
+         * ⚠️ NULLABLE et SANS DEFAUT : exactement ce que Room attend d'un `Long?` sans
+         * `@ColumnInfo(defaultValue = …)` — un `NOT NULL` ou un `DEFAULT` ferait diverger le
+         * schéma de `25.json` et lèverait « Migration didn't properly handle » au premier
+         * lancement (piège prouvé par contrôle négatif en v7.1.88 et re-prouvé ici).
+         */
+        val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `gallery_images` ADD COLUMN `modifiedAt` INTEGER")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -359,7 +462,8 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                         MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
-                        MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
+                        MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
+                        MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
                     // v7.1.63 — AUCUN FALLBACK DESTRUCTIF : la base n'est PLUS JAMAIS
                     // effacée silencieusement, quel que soit le scénario.
                     //

@@ -11,6 +11,7 @@ import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.ui.components.JtrSortCriterion
+import com.jtr.app.ui.components.JtrSortDirection
 import com.jtr.app.ui.components.jtrSortCriterion
 import com.jtr.app.ui.components.JtrViewMode
 import com.jtr.app.utils.matchesAllTokens
@@ -27,32 +28,51 @@ import kotlinx.coroutines.launch
 /**
  * Tri des entrées de premier niveau (catégories + dossiers), en PARITÉ avec les
  * contacts (v6.1.7) : Nom A → Z / Z → A + Dernière modification + Création
- * (récent → ancien / ancien → récent). Favoris toujours épinglés en tête.
- * L'« ordre personnalisé » (position du drag & drop) a été retiré (v6.1.3). Les
+ * (récent → ancien / ancien → récent). Favoris toujours épinglés en tête — SAUF en
+ * [CUSTOM]. L'« ordre personnalisé » (position du drag & drop) retiré en v6.1.3 est
+ * REBRANCHÉ en v7.1.78 : le drag du mode sélection écrivait déjà `position`, mais le
+ * re-tri par nom/date rendait le geste invisible. CUSTOM = ordre manuel TOTAL par
+ * `position` (décision HR : pas d'épinglage favoris), choisi au menu de tri ou
+ * appliqué AUTOMATIQUEMENT après un glisser-déposer ([persistTopOrder]). Les
  * horodatages reposent sur `Category.createdAt` / `CategoryGroup.createdAt` et sur
  * la « dernière activité » calculée ([CategoryRepository.getCategoryLastActivity]).
  */
-enum class CategorySortOrder { NAME_ASC, NAME_DESC, UPDATED_DESC, UPDATED_ASC, CREATED_DESC, CREATED_ASC }
+enum class CategorySortOrder { NAME_ASC, NAME_DESC, UPDATED_DESC, UPDATED_ASC, CREATED_DESC, CREATED_ASC, CUSTOM }
 
 /**
  * Critères de tri des CATÉGORIES / DOSSIERS, identiques aux contacts (mêmes libellés,
  * modèle à deux axes v6.2.6) : Nom · Date de modification · Date de création, chacun
  * avec un sens croissant/décroissant (défaut : Nom croissant, dates décroissant).
+ *
+ * [includeCustom] (v7.1.78) ajoute « Personnalisé » ([CategorySortOrder.CUSTOM]) en
+ * 4e critère, MONO-SENS (un ordre manuel n'a pas d'inverse utile : chevron masqué via
+ * `showDirection`, re-tap sans effet). Réservé à la liste RACINE : le détail de
+ * dossier garde ses trois critères (pref `groups_sort_order` intacte — l'ordre
+ * manuel intra-dossier est un lot ultérieur), d'où le défaut `false`.
  */
 internal fun categorySortCriteria(
     current: CategorySortOrder,
+    includeCustom: Boolean = false,
     onSelect: (CategorySortOrder) -> Unit
-): List<JtrSortCriterion> = listOf(
-    jtrSortCriterion(R.string.common_name_label, current,
+): List<JtrSortCriterion> = buildList {
+    add(jtrSortCriterion(R.string.common_name_label, current,
         CategorySortOrder.NAME_ASC, CategorySortOrder.NAME_DESC,
-        defaultDescending = false, onSelect = onSelect),
-    jtrSortCriterion(R.string.sort_criterion_modified, current,
+        defaultDescending = false, onSelect = onSelect))
+    add(jtrSortCriterion(R.string.sort_criterion_modified, current,
         CategorySortOrder.UPDATED_ASC, CategorySortOrder.UPDATED_DESC,
-        defaultDescending = true, onSelect = onSelect),
-    jtrSortCriterion(R.string.sort_criterion_created, current,
+        defaultDescending = true, onSelect = onSelect))
+    add(jtrSortCriterion(R.string.sort_criterion_created, current,
         CategorySortOrder.CREATED_ASC, CategorySortOrder.CREATED_DESC,
-        defaultDescending = true, onSelect = onSelect),
-)
+        defaultDescending = true, onSelect = onSelect))
+    if (includeCustom) add(JtrSortCriterion(
+        labelRes = R.string.type_custom,
+        selected = current == CategorySortOrder.CUSTOM,
+        // Sans objet pour un critère mono-sens (masqué par showDirection = false).
+        direction = JtrSortDirection.ASC,
+        showDirection = false,
+        onClick = { onSelect(CategorySortOrder.CUSTOM) }
+    ))
+}
 
 /**
  * « Dernière modification » d'une catégorie — SOURCE UNIQUE (v7.1.48).
@@ -76,6 +96,8 @@ internal fun categoryLastModified(category: Category, memberActivity: Long?): Lo
 /** Applique [order] à des entrées mixtes (dossiers + catégories indépendantes). */
 internal fun sortTopEntries(entries: List<TopEntry>, order: CategorySortOrder): List<TopEntry> {
     val base = when (order) {
+        // v7.1.78 — la position écrite par le glisser-déposer du mode sélection fait foi.
+        CategorySortOrder.CUSTOM -> compareBy<TopEntry> { it.position }
         CategorySortOrder.NAME_ASC -> compareBy<TopEntry> { it.sortName }
         CategorySortOrder.NAME_DESC -> compareByDescending<TopEntry> { it.sortName }
         CategorySortOrder.UPDATED_DESC -> compareByDescending<TopEntry> { it.lastActivity }
@@ -83,6 +105,9 @@ internal fun sortTopEntries(entries: List<TopEntry>, order: CategorySortOrder): 
         CategorySortOrder.CREATED_DESC -> compareByDescending<TopEntry> { it.createdAt }
         CategorySortOrder.CREATED_ASC -> compareBy<TopEntry> { it.createdAt }
     }
+    // v7.1.78 — CUSTOM = ordre manuel TOTAL (décision HR) : PAS d'épinglage des favoris,
+    // une non-favorite passe avant une favorite si l'utilisateur l'a glissée avant.
+    if (order == CategorySortOrder.CUSTOM) return entries.sortedWith(base)
     // Favoris toujours en tête (cohérent avec l'ordre DAO `isFavorite DESC`).
     return entries.sortedWith(compareByDescending<TopEntry> { it.isFavorite }.then(base))
 }
@@ -97,9 +122,6 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
      * Nombre de contacts favoris actifs — pilote la catégorie VIRTUELLE
      * « Favoris » (affichée en tête dès 2 favoris, cf. TopEntriesBrowser).
      */
-    val favoritePersonCount: StateFlow<Int> = personRepo.getAllActive()
-        .map { list -> list.count { it.isFavorite } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -169,7 +191,7 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
 
     /** Soft delete en cascade : catégorie + tous ses membres actifs. */
     fun deleteCategoryWithCascade(categoryId: String) {
-        viewModelScope.launch { repo.softDeleteWithCascade(categoryId) }
+        viewModelScope.launch { repo.softDeleteCategory(categoryId) }
     }
 
     /** Bascule le favori d'une catégorie (la fait flotter en tête de liste). */
@@ -192,10 +214,16 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
     }
 
     /** Crée un groupe et y rattache les catégories cochées (≥ 2). */
-    fun createGroup(name: String, ids: List<String>) {
+    fun createGroup(
+        name: String, ids: List<String>, imagePath: String? = null,
+        // v7.1.84 — dossier parent choisi dans la feuille (null = racine).
+        parentGroupId: Long? = null
+    ) {
         val trimmed = name.trim()
         if (trimmed.isBlank() || ids.size < 2) return
-        viewModelScope.launch { repo.createGroupWith(trimmed, ids) }
+        viewModelScope.launch {
+            repo.createGroupWith(trimmed, ids, parentGroupId = parentGroupId, imagePath = imagePath)
+        }
     }
 
     /** Persiste le nouvel ordre (drag & drop) : position = index dans la liste. */
@@ -220,6 +248,20 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { repo.renameGroup(group, trimmed) }
     }
 
+    /**
+     * v7.1.127 — nom ET image d'un dossier en UNE écriture, depuis le formulaire unifié.
+     * Passe par [CategoryRepository.updateGroup], qui libère l'ancienne couverture quand
+     * elle est remplacée ou retirée (v7.1.105) — ce que [setGroupImage] ne pouvait pas
+     * faire pour un retrait, son chemin étant non nul.
+     */
+    fun updateGroup(group: CategoryGroup, name: String, imagePath: String?) {
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch {
+            repo.updateGroup(group.copy(name = trimmed, imagePath = imagePath))
+        }
+    }
+
     /** Dissout un groupe (détache ses catégories, qui redeviennent indépendantes). */
     fun deleteGroup(group: CategoryGroup, memberIds: List<String>) {
         viewModelScope.launch { repo.deleteGroup(group.id, memberIds) }
@@ -236,6 +278,10 @@ class CategoryViewModel(application: Application) : AndroidViewModel(application
     /** Persiste l'ordre global mélangé (dossiers + catégories indépendantes). */
     fun persistTopOrder(refs: List<TopOrderRef>) {
         viewModelScope.launch { repo.persistTopOrder(refs) }
+        // v7.1.78 — bascule AUTO sur le tri personnalisé : sans elle, les positions tout
+        // juste persistées étaient aussitôt re-triées par nom/date au ré-émit du flux —
+        // le geste aboutissait en base mais restait invisible à l'écran.
+        setSortOrder(CategorySortOrder.CUSTOM)
     }
 
     /** Insertion directe d'une catégorie dans un dossier (drop sur un dossier). */

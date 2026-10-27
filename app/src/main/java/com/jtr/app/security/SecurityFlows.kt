@@ -17,10 +17,10 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -148,7 +148,10 @@ fun LockScreen(onUnlocked: () -> Unit) {
             )
             Spacer(Modifier.height(24.dp))
             if (biometricOn) {
-                OutlinedButton(onClick = { runBiometric() }, enabled = !lockedOut) {
+                // v7.1.134 — tonal plutôt qu'outlined : seule affordance d'un écran presque
+                // vide, le filet `outline` y ressortait comme un trait clair (même grammaire
+                // qu'en v7.1.118). Le « mot de passe oublié » juste dessous garde le 3e niveau.
+                FilledTonalButton(onClick = { runBiometric() }, enabled = !lockedOut) {
                     Icon(Icons.Default.Fingerprint, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.security_use_biometric))
@@ -396,7 +399,9 @@ private fun AuthContent(titleRes: Int, subtitleRes: Int, onSuccess: () -> Unit) 
         )
         if (biometricOn) {
             Spacer(Modifier.height(24.dp))
-            OutlinedButton(onClick = {
+            // v7.1.134 — même bouton, même chaîne que sur l'écran de verrouillage : les deux
+            // bougent ensemble, sinon l'écart se verrait d'un écran à l'autre.
+            FilledTonalButton(onClick = {
                 activity?.let {
                     Biometrics.authenticate(it, promptTitle, promptSubtitle, onSuccess = onSuccess, onFail = {})
                 }
@@ -433,7 +438,7 @@ private fun RecoveryCodeContent(code: String, onDone: () -> Unit) {
         )
         Spacer(Modifier.height(20.dp))
         Surface(
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surfaceVariant
         ) {
             Text(

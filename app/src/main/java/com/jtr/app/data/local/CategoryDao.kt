@@ -59,4 +59,26 @@ interface CategoryDao {
 
     @Query("DELETE FROM categories WHERE deletedAt IS NOT NULL")
     suspend fun hardDeleteAllDeleted()
+
+    /**
+     * Ids des catégories en corbeille depuis plus longtemps que [cutoff] (auto-purge 30 j, v7.1.70).
+     * La suppression effective passe par le repository (retrait explicite des liens puis
+     * [hardDelete]) → les CONTACTS ne sont jamais supprimés, ils perdent seulement l'étiquette.
+     */
+    @Query("SELECT id FROM categories WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
+    suspend fun getDeletedIdsOlderThan(cutoff: Long): List<String>
+
+    /**
+     * v7.1.105 (lot C1) — images des catégories en corbeille, lues AVANT le vidage :
+     * leurs fichiers `photos/category_…` sont effacés après le hard-delete.
+     */
+    @Query("SELECT imagePath FROM categories WHERE deletedAt IS NOT NULL AND imagePath IS NOT NULL")
+    suspend fun getDeletedImagePaths(): List<String>
+
+    /**
+     * v7.1.106 (lot C2) — ensemble de référence du balayage d'orphelins : TOUTES les images
+     * de catégorie, CORBEILLE INCLUSE (aucun filtre `deletedAt`).
+     */
+    @Query("SELECT imagePath FROM categories WHERE imagePath IS NOT NULL")
+    suspend fun getAllImagePaths(): List<String>
 }

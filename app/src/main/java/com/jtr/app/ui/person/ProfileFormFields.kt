@@ -11,7 +11,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,8 +25,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.focus.onFocusEvent
-import androidx.compose.ui.graphics.Color
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -35,7 +32,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.edit
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -51,13 +47,13 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.domain.model.DynamicLine
+import com.jtr.app.ui.components.FormTextField
+import com.jtr.app.ui.components.JtrPromptDialog
 import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.utils.DateCanonical
 import com.jtr.app.utils.matchesAllTokens
 import com.jtr.app.utils.searchTokens
 import kotlin.math.roundToInt
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
 import java.util.Locale
 
 /**
@@ -159,7 +155,10 @@ fun ProfileFormFields(
         // TOUJOURS replié par défaut (essence Note-First) : même en édition d'un
         // profil déjà rempli, l'utilisateur l'ouvre lui-même pour voir le reste.
         var showMore by rememberSaveable { mutableStateOf(false) }
-        OutlinedButton(
+        // v7.1.118 — tonal plutôt qu'outlined : la bordure `outline` se lisait comme un trait
+        // clair marqué (le retour « gros trait blanc » v7.1.114) ; le fond tonal doux du thème
+        // porte l'affordance sans filet, cohérent avec les champs arrondis-doux.
+        FilledTonalButton(
             onClick = {
                 showMore = !showMore
                 // v7.1.58 — notifie l'écran hôte APRÈS la bascule (nouvelle valeur), pour qu'il
@@ -258,15 +257,15 @@ fun ProfileFormFields(
 
                 // 5.6 Origine — juste AU-DESSUS de la ville (miroir du mode lecture)
                 var localOrigin by remember(origin) { mutableStateOf(origin) }
-                SoftTextField(
+                FormTextField(
                     value = localOrigin,
                     onValueChange = { localOrigin = it; onOriginChange(it) },
-                    placeholder = stringResource(R.string.person_origin_label),
+                    label = stringResource(R.string.person_origin_label),
                     leadingIcon = Icons.Default.Public,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     keyboardActions = KeyboardActions(
                         onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 // 5.7 Ville & mini-carte (toute fin des blocs structurés)
@@ -276,10 +275,10 @@ fun ProfileFormFields(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.Top
                 ) {
-                    SoftTextField(
+                    FormTextField(
                         value = localCity,
                         onValueChange = { localCity = it; onCityChange(it) },
-                        placeholder = stringResource(R.string.person_city_label),
+                        label = stringResource(R.string.person_city_label),
                         leadingIcon = Icons.Default.LocationOn,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(
@@ -300,7 +299,7 @@ fun ProfileFormFields(
                                 fontWeight = FontWeight.SemiBold
                             )
                         }) else null,
-                        modifier = Modifier.weight(1f).bringIntoViewOnFocus()
+                        modifier = Modifier.weight(1f)
                     )
                     FilledTonalIconButton(
                         onClick = onNavigateToMap,
@@ -324,63 +323,10 @@ fun ProfileFormFields(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Champ « carte souple » réutilisable (v7.0.2) — TextField rempli léger
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Couleurs du champ souple : conteneur teinté discret (surfaceVariant), sans soulignement. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun softFieldColors() = TextFieldDefaults.colors(
-    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-    errorContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-    focusedIndicatorColor = Color.Transparent,
-    unfocusedIndicatorColor = Color.Transparent,
-    disabledIndicatorColor = Color.Transparent,
-    errorIndicatorColor = Color.Transparent
-)
-
-/**
- * Champ de texte « carte souple » : conteneur léger arrondi, icône en tête, libellé
- * en placeholder. Habillage commun à tous les champs simples du formulaire (v7.0.2).
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun SoftTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    leadingIcon: ImageVector?,
-    modifier: Modifier = Modifier,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions.Default,
-    singleLine: Boolean = true,
-    minLines: Int = 1,
-    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
-    isError: Boolean = false,
-    supportingText: @Composable (() -> Unit)? = null,
-    trailingIcon: @Composable (() -> Unit)? = null
-) {
-    TextField(
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = { Text(placeholder) },
-        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
-        trailingIcon = trailingIcon,
-        singleLine = singleLine,
-        minLines = minLines,
-        maxLines = maxLines,
-        isError = isError,
-        supportingText = supportingText,
-        shape = RoundedCornerShape(16.dp),
-        colors = softFieldColors(),
-        keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
-        modifier = modifier
-    )
-}
+// v7.1.113 (G3b-2a) — `softFieldColors` (le dernier vestige du « champ carte souple »
+// v7.0.2) a disparu avec la migration de l'éditeur de notes : TOUS les champs texte de
+// l'app sont désormais sur le [FormTextField] partagé (style outlined v7.1.79). Les
+// poignées de curseur restent transparentes au niveau du THÈME (v7.1.74, cf. Theme.kt).
 
 // ─────────────────────────────────────────────────────────────────────────────
 // En-tête d'accordéon réutilisable (Dates, Relations, Téléphones, Emails)
@@ -459,15 +405,20 @@ private fun AccordionSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
+            // v7.1.118 (G3b-2b) — en-tête AÉRÉ : hauteur min 48 dp (cible a11y + respiration,
+            // l'espace fait le travail des anciens filets) ; titre aligné sur le langage
+            // v7.1.79 (labelLarge SemiBold, comme « Social networks ») au lieu de bodyMedium.
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 48.dp)
                 .clickable { onExpandedChange(!expanded) },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(leadingIcon, contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(8.dp))
-            Text(title, style = MaterialTheme.typography.bodyMedium,
+            Text(title, style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f))
             Icon(
                 if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -518,7 +469,7 @@ private fun NameSection(
         // Chevron de dépliage des sous-champs DANS la carte du nom (bord de fin), façon
         // pilule Google (icône + champ + chevron) — plus de bouton circulaire externe.
         // RTL : le trailingIcon est placé du bon côté automatiquement par le TextField.
-        SoftTextField(
+        FormTextField(
             value = displayName,
             onValueChange = { input ->
                 displayName = input
@@ -526,7 +477,7 @@ private fun NameSection(
                 onFirstNameChange(f)
                 onLastNameChange(l)
             },
-            placeholder = stringResource(R.string.person_full_name_label),
+            label = stringResource(R.string.person_full_name_label),
             leadingIcon = Icons.Default.Badge,
             isError = firstNameError,
             supportingText = if (firstNameError) ({
@@ -581,11 +532,10 @@ private fun NameSection(
 @Composable
 private fun NameSubField(label: String, value: String, onChange: (String) -> Unit) {
     val focusManager = LocalFocusManager.current
-    SoftTextField(
+    FormTextField(
         value = value,
         onValueChange = onChange,
-        placeholder = label,
-        leadingIcon = null,
+        label = label,
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
@@ -624,8 +574,11 @@ private fun JobSection(
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
+            // v7.1.118 — même en-tête aéré qu'[AccordionSection] (48 dp, labelLarge SemiBold) :
+            // cette section garde son Row propre pour ses descriptions a11y dédiées.
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 48.dp)
                 .clickable { expansion.setExpanded(SectionKey.WORK, !expanded) },
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -634,7 +587,8 @@ private fun JobSection(
             Spacer(Modifier.width(8.dp))
             Text(
                 stringResource(R.string.section_work_title),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
             Icon(
@@ -646,32 +600,32 @@ private fun JobSection(
         }
         AnimatedVisibility(visible = expanded) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SoftTextField(
+                FormTextField(
                     value = jobTitle,
                     onValueChange = onJobTitleChange,
-                    placeholder = stringResource(R.string.person_job_title_label),
+                    label = stringResource(R.string.person_job_title_label),
                     leadingIcon = Icons.Default.Work,
                     keyboardOptions = opts,
                     keyboardActions = actions,
-                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
+                    modifier = Modifier.fillMaxWidth()
                 )
-                SoftTextField(
+                FormTextField(
                     value = department,
                     onValueChange = onDepartmentChange,
-                    placeholder = stringResource(R.string.person_department_label),
+                    label = stringResource(R.string.person_department_label),
                     leadingIcon = Icons.Default.Apartment,
                     keyboardOptions = opts,
                     keyboardActions = actions,
-                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
+                    modifier = Modifier.fillMaxWidth()
                 )
-                SoftTextField(
+                FormTextField(
                     value = company,
                     onValueChange = onCompanyChange,
-                    placeholder = stringResource(R.string.person_company_label),
+                    label = stringResource(R.string.person_company_label),
                     leadingIcon = Icons.Default.Business,
                     keyboardOptions = opts,
                     keyboardActions = actions,
-                    modifier = Modifier.fillMaxWidth().bringIntoViewOnFocus()
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
@@ -1069,8 +1023,7 @@ private fun DynamicLineRow(
     }
 }
 
-/** Champ de valeur simple (carte souple) — téléphones, emails, dates. */
-@OptIn(ExperimentalMaterial3Api::class)
+/** Champ de valeur d'une ligne dynamique — téléphones, emails, dates (v7.1.112 : outline). */
 @Composable
 private fun ValueField(
     value: String,
@@ -1084,26 +1037,22 @@ private fun ValueField(
     onImeNext: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Placeholder visible quand le champ est vide : masque de date si fourni, sinon
-    // le libellé du champ (le libellé flottant est supprimé — habillage « carte souple »).
-    val hint = placeholder ?: valueLabel
-
-    TextField(
+    // Le libellé du champ redevient FLOTTANT (style v7.1.79) ; le masque de date, lui,
+    // reste un placeholder — visible champ vide/focalisé, distinct du libellé.
+    FormTextField(
         value = value,
         onValueChange = onValueChange,
-        placeholder = { Text(hint) },
-        singleLine = true,
+        label = valueLabel,
+        placeholder = placeholder,
         isError = isError,
         supportingText = if (isError && errorMessage != null) {
             { Text(errorMessage) }
         } else null,
-        shape = RoundedCornerShape(16.dp),
-        colors = softFieldColors(),
         visualTransformation = visualTransformation,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(onNext = { onImeNext() }),
         // Auto-scroll IME-synchronisé PARTAGÉ (v7.1.11) — source unique, plus de vide fantôme.
-        modifier = modifier.bringIntoViewOnFocus()
+        modifier = modifier
     )
 }
 
@@ -1139,13 +1088,10 @@ private fun RelationValueField(
         onExpandedChange = { expanded = it },
         modifier = modifier
     ) {
-        TextField(
+        FormTextField(
             value = value,
             onValueChange = { onTextChange(it); expanded = true },
-            placeholder = { Text(hint) },
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            colors = softFieldColors(),
+            label = hint,
             trailingIcon = if (linkedPersonId != null) {
                 {
                     Icon(Icons.Default.CheckCircle,
@@ -1161,7 +1107,6 @@ private fun RelationValueField(
                 .menuAnchor(MenuAnchorType.PrimaryEditable)
                 // Auto-scroll IME-synchronisé PARTAGÉ (v7.1.11) — même source unique que les
                 // autres champs mono-ligne ; plus de copie locale du bringIntoView one-shot.
-                .bringIntoViewOnFocus()
         )
         ExposedDropdownMenu(
             expanded = expanded && matches.isNotEmpty(),
@@ -1253,29 +1198,16 @@ private fun CustomLabelDialog(
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var text by remember { mutableStateOf(initial) }
-    AlertDialog(
+    // v7.1.128 (L4a) — corps délégué au socle partagé. `trim()` CONSERVÉ à la validation :
+    // c'est lui qui empêche un libellé fait d'espaces d'être enregistré tel quel.
+    JtrPromptDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.custom_label_dialog_title)) },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text(stringResource(R.string.custom_label_dialog_hint)) },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(text.trim()) },
-                enabled = text.isNotBlank()
-            ) { Text(stringResource(R.string.common_ok)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-        }
+        title = stringResource(R.string.custom_label_dialog_title),
+        label = stringResource(R.string.custom_label_dialog_hint),
+        initialValue = initial,
+        confirmLabel = stringResource(R.string.common_ok),
+        onConfirm = { onConfirm(it.trim()) },
+        dismissLabel = stringResource(R.string.common_cancel)
     )
 }
 
@@ -1403,39 +1335,6 @@ internal fun rememberMoreInfoScroll(scrollState: ScrollState): MoreInfoScrollSta
     val state = remember(scrollState) { MoreInfoScrollState(scrollState) }
     LaunchedEffect(state.expanded) { state.animateOnToggle() }
     return state
-}
-
-/**
- * Ramène le champ porteur dans la zone visible (au-dessus du clavier) à la prise
- * de focus. Appliqué aux champs du bas du formulaire (Origine, Ville, Pro) ET, depuis
- * v7.1.1, aux sections de notes ([NoteSectionsEditor], même package) qui, sinon,
- * restaient masqués par l'IME selon l'ordre d'ouverture.
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-internal fun Modifier.bringIntoViewOnFocus(): Modifier {
-    val requester = remember { BringIntoViewRequester() }
-    val imeInsets = WindowInsets.ime
-    val density = LocalDensity.current
-    var isFocused by remember { mutableStateOf(false) }
-    // SOURCE UNIQUE du recentrage clavier (v7.1.11) — motif IME-SYNCHRONISÉ (généralisé depuis
-    // la note v7.1.3). Tant que le champ est focalisé, on rejoue bringIntoView à CHAQUE palier de
-    // l'inset clavier : l'émission INITIALE de snapshotFlow couvre « clavier déjà ouvert » (focus
-    // déplacé via Suivant), le flux ANIMÉ couvre « clavier qui monte ». collectLatest annule le
-    // bringIntoView animé en cours à chaque nouvelle valeur d'inset → le champ « monte avec » le
-    // clavier et se cale juste au-dessus. Plus de scroll one-shot PÉRIMÉ tiré au focus avant la fin
-    // de l'animation (cause du vide fantôme position-dépendant). Spec ANIMÉ par défaut (jamais snap).
-    // ⚠️ Amène TOUT le champ dans la vue → réservé aux champs MONO-LIGNE ; le contenu multi-ligne
-    // d'une note garde sa spécialisation (bande basse/curseur) dans NoteContentField.
-    LaunchedEffect(isFocused) {
-        if (!isFocused) return@LaunchedEffect
-        snapshotFlow { imeInsets.getBottom(density) }
-            .distinctUntilChanged()
-            .collectLatest { requester.bringIntoView() }
-    }
-    return this
-        .bringIntoViewRequester(requester)
-        .onFocusEvent { isFocused = it.isFocused }
 }
 
 /** Affordance d'ajout discrète : « + » + court libellé (v7.0.2). */

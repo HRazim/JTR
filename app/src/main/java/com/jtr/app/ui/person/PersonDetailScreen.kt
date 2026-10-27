@@ -44,7 +44,6 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import android.view.MotionEvent
 import android.widget.Toast
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -71,6 +70,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.ui.components.FavoriteStar
+import com.jtr.app.ui.components.JtrAlertDialog
+import com.jtr.app.ui.components.JtrPromptDialog
 import com.jtr.app.ui.components.PhotoZoomDialog
 import com.jtr.app.ui.components.rememberSystemPhotoPicker
 import com.jtr.app.utils.DateCanonical
@@ -83,6 +84,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jtr.app.data.repository.GalleryRepository
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
@@ -90,8 +92,10 @@ import kotlinx.coroutines.launch
 import com.jtr.app.domain.model.DynamicLine
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.SocialLinkEntity
+import com.jtr.app.domain.model.combinedText
 import com.jtr.app.domain.model.deriveNoteSections
 import com.jtr.app.domain.model.effectiveNoteSections
+import com.jtr.app.domain.model.splitCombinedText
 import com.jtr.app.utils.SocialPlatform
 import com.jtr.app.utils.extractSocialLinks
 import com.jtr.app.utils.openSocialLink
@@ -111,6 +115,8 @@ fun PersonDetailScreen(
     onNavigateToCategory: (String) -> Unit = {},
     onDeleteClick: () -> Unit,
     onNavigateToMap: () -> Unit = {},
+    // v7.1.89 — carré « galerie » à côté de l'avatar → page galerie du contact.
+    onNavigateToGallery: (String) -> Unit = {},
     cityFromMap: String? = null,
     latFromMap: Double? = null,
     lngFromMap: Double? = null,
@@ -133,7 +139,9 @@ fun PersonDetailScreen(
     // chargement one-shot de la navigation → les chips se mettent à jour sans recharger.
     val categoriesVm: PersonCategoriesViewModel = viewModel()
     val categoryChips by categoriesVm.personCategoryChips.collectAsStateWithLifecycle()
-    val memberCategoryIds by categoriesVm.memberCategoryIds.collectAsStateWithLifecycle()
+    // v7.1.71 — ids des catégories ACTIVES du contact (exclut la corbeille) : pilote le libellé
+    // « Ajouter/Gérer » ET le compteur du dialogue, pour ne jamais compter une catégorie supprimée.
+    val memberCategoryIds by categoriesVm.activeMemberCategoryIds.collectAsStateWithLifecycle()
     val allCategories by categoriesVm.allCategories.collectAsStateWithLifecycle()
     val categoryGroups by categoriesVm.groups.collectAsStateWithLifecycle()
 
@@ -274,28 +282,22 @@ fun PersonDetailScreen(
     }
 
     if (showBackgroundRationale) {
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { showBackgroundRationale = false },
-            icon = { Icon(Icons.Default.LocationOn, null,
-                tint = MaterialTheme.colorScheme.primary) },
-            title = { Text(stringResource(R.string.settings_location_bg_title)) },
-            text = { Text(stringResource(R.string.settings_location_bg_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showBackgroundRationale = false
-                    // R+ : la requête runtime est un no-op → redirection Réglages (logique
-                    // partagée avec le flux Paramètres via LocationUtils, plus de divergence).
-                    LocationUtils.requestBackgroundLocation(context) {
-                        backgroundPermissionLauncher.launch(
-                            Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                    }
-                }) { Text(stringResource(R.string.permission_allow)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBackgroundRationale = false }) {
-                    Text(stringResource(R.string.common_cancel))
+            icon = Icons.Default.LocationOn,
+            title = stringResource(R.string.settings_location_bg_title),
+            text = stringResource(R.string.settings_location_bg_message),
+            confirmLabel = stringResource(R.string.permission_allow),
+            onConfirm = {
+                showBackgroundRationale = false
+                // R+ : la requête runtime est un no-op → redirection Réglages (logique
+                // partagée avec le flux Paramètres via LocationUtils, plus de divergence).
+                LocationUtils.requestBackgroundLocation(context) {
+                    backgroundPermissionLauncher.launch(
+                        Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 }
-            }
+            },
+            dismissLabel = stringResource(R.string.common_cancel)
         )
     }
 
@@ -367,10 +369,16 @@ fun PersonDetailScreen(
                                 expanded = menuExpanded,
                                 onDismissRequest = { menuExpanded = false }
                             ) {
+                                // v7.1.129 — icônes des actions ORDINAIRES laissées au défaut
+                                // du menu (`onSurfaceVariant`). Elles étaient en `primary` :
+                                // sur une palette chaude (Corail), ce primaire est un rouge
+                                // brique que rien ne distingue du `error` de « Supprimer » —
+                                // le menu paraissait entièrement rouge et l'avertissement ne
+                                // voulait plus rien dire. Le rouge ne sert QU'À la destruction,
+                                // comme dans le « ⋮ » d'un dossier.
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.common_edit)) },
-                                    leadingIcon = { Icon(Icons.Default.Edit, null,
-                                        tint = MaterialTheme.colorScheme.primary) },
+                                    leadingIcon = { Icon(Icons.Default.Edit, null) },
                                     onClick = { menuExpanded = false; editVm.enterEditMode() }
                                 )
                                 // Libellé RÉACTIF : « Ajouter à une catégorie » si la personne
@@ -383,8 +391,7 @@ fun PersonDetailScreen(
                                             else R.string.person_manage_categories
                                         ))
                                     },
-                                    leadingIcon = { Icon(Icons.Default.Folder, null,
-                                        tint = MaterialTheme.colorScheme.primary) },
+                                    leadingIcon = { Icon(Icons.Default.Folder, null) },
                                     onClick = { menuExpanded = false; showCategoryDialog = true }
                                 )
                                 DropdownMenuItem(
@@ -403,11 +410,23 @@ fun PersonDetailScreen(
                         }
                     }
                 },
+                // v7.1.140 — les deux couleurs d'icône MANQUAIENT : la flèche de retour
+                // retombait sur le défaut M3. Elles suivent la MÊME condition que le titre,
+                // car cette barre change de fond en édition — un bloc fixe copié du socle y
+                // poserait des icônes `onPrimaryContainer` sur un fond secondaire.
+                // L'étoile favori (`FavoriteStar`/`StarBorder`), le « ⋮ » et le « ✓ » de
+                // l'édition portent un `tint` EXPLICITE : ils priment et ne bougent pas.
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = if (isEditing) MaterialTheme.colorScheme.secondaryContainer
                                      else MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = if (isEditing) MaterialTheme.colorScheme.onSecondaryContainer
-                                        else MaterialTheme.colorScheme.onPrimaryContainer
+                                        else MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor =
+                        if (isEditing) MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.onPrimaryContainer,
+                    actionIconContentColor =
+                        if (isEditing) MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         },
@@ -460,6 +479,23 @@ fun PersonDetailScreen(
                 Spacer(Modifier.height(8.dp))
             }
 
+            // v7.1.89 — la galerie du contact alimente À LA FOIS la pastille (nombre) et la
+            // vignette du carré (image la plus récente). Une seule observation : la liste est
+            // triée position/createdAt croissants, donc la DERNIÈRE entrée est la plus récente.
+            val galleryContext = LocalContext.current
+            val galleryImages by remember(person.id) {
+                GalleryRepository(galleryContext).observeByPerson(person.id)
+            }.collectAsStateWithLifecycle(initialValue = emptyList())
+            val galleryCount = galleryImages.size
+            val galleryLatestPath = galleryImages.lastOrNull()?.path
+
+            // v7.1.89 — l'avatar est encadré par un espaceur et le carré « galerie » de MÊME
+            // largeur : le carré apparaît à droite SANS décentrer l'avatar. Le carré est un
+            // FRÈRE du Box de 96 dp, donc l'EditPhotoOverlay (qui couvre tout le disque en
+            // édition) ne le masque pas — il reste accessible dans les deux modes.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.width(GALLERY_SQUARE_SIZE + 12.dp))
+
             Box(modifier = Modifier.size(96.dp)) {
                 // Source résolue dans un ordre STABLE, indépendant de isEditing :
                 // 1) photo en attente (sélectionnée, pas encore persistée),
@@ -484,11 +520,16 @@ fun PersonDetailScreen(
                                 )
                             else Modifier.background(MaterialTheme.colorScheme.primaryContainer)
                         )
-                        .then(if (isEditing) Modifier.blur(8.dp) else Modifier)
+                        // v7.1.119 (G3b-3) — fin du traitement lourd du mode édition : plus de
+                        // flou, plus de voile ; le disque reste NET et devient la cible du
+                        // sélecteur (même geste qu'avant : taper l'avatar change la photo),
+                        // l'affordance visuelle est le badge en coin façon v7.1.79.
                         .then(
-                            if (!isEditing && photoSrc != null)
-                                Modifier.clickable { showPhotoZoom = true }
-                            else Modifier
+                            when {
+                                isEditing -> Modifier.clickable { photoPicker() }
+                                photoSrc != null -> Modifier.clickable { showPhotoZoom = true }
+                                else -> Modifier
+                            }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -512,9 +553,20 @@ fun PersonDetailScreen(
                     }
                 }
 
-                EditPhotoOverlay(isEditing = isEditing) {
-                    photoPicker()
-                }
+                EditPhotoBadge(
+                    isEditing = isEditing,
+                    hasPhoto = photoSrc != null,
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                ) { photoPicker() }
+            }
+
+                Spacer(Modifier.width(12.dp))
+                GallerySquare(
+                    count = galleryCount,
+                    latestImagePath = galleryLatestPath,
+                    personName = person.fullName,
+                    onClick = { onNavigateToGallery(person.id) }
+                )
             }
 
             Spacer(Modifier.height(16.dp))
@@ -536,30 +588,21 @@ fun PersonDetailScreen(
                 }
             }
 
-            if (categoryChips.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                // FlowRow (v7.1.50) : au-delà de ~3 catégories, une `Row` simple poussait les
-                // badges HORS de l'écran (ni retour à la ligne, ni scroll) — le contact
-                // paraissait n'appartenir qu'aux premières. Ils se replient désormais sur
-                // autant de lignes que nécessaire. Alignement au DÉBUT (et non centré) :
-                // centrer chaque rangée indépendamment donnait une pyramide, la dernière
-                // rangée, plus courte, se retrouvant décalée par rapport aux précédentes.
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    // Badges INTERACTIFS (v5.3.4) : un tap ouvre le détail de la catégorie.
-                    // Source RÉACTIVE (v7.1.5) → ajout/retrait depuis le sélecteur reflété ici.
-                    categoryChips.forEach { (categoryId, name) ->
-                        SuggestionChip(
-                            onClick = { onNavigateToCategory(categoryId) },
-                            label = { Text(name) },
-                            icon = { Icon(Icons.Default.Folder, null, Modifier.size(16.dp)) }
-                        )
-                    }
-                }
-            }
+            // v7.1.74 — retour à la disposition d'AVANT v7.1.67 (demande HR) : badges et
+            // réseaux rendus ICI dans les DEUX modes. En ÉDITION (le nom s'édite dans
+            // ProfileFormFields, rendu plus bas), ils apparaissent donc AU-DESSUS du
+            // prénom : photo → catégorie → liens → nom → notes. En LECTURE, rien ne
+            // change (le nom, affiché juste au-dessus, reste premier).
+            // v7.1.76 (Lot 1, harmonisé) — point d'entrée DIRECT « + catégorie », MÊME
+            // matrice de visibilité que les liens (SocialLinksSection) : lecture sans
+            // catégorie → rien, chips → petit « + » au bout, édition → affordance texte.
+            // La rangée gère sa marge haute elle-même (aucun Spacer fantôme à vide).
+            CategoryChipsRow(
+                categoryChips = categoryChips,
+                isEditing = isEditing,
+                onNavigateToCategory = onNavigateToCategory,
+                onAddCategoryClick = { showCategoryDialog = true }
+            )
 
             Spacer(Modifier.height(12.dp))
             SocialLinksSection(
@@ -569,11 +612,12 @@ fun PersonDetailScreen(
                 onRemoveClick = { editVm.removeSocialLink(it) }
             )
 
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(12.dp))
-
+            // v7.1.118 — en ÉDITION, le filet entre réseaux sociaux et formulaire reste
+            // parti (même traitement que la création) : la respiration seule sépare.
+            // v7.1.124 — en LECTURE il revient, mais SEULEMENT s'il sépare deux blocs
+            // réellement remplis ; l'espace de tête est donc décidé par chaque mode.
             if (isEditing) {
+                Spacer(Modifier.height(28.dp))
                 ProfileFormFields(
                     firstName = vmFirstName,
                     onFirstNameChange = { editVm.onFirstNameChanged(it) },
@@ -617,6 +661,12 @@ fun PersonDetailScreen(
                 )
             } else {
                 // ── Mode lecture : ordre IDENTIQUE au formulaire ─────────────────
+                // v7.1.124 — le contenu de CHAQUE bloc est résolu AVANT de dessiner quoi
+                // que ce soit : un filet ne se pose qu'entre deux blocs voisins REMPLIS,
+                // ce qui suppose de savoir si le suivant a du contenu. Les trois blocs de
+                // la fiche sont, dans l'ordre : l'en-tête (photo, nom, catégories, liens —
+                // TOUJOURS présent), les informations, puis les sections de notes.
+
                 // 2. Dates importantes — TOUTES, avec cloche si rappel actif (règle 2 max)
                 val dates = person.dateLines?.takeIf { it.isNotEmpty() }
                     ?: person.birthdate?.let {
@@ -626,12 +676,51 @@ fun PersonDetailScreen(
                             notify = person.birthdateNotify
                         ))
                     }
-                if (dates != null) DatesBlock(lines = dates)
-
                 // 3. Relations (règle 2 max) — cliquables → contact lié PAR IDENTIFIANT (v7.1.6).
                 // La navigation utilise linkedPersonId (repli SANS AMBIGUÏTÉ par nom pour l'hérité) :
                 // jamais d'ouverture devinée. Nom ambigu → « à vérifier » ; introuvable → message.
                 val relations = person.relationLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
+                // 4. Téléphones puis 5. Emails (repli scalaire pour profils legacy, règle 2 max)
+                val phones = person.phoneLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
+                    ?: person.phoneNumber?.takeIf { it.isNotBlank() }
+                        ?.let { listOf(DynamicLine(value = it, label = FieldTypes.PHONE_MOBILE)) }
+                val emails = person.emailLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
+                    ?: person.email?.takeIf { it.isNotBlank() }
+                        ?.let { listOf(DynamicLine(value = it, label = FieldTypes.EMAIL_HOME)) }
+                // 6. Informations professionnelles — bloc compact, masqué si vide
+                val at = stringResource(R.string.person_job_at)
+                val jobHead = when {
+                    !person.jobTitle.isNullOrBlank() && !person.company.isNullOrBlank() ->
+                        "${person.jobTitle} $at ${person.company}"
+                    !person.jobTitle.isNullOrBlank() -> person.jobTitle
+                    !person.company.isNullOrBlank() -> person.company
+                    else -> null
+                }
+                val jobSummary = listOfNotNull(
+                    jobHead, person.department?.takeIf { it.isNotBlank() }
+                ).joinToString(" · ")
+
+                // Le bloc « informations » est rempli dès qu'une seule de ses lignes l'est.
+                // Le genre hérité (rendu tout en bas, après les notes) en est EXCLU : le
+                // compter ici poserait un filet en tête alors que son contenu arrive après
+                // les notes — soit, pour une fiche sans informations, deux filets collés.
+                val hasInfoBlock = dates != null || relations != null || phones != null ||
+                    emails != null || jobSummary.isNotBlank() ||
+                    person.origin != null || person.city != null
+
+                // Filet en-tête ↔ informations. L'en-tête ne peut pas être vide, donc ce
+                // filet sépare toujours deux blocs remplis ; sans informations, aucun filet
+                // ici et c'est celui des notes qui jouera la séparation (jamais les deux).
+                if (hasInfoBlock) {
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(12.dp))
+                } else {
+                    Spacer(Modifier.height(28.dp))
+                }
+
+                if (dates != null) DatesBlock(lines = dates)
+
                 if (relations != null) {
                     val notFoundMsg = stringResource(R.string.relation_not_found)
                     val ambiguousMsg = stringResource(R.string.relation_ambiguous_toast)
@@ -655,10 +744,6 @@ fun PersonDetailScreen(
                     )
                 }
 
-                // 4. Téléphones puis 5. Emails (repli scalaire pour profils legacy, règle 2 max)
-                val phones = person.phoneLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
-                    ?: person.phoneNumber?.takeIf { it.isNotBlank() }
-                        ?.let { listOf(DynamicLine(value = it, label = FieldTypes.PHONE_MOBILE)) }
                 if (phones != null) {
                     ContactLinesBlock(
                         icon = Icons.Default.Phone,
@@ -673,9 +758,6 @@ fun PersonDetailScreen(
                         }
                     )
                 }
-                val emails = person.emailLines?.filter { it.value.isNotBlank() }?.takeIf { it.isNotEmpty() }
-                    ?: person.email?.takeIf { it.isNotBlank() }
-                        ?.let { listOf(DynamicLine(value = it, label = FieldTypes.EMAIL_HOME)) }
                 if (emails != null) {
                     ContactLinesBlock(
                         icon = Icons.Default.Email,
@@ -691,18 +773,6 @@ fun PersonDetailScreen(
                     )
                 }
 
-                // 6. Informations professionnelles — bloc compact, masqué si vide
-                val at = stringResource(R.string.person_job_at)
-                val jobHead = when {
-                    !person.jobTitle.isNullOrBlank() && !person.company.isNullOrBlank() ->
-                        "${person.jobTitle} $at ${person.company}"
-                    !person.jobTitle.isNullOrBlank() -> person.jobTitle
-                    !person.company.isNullOrBlank() -> person.company
-                    else -> null
-                }
-                val jobSummary = listOfNotNull(
-                    jobHead, person.department?.takeIf { it.isNotBlank() }
-                ).joinToString(" · ")
                 if (jobSummary.isNotBlank()) {
                     DetailRow(icon = Icons.Default.Work,
                         label = stringResource(R.string.section_work),
@@ -725,17 +795,24 @@ fun PersonDetailScreen(
                 // 9. Sections de notes — grands blocs de texte tout en bas (v7.0.3).
                 // Sections persistées, ou conversion sans perte des notes héritées (legacy).
                 // On masque les sections vides en lecture.
+                // v7.1.75 — « 1re ligne = titre » : le couple (titre affiché, corps) est
+                // CALCULÉ au rendu via combined/split (dérivation pure, AUCUNE écriture).
+                // Filtre sur le texte COMBINÉ : les sections « titre seul » (contenu vide),
+                // invisibles avant, deviennent visibles — une ligne en style titre (tranché HR).
                 val readSections = person.effectiveNoteSections(notesTitle, likesTitle)
-                    .filter { it.content.isNotBlank() }
+                    .filter { it.combinedText().isNotBlank() }
                 if (readSections.isNotEmpty()) {
+                    // Second intervalle de la même règle : ce filet sépare les notes du
+                    // bloc rempli qui précède — les informations, ou l'en-tête à défaut.
                     Spacer(Modifier.height(4.dp))
                     HorizontalDivider()
                     Spacer(Modifier.height(4.dp))
                     readSections.forEach { s ->
+                        val (displayTitle, displayBody) = splitCombinedText(s.combinedText())
                         DetailTextBlock(
                             icon = NoteIcons.icon(s.iconKey),
-                            label = s.title,
-                            value = s.content
+                            label = displayTitle,
+                            value = displayBody
                         )
                     }
                 }
@@ -815,11 +892,14 @@ fun PersonDetailScreen(
         // l'ancien pattern en dur « d MMMM yyyy, HH:mm » imposait l'ordre jour-mois-année et le
         // 24 h à TOUTES les langues (« 14 June 2026 » en anglais, ordre faux en japonais).
         val infoLocale = Locale.getDefault()
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { showInfoDialog = false },
-            icon = { Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary) },
-            title = { Text(stringResource(R.string.person_info_title)) },
-            text = {
+            icon = Icons.Default.Info,
+            title = stringResource(R.string.person_info_title),
+            confirmLabel = stringResource(R.string.common_ok),
+            onConfirm = { showInfoDialog = false },
+            // Corps RICHE (paires libellé/valeur) : `content`, pas `text`.
+            content = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column {
                         Text(stringResource(R.string.person_info_created),
@@ -838,32 +918,20 @@ fun PersonDetailScreen(
                             style = MaterialTheme.typography.bodyLarge)
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { showInfoDialog = false }) {
-                    Text(stringResource(R.string.common_ok))
-                }
             }
         )
     }
 
     if (showDeleteDialog) {
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.person_delete_dialog_title)) },
-            text = { Text(stringResource(R.string.person_delete_dialog_text)) },
-            confirmButton = {
-                TextButton(onClick = { showDeleteDialog = false; onDeleteClick() }) {
-                    Text(stringResource(R.string.common_delete),
-                        color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+            icon = Icons.Default.Delete,
+            title = stringResource(R.string.person_delete_dialog_title),
+            text = stringResource(R.string.person_delete_dialog_text),
+            destructive = true,
+            confirmLabel = stringResource(R.string.common_delete),
+            onConfirm = { showDeleteDialog = false; onDeleteClick() },
+            dismissLabel = stringResource(R.string.common_cancel)
         )
     }
 }
@@ -871,77 +939,160 @@ fun PersonDetailScreen(
 
 
 @Composable
-private fun EditPhotoOverlay(isEditing: Boolean, onClick: () -> Unit) {
-    AnimatedVisibility(visible = isEditing, enter = fadeIn(), exit = fadeOut()) {
+private fun EditPhotoBadge(
+    isEditing: Boolean,
+    hasPhoto: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    // v7.1.119 (G3b-3) — remplace l'EditPhotoOverlay historique (voile Color.Black 45 % +
+    // flou + libellé blanc sur tout le disque) par le badge caméra v7.1.79 de
+    // [FormPhotoHeader] : 32 dp en coin, couleurs DU THÈME (primaryContainer — contraste
+    // garanti clair/sombre sur les 6 palettes, aucun noir/blanc codé en dur), Edit si une
+    // photo existe, AddAPhoto sinon. INSCRIT dans le coin du disque (pas d'offset négatif,
+    // v7.1.89) et miroité naturellement en RTL. Le geste historique est conservé : tout le
+    // disque reste cliquable vers le sélecteur, le badge n'est que l'affordance visible.
+    AnimatedVisibility(
+        visible = isEditing, enter = fadeIn(), exit = fadeOut(), modifier = modifier
+    ) {
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .size(32.dp)
                 .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.45f))
+                .background(MaterialTheme.colorScheme.primaryContainer)
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.CameraAlt, contentDescription = null,
-                    tint = Color.White, modifier = Modifier.size(24.dp))
-                Text(stringResource(R.string.person_edit_photo_label),
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall)
-            }
+            Icon(
+                if (hasPhoto) Icons.Default.Edit else Icons.Default.AddAPhoto,
+                contentDescription = stringResource(R.string.person_edit_photo_label),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }
 
 @Composable
 internal fun AddSocialLinkDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
-    var url by remember { mutableStateOf("") }
-    val detected by remember { derivedStateOf { extractSocialLinks(url).firstOrNull() } }
-
-    AlertDialog(
+    // Signature PUBLIQUE conservée (2 appelants : AddPersonScreen et cet écran) ; seul le
+    // corps change. La saisie n'est plus un état local : elle vit dans JtrPromptDialog, et
+    // l'aperçu la reçoit par `supportingContent` — c'est pour lui que le socle passe
+    // désormais la valeur courante (v7.1.133).
+    JtrPromptDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.person_add_link_dialog_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    label = { Text(stringResource(R.string.person_add_link_url_label)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
-                    shape = RoundedCornerShape(12.dp)
-                )
-                AnimatedVisibility(visible = detected != null) {
-                    val platform = detected?.platform ?: return@AnimatedVisibility
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        title = stringResource(R.string.person_add_link_dialog_title),
+        confirmLabel = stringResource(R.string.person_add_link_action),
+        onConfirm = { url -> onConfirm(url); onDismiss() },
+        dismissLabel = stringResource(R.string.common_cancel),
+        label = stringResource(R.string.person_add_link_url_label),
+        leadingIcon = Icons.Default.Link,
+        supportingContent = { url ->
+            val detected = remember(url) { extractSocialLinks(url).firstOrNull() }
+            Spacer(Modifier.height(12.dp))
+            AnimatedVisibility(visible = detected != null) {
+                val platform = detected?.platform ?: return@AnimatedVisibility
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Icône de marque (couleurs d'origine, non teintée) — même rendu
+                    // que l'Accueil/le profil (source unique getSocialIcon/iconRes).
+                    Icon(
+                        painter = painterResource(platform.iconRes),
+                        contentDescription = null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Text(platform.displayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    )
+}
+
+/**
+ * Badges de catégories de la fiche. FlowRow (v7.1.50) : au-delà de ~3 catégories, une
+ * `Row` simple poussait les badges HORS de l'écran (ni retour à la ligne, ni scroll) — le
+ * contact paraissait n'appartenir qu'aux premières. Ils se replient désormais sur autant
+ * de lignes que nécessaire. Alignement au DÉBUT (et non centré) : centrer chaque rangée
+ * indépendamment donnait une pyramide, la dernière rangée, plus courte, se retrouvant
+ * décalée par rapport aux précédentes.
+ *
+ * Badges INTERACTIFS (v5.3.4) : un tap ouvre le détail de la catégorie. Source RÉACTIVE
+ * (v7.1.5) → ajout/retrait depuis le sélecteur reflété ici.
+ *
+ * v7.1.76 (Lot 1 refonte catégories, HARMONISÉ) : la rangée porte son propre bouton
+ * « + catégorie » — icône dossier+ ([Icons.Default.CreateNewFolder]), jamais confondable
+ * avec le « + lien » voisin — qui ouvre le sélecteur EXISTANT (aucun nouveau flux).
+ * MÊME MATRICE DE VISIBILITÉ que [SocialLinksSection], la référence tranchée par HR :
+ * lecture sans élément → RIEN (la 1re catégorie s'ajoute via l'édition, comme un lien) ;
+ * lecture avec chips → chips + petit « + » rond 28 dp en fin de rangée, sans texte ;
+ * édition → affordance texte sous les chips (0 ou N), même grammaire que « + lien ».
+ * La rangée porte sa propre marge haute : aucun espace fantôme quand elle ne rend rien.
+ */
+@OptIn(ExperimentalLayoutApi::class) // FlowRow
+@Composable
+private fun CategoryChipsRow(
+    categoryChips: List<Pair<String, String>>,
+    isEditing: Boolean,
+    onNavigateToCategory: (String) -> Unit,
+    onAddCategoryClick: () -> Unit
+) {
+    // Matrice [SocialLinksSection] : en lecture sans élément, la section n'existe pas.
+    if (categoryChips.isEmpty() && !isEditing) return
+
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        if (categoryChips.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                categoryChips.forEach { (categoryId, name) ->
+                    SuggestionChip(
+                        onClick = { onNavigateToCategory(categoryId) },
+                        label = { Text(name) },
+                        icon = { Icon(Icons.Default.Folder, null, Modifier.size(16.dp)) }
+                    )
+                }
+                if (!isEditing) {
+                    // Petit « + » rond 28 dp en FIN de rangée (suit le miroir RTL),
+                    // strict équivalent du « + lien » de lecture. Un SuggestionChip
+                    // occupe un slot de 48 dp (cible tactile a11y) autour de ses 32 dp
+                    // visibles : sans `align`, un conteneur de 32 dp calé en haut de
+                    // ligne mettait le bouton ~8 dp trop haut (retour HR) ; le centrage
+                    // vaut PAR LIGNE, donc reste correct quand les chips se replient.
+                    Box(
+                        modifier = Modifier.height(32.dp).align(Alignment.CenterVertically),
+                        contentAlignment = Alignment.Center
                     ) {
-                        // Icône de marque (couleurs d'origine, non teintée) — même rendu
-                        // que l'Accueil/le profil (source unique getSocialIcon/iconRes).
-                        Icon(
-                            painter = painterResource(platform.iconRes),
-                            contentDescription = null,
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Text(platform.displayName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold)
+                        FilledTonalIconButton(onClick = onAddCategoryClick, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.CreateNewFolder,
+                                contentDescription = stringResource(R.string.person_add_to_category),
+                                modifier = Modifier.size(16.dp))
+                        }
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(url); onDismiss() },
-                enabled = url.isNotBlank()
-            ) { Text(stringResource(R.string.person_add_link_action)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
-    )
+        if (isEditing) {
+            // Affordance texte SOUS les chips — grammaire identique à « Add a social
+            // link » du mode édition (TextButton + icône 18 dp + libellé), 0 ou N chips.
+            TextButton(
+                onClick = onAddCategoryClick,
+                modifier = Modifier.align(Alignment.Start),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Icon(Icons.Default.CreateNewFolder, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.person_add_to_category),
+                    style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
 }
 
 @Composable
@@ -1067,7 +1218,7 @@ private fun CityDetailRow(city: String, cityLat: Double?, cityLng: Double?) {
     if (hasCoords) {
         AnimatedVisibility(visible = showMap, enter = expandVertically(), exit = shrinkVertically()) {
             Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
                 MapLibreMiniMap(lat = cityLat!!, lng = cityLng!!, cityName = city,
                     modifier = Modifier.fillMaxWidth().height(180.dp))
@@ -1153,7 +1304,7 @@ private fun MapLibreMiniMap(lat: Double, lng: Double, cityName: String, modifier
                 }
             }
         }
-    }, modifier = modifier.clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)))
+    }, modifier = modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)))
 }
 
 /** Libellé d'affichage d'une ligne : type connu localisé, sinon texte personnalisé. */
@@ -1317,13 +1468,19 @@ fun DetailTextBlock(icon: ImageVector, label: String, value: String) {
         Column {
             // Titre VIDE possible depuis v7.1.33 (section laissée sans titre) : on MASQUE la ligne
             // de libellé plutôt que d'afficher un vide ou de réinjecter « Notes » → bloc cohérent
-            // (icône + contenu). Sans effet sur les sections titrées (label non vide → inchangé).
+            // (icône + contenu). v7.1.75 — la 1re ligne faisant office de titre, elle passe en
+            // VRAI style de titre (titleSmall SemiBold, onSurface), gras en lecture seulement.
             if (label.isNotBlank()) {
-                Text(label, style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(label, style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.height(4.dp))
             }
-            Text(value, style = MaterialTheme.typography.bodyLarge)
+            // v7.1.75 — corps masqué s'il est vide (note d'une seule ligne = titre seul) :
+            // sinon Text("") réserverait une ligne fantôme sous le titre.
+            if (value.isNotBlank()) {
+                Text(value, style = MaterialTheme.typography.bodyLarge)
+            }
         }
     }
 }

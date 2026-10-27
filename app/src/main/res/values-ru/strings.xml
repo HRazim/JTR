@@ -29,22 +29,23 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">Контакты JTR</string>
+    <string name="recents_title">Недавние</string>
+    <!-- v7.1.73 — harmonized search: result section headers -->
+    <string name="search_section_contacts">Контакты</string>
+    <string name="search_in_category">Поиск в %1$s</string>
+    <string name="search_in_folder">Поиск в %1$s</string>
+    <string name="search_section_categories">Категории</string>
+    <string name="search_section_folders">Папки</string>
     <string name="home_fab_add_person">Добавить человека</string>
     <string name="home_location_warning">Включите геолокацию для напоминаний о близости</string>
     <string name="home_search_placeholder">Поиск контакта…</string>
     <string name="home_empty_title">Контакты не найдены</string>
     <string name="home_empty_subtitle">Нажмите +, чтобы добавить человека</string>
-    <string name="home_btn_category">Категория</string>
     <string name="home_btn_delete">Удалить</string>
     <string name="home_favorite_cd">Избранное</string>
 
     <!-- ── Category assign dialog ─────────────────────────────────────────── -->
     <string name="dialog_assign_category_title">Назначить категорию</string>
-    <string name="dialog_new_category_title">Новая категория</string>
-    <string name="dialog_create_category_cd">Создать категорию</string>
-    <string name="dialog_create_new_category">Создать новую категорию</string>
-    <string name="dialog_create_and_assign">Создать и назначить</string>
-    <string name="dialog_category_name_label">Название категории</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">Категории</string>
@@ -64,6 +65,7 @@
     <string name="category_detail_empty_title">В этой категории нет участников</string>
     <string name="category_detail_empty_subtitle">Нажмите +, чтобы добавить контакт</string>
     <string name="category_detail_fab_add">Добавить контакт</string>
+    <string name="category_detail_removed_snackbar">Убрано из %1$s</string>
     <string name="category_detail_btn_remove">Убрать</string>
     <string name="category_detail_default_title">Категория</string>
 
@@ -71,18 +73,12 @@
     <string name="person_add_title">Добавить человека</string>
     <string name="person_edit_title">Изменить контакт</string>
     <string name="person_photo_cd">Фото профиля</string>
-    <string name="person_first_name_label">Имя *</string>
-    <string name="person_first_name_error">Имя обязательно</string>
     <string name="person_first_name_required">Обязательно</string>
-    <string name="person_last_name_label">Фамилия</string>
     <string name="person_gender_label">Пол</string>
     <string name="person_gender_male">Мужской</string>
     <string name="person_gender_female">Женский</string>
     <string name="person_gender_nonbinary">Небинарный</string>
     <string name="person_gender_nonbinary_short">Небин.</string>
-    <string name="person_birthday_label">День рождения</string>
-    <string name="person_birthday_select">Выберите дату</string>
-    <string name="person_birthday_modify">Изменить дату</string>
     <string name="person_birthday_clear">Очистить</string>
     <string name="person_birthday_notify">Уведомлять в день рождения</string>
     <string name="person_birthday_invalid">Неверная дата</string>
@@ -98,12 +94,10 @@
     <string name="person_social_links_title">Социальные сети</string>
     <string name="person_add_social_link">Добавить ссылку на соцсеть</string>
     <string name="person_social_delete_cd">Удалить</string>
-    <string name="person_personal_info_title">Личная информация</string>
     <string name="person_origin_label">Происхождение</string>
     <string name="person_likes_label">Что нравится</string>
     <string name="person_notes_label">Прочие заметки</string>
     <string name="person_save">Сохранить</string>
-    <string name="person_save_changes">Сохранить изменения</string>
 
     <!-- ── Person detail screen ───────────────────────────────────────────── -->
     <string name="person_not_found">Человек не найден</string>
@@ -157,7 +151,6 @@
     <string name="trash_group_purge_imminent">скорое удаление</string>
     <string name="trash_group_purge_1_day">остался 1 день</string>
     <string name="trash_group_purge_days">осталось дней: %1$d</string>
-    <string name="trash_group_status">%1$d контакт(ов) · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -309,10 +302,9 @@
     <string name="categories_unfavorite">Убрать из избранного</string>
     <string name="categories_create_group">Создать группу</string>
     <string name="categories_group_name_hint">Название группы</string>
-    <string name="categories_rename">Переименовать</string>
     <string name="categories_change_image">Изменить изображение</string>
     <string name="categories_delete_selected_title">Удалить %1$d категорий?</string>
-    <string name="categories_delete_selected_text">Выбранные категории и их контакты будут перемещены в корзину.</string>
+    <string name="categories_delete_selected_text">Выбранные категории будут перемещены в корзину. Ваши контакты не удаляются, они лишь теряют эти метки.</string>
     <string name="categories_drag_handle_cd">Перетащите для изменения порядка</string>
     <string name="categories_group_empty">Эта папка пуста</string>
     <string name="relation_not_found">Профиль не найден</string>
@@ -323,27 +315,29 @@
     <string name="sort_direction_descending">По убыванию</string>
     <string name="categories_fav_action">Избранное</string>
     <string name="categories_group_action">Группировать</string>
-    <string name="categories_move_to">Переместить в «%1$s»</string>
+    <string name="categories_move_to_group">Переместить в группу…</string>
+    <string name="categories_parent_group">Родительская группа</string>
+    <string name="categories_parent_root">Корень</string>
     <string name="categories_add_to_group_title">Добавить в группу</string>
     <string name="categories_add_existing">Добавить существующие категории</string>
     <string name="categories_create_here">Создать категорию здесь</string>
     <string name="categories_dissolve_group">Разгруппировать</string>
     <string name="categories_dissolve_confirm_text">Категории снова станут независимыми.</string>
-    <string name="categories_no_candidates">Нет доступных категорий</string>
     <string name="categories_group_counter">Категорий: %1$d, групп: %2$d</string>
     <string name="categories_folder_counter">%1$d кат. · %2$d контактов</string>
     <string name="categories_move_out">Убрать из группы</string>
     <string name="categories_delete_group_title">Удалить группу «%1$s»?</string>
     <string name="categories_delete_group_text">Удалить группу «%1$s» и %2$d категорий в ней?</string>
     <string name="select_all">Выбрать всё</string>
-    <string name="categories_selection_none">Выбрано: 0</string>
-    <string name="select_all_count">Выбрать всё (%1$d)</string>
+    <string name="select_all_short">Все</string>
+    <string name="select_none">Снять выделение</string>
     <string name="action_move">Переместить</string>
     <string name="move_pick_target_title">Выберите категорию</string>
     <string name="category_detail_add_existing">Добавить существующий контакт</string>
     <string name="category_detail_create_new">Создать новый контакт</string>
     <string name="category_detail_no_candidates">Все контакты уже в этой категории</string>
     <string name="action_search">Поиск</string>
+    <string name="action_scroll_to_top">Наверх</string>
     <string name="view_mode_title">Вид</string>
     <string name="view_mode_list">Список</string>
     <string name="view_mode_grid">Сетка</string>
@@ -374,11 +368,10 @@
     <string name="city_map_hint">Нажмите значок карты, чтобы подтвердить точный адрес.</string>
     <string name="location_denied_settings">Доступ к геолокации запрещён. Разрешите его в настройках телефона.</string>
     <string name="location_off_settings">Включите геолокацию в настройках, чтобы использовать это оповещение.</string>
-    <string name="favorites_category">Избранное</string>
     <string name="action_move_to_trash">Переместить в корзину</string>
     <string name="action_trash_short">Корзина</string>
     <string name="category_trash_confirm_title">Переместить эту категорию в корзину?</string>
-    <string name="category_trash_confirm_text">Категория и её контакты будут перемещены в корзину.</string>
+    <string name="category_trash_confirm_text">Категория будет перемещена в корзину. Ваши контакты не удаляются, они лишь теряют эту метку.</string>
     <string name="welcome_title">Добро пожаловать в JTR</string>
     <string name="welcome_subtitle">JTR — это блокнот воспоминаний.</string>
     <string name="welcome_import_button">Импортировать контакты телефона</string>
@@ -390,6 +383,19 @@
     <string name="welcome_select_button">Выбрать контакты для импорта</string>
     <string name="contact_selection_title">Выберите контакты</string>
     <string name="settings_backup_subtitle">Экспорт или восстановление данных (файл .jtr)</string>
+    <!-- v7.1.106 — ручная очистка неиспользуемых (осиротевших) файлов изображений -->
+    <string name="settings_cleanup_title">Освободить место</string>
+    <string name="settings_cleanup_subtitle">Удалить оставшиеся изображения, которые больше не используются</string>
+    <string name="settings_cleanup_scanning">Сканирование…</string>
+    <plurals name="settings_cleanup_confirm_message">
+        <item quantity="one">%1$d оставшийся файл (%2$s) от удалённых или заменённых фото. Ваши контакты и их фото не затронуты.</item>
+        <item quantity="few">%1$d оставшихся файла (%2$s) от удалённых или заменённых фото. Ваши контакты и их фото не затронуты.</item>
+        <item quantity="many">%1$d оставшихся файлов (%2$s) от удалённых или заменённых фото. Ваши контакты и их фото не затронуты.</item>
+        <item quantity="other">%1$d оставшегося файла (%2$s) от удалённых или заменённых фото. Ваши контакты и их фото не затронуты.</item>
+    </plurals>
+    <string name="settings_cleanup_none">Нет оставшихся файлов</string>
+    <string name="settings_cleanup_confirm_button">Освободить %1$s</string>
+    <string name="settings_cleanup_done">Освобождено %1$s</string>
     <string name="share_preview_loading">Загрузка изображений…</string>
     <string name="settings_notif_rationale_title">Разрешить уведомления?</string>
     <string name="settings_notif_rationale_message">JTR присылает мягкие напоминания о днях рождения и важных датах — прямо на ваш телефон.</string>
@@ -451,7 +457,6 @@
     <string name="note_section_add">Добавить раздел</string>
     <string name="note_section_default_notes">Заметки</string>
     <string name="note_section_address">Адрес</string>
-    <string name="note_section_title_hint">Название раздела</string>
     <string name="note_section_content_hint">Напишите что-нибудь…</string>    <string name="note_section_delete_confirm_title">Удалить этот раздел?</string>
     <string name="note_section_delete_confirm_text">Его содержимое будет удалено навсегда.</string>
     <string name="note_section_icon_picker_title">Выберите значок</string>
@@ -463,7 +468,7 @@
     <string name="person_category_new">Новая категория</string>
     <string name="person_categories_empty">Категорий пока нет. Создайте, чтобы начать.</string>
     <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
-    <string name="person_categories_search_placeholder">Поиск категории…</string>
+    <string name="category_search_placeholder">Поиск категории…</string>
     <string name="person_categories_no_results">Нет категорий, соответствующих запросу</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">Требует проверки</string>
@@ -554,4 +559,38 @@
     <string name="import_contacts_done_message_updated">%1$d импортировано · %2$d обновлено · %3$d пропущено</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">Дата рождения не может быть в будущем</string>
+    <!-- v7.1.89 - galerie d'images par contact -->
+    <string name="gallery_title">Галерея</string>
+    <string name="gallery_add">Добавить фото</string>
+    <string name="gallery_empty_title">Пока нет воспоминаний</string>
+    <string name="gallery_empty_subtitle">Добавьте первое воспоминание об этом контакте.</string>
+    <string name="gallery_delete_confirm">Удалить</string>
+    <string name="gallery_image_cd">Фото из галереи</string>
+    <string name="gallery_details_open">Сведения</string>
+    <string name="gallery_details_title">Сведения о фото</string>
+    <string name="gallery_details_description">Описание</string>
+    <string name="gallery_details_description_hint">Добавить описание</string>
+    <string name="gallery_details_date">Дата</string>
+    <string name="gallery_details_time">Время</string>
+    <string name="gallery_details_month">Месяц</string>
+    <string name="gallery_details_day">День</string>
+    <string name="gallery_details_year">Год</string>
+    <string name="gallery_details_hour">Час</string>
+    <string name="gallery_details_minute">Минута</string>
+    <string name="gallery_details_location">Место</string>
+    <string name="gallery_details_location_add">Добавить место</string>
+    <string name="gallery_details_location_remove">Удалить место</string>
+    <plurals name="gallery_square_cd">
+        <item quantity="one">Галерея: %1$s, 1 фото</item>
+        <item quantity="few">Галерея: %1$s, %2$d фото</item>
+        <item quantity="many">Галерея: %1$s, %2$d фото</item>
+        <item quantity="other">Галерея: %1$s, %2$d фото</item>
+    </plurals>
+    <plurals name="gallery_delete_n_title">
+        <item quantity="one">Удалить %1$d фото?</item>
+        <item quantity="few">Удалить %1$d фото?</item>
+        <item quantity="many">Удалить %1$d фото?</item>
+        <item quantity="other">Удалить %1$d фото?</item>
+    </plurals>
+    <string name="gallery_delete_warning">Будет убрано из этой галереи и удалено с устройства. Отменить нельзя.</string>
 </resources>

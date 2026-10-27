@@ -1,0 +1,349 @@
+package com.jtr.app.ui.gallery
+
+import android.app.Application
+import android.content.SharedPreferences
+import androidx.lifecycle.SavedStateHandle
+import com.google.common.truth.Truth.assertThat
+import com.jtr.app.R
+import com.jtr.app.data.local.AppDatabase
+import com.jtr.app.data.local.GalleryImageDao
+import com.jtr.app.data.local.PersonDao
+import com.jtr.app.domain.model.GalleryImage
+import com.jtr.app.testing.MainDispatcherRule
+import com.jtr.app.ui.components.JtrSortDirection
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import io.mockk.verify
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+
+/**
+ * v7.1.101 — tri d'AFFICHAGE de la galerie par date de création, puis v7.1.103 — par date
+ * de MODIFICATION (aucune migration, `modifiedAt` posé en v25) :
+ *
+ *  - [sortGalleryImages] ordonne par `createdAt`, ou par `COALESCE(modifiedAt, createdAt)`
+ *    pour le critère « modifié » (une image jamais éditée se classe par sa création), dans
+ *    le sens choisi ; tri STABLE : à clé égale, l'ordre DAO (`position`/`createdAt`) départage ;
+ *  - [gallerySortCriteria] expose « Date de modification » puis « Date de création » (ordre
+ *    de l'Accueil/Catégories), modèle à deux axes : re-tap du critère actif = inversion ;
+ *  - pref `gallery_sort` : absente ou inconnue → fallback CREATED_DESC (v7.1.109, plus
+ *    récent en haut) ; persistée → restaurée telle quelle ; [GalleryViewModel.setSortOrder]
+ *    écrit la pref ; le flow [GalleryViewModel.images] rediffuse la liste dans le tri choisi.
+ *
+ * Pilote le VRAI GalleryViewModel contre des DAO mockés (même grammaire que
+ * CategorySortOrderTest / SearchViewModelTest).
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class GallerySortOrderTest {
+
+    // ── Fabrique d'images ───────────────────────────────────────────────────────
+
+    private fun img(id: Long, createdAt: Long, position: Int = 0, modifiedAt: Long? = null) =
+        GalleryImage(
+            id = id, personId = "p1", path = "f$id.jpg", position = position,
+            createdAt = createdAt, modifiedAt = modifiedAt
+        )
+
+    // ── sortGalleryImages ───────────────────────────────────────────────────────
+
+    @Test
+    fun createdAsc_oldestFirst() {
+        val images = listOf(img(1, createdAt = 300), img(2, createdAt = 100), img(3, createdAt = 200))
+        val sorted = sortGalleryImages(images, GallerySortOrder.CREATED_ASC)
+        assertThat(sorted.map { it.id }).containsExactly(2L, 3L, 1L).inOrder()
+    }
+
+    @Test
+    fun createdDesc_newestFirst() {
+        val images = listOf(img(1, createdAt = 300), img(2, createdAt = 100), img(3, createdAt = 200))
+        val sorted = sortGalleryImages(images, GallerySortOrder.CREATED_DESC)
+        assertThat(sorted.map { it.id }).containsExactly(1L, 3L, 2L).inOrder()
+    }
+
+    @Test
+    fun equalCreatedAt_tieKeepsDaoOrder_bothDirections() {
+        // Même import (createdAt identique) : l'ordre DAO (position) doit survivre au tri.
+        val daoOrder = listOf(
+            img(10, createdAt = 500, position = 0),
+            img(11, createdAt = 500, position = 1),
+            img(12, createdAt = 500, position = 2)
+        )
+        assertThat(sortGalleryImages(daoOrder, GallerySortOrder.CREATED_ASC).map { it.id })
+            .containsExactly(10L, 11L, 12L).inOrder()
+        assertThat(sortGalleryImages(daoOrder, GallerySortOrder.CREATED_DESC).map { it.id })
+            .containsExactly(10L, 11L, 12L).inOrder()
+    }
+
+    // ── Tri « Date de modification » (v7.1.103) — COALESCE(modifiedAt, createdAt) ──
+
+    @Test
+    fun modifiedDesc_editedLeads_neverEditedFallsBackToCreatedAt() {
+        val images = listOf(
+            img(1, createdAt = 100),                            // jamais éditée → clé 100
+            img(2, createdAt = 300),                            // jamais éditée → clé 300
+            img(3, createdAt = 200, modifiedAt = 900),          // éditée        → clé 900
+            img(4, createdAt = 400, modifiedAt = 250)           // éditée        → clé 250
+        )
+        val sorted = sortGalleryImages(images, GallerySortOrder.MODIFIED_DESC)
+        // 900 (éditée) > 300 (création) > 250 (éditée) > 100 (création) : le COALESCE
+        // entremêle bien les deux populations sur une seule échelle.
+        assertThat(sorted.map { it.id }).containsExactly(3L, 2L, 4L, 1L).inOrder()
+    }
+
+    @Test
+    fun modifiedAsc_isTheExactReverse() {
+        val images = listOf(
+            img(1, createdAt = 100),
+            img(2, createdAt = 300),
+            img(3, createdAt = 200, modifiedAt = 900),
+            img(4, createdAt = 400, modifiedAt = 250)
+        )
+        val sorted = sortGalleryImages(images, GallerySortOrder.MODIFIED_ASC)
+        assertThat(sorted.map { it.id }).containsExactly(1L, 4L, 2L, 3L).inOrder()
+    }
+
+    @Test
+    fun modifiedSort_equalKeys_tieKeepsDaoOrder() {
+        // Une éditée et une jamais-éditée peuvent partager la MÊME clé (modifiedAt de l'une
+        // == createdAt de l'autre) : l'ordre DAO (position) départage, dans les deux sens.
+        val daoOrder = listOf(
+            img(10, createdAt = 500, position = 0),
+            img(11, createdAt = 100, position = 1, modifiedAt = 500)
+        )
+        assertThat(sortGalleryImages(daoOrder, GallerySortOrder.MODIFIED_ASC).map { it.id })
+            .containsExactly(10L, 11L).inOrder()
+        assertThat(sortGalleryImages(daoOrder, GallerySortOrder.MODIFIED_DESC).map { it.id })
+            .containsExactly(10L, 11L).inOrder()
+    }
+
+    // ── Tri « Personnalisé » (v7.1.123, R-a) — pass-through de l'ordre DAO ────────
+
+    @Test
+    fun custom_keepsDaoOrder_ignoresDates() {
+        // L'ordre DAO (position) est VOLONTAIREMENT contraire aux dates : CUSTOM doit le
+        // rendre tel quel, sans aucun re-tri.
+        val daoOrder = listOf(
+            img(10, createdAt = 300, position = 0),
+            img(11, createdAt = 100, position = 1, modifiedAt = 900),
+            img(12, createdAt = 200, position = 2)
+        )
+        assertThat(sortGalleryImages(daoOrder, GallerySortOrder.CUSTOM))
+            .containsExactlyElementsIn(daoOrder).inOrder()
+    }
+
+    // ── Critères du menu de tri ─────────────────────────────────────────────────
+
+    @Test
+    fun criteria_modifiedThenCreated_selectionAndTapInvertPerCriterion() {
+        var selected: GallerySortOrder? = null
+        // Ordre des critères aligné sur l'Accueil/Catégories : Modification puis Création,
+        // puis « Personnalisé » (v7.1.123) en dernier, comme les catégories.
+        val onCreatedAsc = gallerySortCriteria(GallerySortOrder.CREATED_ASC) { selected = it }
+        assertThat(onCreatedAsc).hasSize(3)
+        assertThat(onCreatedAsc[0].labelRes).isEqualTo(R.string.sort_criterion_modified)
+        assertThat(onCreatedAsc[1].labelRes).isEqualTo(R.string.sort_criterion_created)
+        assertThat(onCreatedAsc[2].labelRes).isEqualTo(R.string.type_custom)
+        // Seule « Date de création » est active ; son re-tap inverse le sens.
+        assertThat(onCreatedAsc[0].selected).isFalse()
+        assertThat(onCreatedAsc[1].selected).isTrue()
+        assertThat(onCreatedAsc[1].direction).isEqualTo(JtrSortDirection.ASC)
+        onCreatedAsc[1].onClick()
+        assertThat(selected).isEqualTo(GallerySortOrder.CREATED_DESC)
+        // Taper l'AUTRE critère le sélectionne à son sens par défaut (descendant).
+        onCreatedAsc[0].onClick()
+        assertThat(selected).isEqualTo(GallerySortOrder.MODIFIED_DESC)
+
+        // Côté « Date de modification » active : re-tap = inversion, et l'autre critère
+        // repart à son sens par défaut.
+        val onModifiedDesc = gallerySortCriteria(GallerySortOrder.MODIFIED_DESC) { selected = it }
+        assertThat(onModifiedDesc[0].selected).isTrue()
+        assertThat(onModifiedDesc[0].direction).isEqualTo(JtrSortDirection.DESC)
+        assertThat(onModifiedDesc[1].selected).isFalse()
+        onModifiedDesc[0].onClick()
+        assertThat(selected).isEqualTo(GallerySortOrder.MODIFIED_ASC)
+        onModifiedDesc[1].onClick()
+        assertThat(selected).isEqualTo(GallerySortOrder.CREATED_DESC)
+    }
+
+    @Test
+    fun customCriterion_isMonoDirection_andSelectsCustom() {
+        var selected: GallerySortOrder? = null
+        // Hors CUSTOM : non coché, jamais de sens affiché (mono-sens, v7.1.78/v7.1.123).
+        val onCreatedDesc = gallerySortCriteria(GallerySortOrder.CREATED_DESC) { selected = it }
+        assertThat(onCreatedDesc[2].selected).isFalse()
+        assertThat(onCreatedDesc[2].showDirection).isFalse()
+        onCreatedDesc[2].onClick()
+        assertThat(selected).isEqualTo(GallerySortOrder.CUSTOM)
+        // En CUSTOM : coché, toujours sans sens ; re-tap = reste CUSTOM (pas d'inversion).
+        val onCustom = gallerySortCriteria(GallerySortOrder.CUSTOM) { selected = it }
+        assertThat(onCustom[2].selected).isTrue()
+        assertThat(onCustom[2].showDirection).isFalse()
+        assertThat(onCustom[0].selected).isFalse()
+        assertThat(onCustom[1].selected).isFalse()
+        onCustom[2].onClick()
+        assertThat(selected).isEqualTo(GallerySortOrder.CUSTOM)
+    }
+
+    // ── ViewModel : pref persistée, fallback, flow trié ─────────────────────────
+
+    private lateinit var editor: SharedPreferences.Editor
+    private lateinit var galleryDao: GalleryImageDao
+
+    // Même garde que les autres tests de ViewModel : Main est tenu par la règle, drainé
+    // avant d'être rendu (cf. [MainDispatcherRule]).
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
+    @Before
+    fun setUp() {
+        galleryDao = mockk(relaxed = true)
+        every { galleryDao.observeByPerson("p1") } returns flowOf(emptyList())
+        val personDao = mockk<PersonDao>(relaxed = true)
+        every { personDao.observeById(any()) } returns flowOf(null)
+
+        val db = mockk<AppDatabase>(relaxed = true)
+        every { db.galleryImageDao() } returns galleryDao
+        every { db.personDao() } returns personDao
+        mockkObject(AppDatabase.Companion)
+        every { AppDatabase.getInstance(any()) } returns db
+    }
+
+    @After
+    fun tearDown() {
+        unmockkObject(AppDatabase.Companion)
+    }
+
+    private fun fakeApp(storedSort: String? = null): Application {
+        editor = mockk(relaxed = true)
+        val prefs = mockk<SharedPreferences>(relaxed = true)
+        every { prefs.getString(any(), any()) } returns null
+        every { prefs.getString("gallery_sort", any()) } returns storedSort
+        every { prefs.edit() } returns editor
+        every { editor.putString(any(), any()) } returns editor
+        val app = mockk<Application>(relaxed = true)
+        every { app.getSharedPreferences(any(), any()) } returns prefs
+        every { app.applicationContext } returns app
+        return app
+    }
+
+    private fun vm(storedSort: String? = null) =
+        GalleryViewModel(fakeApp(storedSort), SavedStateHandle(mapOf("personId" to "p1")))
+
+    private fun <T> awaitValue(flow: StateFlow<T>, predicate: (T) -> Boolean): T =
+        runBlocking { withTimeout(2_000) { flow.first(predicate) } }
+
+    @Test
+    fun unknownOrMissingPref_fallsBackToCreatedDesc() {
+        // v7.1.109 — le DÉFAUT (pref absente ou illisible) est CREATED_DESC ; une pref
+        // stockée, elle, reste lue telle quelle (test suivant).
+        assertThat(vm(storedSort = "GARBAGE").sortOrder.value)
+            .isEqualTo(GallerySortOrder.CREATED_DESC)
+        assertThat(vm(storedSort = null).sortOrder.value)
+            .isEqualTo(GallerySortOrder.CREATED_DESC)
+    }
+
+    @Test
+    fun storedPref_isRestored() {
+        assertThat(vm(storedSort = "CREATED_DESC").sortOrder.value)
+            .isEqualTo(GallerySortOrder.CREATED_DESC)
+        assertThat(vm(storedSort = "MODIFIED_DESC").sortOrder.value)
+            .isEqualTo(GallerySortOrder.MODIFIED_DESC)
+        // v7.1.123 — « Personnalisé » persiste et se restaure comme les autres.
+        assertThat(vm(storedSort = "CUSTOM").sortOrder.value)
+            .isEqualTo(GallerySortOrder.CUSTOM)
+    }
+
+    @Test
+    fun setSortOrder_persistsPref() {
+        val vm = vm()
+        vm.setSortOrder(GallerySortOrder.CREATED_DESC)
+        assertThat(vm.sortOrder.value).isEqualTo(GallerySortOrder.CREATED_DESC)
+        verify { editor.putString("gallery_sort", "CREATED_DESC") }
+    }
+
+    @Test
+    fun imagesFlow_emitsInChosenSort_andReordersOnChange() {
+        every { galleryDao.observeByPerson("p1") } returns flowOf(
+            listOf(img(1, createdAt = 100), img(2, createdAt = 300), img(3, createdAt = 200))
+        )
+        val vm = vm(storedSort = "CREATED_DESC")
+        val desc = awaitValue(vm.images) { it.size == 3 }
+        assertThat(desc.map { it.id }).containsExactly(2L, 3L, 1L).inOrder()
+
+        vm.setSortOrder(GallerySortOrder.CREATED_ASC)
+        val asc = awaitValue(vm.images) { it.map(GalleryImage::id) == listOf(1L, 3L, 2L) }
+        assertThat(asc.map { it.id }).containsExactly(1L, 3L, 2L).inOrder()
+    }
+
+    // ── v7.1.125 (R-b) : ordre manuel du glisser-déposer ────────────────────────
+
+    /** Trois images, affichées en 2, 3, 1 sous CREATED_DESC (createdAt 100 / 300 / 200). */
+    private fun vmWithThreeImages(): GalleryViewModel {
+        every { galleryDao.observeByPerson("p1") } returns flowOf(
+            listOf(img(1, createdAt = 100), img(2, createdAt = 300), img(3, createdAt = 200))
+        )
+        return vm(storedSort = "CREATED_DESC")
+    }
+
+    /**
+     * Le drop écrit des positions DENSES 0..n-1 dans l'ordre déposé, puis bascule le tri sur
+     * « Personnalisé » — sans quoi le flux re-trierait aussitôt par date et le geste, pourtant
+     * écrit en base, resterait invisible. Calqué sur
+     * `CategorySortOrderTest.persistTopOrder_autoSwitchesSortToCustom_andPersistsIt`.
+     */
+    @Test
+    fun persistOrder_writesDensePositions_andSwitchesSortToCustom() {
+        val vm = vmWithThreeImages()
+        awaitValue(vm.images) { it.size == 3 }
+        assertThat(vm.sortOrder.value).isEqualTo(GallerySortOrder.CREATED_DESC)
+
+        vm.persistOrder(listOf(3L, 1L, 2L))
+
+        // La bascule est le DERNIER acte de la coroutine (après l'écriture, v7.1.125) :
+        // l'attendre garantit que les `setPosition` sont tous passés.
+        awaitValue(vm.sortOrder) { it == GallerySortOrder.CUSTOM }
+        coVerify { galleryDao.setPosition(3L, 0) }
+        coVerify { galleryDao.setPosition(1L, 1) }
+        coVerify { galleryDao.setPosition(2L, 2) }
+        // DENSE et rien d'autre : exactement une écriture par image, aucune colonne de plus.
+        coVerify(exactly = 3) { galleryDao.setPosition(any(), any()) }
+        verify { editor.putString("gallery_sort", "CUSTOM") }
+    }
+
+    /**
+     * NO-OP sur ordre inchangé. `detectDragGesturesAfterLongPress` appelle `onDragEnd` même
+     * quand le doigt se lève sans avoir bougé : un simple appui long sur une photo (le réflexe
+     * acquis HORS sélection, où il sert à y entrer) ne doit ni écrire n UPDATE, ni basculer la
+     * pref GLOBALE `gallery_sort` sur « Personnalisé ».
+     */
+    @Test
+    fun persistOrder_sameOrder_writesNothing_andKeepsSort() {
+        val vm = vmWithThreeImages()
+        val displayed = awaitValue(vm.images) { it.size == 3 }.map { it.id }
+        assertThat(displayed).containsExactly(2L, 3L, 1L).inOrder()
+
+        // Le geste qui ne déplace rien remonte l'ordre affiché TEL QUEL.
+        vm.persistOrder(displayed)
+
+        // BARRIÈRE : un VRAI réordonnancement, attendu jusqu'à son terme. Ce qu'un no-op non
+        // gardé aurait écrit a donc eu tout le temps de se produire — et se compterait ici.
+        vm.persistOrder(listOf(3L, 1L, 2L))
+        awaitValue(vm.sortOrder) { it == GallerySortOrder.CUSTOM }
+
+        // TROIS écritures en tout, celles de la barrière : l'appel no-op n'a rien écrit…
+        coVerify(exactly = 3) { galleryDao.setPosition(any(), any()) }
+        // …et n'a pas basculé le tri (une seule bascule, celle de la barrière).
+        verify(exactly = 1) { editor.putString("gallery_sort", "CUSTOM") }
+    }
+}

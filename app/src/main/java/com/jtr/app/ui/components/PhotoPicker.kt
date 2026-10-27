@@ -54,3 +54,33 @@ fun rememberSystemPhotoPicker(onImagePicked: (Uri) -> Unit): () -> Unit {
         }
     }
 }
+
+/**
+ * Variante MULTI-SÉLECTION du sélecteur système (v7.1.89, galerie par contact) — mêmes
+ * garanties que [rememberSystemPhotoPicker] : aucune permission, accès en lecture éphémère
+ * aux seules images choisies, et l'appelant COPIE les octets dans `filesDir` immédiatement.
+ *
+ * [maxItems] borne la sélection (le contrat exige au moins 2). L'utilisateur peut toujours
+ * en choisir moins ; une sélection vide (retour sans choisir) n'appelle pas [onImagesPicked].
+ */
+@Composable
+fun rememberSystemMultiPhotoPicker(
+    maxItems: Int = 20,
+    onImagesPicked: (List<Uri>) -> Unit
+): () -> Unit {
+    val currentOnImagesPicked by rememberUpdatedState(onImagesPicked)
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(maxItems.coerceAtLeast(2))
+    ) { uris ->
+        if (uris.isNotEmpty()) currentOnImagesPicked(uris)
+    }
+
+    return remember(launcher) {
+        {
+            launcher.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            )
+        }
+    }
+}

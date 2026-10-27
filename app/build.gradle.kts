@@ -25,8 +25,8 @@ android {
         applicationId = "com.jtr.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 120
-        versionName = "7.1.66"
+        versionCode = 194
+        versionName = "7.1.140"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -168,6 +168,13 @@ dependencies {
     // Gson + Coil
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Timber (v7.1.107) : journalisation du balayage d'orphelins. MapLibre le tire
+    // déjà au RUNTIME, mais ne l'expose PAS à la compilation (vérifié : retrait de
+    // cette ligne = Unresolved reference 'Timber') — la déclaration est donc requise,
+    // au prix d'un warning UseTomlInstead comme les autres dépendances du projet.
+    // L'arbre n'est planté qu'en DEBUG (JTRApplication) : aucun log applicatif en release.
+    implementation("com.jakewharton.timber:timber:5.0.1")
 
     // EXIF (orientation réelle des photos importées — repli pré-API 28 du crop)
     implementation("androidx.exifinterface:exifinterface:1.3.7")

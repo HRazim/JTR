@@ -88,6 +88,9 @@ data class JtrSortCriterion(
     @StringRes val labelRes: Int,
     val selected: Boolean,
     val direction: JtrSortDirection,
+    // v7.1.78 — false pour un critère MONO-SENS (ex. l'ordre personnalisé, qui n'a pas
+    // d'inverse utile) : la feuille n'affiche ni libellé de sens ni chevron pour lui.
+    val showDirection: Boolean = true,
     val onClick: () -> Unit
 )
 
@@ -132,6 +135,10 @@ fun <T> jtrSortCriterion(
  *   flèche retour pour fermer (et effacer la query), « X » pour vider le texte.
  *
  * La query vient du ViewModel (UDF) ; l'état ouvert/fermé est local à l'écran.
+ *
+ * [onSearchClick] (v7.1.69) : si fourni, la loupe DÉCLENCHE cette action au lieu d'ouvrir
+ * la recherche inline — utilisé par l'Accueil pour NAVIGUER vers l'écran de recherche dédié.
+ * `null` (défaut) = comportement historique (bascule inline), conservé par les autres écrans.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,6 +150,7 @@ fun JtrSearchableTopAppBar(
     onSearchActiveChange: (Boolean) -> Unit,
     searchPlaceholder: String,
     navigationIcon: @Composable () -> Unit = {},
+    onSearchClick: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     if (searchActive) {
@@ -200,7 +208,7 @@ fun JtrSearchableTopAppBar(
             title = { Text(title) },
             navigationIcon = navigationIcon,
             actions = {
-                IconButton(onClick = { onSearchActiveChange(true) }) {
+                IconButton(onClick = { onSearchClick?.invoke() ?: onSearchActiveChange(true) }) {
                     Icon(Icons.Default.Search,
                         contentDescription = stringResource(R.string.action_search))
                 }
@@ -265,16 +273,10 @@ fun JtrOverflowMenu(
     }
 
     if (showSortSheet) {
-        JtrOptionsSheet(
-            title = stringResource(R.string.sort_title),
+        JtrSortSheet(
+            sortCriteria = sortCriteria,
             onDismiss = { showSortSheet = false }
-        ) {
-            // La feuille reste OUVERTE au clic : on sélectionne un critère puis on
-            // peut le re-taper pour inverser le sens, sans la rouvrir (fermeture au scrim).
-            sortCriteria.forEach { criterion ->
-                JtrSheetCriterionRow(criterion)
-            }
-        }
+        )
     }
 
     if (showViewSheet) {
@@ -290,6 +292,28 @@ fun JtrOverflowMenu(
                     onClick = { onViewModeChange(mode); showViewSheet = false }
                 )
             }
+        }
+    }
+}
+
+/**
+ * Feuille « Tri » partagée (v7.1.101) — extraite de [JtrOverflowMenu] pour que la GALERIE,
+ * qui n'a ni mode d'affichage ni menu 3 points, ouvre exactement la MÊME feuille depuis sa
+ * propre icône de tri : une seule grammaire de tri dans toute l'app.
+ */
+@Composable
+fun JtrSortSheet(
+    sortCriteria: List<JtrSortCriterion>,
+    onDismiss: () -> Unit
+) {
+    JtrOptionsSheet(
+        title = stringResource(R.string.sort_title),
+        onDismiss = onDismiss
+    ) {
+        // La feuille reste OUVERTE au clic : on sélectionne un critère puis on
+        // peut le re-taper pour inverser le sens, sans la rouvrir (fermeture au scrim).
+        sortCriteria.forEach { criterion ->
+            JtrSheetCriterionRow(criterion)
         }
     }
 }
@@ -374,7 +398,7 @@ private fun JtrSheetCriterionRow(criterion: JtrSortCriterion) {
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             modifier = Modifier.weight(1f)
         )
-        if (selected) {
+        if (selected && criterion.showDirection) {
             val dirLabel = stringResource(
                 if (ascending) R.string.sort_direction_ascending
                 else R.string.sort_direction_descending

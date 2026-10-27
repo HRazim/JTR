@@ -48,14 +48,48 @@ interface PersonCategoryDao {
 
     // ── Lecture ──────────────────────────────────────────────────────────────
 
-    /** Contacts actifs (non supprimés) appartenant à une catégorie. */
+    /**
+     * Contacts actifs (non supprimés) appartenant à une catégorie ELLE-MÊME ACTIVE.
+     * v7.1.71 : le `INNER JOIN categories c … AND c.deletedAt IS NULL` garantit qu'une navigation
+     * résiduelle (back-stack périmé, deep-link) vers une catégorie en corbeille n'affiche AUCUN
+     * membre — même si les liens sont conservés et les contacts actifs.
+     */
     @Query("""
         SELECT p.* FROM persons p
         INNER JOIN person_category_join pcj ON pcj.personId = p.id
-        WHERE pcj.categoryId = :categoryId AND p.deletedAt IS NULL
+        INNER JOIN categories c ON c.id = pcj.categoryId
+        WHERE pcj.categoryId = :categoryId AND p.deletedAt IS NULL AND c.deletedAt IS NULL
         ORDER BY p.isFavorite DESC, p.firstName ASC
     """)
     fun getActivePersonsInCategory(categoryId: String): Flow<List<Person>>
+
+    /**
+     * v7.1.87 — mêmes contrats que [getActivePersonsInCategory], mais pour PLUSIEURS
+     * catégories : source de la recherche scopée à un DOSSIER (ses catégories et celles
+     * de tous ses sous-dossiers). `DISTINCT` est indispensable — un contact rattaché à
+     * deux catégories du même dossier ne doit apparaître QU'UNE fois.
+     * Lecture seule, aucun changement de schéma.
+     */
+    @Query("""
+        SELECT DISTINCT p.* FROM persons p
+        INNER JOIN person_category_join pcj ON pcj.personId = p.id
+        INNER JOIN categories c ON c.id = pcj.categoryId
+        WHERE pcj.categoryId IN (:categoryIds) AND p.deletedAt IS NULL AND c.deletedAt IS NULL
+        ORDER BY p.isFavorite DESC, p.firstName ASC
+    """)
+    fun getActivePersonsInCategories(categoryIds: List<String>): Flow<List<Person>>
+
+    /**
+     * Liens dont la CATÉGORIE est active (v7.1.71) — pour les comptes/activité des vues actives,
+     * afin qu'une catégorie en corbeille ne porte plus de clé fantôme. `getAllJoins` (TOUS les
+     * liens) reste réservé à l'écran Corbeille.
+     */
+    @Query("""
+        SELECT pcj.* FROM person_category_join pcj
+        INNER JOIN categories c ON c.id = pcj.categoryId
+        WHERE c.deletedAt IS NULL
+    """)
+    fun getActiveCategoryJoins(): Flow<List<PersonCategoryJoin>>
 
     /** IDs des catégories auxquelles appartient une personne (Flow réactif). */
     @Query("SELECT categoryId FROM person_category_join WHERE personId = :personId")
@@ -113,7 +147,8 @@ interface PersonCategoryDao {
                MAX(CASE WHEN pcj.addedAt > p.updatedAt THEN pcj.addedAt ELSE p.updatedAt END) AS lastActivity
         FROM person_category_join pcj
         INNER JOIN persons p ON p.id = pcj.personId
-        WHERE p.deletedAt IS NULL
+        INNER JOIN categories c ON c.id = pcj.categoryId
+        WHERE p.deletedAt IS NULL AND c.deletedAt IS NULL
         GROUP BY pcj.categoryId
     """)
     fun getCategoryActivity(): Flow<List<CategoryActivity>>

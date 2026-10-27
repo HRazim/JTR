@@ -1,6 +1,5 @@
 package com.jtr.app.ui.category
 
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -10,7 +9,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -34,16 +34,15 @@ import coil.compose.AsyncImage
 import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.ui.components.JtrAlertDialog
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 import com.jtr.app.ui.components.JtrViewMode
-import com.jtr.app.ui.components.rememberSystemPhotoPicker
-import com.jtr.app.ui.person.CropShape
-import com.jtr.app.ui.person.ImageCropDialog
-import kotlinx.coroutines.Dispatchers
+import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
+import com.jtr.app.ui.components.ScrollToTopFab
+import com.jtr.app.ui.components.SelectAllToggle
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Écran « intérieur d'un dossier » (drill-down RÉCURSIF). Affiche le contenu mixte
@@ -57,6 +56,8 @@ fun CategoryGroupDetailScreen(
     onNavigateBack: () -> Unit,
     onCategoryClick: (String) -> Unit,
     onGroupClick: (Long) -> Unit = {},
+    // v7.1.87 — ouverture de la page de recherche dédiée, SCOPÉE à ce dossier.
+    onNavigateToScopedSearch: (Long) -> Unit = {},
     viewModel: CategoryGroupDetailViewModel = viewModel()
 ) {
     val group by viewModel.group.collectAsStateWithLifecycle()
@@ -65,14 +66,13 @@ fun CategoryGroupDetailScreen(
     val topEntries by viewModel.topEntries.collectAsStateWithLifecycle()
     val counts by viewModel.personCountByCategory.collectAsStateWithLifecycle()
     val candidates by viewModel.candidateCategories.collectAsStateWithLifecycle()
+    val allGroups by viewModel.allGroups.collectAsStateWithLifecycle()
     val otherGroups by viewModel.otherGroups.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
 
     var addMenu by remember { mutableStateOf(false) }
-    // Mode recherche de la TopAppBar (état d'UI local ; la query vient du ViewModel).
-    var searchActive by remember { mutableStateOf(false) }
     var showAddExisting by remember { mutableStateOf(false) }
     var showGroupTrashConfirm by remember { mutableStateOf(false) }
     var showCreate by remember { mutableStateOf(false) }
@@ -82,18 +82,32 @@ fun CategoryGroupDetailScreen(
     var isSelectionActive by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateListOf<String>() }
     val selectedGroupIds = remember { mutableStateListOf<Long>() }
+    // Fix v7.1.81 — états de défilement HOISTÉS au niveau de l'écran et PARTAGÉS entre le
+    // navigateur normal et le mode sélection : l'appui long n'emporte plus la liste en haut.
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+    // v7.1.86 — FAB « remonter en haut » : MÊME composant et MÊME seuil que l'Accueil
+    // (v7.1.72), branché sur les états ci-dessus — donc valable en navigation comme en
+    // sélection, et dans les 3 modes (GRID a son état, LIST/DETAIL partagent l'autre).
+    val showScrollToTop by remember(viewMode) {
+        derivedStateOf {
+            val index = if (viewMode == JtrViewMode.GRID) gridState.firstVisibleItemIndex
+            else listState.firstVisibleItemIndex
+            index > SCROLL_TO_TOP_THRESHOLD
+        }
+    }
     var showBulkDelete by remember { mutableStateOf(false) }
-    var renameTarget by remember { mutableStateOf<Category?>(null) }
-    var renameGroupTarget by remember { mutableStateOf<CategoryGroup?>(null) }
     var editTarget by remember { mutableStateOf<Category?>(null) }
+    // v7.1.127 — dossier en cours d'édition dans la feuille partagée (footer).
+    var editGroupTarget by remember { mutableStateOf<CategoryGroup?>(null) }
     var pendingMergeIds by remember { mutableStateOf<List<String>?>(null) }
-    var groupImageTarget by remember { mutableStateOf<CategoryGroup?>(null) }
-    var pendingGroupCropUri by remember { mutableStateOf<Uri?>(null) }
+    // v7.1.82 — création EXPLICITE d'un sous-dossier depuis le footer : état DISTINCT de
+    // [pendingMergeIds] pour que le geste de FUSION garde son dialogue historique.
+    var pendingCreateSubGroupIds by remember { mutableStateOf<List<String>?>(null) }
+    // v7.1.83 — sélecteur de dossier CIBLE (« Déplacer vers un groupe… »).
+    var showMoveToGroupPicker by remember { mutableStateOf(false) }
 
-    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    // Photo Picker système (v7.1.66) — aucune permission requise.
-    val groupPhotoPicker = rememberSystemPhotoPicker { uri -> pendingGroupCropUri = uri }
 
     LaunchedEffect(members, subGroups) {
         selectedIds.retainAll(members.map { it.id }.toSet())
@@ -106,9 +120,22 @@ fun CategoryGroupDetailScreen(
         isSelectionActive = false; selectedIds.clear(); selectedGroupIds.clear()
     }
 
-    // Bouton Retour en mode sélection : vide la sélection et reste sur l'écran ;
-    // inactif sinon → le retour navigue normalement vers le dossier parent.
-    BackHandler(enabled = isSelectionActive) { exitSelection() }
+    // v7.1.98 — la recherche INLINE revient, mais UNIQUEMENT en mode sélection : hors
+    // sélection la loupe garde la page scopée de v7.1.87 (qui cherche des CONTACTS) ;
+    // en sélection elle filtre les entrées affichées, celles qu'on est en train de cocher.
+    var searchActive by remember { mutableStateOf(false) }
+
+    // v7.1.98 — priorité du bouton Retour, identique sur les 5 écrans de sélection :
+    // 1) la recherche inline est ouverte → on la ferme, la sélection SURVIT ;
+    // 2) sinon on quitte la sélection ; 3) sinon la navigation reprend normalement.
+    BackHandler(enabled = isSelectionActive) {
+        if (searchActive) {
+            searchActive = false
+            viewModel.setSearchQuery("")
+        } else {
+            exitSelection()
+        }
+    }
     fun toggleCategory(id: String) {
         if (selectedIds.contains(id)) selectedIds.remove(id) else selectedIds.add(id)
     }
@@ -131,6 +158,27 @@ fun CategoryGroupDetailScreen(
         if (topEntries.isNotEmpty()) isSelectionActive = true
     }
 
+    /** v7.1.98 — vrai quand TOUTES les entrées du dossier sont cochées (bascule partagée). */
+    val allTopEntriesSelected = topEntries.isNotEmpty() && topEntries.all { entry ->
+        when (entry) {
+            is TopEntry.Folder -> entry.group.id in selectedGroupIds
+            is TopEntry.Single -> entry.category.id in selectedIds
+        }
+    }
+
+    /**
+     * Décoche les entrées AFFICHÉES, et elles seules — pendant exact de [selectAll].
+     * On RESTE en mode sélection : seul Annuler / Retour en sort.
+     */
+    fun deselectVisible() {
+        topEntries.forEach { entry ->
+            when (entry) {
+                is TopEntry.Folder -> selectedGroupIds.remove(entry.group.id)
+                is TopEntry.Single -> selectedIds.remove(entry.category.id)
+            }
+        }
+    }
+
     val totalSelected = selectedIds.size + selectedGroupIds.size
     val selectedCategories = members.filter { it.id in selectedIds }
     val selectedGroups = subGroups.filter { it.id in selectedGroupIds }
@@ -139,9 +187,16 @@ fun CategoryGroupDetailScreen(
 
     // ── Dialogues ─────────────────────────────────────────────────────────────
     if (showAddExisting) {
-        AddExistingCategoriesDialog(
-            candidates = candidates,
-            onConfirm = { ids -> viewModel.addExisting(ids); showAddExisting = false },
+        // v7.1.80 — sélection MULTIPLE moderne (langage v7.1.77 : vignettes, dossiers
+        // dépliables, recherche) au lieu des cases + disques pleins ; les dossiers sans
+        // candidate (dont CE dossier) sont élagués par le composant.
+        CategoryPickerSheet(
+            title = stringResource(R.string.categories_add_to_group_title),
+            categories = candidates,
+            groups = allGroups,
+            multiSelect = true,
+            confirmLabel = stringResource(R.string.common_add),
+            onConfirmMulti = { ids -> viewModel.addExisting(ids); showAddExisting = false },
             onDismiss = { showAddExisting = false }
         )
     }
@@ -153,7 +208,42 @@ fun CategoryGroupDetailScreen(
             onDismiss = { showCreate = false }
         )
     }
-    // Fusion par geste → nommer le SOUS-GROUPE créé.
+    if (showMoveToGroupPicker) {
+        // v7.1.83 — sélecteur de dossiers MODERNE. Cibles exclues : le dossier COURANT
+        // (on y est déjà) et les sous-dossiers cochés (on ne les déplace pas en eux-mêmes).
+        CategoryPickerSheet(
+            title = stringResource(R.string.categories_move_to_group),
+            categories = members,
+            groups = allGroups,
+            folderTargets = true,
+            excludeGroupIds = selectedGroupIds.toSet() + listOfNotNull(group?.id),
+            onPickFolder = { targetId ->
+                viewModel.relocateSelection(selectedIds.toList(), selectedGroups, targetId)
+                showMoveToGroupPicker = false
+                exitSelection()
+            },
+            onDismiss = { showMoveToGroupPicker = false }
+        )
+    }
+
+    // v7.1.82 — création explicite d'un sous-dossier : MÊME feuille moderne qu'à la racine.
+    pendingCreateSubGroupIds?.let { ids ->
+        CreateGroupSheet(
+            members = selectedCategories,
+            groups = allGroups,
+            // v7.1.84 — pré-rempli avec le dossier COURANT (on crée un sous-groupe ici),
+            // mais modifiable : on peut le faire naître ailleurs, ou à la racine.
+            initialParentId = group?.id,
+            onConfirm = { name, imagePath, parentId ->
+                viewModel.createSubGroup(name, ids, imagePath, parentId)
+                pendingCreateSubGroupIds = null
+                exitSelection()
+            },
+            onDismiss = { pendingCreateSubGroupIds = null }
+        )
+    }
+
+    // Fusion par geste → nommer le SOUS-GROUPE créé (dialogue historique, inchangé).
     pendingMergeIds?.let { ids ->
         TextPromptDialog(
             title = stringResource(R.string.categories_create_group),
@@ -164,24 +254,16 @@ fun CategoryGroupDetailScreen(
             onDismiss = { pendingMergeIds = null }
         )
     }
-    renameTarget?.let { target ->
-        TextPromptDialog(
-            title = stringResource(R.string.categories_rename),
-            hint = stringResource(R.string.common_name_label),
-            initial = target.name,
-            confirmLabel = stringResource(R.string.common_save),
-            onConfirm = { name -> viewModel.rename(target, name); renameTarget = null; exitSelection() },
-            onDismiss = { renameTarget = null }
-        )
-    }
-    renameGroupTarget?.let { target ->
-        TextPromptDialog(
-            title = stringResource(R.string.categories_rename),
-            hint = stringResource(R.string.categories_group_name_hint),
-            initial = target.name,
-            confirmLabel = stringResource(R.string.common_save),
-            onConfirm = { name -> viewModel.renameGroup(target, name); renameGroupTarget = null; exitSelection() },
-            onDismiss = { renameGroupTarget = null }
+    // v7.1.127 — ÉDITION d'un dossier (nom + image) dans la feuille de sa création.
+    editGroupTarget?.let { target ->
+        EditGroupSheet(
+            group = target,
+            onConfirm = { name, imagePath ->
+                viewModel.updateGroup(target, name, imagePath)
+                editGroupTarget = null
+                exitSelection()
+            },
+            onDismiss = { editGroupTarget = null }
         )
     }
     editTarget?.let { target ->
@@ -194,118 +276,121 @@ fun CategoryGroupDetailScreen(
             onDismiss = { editTarget = null }
         )
     }
-    pendingGroupCropUri?.let { uri ->
-        ImageCropDialog(
-            sourceUri = uri,
-            cropShape = CropShape.RECTANGLE,
-            onCropComplete = { cropped ->
-                groupImageTarget?.let { target ->
-                    scope.launch {
-                        val path = withContext(Dispatchers.IO) { copyCategoryPhotoToStorage(ctx, cropped) }
-                        if (path != null) viewModel.setGroupImage(target, path)
-                    }
-                }
-                pendingGroupCropUri = null; groupImageTarget = null; exitSelection()
-            },
-            onDismiss = { pendingGroupCropUri = null; groupImageTarget = null }
-        )
-    }
     if (showBulkDelete) {
         val singleGroup = selectedGroups.singleOrNull()?.takeIf { selectedIds.isEmpty() }
         val singleGroupMembers = singleGroup?.let { g -> members.count { it.parentGroupId == g.id } } ?: 0
-        AlertDialog(
+        // v7.1.130 — même bascule « groupe unique / sélection » qu'à l'écran Catégories,
+        // résolue en `String` avant l'appel.
+        JtrAlertDialog(
             onDismissRequest = { showBulkDelete = false },
-            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = {
-                Text(
-                    if (singleGroup != null)
-                        stringResource(R.string.categories_delete_group_title, singleGroup.name)
-                    else stringResource(R.string.categories_delete_selected_title, totalSelected)
-                )
+            icon = Icons.Default.Warning,
+            title = if (singleGroup != null)
+                stringResource(R.string.categories_delete_group_title, singleGroup.name)
+            else stringResource(R.string.categories_delete_selected_title, totalSelected),
+            text = if (singleGroup != null)
+                stringResource(R.string.categories_delete_group_text, singleGroup.name, singleGroupMembers)
+            else stringResource(R.string.categories_delete_selected_text),
+            confirmLabel = stringResource(R.string.common_delete),
+            onConfirm = {
+                viewModel.deleteSelection(selectedIds.toList(), selectedGroups, members)
+                showBulkDelete = false; exitSelection()
             },
-            text = {
-                Text(
-                    if (singleGroup != null)
-                        stringResource(R.string.categories_delete_group_text, singleGroup.name, singleGroupMembers)
-                    else stringResource(R.string.categories_delete_selected_text)
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteSelection(selectedIds.toList(), selectedGroups, members)
-                        showBulkDelete = false; exitSelection()
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(stringResource(R.string.common_delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBulkDelete = false }) { Text(stringResource(R.string.common_cancel)) }
-            }
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
         )
     }
     // « Mettre à la corbeille » le dossier : catégories + contacts en corbeille,
     // sous-groupes remontés d'un niveau (confirmation explicite avant cascade).
     if (showGroupTrashConfirm) {
         val groupName = group?.name.orEmpty()
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { showGroupTrashConfirm = false },
-            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.categories_delete_group_title, groupName)) },
-            text = { Text(stringResource(R.string.categories_delete_group_text,
-                groupName, members.size)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showGroupTrashConfirm = false
-                        viewModel.deleteGroupToTrash()
-                        onNavigateBack()
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(stringResource(R.string.action_move_to_trash)) }
+            icon = Icons.Default.Warning,
+            title = stringResource(R.string.categories_delete_group_title, groupName),
+            text = stringResource(R.string.categories_delete_group_text, groupName, members.size),
+            confirmLabel = stringResource(R.string.action_move_to_trash),
+            onConfirm = {
+                showGroupTrashConfirm = false
+                viewModel.deleteGroupToTrash()
+                onNavigateBack()
             },
-            dismissButton = {
-                TextButton(onClick = { showGroupTrashConfirm = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
         )
     }
 
     if (showDissolveConfirm) {
-        AlertDialog(
+        // v7.1.130 — ⚠️ CHANGEMENT VISUEL ASSUMÉ : la confirmation passe en ROUGE. Elle était
+        // la SEULE des huit à garder un bouton neutre alors que son icône était déjà en `error`,
+        // incohérence d'autant plus gênante que dissoudre est irréversible. L'icône `FolderOff`
+        // (et non `Warning`) est conservée : elle dit ce que l'action fait, pas qu'elle alarme.
+        JtrAlertDialog(
             onDismissRequest = { showDissolveConfirm = false },
-            icon = { Icon(Icons.Default.FolderOff, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.categories_dissolve_group)) },
-            text = { Text(stringResource(R.string.categories_dissolve_confirm_text)) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.dissolve(); showDissolveConfirm = false; onNavigateBack() }) {
-                    Text(stringResource(R.string.categories_dissolve_group))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDissolveConfirm = false }) { Text(stringResource(R.string.common_cancel)) }
-            }
+            icon = Icons.Default.FolderOff,
+            title = stringResource(R.string.categories_dissolve_group),
+            text = stringResource(R.string.categories_dissolve_confirm_text),
+            confirmLabel = stringResource(R.string.categories_dissolve_group),
+            onConfirm = { viewModel.dissolve(); showDissolveConfirm = false; onNavigateBack() },
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
         )
     }
 
     Scaffold(
+        // v7.1.86 — même agencement qu'à l'Accueil : bas-fin, au-dessus de la bottomBar ;
+        // masqué en sélection, où le SelectionFooter occupe le bas.
+        floatingActionButton = {
+            ScrollToTopFab(
+                visible = showScrollToTop && !isSelectionActive,
+                onClick = {
+                    scope.launch {
+                        if (viewMode == JtrViewMode.GRID) gridState.animateScrollToItem(0)
+                        else listState.animateScrollToItem(0)
+                    }
+                }
+            )
+        },
         topBar = {
-            if (isSelectionActive) {
+            if (isSelectionActive && searchActive) {
+                // Recherche CONTEXTUELLE pendant la sélection : filtre l'affichage sans
+                // toucher aux coches ; la fermer n'efface que la requête.
+                JtrSearchableTopAppBar(
+                    title = "",
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                    searchActive = true,
+                    onSearchActiveChange = { searchActive = it },
+                    // v7.1.99 — EN SÉLECTION la recherche filtre le CONTENU du dossier
+                    // (ses catégories et sous-dossiers, `sortName`), pas des contacts —
+                    // contrairement à la loupe hors sélection, qui ouvre la page scopée
+                    // aux contacts de v7.1.87. Deux périmètres, deux libellés.
+                    searchPlaceholder = stringResource(R.string.category_search_placeholder)
+                )
+            } else if (isSelectionActive) {
                 TopAppBar(
                     title = {
+                        // Le plural couvre 0 (« 0 selected ») : plus de chaîne séparée pour
+                        // ce cas, c'est désormais la même forme sur les 5 écrans (v7.1.98).
                         Text(
-                            if (totalSelected == 0) stringResource(R.string.categories_selection_none)
-                            else pluralStringResource(R.plurals.categories_selection_count, totalSelected, totalSelected)
+                            pluralStringResource(
+                                R.plurals.categories_selection_count, totalSelected, totalSelected
+                            )
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = { selectAll() }) {
-                            Icon(Icons.Default.SelectAll, contentDescription = stringResource(R.string.select_all))
-                        }
+                        SelectAllToggle(
+                            allSelected = allTopEntriesSelected,
+                            onSelectAll = { selectAll() },
+                            onDeselectAll = { deselectVisible() }
+                        )
                     },
                     actions = {
+                        // v7.1.98 — loupe conservée EN sélection, comme les 3 autres écrans
+                        // qui ont une recherche : on filtre, on coche, les coches survivent.
+                        IconButton(onClick = { searchActive = true }) {
+                            Icon(Icons.Default.Search,
+                                contentDescription = stringResource(R.string.action_search))
+                        }
                         TextButton(onClick = { exitSelection() }) {
                             Text(stringResource(R.string.common_cancel),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer)
@@ -314,7 +399,8 @@ fun CategoryGroupDetailScreen(
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 )
             } else {
@@ -324,8 +410,13 @@ fun CategoryGroupDetailScreen(
                     title = group?.name ?: stringResource(R.string.categories_title),
                     searchQuery = searchQuery,
                     onSearchQueryChange = { viewModel.setSearchQuery(it) },
-                    searchActive = searchActive,
-                    onSearchActiveChange = { searchActive = it },
+                    // v7.1.87 — la loupe NAVIGUE vers la page de recherche dédiée, scopée
+                    // aux CONTACTS de tout ce dossier (l'ancienne recherche inline filtrait
+                    // les catégories/sous-dossiers par nom : elle n'est plus déclenchable,
+                    // d'où l'état figé à false et le retrait de l'état local).
+                    searchActive = false,
+                    onSearchActiveChange = {},
+                    onSearchClick = { onNavigateToScopedSearch(viewModel.groupId) },
                     searchPlaceholder = stringResource(R.string.home_search_placeholder),
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
@@ -355,25 +446,18 @@ fun CategoryGroupDetailScreen(
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
                         ) { dismiss ->
-                            // Actions sur le dossier lui-même (v5.3) : Modifier
-                            // (nom / image) et mise à la corbeille.
+                            // Actions sur le dossier lui-même (v5.3) : modifier et mise à
+                            // la corbeille. v7.1.127 — « Renommer » et « Changer l'image »
+                            // n'étaient que deux moitiés du même formulaire : une seule
+                            // entrée « Modifier » les remplace, comme dans le footer de
+                            // sélection et comme à l'intérieur d'une catégorie.
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.categories_rename)) },
-                                leadingIcon = { Icon(Icons.Default.DriveFileRenameOutline, null) },
+                                text = { Text(stringResource(R.string.common_edit)) },
+                                leadingIcon = { Icon(Icons.Default.Edit, null) },
                                 onClick = {
                                     dismiss()
-                                    group?.let { renameGroupTarget = it }
-                                })
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.categories_change_image)) },
-                                leadingIcon = { Icon(Icons.Default.Image, null) },
-                                onClick = {
-                                    dismiss()
-                                    group?.let {
-                                        groupImageTarget = it
-                                        groupPhotoPicker()
-                                    }
+                                    group?.let { editGroupTarget = it }
                                 })
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.categories_dissolve_group)) },
@@ -406,32 +490,20 @@ fun CategoryGroupDetailScreen(
                         exitSelection()
                     },
                     canCreateGroup = selectedIds.size >= 2 && selectedGroupIds.isEmpty(),
-                    movableGroups = movableGroups,
                     canMove = totalSelected >= 1 && movableGroups.isNotEmpty(),
                     onCreateGroup = {
-                        // Crée un SOUS-GROUPE depuis les catégories cochées.
-                        if (selectedIds.size >= 2) pendingMergeIds = selectedIds.toList()
+                        // Crée un SOUS-GROUPE depuis les catégories cochées (feuille
+                        // moderne v7.1.82, distincte du nommage par fusion).
+                        if (selectedIds.size >= 2) pendingCreateSubGroupIds = selectedIds.toList()
                     },
-                    onMoveToGroup = { tid ->
-                        viewModel.relocateSelection(selectedIds.toList(), selectedGroups, tid)
-                        exitSelection()
-                    },
+                    onMoveToGroup = { showMoveToGroupPicker = true },
                     canDelete = totalSelected >= 1,
                     onDelete = { showBulkDelete = true },
-                    canRename = totalSelected == 1,
-                    onRename = {
-                        val cat = selectedCategories.singleOrNull()
-                        if (cat != null) renameTarget = cat
-                        else selectedGroups.singleOrNull()?.let { renameGroupTarget = it }
-                    },
-                    canChangeImage = totalSelected == 1,
-                    onChangeImage = {
+                    canEdit = totalSelected == 1,
+                    onEdit = {
                         val cat = selectedCategories.singleOrNull()
                         if (cat != null) editTarget = cat
-                        else selectedGroups.singleOrNull()?.let { g ->
-                            groupImageTarget = g
-                            groupPhotoPicker()
-                        }
+                        else selectedGroups.singleOrNull()?.let { editGroupTarget = it }
                     },
                     canMoveOut = totalSelected >= 1,
                     onMoveOut = {
@@ -474,7 +546,9 @@ fun CategoryGroupDetailScreen(
                         onMoveToFolder = { catId, gid ->
                             viewModel.moveCategoryToSubGroup(catId, gid); exitSelection()
                         },
-                        enableMerge = true
+                        enableMerge = true,
+                        // Fix v7.1.81 — même état que le navigateur normal (pas de reset).
+                        gridState = gridState
                     )
                     else -> ReorderableTopList(
                         entries = topEntries,
@@ -488,7 +562,8 @@ fun CategoryGroupDetailScreen(
                         onMoveToFolder = { catId, gid ->
                             viewModel.moveCategoryToSubGroup(catId, gid); exitSelection()
                         },
-                        enableMerge = true
+                        enableMerge = true,
+                        listState = listState
                     )
                 }
             }
@@ -502,71 +577,12 @@ fun CategoryGroupDetailScreen(
                     onCategoryClick = onCategoryClick,
                     onGroupClick = onGroupClick,
                     onCategoryLongClick = { startSelectionCategory(it) },
-                    onGroupLongClick = { startSelectionGroup(it) }
+                    onGroupLongClick = { startSelectionGroup(it) },
+                    listState = listState,
+                    gridState = gridState
                 )
             }
         }
     }
 }
 
-/** Dialogue de sélection multiple de catégories existantes à rattacher au groupe. */
-@Composable
-private fun AddExistingCategoriesDialog(
-    candidates: List<Category>,
-    onConfirm: (List<String>) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val selected = remember { mutableStateListOf<String>() }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.categories_add_to_group_title)) },
-        text = {
-            if (candidates.isEmpty()) {
-                Text(stringResource(R.string.categories_no_candidates))
-            } else {
-                LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
-                    items(candidates, key = { it.id }) { category ->
-                        val checked = category.id in selected
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable {
-                                    if (checked) selected.remove(category.id) else selected.add(category.id)
-                                }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(checked = checked, onCheckedChange = {
-                                if (checked) selected.remove(category.id) else selected.add(category.id)
-                            })
-                            val accent = rememberCategoryColor(category.color)
-                            Box(
-                                modifier = Modifier.size(32.dp).clip(CircleShape).background(accent),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (category.imagePath != null) {
-                                    AsyncImage(model = category.imagePath, contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                                } else {
-                                    Icon(Icons.Default.Folder, null, tint = Color.White,
-                                        modifier = Modifier.size(18.dp))
-                                }
-                            }
-                            Spacer(Modifier.width(10.dp))
-                            Text(category.name, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(selected.toList()) }, enabled = selected.isNotEmpty()) {
-                Text(stringResource(R.string.common_add))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-        }
-    )
-}

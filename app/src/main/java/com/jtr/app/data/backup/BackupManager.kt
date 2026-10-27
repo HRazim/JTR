@@ -6,9 +6,11 @@ import androidx.room.withTransaction
 import com.google.gson.Gson
 import com.google.gson.JsonParseException
 import com.google.gson.annotations.SerializedName
+import com.jtr.app.data.files.ImageFileStore
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
+import com.jtr.app.domain.model.GalleryImage
 import com.jtr.app.domain.model.Person
 import com.jtr.app.domain.model.PersonCategoryJoin
 import com.jtr.app.domain.model.SocialLinkEntity
@@ -27,6 +29,7 @@ import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+import timber.log.Timber
 
 /**
  * Charge utile JSON du fichier `.jtr` — instantané COMPLET de la base Room
@@ -41,7 +44,13 @@ data class BackupPayload(
     val categories: List<Category>? = null,
     val groups: List<CategoryGroup>? = null,
     val joins: List<PersonCategoryJoin>? = null,
-    val socialLinks: List<SocialLinkEntity>? = null
+    val socialLinks: List<SocialLinkEntity>? = null,
+    /**
+     * v7.1.88 — galerie par contact. Champ NULLABLE et ajout PUREMENT ADDITIF : une archive
+     * ANTÉRIEURE ne le porte pas, Gson le laisse `null`, [coerceList] le ramène à vide →
+     * un ancien `.jtr` s'importe exactement comme avant.
+     */
+    val galleryImages: List<GalleryImage>? = null
 )
 
 /**
@@ -98,6 +107,15 @@ class RestoreException(val reason: RestoreError, cause: Throwable? = null) :
 private fun <T> coerceList(list: List<T>?): List<T> = list ?: emptyList()
 
 /**
+ * v7.1.117 (orphelins partie 2) — les anciens fichiers DÉ-RÉFÉRENCÉS par un import-replace :
+ * différentiel des ensembles de référence AVANT et APRÈS l'import (chemins déjà normalisés).
+ * Tout fichier encore référencé par n'importe quelle ligne post-import est dans [post] →
+ * jamais candidat, PAR CONSTRUCTION (chemin partagé, identique pre/post, nouveau `restore_` :
+ * tous protégés par l'ensemble, pas par une heuristique). Pure pour le test JVM.
+ */
+internal fun staleAfterImport(pre: Set<String>, post: Set<String>): Set<String> = pre - post
+
+/**
  * Module de sauvegarde/restauration locale — fichier archive `.jtr` :
  * un ZIP contenant `backup.json` (Gson) + un dossier `media/` avec les photos
  * locales référencées (profils, catégories, dossiers).
@@ -123,6 +141,7 @@ class BackupManager(context: Context) {
             val groups = db.categoryGroupDao().getAllSync()
             val joins = db.personCategoryDao().getAllJoinsSync()
             val socialLinks = db.socialLinkDao().getAllSync()
+            val galleryImages = db.galleryImageDao().getAllSync()
 
             // Médias référencés → entrées ZIP « media/n_nom » (dédupliquées).
             // PORTABILITÉ (v5.5) : toute source LISIBLE est embarquée — fichier
@@ -148,7 +167,11 @@ class BackupManager(context: Context) {
                 categories = categories.map { it.copy(imagePath = register(it.imagePath)) },
                 groups = groups.map { it.copy(imagePath = register(it.imagePath)) },
                 joins = joins,
-                socialLinks = socialLinks
+                socialLinks = socialLinks,
+                // v7.1.88 — la galerie passe par le MÊME mécanisme que les autres images :
+                // `register` tokenise le chemin et embarque le fichier dans l'archive. Rien
+                // de spécifique à écrire côté ZIP, c'est tout l'intérêt d'un chemin en base.
+                galleryImages = galleryImages.map { it.copy(path = register(it.path) ?: it.path) }
             )
 
             val output = appContext.contentResolver.openOutputStream(uri)
@@ -185,6 +208,12 @@ class BackupManager(context: Context) {
             var manifestJson: String? = null // marque v7.1.27 (peut être absente = legacy)
             val extracted = HashMap<String, String>() // entrée zip → chemin restauré
 
+            // v7.1.117 — ENSEMBLE DE RÉFÉRENCE PRE-IMPORT, capturé AVANT toute mutation :
+            // l'INSERT OR REPLACE va dé-référencer les anciens fichiers (photoUri/imagePath
+            // réécrits vers les `restore_`, lignes galerie effacées par la cascade FK du
+            // REPLACE du contact) et ces anciens chemins seraient perdus après coup.
+            val oldRefs = referencedFilePaths()
+
             // 1) LECTURE via le FLUX SAF (content://) — jamais un chemin File brut. Toute
             //    erreur d'ouverture (URI révoquée, fichier déplacé) → UNREADABLE distinct.
             val input = try {
@@ -210,22 +239,31 @@ class BackupManager(context: Context) {
                                 val safeName = File(entry.name).name
                                 val dir = File(appContext.filesDir, "photos").also { it.mkdirs() }
                                 val dest = File(dir, "restore_${UUID.randomUUID()}_$safeName")
-                                dest.outputStream().use { zip.copyTo(it) }
+                                // v7.1.117 — enregistré AVANT la copie : une ZipException en
+                                // PLEINE copie (archive tronquée) laissait ce fichier PARTIEL
+                                // hors de `extracted`, donc hors des deux nettoyages d'échec —
+                                // le seul `restore_` orphelin qu'un import raté pouvait laisser.
                                 extracted[entry.name] = dest.absolutePath
+                                dest.outputStream().use { zip.copyTo(it) }
                             }
                         }
                         zip.closeEntry()
                         entry = zip.nextEntry
                     }
                 }
-            } catch (e: java.util.zip.ZipException) {
+            } catch (e: Exception) {
+                // v7.1.117 — élargi de ZipException à Exception : une archive TRONQUÉE lève
+                // EOFException (pas ZipException) en pleine copie d'un média, qui échappait
+                // aux DEUX nettoyages d'échec (celui-ci, et le try/catch aval pas encore
+                // ouvert) → des `restore_` partiels restaient sur disque. Toute erreur du
+                // streaming ZIP = archive illisible : mêmes effets, même cause UI.
                 extracted.values.forEach { p -> runCatching { File(p).delete() } }
                 throw RestoreException(RestoreError.NOT_ARCHIVE, e)
             }
 
             // À partir d'ici, tout échec doit NETTOYER les médias déjà extraits :
             // aucun fichier orphelin dans filesDir/photos après un import raté.
-            try {
+            val imported = try {
                 // 3a) MARQUE v7.1.27 — VALIDATION PAR LE CONTENU. Si un manifeste est
                 //     présent, sa signature DOIT être « JTR-EXPORT » (on ne se fie jamais
                 //     à l'extension, qu'un content:// masque). ABSENT → archive ANTÉRIEURE
@@ -263,6 +301,8 @@ class BackupManager(context: Context) {
                 val groups = payload.groups.orEmpty()
                 val joins = payload.joins.orEmpty()
                 val socialLinks = payload.socialLinks.orEmpty()
+                // v7.1.88 — absent des archives antérieures → liste vide, import inchangé.
+                val galleryImages = coerceList(payload.galleryImages)
 
                 // Réécriture TRANSPARENTE des jetons jtr-media:// vers les chemins
                 // ABSOLUS de CE téléphone (les fichiers viennent d'être copiés dans
@@ -308,6 +348,17 @@ class BackupManager(context: Context) {
                         }
                         db.personCategoryDao().insertAll(joins.map { it.copy(addedAt = orRestore(it.addedAt)) })
                         socialLinks.forEach { db.socialLinkDao().insert(it) }
+                        // v7.1.88 — APRÈS les profils : la FK gallery_images.personId exige
+                        // que la personne existe. `Person.id` survit tel quel à l'import, donc
+                        // le rattachement est direct, sans remappage d'identifiant.
+                        // Un jeton dont le fichier manque donnerait un chemin null, interdit
+                        // par la colonne NOT NULL → la ligne est ÉCARTÉE plutôt qu'insérée
+                        // cassée (même esprit que « jamais d'URI morte en base »).
+                        db.galleryImageDao().insertAll(
+                            galleryImages.mapNotNull { img ->
+                                rewrite(img.path, false)?.let { img.copy(path = it) }
+                            }
+                        )
                     }
                 } catch (e: RestoreException) {
                     throw e
@@ -319,10 +370,50 @@ class BackupManager(context: Context) {
             } catch (e: Throwable) {
                 // Nettoyage des médias extraits : aucun fichier orphelin après un import raté.
                 // La cause réelle reste portée par RestoreException.cause (→ message UI distinct).
+                // ⚠️ En échec, AUCUN ancien fichier n'est touché : les photos en place SONT
+                // les données valides (le hook v7.1.117 ci-dessous ne tourne qu'en succès).
                 extracted.values.forEach { path -> runCatching { File(path).delete() } }
                 throw e
             }
+
+            // v7.1.117 — EFFACEMENT DES ANCIENS FICHIERS DÉ-RÉFÉRENCÉS, best-effort, sur le
+            // CHEMIN DE SUCCÈS uniquement. Placé HORS du try/catch ci-dessus, et intégralement
+            // sous runCatching : une exception ici serait sinon rattrapée par ce catch, qui
+            // supprimerait les `restore_` DÉSORMAIS RÉFÉRENCÉS en base — corruption de la
+            // restauration. Candidats = oldRefs − newRefs : tout fichier encore référencé
+            // post-import est dans newRefs, donc jamais supprimé ; `deleteFileIfOwned` borne
+            // en plus aux dossiers possédés (photos/gallery/crops). Pas de balayage complet
+            // (OrphanFileSweeper) ici : il effacerait des orphelins étrangers à l'import.
+            runCatching {
+                val newRefs = referencedFilePaths()
+                var count = 0
+                var bytes = 0L
+                staleAfterImport(oldRefs, newRefs).forEach { path ->
+                    val size = runCatching { File(path).length() }.getOrDefault(0L)
+                    if (ImageFileStore.deleteFileIfOwned(appContext, path)) {
+                        count++
+                        bytes += size
+                    }
+                }
+                Timber.tag(TAG).i(
+                    "import cleanup: %d de-referenced files deleted, %d bytes freed", count, bytes
+                )
+            }.onFailure { Timber.tag(TAG).w(it, "import cleanup skipped") }
+
+            imported
         }
+    }
+
+    /**
+     * v7.1.117 — l'ensemble de référence fichier de TOUTE la base (les 4 seuls champs qui
+     * portent un fichier, corbeille incluse — les mêmes requêtes que le balayage C2),
+     * normalisé en chemins via [ImageFileStore.normalizeToPath].
+     */
+    private suspend fun referencedFilePaths(): Set<String> = buildSet {
+        db.personDao().getAllPhotoUris().forEach { ImageFileStore.normalizeToPath(it)?.let(::add) }
+        db.categoryDao().getAllImagePaths().forEach { ImageFileStore.normalizeToPath(it)?.let(::add) }
+        db.categoryGroupDao().getAllImagePaths().forEach { ImageFileStore.normalizeToPath(it)?.let(::add) }
+        db.galleryImageDao().getAllPaths().forEach { ImageFileStore.normalizeToPath(it)?.let(::add) }
     }
 
     /**
@@ -399,6 +490,8 @@ class BackupManager(context: Context) {
     )
 
     companion object {
+        private const val TAG = "BackupManager"
+
         /** Version du SCHÉMA DE DONNÉES (payload `backup.json`). Inchangée. */
         const val FORMAT_VERSION = 1
 

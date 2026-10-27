@@ -29,22 +29,23 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">JTR Contacts</string>
+    <string name="recents_title">Récents</string>
+    <!-- v7.1.73 — harmonized search: result section headers -->
+    <string name="search_section_contacts">Contacts</string>
+    <string name="search_in_category">Rechercher dans %1$s</string>
+    <string name="search_in_folder">Rechercher dans %1$s</string>
+    <string name="search_section_categories">Catégories</string>
+    <string name="search_section_folders">Dossiers</string>
     <string name="home_fab_add_person">Ajouter une personne</string>
     <string name="home_location_warning">Activez la localisation pour les rappels de proximité</string>
     <string name="home_search_placeholder">Rechercher un contact…</string>
     <string name="home_empty_title">Aucun contact trouvé</string>
     <string name="home_empty_subtitle">Appuyez sur + pour ajouter une personne</string>
-    <string name="home_btn_category">Catégorie</string>
     <string name="home_btn_delete">Supprimer</string>
     <string name="home_favorite_cd">Favori</string>
 
     <!-- ── Category assign dialog ─────────────────────────────────────────── -->
     <string name="dialog_assign_category_title">Assigner une catégorie</string>
-    <string name="dialog_new_category_title">Nouvelle catégorie</string>
-    <string name="dialog_create_category_cd">Créer une catégorie</string>
-    <string name="dialog_create_new_category">Créer une nouvelle catégorie</string>
-    <string name="dialog_create_and_assign">Créer et assigner</string>
-    <string name="dialog_category_name_label">Nom de la catégorie</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">Catégories</string>
@@ -64,6 +65,7 @@
     <string name="category_detail_empty_title">Aucun membre dans cette catégorie</string>
     <string name="category_detail_empty_subtitle">Appuyez sur + pour ajouter un contact</string>
     <string name="category_detail_fab_add">Ajouter un contact</string>
+    <string name="category_detail_removed_snackbar">Retiré(s) de %1$s</string>
     <string name="category_detail_btn_remove">Retirer</string>
     <string name="category_detail_default_title">Catégorie</string>
 
@@ -71,18 +73,12 @@
     <string name="person_add_title">Ajouter une personne</string>
     <string name="person_edit_title">Modifier le contact</string>
     <string name="person_photo_cd">Photo de profil</string>
-    <string name="person_first_name_label">Prénom *</string>
-    <string name="person_first_name_error">Le prénom est obligatoire</string>
     <string name="person_first_name_required">Obligatoire</string>
-    <string name="person_last_name_label">Nom de famille</string>
     <string name="person_gender_label">Genre</string>
     <string name="person_gender_male">Homme</string>
     <string name="person_gender_female">Femme</string>
     <string name="person_gender_nonbinary">Non-binaire</string>
     <string name="person_gender_nonbinary_short">Nbin.</string>
-    <string name="person_birthday_label">Anniversaire</string>
-    <string name="person_birthday_select">Sélectionner une date</string>
-    <string name="person_birthday_modify">Modifier la date</string>
     <string name="person_birthday_clear">Effacer</string>
     <string name="person_birthday_notify">Notifier le jour de l\'anniversaire</string>
     <string name="person_birthday_invalid">Date invalide</string>
@@ -98,12 +94,10 @@
     <string name="person_social_links_title">Réseaux sociaux</string>
     <string name="person_add_social_link">Ajouter un lien social</string>
     <string name="person_social_delete_cd">Supprimer</string>
-    <string name="person_personal_info_title">Informations personnelles</string>
     <string name="person_origin_label">Origine</string>
     <string name="person_likes_label">Ce qu\'il/elle aime</string>
     <string name="person_notes_label">Notes diverses</string>
     <string name="person_save">Sauvegarder</string>
-    <string name="person_save_changes">Enregistrer les modifications</string>
 
     <!-- ── Person detail screen ───────────────────────────────────────────── -->
     <string name="person_not_found">Personne introuvable</string>
@@ -152,7 +146,6 @@
     <string name="trash_group_purge_imminent">suppression imminente</string>
     <string name="trash_group_purge_1_day">encore 1 jour</string>
     <string name="trash_group_purge_days">encore %1$d jours</string>
-    <string name="trash_group_status">%1$d contact(s) · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -303,10 +296,9 @@
     <string name="categories_unfavorite">Retirer des favoris</string>
     <string name="categories_create_group">Créer un groupe</string>
     <string name="categories_group_name_hint">Nom du groupe</string>
-    <string name="categories_rename">Renommer</string>
     <string name="categories_change_image">Changer l\'image</string>
     <string name="categories_delete_selected_title">Supprimer %1$d catégories ?</string>
-    <string name="categories_delete_selected_text">Les catégories sélectionnées et leurs contacts seront déplacés dans la corbeille.</string>
+    <string name="categories_delete_selected_text">Les catégories sélectionnées seront déplacées vers la corbeille. Vos contacts ne sont pas supprimés ; ils perdent seulement ces étiquettes.</string>
     <string name="categories_drag_handle_cd">Glisser pour réordonner</string>
     <string name="categories_group_empty">Ce dossier est vide</string>
     <string name="relation_not_found">Profil non trouvé</string>
@@ -318,22 +310,23 @@
     <string name="sort_direction_descending">Décroissant</string>
     <string name="categories_fav_action">Favori</string>
     <string name="categories_group_action">Grouper</string>
-    <string name="categories_move_to">Déplacer vers « %1$s »</string>
+    <string name="categories_move_to_group">Déplacer vers un groupe…</string>
+    <string name="categories_parent_group">Groupe parent</string>
+    <string name="categories_parent_root">Racine</string>
     <string name="categories_add_to_group_title">Ajouter au groupe</string>
     <string name="categories_add_existing">Ajouter des catégories existantes</string>
     <string name="categories_create_here">Créer une catégorie ici</string>
     <string name="categories_dissolve_group">Défaire le groupe</string>
     <string name="categories_dissolve_confirm_text">Les catégories redeviennent indépendantes.</string>
-    <string name="categories_no_candidates">Aucune catégorie disponible</string>
     <string name="categories_group_counter">%1$d catégories, %2$d groupes</string>
     <string name="categories_folder_counter">%1$d cat. · %2$d contacts</string>
     <string name="categories_move_out">Sortir du groupe</string>
     <string name="categories_delete_group_title">Supprimer le groupe « %1$s » ?</string>
     <string name="categories_delete_group_text">Êtes-vous sûr de vouloir supprimer le groupe « %1$s » et les %2$d catégories qu\'il contient ?</string>
     <string name="select_all">Tout sélectionner</string>
-    <string name="categories_selection_none">0 sélectionné</string>
+    <string name="select_all_short">Tout</string>
+    <string name="select_none">Tout désélectionner</string>
     <!-- v5.0 — sélection Accueil, déplacement direct, ajout depuis une catégorie -->
-    <string name="select_all_count">Tout sélectionner (%1$d)</string>
     <string name="action_move">Déplacer</string>
     <string name="move_pick_target_title">Choisir une catégorie</string>
     <string name="category_detail_add_existing">Ajouter un contact existant</string>
@@ -341,6 +334,7 @@
     <string name="category_detail_no_candidates">Tous les contacts sont déjà dans cette catégorie</string>
     <!-- v5.1 — recherche dans la TopAppBar, modes d'affichage, sélection de contacts -->
     <string name="action_search">Rechercher</string>
+    <string name="action_scroll_to_top">Remonter en haut</string>
     <string name="view_mode_title">Affichage</string>
     <string name="view_mode_list">Liste</string>
     <string name="view_mode_grid">Grille</string>
@@ -372,11 +366,10 @@
     <string name="city_map_hint">Appuyez sur l\'icône carte pour valider l\'adresse précise.</string>
     <string name="location_denied_settings">La permission de localisation a été refusée. Allez dans les paramètres de votre téléphone pour l\'autoriser.</string>
     <string name="location_off_settings">Activez la localisation dans les paramètres pour utiliser cette alerte.</string>
-    <string name="favorites_category">Favoris</string>
     <string name="action_move_to_trash">Mettre à la corbeille</string>
     <string name="action_trash_short">Corbeille</string>
     <string name="category_trash_confirm_title">Mettre cette catégorie à la corbeille ?</string>
-    <string name="category_trash_confirm_text">La catégorie et ses contacts seront déplacés vers la corbeille.</string>
+    <string name="category_trash_confirm_text">La catégorie sera déplacée vers la corbeille. Vos contacts ne sont pas supprimés ; ils perdent seulement cette étiquette.</string>
     <string name="welcome_title">Bienvenue sur JTR</string>
     <string name="welcome_subtitle">JTR est un cahier de mémoire.</string>
     <string name="welcome_import_button">Importer vos contacts du téléphone</string>
@@ -391,6 +384,18 @@
     <string name="contact_selection_title">Choisir les contacts</string>
     <!-- v5.5 — sauvegarde relocalisée dans Paramètres > Données -->
     <string name="settings_backup_subtitle">Exporter ou restaurer vos données (fichier .jtr)</string>
+    <!-- v7.1.106 — nettoyage manuel des fichiers image orphelins -->
+    <string name="settings_cleanup_title">Libérer de l\'espace</string>
+    <string name="settings_cleanup_subtitle">Supprimer les images résiduelles qui ne sont plus utilisées</string>
+    <string name="settings_cleanup_scanning">Analyse…</string>
+    <plurals name="settings_cleanup_confirm_message">
+        <item quantity="one">%1$d fichier résiduel (%2$s) provenant de photos supprimées ou remplacées. Vos contacts et leurs photos ne sont pas affectés.</item>
+        <item quantity="many">%1$d fichiers résiduels (%2$s) provenant de photos supprimées ou remplacées. Vos contacts et leurs photos ne sont pas affectés.</item>
+        <item quantity="other">%1$d fichiers résiduels (%2$s) provenant de photos supprimées ou remplacées. Vos contacts et leurs photos ne sont pas affectés.</item>
+    </plurals>
+    <string name="settings_cleanup_none">Aucun fichier résiduel</string>
+    <string name="settings_cleanup_confirm_button">Libérer %1$s</string>
+    <string name="settings_cleanup_done">%1$s récupérés</string>
     <string name="share_preview_loading">Chargement des images…</string>
     <!-- v6.0.2 — flux de permission (piloté par le système) -->
     <string name="settings_notif_rationale_title">Autoriser les notifications ?</string>
@@ -460,7 +465,6 @@
     <string name="note_section_add">Ajouter une section</string>
     <string name="note_section_default_notes">Notes</string>
     <string name="note_section_address">Adresse</string>
-    <string name="note_section_title_hint">Titre de la section</string>
     <string name="note_section_content_hint">Écrivez quelque chose…</string>    <string name="note_section_delete_confirm_title">Supprimer cette section ?</string>
     <string name="note_section_delete_confirm_text">Son contenu sera définitivement supprimé.</string>
     <string name="note_section_icon_picker_title">Choisir une icône</string>
@@ -472,7 +476,7 @@
     <string name="person_category_new">Nouvelle catégorie</string>
     <string name="person_categories_empty">Aucune catégorie pour le moment. Créez-en une pour commencer.</string>
     <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
-    <string name="person_categories_search_placeholder">Rechercher une catégorie…</string>
+    <string name="category_search_placeholder">Rechercher une catégorie…</string>
     <string name="person_categories_no_results">Aucune catégorie ne correspond à votre recherche</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">À vérifier</string>
@@ -553,4 +557,36 @@
     <string name="import_contacts_done_message_updated">%1$d importés · %2$d mis à jour · %3$d ignorés</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">Une date de naissance ne peut pas être dans le futur</string>
+    <!-- v7.1.89 - galerie d'images par contact -->
+    <string name="gallery_title">Galerie</string>
+    <string name="gallery_add">Ajouter des photos</string>
+    <string name="gallery_empty_title">Aucun souvenir</string>
+    <string name="gallery_empty_subtitle">Ajoutez votre premier souvenir pour ce contact.</string>
+    <string name="gallery_delete_confirm">Supprimer</string>
+    <string name="gallery_image_cd">Photo de la galerie</string>
+    <string name="gallery_details_open">Détails</string>
+    <string name="gallery_details_title">Détails de la photo</string>
+    <string name="gallery_details_description">Description</string>
+    <string name="gallery_details_description_hint">Ajouter une description</string>
+    <string name="gallery_details_date">Date</string>
+    <string name="gallery_details_time">Heure</string>
+    <string name="gallery_details_month">Mois</string>
+    <string name="gallery_details_day">Jour</string>
+    <string name="gallery_details_year">Année</string>
+    <string name="gallery_details_hour">Heure</string>
+    <string name="gallery_details_minute">Minute</string>
+    <string name="gallery_details_location">Lieu</string>
+    <string name="gallery_details_location_add">Ajouter une localisation</string>
+    <string name="gallery_details_location_remove">Retirer la localisation</string>
+    <plurals name="gallery_square_cd">
+        <item quantity="one">Galerie de %1$s, 1 photo</item>
+        <item quantity="many">Galerie de %1$s, %2$d photos</item>
+        <item quantity="other">Galerie de %1$s, %2$d photos</item>
+    </plurals>
+    <plurals name="gallery_delete_n_title">
+        <item quantity="one">Supprimer %1$d photo(s) ?</item>
+        <item quantity="many">Supprimer %1$d photo(s) ?</item>
+        <item quantity="other">Supprimer %1$d photo(s) ?</item>
+    </plurals>
+    <string name="gallery_delete_warning">Retrait de cette galerie et effacement de l\'appareil. Action irréversible.</string>
 </resources>

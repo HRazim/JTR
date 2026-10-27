@@ -1,6 +1,7 @@
 package com.jtr.app.data.repository
 
 import android.content.Context
+import com.jtr.app.data.files.ImageFileStore
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
@@ -21,6 +22,7 @@ class CategoryRepository(context: Context) {
     private val categoryGroupDao = db.categoryGroupDao()
     private val personDao = db.personDao()
     private val personCategoryDao = db.personCategoryDao()
+    private val appContext = context.applicationContext
 
     fun getAllActive(): Flow<List<Category>> = categoryDao.getAll()
 
@@ -44,8 +46,14 @@ class CategoryRepository(context: Context) {
      * (la même requête sert à [deleteGroup], qui désassigne EN MASSE). Les mouvements de membres
      * sont dérivés à la lecture par [getCategoryLastActivity] — aucune écriture.
      */
-    suspend fun update(category: Category) =
+    suspend fun update(category: Category) {
+        // v7.1.105 (lot C1) — une image REMPLACÉE efface son ancien fichier (après
+        // l'écriture, no-op si inchangée) : avant, chaque changement d'image laissait
+        // l'ancien `photos/category_…` orphelin (11 mesurés à l'audit).
+        val old = categoryDao.getById(category.id)
         categoryDao.update(category.copy(updatedAt = System.currentTimeMillis()))
+        old?.let { ImageFileStore.deleteReplacedFile(appContext, it.imagePath, category.imagePath) }
+    }
 
     // ── v4.5 : favoris, tri personnalisé, regroupement et actions de masse ──────
     fun getGroups(): Flow<List<CategoryGroup>> = categoryGroupDao.getAll()
@@ -62,7 +70,7 @@ class CategoryRepository(context: Context) {
     }
 
     suspend fun softDeleteMultipleWithCascade(categoryIds: List<String>) {
-        categoryIds.forEach { softDeleteWithCascade(it) }
+        categoryIds.forEach { softDeleteCategory(it) }
     }
 
     /**
@@ -70,11 +78,17 @@ class CategoryRepository(context: Context) {
      * [parentGroupId] non nul → SOUS-GROUPE imbriqué dans ce groupe parent.
      */
     suspend fun createGroupWith(
-        name: String, categoryIds: List<String>, parentGroupId: Long? = null
+        name: String, categoryIds: List<String>, parentGroupId: Long? = null,
+        // v7.1.82 — image de couverture définissable DÈS la création (la feuille moderne
+        // la propose ; `imagePath` existe en base depuis la DB v15 → aucune migration).
+        imagePath: String? = null
     ): Long {
         val pos = categoryGroupDao.maxPosition() + 1
         val groupId = categoryGroupDao.insert(
-            CategoryGroup(name = name, position = pos, parentGroupId = parentGroupId))
+            CategoryGroup(
+                name = name, position = pos, parentGroupId = parentGroupId,
+                imagePath = imagePath
+            ))
         categoryDao.assignGroup(categoryIds, groupId)
         return groupId
     }
@@ -88,16 +102,30 @@ class CategoryRepository(context: Context) {
     suspend fun setGroupFavorite(id: Long, favorite: Boolean) =
         categoryGroupDao.setFavorite(id, favorite)
 
-    suspend fun updateGroup(group: CategoryGroup) = categoryGroupDao.update(group)
-
-    /** Dissout un groupe : détache ses catégories puis supprime le groupe. */
-    suspend fun deleteGroup(groupId: Long, memberIds: List<String>) {
-        categoryDao.assignGroup(memberIds, null)
-        categoryGroupDao.delete(groupId)
+    suspend fun updateGroup(group: CategoryGroup) {
+        // v7.1.105 — même règle que [update] : l'ancienne image de couverture remplacée
+        // est effacée après l'écriture (no-op pour les updates d'organisation, qui ne
+        // touchent pas `imagePath`).
+        val old = categoryGroupDao.getById(group.id)
+        categoryGroupDao.update(group)
+        old?.let { ImageFileStore.deleteReplacedFile(appContext, it.imagePath, group.imagePath) }
     }
 
-    /** Supprime la SEULE ligne de groupe (membres déjà réaffectés ailleurs — fusion). */
-    suspend fun deleteGroupRow(groupId: Long) = categoryGroupDao.delete(groupId)
+    /** Dissout un groupe : détache ses catégories puis supprime le groupe (et son image). */
+    suspend fun deleteGroup(groupId: Long, memberIds: List<String>) {
+        categoryDao.assignGroup(memberIds, null)
+        deleteGroupRow(groupId)
+    }
+
+    /**
+     * Supprime la SEULE ligne de groupe (membres déjà réaffectés ailleurs — fusion).
+     * v7.1.105 — l'image de couverture est lue AVANT le DELETE et son fichier effacé APRÈS.
+     */
+    suspend fun deleteGroupRow(groupId: Long) {
+        val imagePath = categoryGroupDao.getById(groupId)?.imagePath
+        categoryGroupDao.delete(groupId)
+        ImageFileStore.deleteFileIfOwned(appContext, imagePath)
+    }
 
     /**
      * Persiste l'ordre GLOBAL des entrées de premier niveau (dossiers + catégories
@@ -113,48 +141,77 @@ class CategoryRepository(context: Context) {
     }
 
     /**
-     * Soft-delete de la catégorie + tous ses membres actifs en cascade.
-     * Utilise la table de jointure pour trouver les membres (Many-to-Many).
+     * Soft-delete d'une catégorie SEULE (v7.1.71). Les contacts membres restent ACTIFS (ils
+     * perdent seulement l'étiquette) ; les liens de jointure sont CONSERVÉS — ils sont masqués
+     * des vues actives par le filtre `category.deletedAt IS NULL` (cf. DAO) et permettent une
+     * restauration gratuite. Aucun contact n'est jamais touché par la suppression d'une catégorie.
      */
-    suspend fun softDeleteWithCascade(categoryId: String) {
-        val ts = System.currentTimeMillis()
-        val activeIds = personCategoryDao.getActivePersonIdsInCategory(categoryId)
-        categoryDao.softDelete(categoryId, ts)
-        if (activeIds.isNotEmpty()) {
-            personDao.softDeleteMultiple(activeIds, ts)
-        }
+    suspend fun softDeleteCategory(categoryId: String) {
+        categoryDao.softDelete(categoryId, System.currentTimeMillis())
     }
 
     /**
-     * Restaure la catégorie ET tous ses membres supprimés logiquement.
+     * Restaure une catégorie (v7.1.71) : efface simplement `deletedAt`. Les liens n'ayant jamais
+     * été retirés et les contacts jamais cachés, les anciens membres ENCORE PRÉSENTS réapparaissent
+     * automatiquement dans la catégorie. Un contact supprimé individuellement entre-temps n'est PAS
+     * ressuscité (on ne touche plus aux contacts à la restauration).
      */
-    suspend fun restoreWithCascade(categoryId: String) {
+    suspend fun restoreCategory(categoryId: String) {
         categoryDao.restore(categoryId)
-        val allIds = personCategoryDao.getAllPersonIdsInCategory(categoryId)
-        if (allIds.isNotEmpty()) {
-            personDao.restoreMultiple(allIds)
-        }
     }
 
     /**
-     * Suppression définitive de la catégorie et des membres déjà en corbeille.
-     * Les membres actifs ne sont PAS supprimés (ils restent sans cette catégorie).
+     * Suppression DÉFINITIVE d'une catégorie (v7.1.71) : retire ses liens de jointure puis
+     * hard-delete la catégorie. Un CONTACT n'est JAMAIS hard-deleté ici — même un contact
+     * supprimé individuellement mais encore lié à cette catégorie SURVIT (seule l'auto-purge des
+     * contacts, sur son propre calendrier, peut le supprimer). Le retrait explicite des liens
+     * double la CASCADE FK sur categoryId (comportement explicite et testable).
      */
-    suspend fun hardDeleteWithCascade(categoryId: String) {
-        val deletedIds = personCategoryDao.getDeletedPersonIdsInCategory(categoryId)
-        deletedIds.forEach { personDao.hardDelete(it) }
+    suspend fun hardDeleteCategory(categoryId: String) {
+        // v7.1.105 — l'image est lue AVANT le hard-delete, son fichier effacé APRÈS.
+        val imagePath = categoryDao.getById(categoryId)?.imagePath
+        personCategoryDao.removeAllFromCategory(categoryId)
         categoryDao.hardDelete(categoryId)
-        // Les lignes de jointure sont supprimées par CASCADE sur categoryId
+        ImageFileStore.deleteFileIfOwned(appContext, imagePath)
     }
 
-    suspend fun hardDeleteAllDeleted() = categoryDao.hardDeleteAllDeleted()
+    suspend fun hardDeleteAllDeleted() {
+        // v7.1.105 — images lues AVANT le vidage de la corbeille, effacées APRÈS.
+        val imagePaths = categoryDao.getDeletedImagePaths()
+        categoryDao.hardDeleteAllDeleted()
+        imagePaths.forEach { ImageFileStore.deleteFileIfOwned(appContext, it) }
+    }
+
+    /**
+     * AUTO-PURGE de la corbeille des catégories (v7.1.70) : supprime définitivement les catégories
+     * en corbeille depuis plus de 30 jours, en retirant d'abord leurs liens de jointure. Les
+     * CONTACTS ne sont JAMAIS supprimés ici (ils perdent seulement l'étiquette) ; les contacts
+     * mis en corbeille EN MÊME TEMPS que la catégorie sont purgés, eux, par l'auto-purge des
+     * contacts ([PersonRepository.purgeOldDeleted], même seuil de 30 jours). Idempotent et
+     * auto-réparant (relancé au démarrage). Le retrait des liens est explicite (en plus de la
+     * CASCADE FK sur `categoryId`), pour un comportement testable et sans dépendance implicite.
+     */
+    suspend fun purgeOldDeletedCategories() {
+        val cutoff = System.currentTimeMillis() - THIRTY_DAYS_MS
+        val expired = categoryDao.getDeletedIdsOlderThan(cutoff)
+        expired.forEach { id ->
+            // v7.1.105 — l'image de chaque catégorie purgée part avec elle (lue avant,
+            // effacée après — même règle que hardDeleteCategory).
+            val imagePath = categoryDao.getById(id)?.imagePath
+            personCategoryDao.removeAllFromCategory(id)
+            categoryDao.hardDelete(id)
+            ImageFileStore.deleteFileIfOwned(appContext, imagePath)
+        }
+    }
 
     /**
      * Flow réactif : nombre de contacts actifs par categoryId.
      * Combine les deux tables via Many-to-Many.
      */
     fun getPersonCountsPerCategory(): Flow<Map<String, Int>> =
-        combine(personCategoryDao.getAllJoins(), personDao.getAllActive()) { joins, activePersons ->
+        // v7.1.71 — liens des catégories ACTIVES uniquement (une catégorie en corbeille ne porte
+        // plus de compte fantôme). `getAllJoins` reste réservé à l'écran Corbeille.
+        combine(personCategoryDao.getActiveCategoryJoins(), personDao.getAllActive()) { joins, activePersons ->
             val activeIds = activePersons.map { it.id }.toSet()
             joins.filter { it.personId in activeIds }
                 .groupingBy { it.categoryId }
@@ -172,4 +229,9 @@ class CategoryRepository(context: Context) {
     fun getCategoryLastActivity(): Flow<Map<String, Long>> =
         personCategoryDao.getCategoryActivity()
             .map { rows -> rows.associate { it.categoryId to it.lastActivity } }
+
+    companion object {
+        /** Seuil d'auto-purge de la corbeille : 30 jours (aligné sur l'auto-purge des contacts). */
+        private const val THIRTY_DAYS_MS = 30L * 24 * 60 * 60 * 1000
+    }
 }

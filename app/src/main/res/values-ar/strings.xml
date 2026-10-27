@@ -29,22 +29,23 @@
 
     <!-- ── Home screen ────────────────────────────────────────────────────── -->
     <string name="home_title">جهات الاتصال JTR</string>
+    <string name="recents_title">الأخيرة</string>
+    <!-- v7.1.73 — harmonized search: result section headers -->
+    <string name="search_section_contacts">جهات الاتصال</string>
+    <string name="search_in_category">البحث في %1$s</string>
+    <string name="search_in_folder">البحث في %1$s</string>
+    <string name="search_section_categories">الفئات</string>
+    <string name="search_section_folders">المجلدات</string>
     <string name="home_fab_add_person">إضافة شخص</string>
     <string name="home_location_warning">فعّل الموقع لتذكيرات القرب</string>
     <string name="home_search_placeholder">ابحث عن جهة اتصال…</string>
     <string name="home_empty_title">لا توجد جهات اتصال</string>
     <string name="home_empty_subtitle">اضغط + لإضافة شخص</string>
-    <string name="home_btn_category">فئة</string>
     <string name="home_btn_delete">حذف</string>
     <string name="home_favorite_cd">مفضّل</string>
 
     <!-- ── Category assign dialog ─────────────────────────────────────────── -->
     <string name="dialog_assign_category_title">تعيين فئة</string>
-    <string name="dialog_new_category_title">فئة جديدة</string>
-    <string name="dialog_create_category_cd">إنشاء فئة</string>
-    <string name="dialog_create_new_category">إنشاء فئة جديدة</string>
-    <string name="dialog_create_and_assign">إنشاء وتعيين</string>
-    <string name="dialog_category_name_label">اسم الفئة</string>
 
     <!-- ── Categories screen ──────────────────────────────────────────────── -->
     <string name="categories_title">الفئات</string>
@@ -64,6 +65,7 @@
     <string name="category_detail_empty_title">لا يوجد أعضاء في هذه الفئة</string>
     <string name="category_detail_empty_subtitle">اضغط + لإضافة جهة اتصال</string>
     <string name="category_detail_fab_add">إضافة جهة اتصال</string>
+    <string name="category_detail_removed_snackbar">تمت الإزالة من %1$s</string>
     <string name="category_detail_btn_remove">إزالة</string>
     <string name="category_detail_default_title">فئة</string>
 
@@ -71,18 +73,12 @@
     <string name="person_add_title">إضافة شخص</string>
     <string name="person_edit_title">تعديل جهة الاتصال</string>
     <string name="person_photo_cd">صورة الملف الشخصي</string>
-    <string name="person_first_name_label">الاسم الأول *</string>
-    <string name="person_first_name_error">الاسم الأول مطلوب</string>
     <string name="person_first_name_required">مطلوب</string>
-    <string name="person_last_name_label">اسم العائلة</string>
     <string name="person_gender_label">الجنس</string>
     <string name="person_gender_male">ذكر</string>
     <string name="person_gender_female">أنثى</string>
     <string name="person_gender_nonbinary">غير ثنائي</string>
     <string name="person_gender_nonbinary_short">غير ثنائي</string>
-    <string name="person_birthday_label">عيد الميلاد</string>
-    <string name="person_birthday_select">اختر تاريخًا</string>
-    <string name="person_birthday_modify">تغيير التاريخ</string>
     <string name="person_birthday_clear">مسح</string>
     <string name="person_birthday_notify">تنبيه في عيد الميلاد</string>
     <string name="person_birthday_invalid">تاريخ غير صالح</string>
@@ -98,12 +94,10 @@
     <string name="person_social_links_title">الشبكات الاجتماعية</string>
     <string name="person_add_social_link">إضافة رابط اجتماعي</string>
     <string name="person_social_delete_cd">حذف</string>
-    <string name="person_personal_info_title">المعلومات الشخصية</string>
     <string name="person_origin_label">الأصل</string>
     <string name="person_likes_label">ما يحبّه</string>
     <string name="person_notes_label">ملاحظات أخرى</string>
     <string name="person_save">حفظ</string>
-    <string name="person_save_changes">حفظ التغييرات</string>
 
     <!-- ── Person detail screen ───────────────────────────────────────────── -->
     <string name="person_not_found">لم يُعثر على الشخص</string>
@@ -157,7 +151,6 @@
     <string name="trash_group_purge_imminent">حذف وشيك</string>
     <string name="trash_group_purge_1_day">يبقى يوم واحد</string>
     <string name="trash_group_purge_days">يبقى %1$d يوم</string>
-    <string name="trash_group_status">%1$d جهة اتصال · %2$s</string>
 
     <!-- ── Theme presets ────────────────────────────────────────────────── -->
     <string name="theme_name_jtr">JTR</string>
@@ -309,10 +302,9 @@
     <string name="categories_unfavorite">إزالة من المفضّلة</string>
     <string name="categories_create_group">إنشاء مجموعة</string>
     <string name="categories_group_name_hint">اسم المجموعة</string>
-    <string name="categories_rename">إعادة تسمية</string>
     <string name="categories_change_image">تغيير الصورة</string>
     <string name="categories_delete_selected_title">حذف %1$d فئة؟</string>
-    <string name="categories_delete_selected_text">ستُنقل الفئات المحددة وجهات اتصالها إلى سلة المهملات.</string>
+    <string name="categories_delete_selected_text">ستُنقل الفئات المحددة إلى سلة المهملات. لن تُحذف جهات اتصالك؛ ستفقد هذه التصنيفات فقط.</string>
     <string name="categories_drag_handle_cd">اسحب لإعادة الترتيب</string>
     <string name="categories_group_empty">هذا المجلد فارغ</string>
     <string name="relation_not_found">لم يُعثر على الملف الشخصي</string>
@@ -323,27 +315,29 @@
     <string name="sort_direction_descending">تنازلي</string>
     <string name="categories_fav_action">مفضّل</string>
     <string name="categories_group_action">تجميع</string>
-    <string name="categories_move_to">نقل إلى «%1$s»</string>
+    <string name="categories_move_to_group">نقل إلى مجموعة…</string>
+    <string name="categories_parent_group">المجموعة الأصل</string>
+    <string name="categories_parent_root">الجذر</string>
     <string name="categories_add_to_group_title">إضافة إلى المجموعة</string>
     <string name="categories_add_existing">إضافة فئات موجودة</string>
     <string name="categories_create_here">إنشاء فئة هنا</string>
     <string name="categories_dissolve_group">فك التجميع</string>
     <string name="categories_dissolve_confirm_text">ستعود الفئات مستقلة من جديد.</string>
-    <string name="categories_no_candidates">لا توجد فئة متاحة</string>
     <string name="categories_group_counter">%1$d فئة، %2$d مجموعة</string>
     <string name="categories_folder_counter">%1$d فئة · %2$d جهة اتصال</string>
     <string name="categories_move_out">إخراج من المجموعة</string>
     <string name="categories_delete_group_title">حذف المجموعة «%1$s»؟</string>
     <string name="categories_delete_group_text">هل تريد بالتأكيد حذف المجموعة «%1$s» و%2$d فئة بداخلها؟</string>
     <string name="select_all">تحديد الكل</string>
-    <string name="categories_selection_none">لم يتم تحديد شيء</string>
-    <string name="select_all_count">تحديد الكل (%1$d)</string>
+    <string name="select_all_short">الكل</string>
+    <string name="select_none">إلغاء تحديد الكل</string>
     <string name="action_move">نقل</string>
     <string name="move_pick_target_title">اختر فئة</string>
     <string name="category_detail_add_existing">إضافة جهة اتصال موجودة</string>
     <string name="category_detail_create_new">إنشاء جهة اتصال جديدة</string>
     <string name="category_detail_no_candidates">جميع جهات الاتصال موجودة في هذه الفئة بالفعل</string>
     <string name="action_search">بحث</string>
+    <string name="action_scroll_to_top">العودة إلى الأعلى</string>
     <string name="view_mode_title">العرض</string>
     <string name="view_mode_list">قائمة</string>
     <string name="view_mode_grid">شبكة</string>
@@ -374,11 +368,10 @@
     <string name="city_map_hint">اضغط رمز الخريطة لتأكيد العنوان الدقيق.</string>
     <string name="location_denied_settings">تم رفض إذن الموقع. انتقل إلى إعدادات هاتفك للسماح به.</string>
     <string name="location_off_settings">فعّل تحديد الموقع في الإعدادات لاستخدام هذا التنبيه.</string>
-    <string name="favorites_category">المفضّلة</string>
     <string name="action_move_to_trash">نقل إلى سلة المهملات</string>
     <string name="action_trash_short">سلة المهملات</string>
     <string name="category_trash_confirm_title">نقل هذه الفئة إلى سلة المهملات؟</string>
-    <string name="category_trash_confirm_text">ستُنقل الفئة وجهات اتصالها إلى سلة المهملات.</string>
+    <string name="category_trash_confirm_text">ستُنقل الفئة إلى سلة المهملات. لن تُحذف جهات اتصالك؛ ستفقد هذا التصنيف فقط.</string>
     <string name="welcome_title">مرحبًا بك في JTR</string>
     <string name="welcome_subtitle">JTR هو دفتر للذكريات.</string>
     <string name="welcome_import_button">استيراد جهات اتصال الهاتف</string>
@@ -390,6 +383,21 @@
     <string name="welcome_select_button">اختر جهات الاتصال للاستيراد</string>
     <string name="contact_selection_title">اختر جهات الاتصال</string>
     <string name="settings_backup_subtitle">صدّر بياناتك أو استعدها (ملف .jtr)</string>
+    <!-- v7.1.106 — تنظيف يدوي لملفات الصور اليتيمة -->
+    <string name="settings_cleanup_title">تحرير مساحة</string>
+    <string name="settings_cleanup_subtitle">حذف الصور المتبقية التي لم تعد مستخدمة</string>
+    <string name="settings_cleanup_scanning">جارٍ الفحص…</string>
+    <plurals name="settings_cleanup_confirm_message">
+        <item quantity="zero">%1$d ملفات متبقية (%2$s) من صور حذفتها أو استبدلتها. لن تتأثر جهات اتصالك وصورها.</item>
+        <item quantity="one">%1$d ملف متبقّ (%2$s) من صور حذفتها أو استبدلتها. لن تتأثر جهات اتصالك وصورها.</item>
+        <item quantity="two">%1$d ملفان متبقيان (%2$s) من صور حذفتها أو استبدلتها. لن تتأثر جهات اتصالك وصورها.</item>
+        <item quantity="few">%1$d ملفات متبقية (%2$s) من صور حذفتها أو استبدلتها. لن تتأثر جهات اتصالك وصورها.</item>
+        <item quantity="many">%1$d ملفًا متبقيًا (%2$s) من صور حذفتها أو استبدلتها. لن تتأثر جهات اتصالك وصورها.</item>
+        <item quantity="other">%1$d ملف متبقّ (%2$s) من صور حذفتها أو استبدلتها. لن تتأثر جهات اتصالك وصورها.</item>
+    </plurals>
+    <string name="settings_cleanup_none">لا توجد ملفات متبقية</string>
+    <string name="settings_cleanup_confirm_button">تحرير %1$s</string>
+    <string name="settings_cleanup_done">تم استرداد %1$s</string>
     <string name="share_preview_loading">جارٍ تحميل الصور…</string>
     <string name="settings_notif_rationale_title">السماح بالإشعارات؟</string>
     <string name="settings_notif_rationale_message">يرسل JTR تذكيرات لطيفة بأعياد الميلاد والتواريخ المهمة — مباشرة إلى هاتفك.</string>
@@ -451,7 +459,6 @@
     <string name="note_section_add">إضافة قسم</string>
     <string name="note_section_default_notes">ملاحظات</string>
     <string name="note_section_address">العنوان</string>
-    <string name="note_section_title_hint">عنوان القسم</string>
     <string name="note_section_content_hint">اكتب شيئًا…</string>    <string name="note_section_delete_confirm_title">حذف هذا القسم؟</string>
     <string name="note_section_delete_confirm_text">سيُحذف محتواه نهائيًا.</string>
     <string name="note_section_icon_picker_title">اختر أيقونة</string>
@@ -463,7 +470,7 @@
     <string name="person_category_new">فئة جديدة</string>
     <string name="person_categories_empty">لا توجد فئات بعد. أنشئ واحدة للبدء.</string>
     <!-- v7.1.50 — recherche dans le sélecteur de catégories d'une personne -->
-    <string name="person_categories_search_placeholder">ابحث عن فئة…</string>
+    <string name="category_search_placeholder">ابحث عن فئة…</string>
     <string name="person_categories_no_results">لا توجد فئة تطابق بحثك</string>
     <!-- v7.1.6 — relations par identifiant stable (intégrité) -->
     <string name="person_relation_ambiguous">للتحقق</string>
@@ -574,4 +581,42 @@
     <string name="import_contacts_done_message_updated">%1$d مستورد · %2$d محدَّث · %3$d متجاوَز</string>
     <!-- v7.1.29 — anniversaire futur bloqué -->
     <string name="person_birthday_future">لا يمكن أن يكون تاريخ الميلاد في المستقبل</string>
+    <!-- v7.1.89 - galerie d'images par contact -->
+    <string name="gallery_title">المعرض</string>
+    <string name="gallery_add">إضافة صور</string>
+    <string name="gallery_empty_title">لا توجد ذكريات بعد</string>
+    <string name="gallery_empty_subtitle">أضف أول ذكرى لجهة الاتصال هذه.</string>
+    <string name="gallery_delete_confirm">حذف</string>
+    <string name="gallery_image_cd">صورة من المعرض</string>
+    <string name="gallery_details_open">التفاصيل</string>
+    <string name="gallery_details_title">تفاصيل الصورة</string>
+    <string name="gallery_details_description">الوصف</string>
+    <string name="gallery_details_description_hint">إضافة وصف</string>
+    <string name="gallery_details_date">التاريخ</string>
+    <string name="gallery_details_time">الوقت</string>
+    <string name="gallery_details_month">الشهر</string>
+    <string name="gallery_details_day">اليوم</string>
+    <string name="gallery_details_year">السنة</string>
+    <string name="gallery_details_hour">الساعة</string>
+    <string name="gallery_details_minute">الدقيقة</string>
+    <string name="gallery_details_location">الموقع</string>
+    <string name="gallery_details_location_add">إضافة موقع</string>
+    <string name="gallery_details_location_remove">إزالة الموقع</string>
+    <plurals name="gallery_square_cd">
+        <item quantity="zero">معرض %1$s، %2$d صور</item>
+        <item quantity="one">معرض %1$s، صورة واحدة</item>
+        <item quantity="two">معرض %1$s، %2$d صور</item>
+        <item quantity="few">معرض %1$s، %2$d صور</item>
+        <item quantity="many">معرض %1$s، %2$d صور</item>
+        <item quantity="other">معرض %1$s، %2$d صور</item>
+    </plurals>
+    <plurals name="gallery_delete_n_title">
+        <item quantity="zero">حذف %1$d صورة؟</item>
+        <item quantity="one">حذف %1$d صورة؟</item>
+        <item quantity="two">حذف %1$d صورة؟</item>
+        <item quantity="few">حذف %1$d صورة؟</item>
+        <item quantity="many">حذف %1$d صورة؟</item>
+        <item quantity="other">حذف %1$d صورة؟</item>
+    </plurals>
+    <string name="gallery_delete_warning">ستتم الإزالة من هذا المعرض والحذف من الجهاز. لا يمكن التراجع.</string>
 </resources>

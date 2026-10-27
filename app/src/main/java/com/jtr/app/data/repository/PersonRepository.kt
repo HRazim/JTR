@@ -5,6 +5,7 @@ import androidx.room.withTransaction
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.jtr.app.JTRApplication
+import com.jtr.app.data.files.ImageFileStore
 import com.jtr.app.data.local.AppDatabase
 import com.jtr.app.data.local.PersonDao
 import com.jtr.app.data.local.PersonCategoryDao
@@ -30,6 +31,7 @@ class PersonRepository(context: Context) {
     private val dao: PersonDao = db.personDao()
     private val categoryDao: PersonCategoryDao = db.personCategoryDao()
     private val socialLinkDao = db.socialLinkDao()
+    private val galleryImageDao = db.galleryImageDao()
     private val appContext = context.applicationContext
 
     // =========================================================
@@ -37,6 +39,9 @@ class PersonRepository(context: Context) {
     // =========================================================
 
     fun getAllActive(): Flow<List<Person>> = dao.getAllActive()
+
+    /** Contacts récemment ouverts (tri `lastContactedAt` DESC, plafonné). */
+    fun getRecent(limit: Int): Flow<List<Person>> = dao.getRecent(limit)
 
     // La recherche de personnes n'a PAS de point d'entrée Repository dédié : tous les
     // écrans observent getAllActive() et appliquent le moteur CENTRAL en mémoire
@@ -46,6 +51,13 @@ class PersonRepository(context: Context) {
     /** Contacts actifs d'une catégorie (via table de jointure Many-to-Many). */
     fun getByCategory(categoryId: String): Flow<List<Person>> =
         categoryDao.getActivePersonsInCategory(categoryId)
+
+    /**
+     * v7.1.87 — contacts actifs de PLUSIEURS catégories, DÉDOUBLONNÉS : périmètre d'un
+     * dossier (ses catégories + celles de ses sous-dossiers). Lecture seule.
+     */
+    fun getByCategories(categoryIds: List<String>): Flow<List<Person>> =
+        categoryDao.getActivePersonsInCategories(categoryIds)
 
     fun getDeleted(): Flow<List<Person>> = dao.getDeleted()
 
@@ -106,14 +118,24 @@ class PersonRepository(context: Context) {
     // ÉCRITURE (CRUD)
     // =========================================================
 
-    suspend fun add(person: Person) = dao.insert(person)
+    /**
+     * v7.1.105 (lot C1) — `insert` est en REPLACE : le BROUILLON de l'Ajout ré-insère la même
+     * ligne à chaque auto-save, donc changer la photo du brouillon écrasait la référence en
+     * laissant l'ancien fichier orphelin. L'ancienne photo (si différente) est effacée APRÈS
+     * l'écriture — jamais la nouvelle.
+     */
+    suspend fun add(person: Person) {
+        val old = dao.getById(person.id)
+        dao.insert(person)
+        old?.let { ImageFileStore.deleteReplacedFile(appContext, it.photoUri, person.photoUri) }
+    }
 
     /**
      * Ajoute une personne ET l'assigne directement à une catégorie.
      * Utilisé depuis CategoryDetailScreen → AddPersonScreen.
      */
     suspend fun addToCategory(person: Person, categoryId: String) {
-        dao.insert(person)
+        add(person)
         categoryDao.insert(PersonCategoryJoin(person.id, categoryId))
     }
 
@@ -128,7 +150,7 @@ class PersonRepository(context: Context) {
                 else person
             } catch (_: Exception) { person }
         } else person
-        dao.insert(enriched)
+        add(enriched)
         syncGeofences()
         return enriched
     }
@@ -142,21 +164,30 @@ class PersonRepository(context: Context) {
         return enriched
     }
 
+    /**
+     * v7.1.105 (lot C1) — une photo REMPLACÉE efface son ancien fichier (après l'écriture,
+     * via le garde-fou [ImageFileStore] ; no-op si elle n'a pas changé). Avant, chaque
+     * changement de photo laissait l'ancien `photos/profile_…` orphelin.
+     */
     suspend fun update(person: Person) {
+        val old = dao.getById(person.id)
         dao.update(person)
+        old?.let { ImageFileStore.deleteReplacedFile(appContext, it.photoUri, person.photoUri) }
         syncGeofences()
     }
 
     suspend fun updateWithGeocoding(person: Person, oldCity: String?): Person {
-        val enriched = if (person.city != null && person.city != oldCity) {
+        // v7.1.122 — géocode aussi une ville INCHANGÉE mais sans coordonnées : l'auto-save
+        // (qui ne géocode jamais, design v7.1.4) peut avoir persisté la ville avant le save
+        // manuel ; elle n'est alors plus « changée » mais attend toujours ses coordonnées.
+        val enriched = if (person.city != null && (person.city != oldCity || !person.hasGeoCoordinates)) {
             try {
                 val coords = GeocodingRepository().getCityCoordinates(person.city)
                 if (coords != null) person.copy(cityLat = coords.latitude, cityLng = coords.longitude)
                 else person
             } catch (_: Exception) { person }
         } else person
-        dao.update(enriched)
-        syncGeofences()
+        update(enriched)
         return enriched
     }
 
@@ -165,7 +196,20 @@ class PersonRepository(context: Context) {
         syncGeofences()
     }
 
-    suspend fun hardDelete(id: String) = dao.hardDelete(id)
+    /**
+     * v7.1.105 (lot C1) — la suppression DÉFINITIVE efface aussi les FICHIERS du contact :
+     * sa photo de profil et ses images de galerie. Les chemins sont lus AVANT le DELETE
+     * (la CASCADE FK efface les lignes `gallery_images` avec lui — après, il n'y a plus
+     * rien à lire) et les fichiers effacés APRÈS son succès, via le garde-fou
+     * [ImageFileStore.deleteFileIfOwned] (jamais hors de `photos/`/`gallery/`/`crops/`).
+     */
+    suspend fun hardDelete(id: String) {
+        val photoUri = dao.getById(id)?.photoUri
+        val galleryPaths = galleryImageDao.pathsForPerson(id)
+        dao.hardDelete(id)
+        ImageFileStore.deleteFileIfOwned(appContext, photoUri)
+        galleryPaths.forEach { ImageFileStore.deleteFileIfOwned(appContext, it) }
+    }
 
     suspend fun toggleFavorite(person: Person) {
         dao.update(person.copy(isFavorite = !person.isFavorite))
@@ -183,7 +227,11 @@ class PersonRepository(context: Context) {
 
     suspend fun purgeOldDeleted() {
         val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+        // v7.1.105 — fichiers lus AVANT la purge, effacés APRÈS (cf. hardDelete).
+        val photoUris = dao.getDeletedPhotoUrisOlderThan(thirtyDaysAgo)
+        val galleryPaths = galleryImageDao.pathsForPersonsDeletedBefore(thirtyDaysAgo)
         dao.purgeOldDeleted(thirtyDaysAgo)
+        (photoUris + galleryPaths).forEach { ImageFileStore.deleteFileIfOwned(appContext, it) }
     }
 
     suspend fun restore(id: String) {
@@ -191,7 +239,13 @@ class PersonRepository(context: Context) {
         syncGeofences()
     }
 
-    suspend fun hardDeleteAllDeleted() = dao.hardDeleteAllDeleted()
+    suspend fun hardDeleteAllDeleted() {
+        // v7.1.105 — fichiers lus AVANT le vidage de la corbeille, effacés APRÈS.
+        val photoUris = dao.getDeletedPhotoUris()
+        val galleryPaths = galleryImageDao.pathsForDeletedPersons()
+        dao.hardDeleteAllDeleted()
+        (photoUris + galleryPaths).forEach { ImageFileStore.deleteFileIfOwned(appContext, it) }
+    }
 
     suspend fun softDeleteMultiple(ids: List<String>) = dao.softDeleteMultiple(ids)
 
@@ -318,6 +372,22 @@ class PersonRepository(context: Context) {
      */
     suspend fun removeFromCategory(ids: List<String>, categoryId: String) {
         categoryDao.removePersonsFromCategory(ids, categoryId)
+    }
+
+    /**
+     * VRAI DÉPLACEMENT TRANSACTIONNEL (v7.1.70) : retire [ids] de [fromCategoryId] ET les ajoute
+     * à [toCategoryId] en UNE SEULE transaction atomique. `from == to` ⇒ no-op. L'ajout est
+     * idempotent (PK composite + `insertAll` OnConflict.IGNORE) : un contact déjà dans la cible
+     * est simplement retiré de la source, sans doublon. Les AUTRES catégories des contacts ne sont
+     * PAS touchées (seul le lien à la source disparaît). La multi-appartenance (ajout sans retrait)
+     * reste gérée par « Gérer les catégories ».
+     */
+    suspend fun moveToCategory(ids: List<String>, fromCategoryId: String, toCategoryId: String) {
+        if (ids.isEmpty() || fromCategoryId == toCategoryId) return
+        db.withTransaction {
+            categoryDao.insertAll(ids.map { PersonCategoryJoin(it, toCategoryId) })
+            categoryDao.removePersonsFromCategory(ids, fromCategoryId)
+        }
     }
 
     // =========================================================

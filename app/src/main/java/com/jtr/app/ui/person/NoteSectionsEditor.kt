@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -49,7 +50,6 @@ import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.WorkOutline
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -61,7 +61,6 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -79,6 +78,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -88,11 +88,16 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.domain.model.NOTE_ICON_NOTES
 import com.jtr.app.domain.model.NoteSection
+import com.jtr.app.domain.model.combinedText
+import com.jtr.app.domain.model.withCombinedText
+import com.jtr.app.ui.components.FormTextField
+import com.jtr.app.ui.components.JtrAlertDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -282,14 +287,12 @@ fun NoteSectionsEditor(
                             reorderState.pendingUndo = null
                         },
                         onFocusedChange = { cardFocused = it },
-                        onTitleChange = { newTitle ->
+                        // v7.1.75 — champ UNIQUE : le texte tapé est redistribué en
+                        // (title = 1re ligne, content = reste) via withCombinedText —
+                        // round-trip sans perte (cf. NoteSection.kt).
+                        onTextChange = { newText ->
                             onSectionsChange(sections.map {
-                                if (it.id == section.id) it.copy(title = newTitle) else it
-                            })
-                        },
-                        onContentChange = { newContent ->
-                            onSectionsChange(sections.map {
-                                if (it.id == section.id) it.copy(content = newContent) else it
+                                if (it.id == section.id) it.withCombinedText(newText) else it
                             })
                         }
                     )
@@ -429,32 +432,24 @@ fun NoteReorderFooter(
 
     // Confirmation de suppression (anti-perte accidentelle) — commune au footer ET au swipe.
     state.pendingDeleteId?.let { id ->
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { state.pendingDeleteId = null },
-            icon = { Icon(Icons.Default.DeleteOutline, null,
-                tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.note_section_delete_confirm_title)) },
-            text = { Text(stringResource(R.string.note_section_delete_confirm_text)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    val idx = sections.indexOfFirst { it.id == id }
-                    if (idx >= 0) {
-                        // Mémorise contenu + position pour l'annulation, puis retire.
-                        state.pendingUndo = DeletedNoteSection(sections[idx], idx)
-                        onSectionsChange(reindex(sections.filter { it.id != id }))
-                    }
-                    state.pendingDeleteId = null
-                    if (state.grabbedId == id) state.grabbedId = null
-                }) {
-                    Text(stringResource(R.string.common_delete),
-                        color = MaterialTheme.colorScheme.error)
+            icon = Icons.Default.DeleteOutline,
+            title = stringResource(R.string.note_section_delete_confirm_title),
+            text = stringResource(R.string.note_section_delete_confirm_text),
+            destructive = true,
+            confirmLabel = stringResource(R.string.common_delete),
+            onConfirm = {
+                val idx = sections.indexOfFirst { it.id == id }
+                if (idx >= 0) {
+                    // Mémorise contenu + position pour l'annulation, puis retire.
+                    state.pendingUndo = DeletedNoteSection(sections[idx], idx)
+                    onSectionsChange(reindex(sections.filter { it.id != id }))
                 }
+                state.pendingDeleteId = null
+                if (state.grabbedId == id) state.grabbedId = null
             },
-            dismissButton = {
-                TextButton(onClick = { state.pendingDeleteId = null }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+            dismissLabel = stringResource(R.string.common_cancel)
         )
     }
 
@@ -474,12 +469,16 @@ private fun <T> List<T>.moved(from: Int, to: Int): List<T> {
 }
 
 /**
- * Carte d'une section : icône + titre éditable, puis contenu multiligne.
+ * Carte d'une section (v7.1.75) : icône compacte + CHAMP UNIQUE multiligne dont la
+ * 1re ligne fait office de titre (gras en LECTURE seulement ; champ plain ici). Le
+ * texte est recombiné depuis title/content à l'affichage et redécoupé à chaque frappe
+ * ([NoteSection.combinedText]/[withCombinedText]) — les colonnes restent inchangées,
+ * aucune migration.
  *
  * Le handle de réordonnancement ([reorderScope] `longPressDraggableHandle`) est posé
  * UNIQUEMENT sur l'icône (le « grip » de la carte) : appui long sur l'icône → glisser
  * (la bibliothèque suit le pointeur sur toute la liste une fois la prise faite), tap sur
- * l'icône → sélecteur. Les `TextField` ne portent AUCUN geste de glisser ni gating de
+ * l'icône → sélecteur. Le `TextField` ne porte AUCUN geste de glisser ni gating de
  * focus → frappe clavier + sélection (Copier/Coller) 100 % natives, sans perte de focus.
  * [onFieldFocused] sert seulement à masquer le footer/undo pendant l'édition.
  *
@@ -502,8 +501,7 @@ private fun NoteSectionCard(
     onGrabStarted: () -> Unit,
     onFieldFocused: () -> Unit,
     onFocusedChange: (Boolean) -> Unit,
-    onTitleChange: (String) -> Unit,
-    onContentChange: (String) -> Unit,
+    onTextChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Retour haptique à l'ENTRÉE en déplacement seulement (transition isDragging false→true) :
@@ -514,11 +512,10 @@ private fun NoteSectionCard(
         if (isDragging) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
     }
 
-    // Focus COMBINÉ (titre OU contenu) remonté à l'hôte (v7.1.13) → il désactive le swipe-suppression
+    // Focus du champ unique remonté à l'hôte (v7.1.13) → il désactive le swipe-suppression
     // pendant l'édition (pas de suppression accidentelle ; sélection de texte native préservée).
-    var titleFocused by remember { mutableStateOf(false) }
-    var contentFocused by remember { mutableStateOf(false) }
-    LaunchedEffect(titleFocused, contentFocused) { onFocusedChange(titleFocused || contentFocused) }
+    var fieldFocused by remember { mutableStateOf(false) }
+    LaunchedEffect(fieldFocused) { onFocusedChange(fieldFocused) }
 
     val scale by animateFloatAsState(
         targetValue = if (isDragging) 1.03f else 1f,
@@ -532,9 +529,12 @@ private fun NoteSectionCard(
     )
     // Lift tonal sûr clair ET sombre — la carte saisie/active se distingue même si l'ombre est
     // discrète. Maintenu tant que la section est active (footer ouvert), pas seulement en glisser.
+    // v7.1.118 (G3b-2b) — au REPOS la carte devient TRANSPARENTE : son fond `surface` faisait
+    // la « boîte » claire autour du champ de note (le champ rempli suffit, rendu aéré). La Card
+    // reste STRUCTURELLE : cible du drag, échelle/ombre en glisser, lift + liseré en actif.
     val containerColor by animateColorAsState(
         targetValue = if (isDragging || isActive) MaterialTheme.colorScheme.surfaceVariant
-        else MaterialTheme.colorScheme.surface,
+        else Color.Transparent,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "noteSectionContainer"
     )
@@ -546,6 +546,9 @@ private fun NoteSectionCard(
         label = "noteSectionBorder"
     )
 
+    // v7.1.74 — les poignées de curseur/sélection de ces champs (titre + contenu) sont
+    // TRANSPARENTES via la racine du thème (cf. JTRTheme : masquage global ; un masquage
+    // local par champ laissait fuir la poignée émeraude au tout premier focus).
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -561,40 +564,32 @@ private fun NoteSectionCard(
             BorderStroke(borderWidth, MaterialTheme.colorScheme.primary) else null,
         colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
-        Column(
+        // v7.1.75 — icône COMPACTE à côté du champ unique (plus de gros champ titre) :
+        // alignement en HAUT pour que l'icône reste au niveau de la 1re ligne (= titre)
+        // quand la note grandit.
+        Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalAlignment = Alignment.Top
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Icône = grip de glisser (appui long) + sélecteur d'icône (tap).
-                IconButton(
-                    onClick = onIconClick,
-                    modifier = with(reorderScope) {
-                        Modifier.longPressDraggableHandle(
-                            onDragStarted = { onGrabStarted() }
-                        )
-                    }
-                ) {
-                    Icon(NoteIcons.icon(section.iconKey),
-                        contentDescription = stringResource(R.string.note_section_icon_picker_title),
-                        tint = MaterialTheme.colorScheme.primary)
+            // Icône = grip de glisser (appui long) + sélecteur d'icône (tap).
+            IconButton(
+                onClick = onIconClick,
+                modifier = with(reorderScope) {
+                    Modifier.longPressDraggableHandle(
+                        onDragStarted = { onGrabStarted() }
+                    )
                 }
-                SoftTextField(
-                    value = section.title,
-                    onValueChange = onTitleChange,
-                    placeholder = stringResource(R.string.note_section_title_hint),
-                    leadingIcon = null,
-                    modifier = Modifier
-                        .weight(1f)
-                        .onFocusChanged { titleFocused = it.isFocused; if (it.isFocused) onFieldFocused() }
-                        .bringIntoViewOnFocus()
-                )
+            ) {
+                Icon(NoteIcons.icon(section.iconKey),
+                    contentDescription = stringResource(R.string.note_section_icon_picker_title),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp))
             }
             NoteContentField(
-                value = section.content,
-                onValueChange = onContentChange,
-                onFocusChange = { focused -> contentFocused = focused; if (focused) onFieldFocused() },
-                modifier = Modifier.fillMaxWidth()
+                value = section.combinedText(),
+                onValueChange = onTextChange,
+                onFocusChange = { focused -> fieldFocused = focused; if (focused) onFieldFocused() },
+                modifier = Modifier.weight(1f)
             )
         }
     }
@@ -618,7 +613,13 @@ private fun SwipeDeleteBackground(direction: SwipeToDismissBoxValue) {
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.errorContainer)
+            // v7.1.118 — teinté SEULEMENT pendant un glissement : la carte au repos étant
+            // devenue transparente (fin de la « boîte »), un fond permanent transparaîtrait
+            // en rose sous chaque note. Au repos (Settled) le fond reste invisible.
+            .background(
+                if (direction != SwipeToDismissBoxValue.Settled)
+                    MaterialTheme.colorScheme.errorContainer else Color.Transparent
+            )
             .padding(horizontal = 24.dp),
         contentAlignment = alignment
     ) {
@@ -706,7 +707,10 @@ private fun NoteContentField(
             }
     }
 
-    TextField(
+    // v7.1.113 (G3b-2a) — habillage outlined via la surcharge TextFieldValue du composant
+    // partagé, SANS label (le titre de la note est sa 1ʳᵉ ligne). Toute la mécanique
+    // (sélection, auto-grow, bringIntoView, suivi IME) reste ici, inchangée.
+    FormTextField(
         value = tfv,
         onValueChange = { newValue ->
             // Modif en fin de texte = ajout au bout (new commence par old) ou suppression au bout
@@ -719,12 +723,16 @@ private fun NoteContentField(
                 if (lastEditAtEnd) bringBottomIntoView()
             }
         },
-        placeholder = { Text(stringResource(R.string.note_section_content_hint)) },
+        placeholder = stringResource(R.string.note_section_content_hint),
+        // v7.1.126 — une note est de la PROSE : majuscule en début de champ et après un
+        // point, comme dans n'importe quelle application de notes. SEULE option ajoutée :
+        // la mécanique de ce champ (TextFieldValue, suivi du curseur, auto-grow,
+        // bringIntoView) est entièrement portée par les autres paramètres et n'est pas
+        // touchée — l'auto-majuscule est un service de l'IME, invisible du code.
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
         singleLine = false,
         minLines = 3,
         maxLines = Int.MAX_VALUE,
-        shape = RoundedCornerShape(16.dp),
-        colors = softFieldColors(),
         modifier = modifier
             // Champ qui GRANDIT (saut de ligne) ET dernière modif en fin → ré-amène le bas dans
             // la vue après la re-mesure → la nouvelle ligne reste au ras du clavier.
@@ -746,10 +754,14 @@ private fun IconPickerDialog(
     onPick: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    JtrAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.note_section_icon_picker_title)) },
-        text = {
+        title = stringResource(R.string.note_section_icon_picker_title),
+        confirmLabel = stringResource(R.string.common_ok),
+        onConfirm = onDismiss,
+        // Corps RICHE (grille d'icônes cliquables) : `content`, pas `text`. Le bouton ne
+        // VALIDE rien — un tap sur une icône applique et ferme ; « OK » n'est que la sortie.
+        content = {
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -776,9 +788,6 @@ private fun IconPickerDialog(
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_ok)) }
         }
     )
 }

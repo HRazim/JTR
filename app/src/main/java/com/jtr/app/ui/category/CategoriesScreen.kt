@@ -2,8 +2,10 @@ package com.jtr.app.ui.category
 
 import android.net.Uri
 import android.util.Log
+import com.jtr.app.data.files.ImageFileStore
+import com.jtr.app.ui.components.SelectAllToggle
 import com.jtr.app.ui.person.CropShape
-import com.jtr.app.ui.person.ImageCropDialog
+import com.jtr.app.ui.person.PickerThumbnail
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -12,15 +14,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -35,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -43,8 +49,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -58,13 +64,19 @@ import com.jtr.app.data.repository.TopOrderRef
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
 import com.jtr.app.ui.components.FavoriteStar
+import com.jtr.app.ui.components.FormPhotoHeader
+import com.jtr.app.ui.components.FormTextField
 import com.jtr.app.ui.components.PhotoZoomDialog
+import com.jtr.app.ui.components.JtrAlertDialog
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.components.JtrOverflowMenu
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
+import com.jtr.app.ui.components.JtrPromptDialog
 import com.jtr.app.ui.components.JtrSelectionCheck
 import com.jtr.app.ui.components.JtrViewMode
-import com.jtr.app.ui.components.rememberSystemPhotoPicker
+import com.jtr.app.ui.components.ReorderableGrid
+import com.jtr.app.ui.components.SCROLL_TO_TOP_THRESHOLD
+import com.jtr.app.ui.components.ScrollToTopFab
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -112,6 +124,30 @@ internal sealed interface TopEntry {
 }
 
 /**
+ * v7.1.79 — PALETTE CURATÉE partagée (formulaire catégorie + création à la volée de
+ * l'Accueil) : 12 teintes DOUCES (gamme « 300 » Material : saturation modérée, luminosité
+ * homogène ~65 %) qui remplacent les 6 aplats saturés « Flat UI ». Lisibles en clair ET
+ * en sombre, en aplat (tuiles sans image) comme en accent dérivé (initiale sur teinte
+ * 16 %, anneau — langage v7.1.77). Le STOCKAGE ne change pas : `Category.color` reste un
+ * hex String NOT NULL, et les anciens hex restent valides partout au rendu (en édition,
+ * un hex hors palette est présenté comme pastille « couleur actuelle » en tête).
+ */
+internal val categoryColorPalette = listOf(
+    "#E57373", // rouge doux
+    "#F06292", // rose
+    "#BA68C8", // mauve
+    "#9575CD", // violet
+    "#7986CB", // indigo
+    "#64B5F6", // bleu
+    "#4FC3F7", // cyan
+    "#4DB6AC", // teal
+    "#81C784", // vert
+    "#FFB74D", // ambre
+    "#FF8A65", // corail
+    "#A1887F", // taupe
+)
+
+/**
  * Couleur d'accent d'une catégorie — SOURCE UNIQUE (v6.2.5) partagée par TOUS les
  * modes (liste, détail, grille, sélection). Parse `category.color` ; en cas de
  * valeur absente/invalide, retombe sur un TOKEN DE THÈME (`colorScheme.primary`)
@@ -143,7 +179,6 @@ fun CategoriesScreen(
     val categoryActivity by viewModel.categoryActivity.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
-    val favoritePersonCount by viewModel.favoritePersonCount.collectAsStateWithLifecycle()
     // Mode d'affichage persistant (LIST / GRID / DETAIL), restauré depuis jtr_prefs.
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
@@ -158,18 +193,16 @@ fun CategoriesScreen(
     val selectedIds = remember { mutableStateListOf<String>() }       // catégories cochées
     val selectedGroupIds = remember { mutableStateListOf<Long>() }    // dossiers cochés
     var showCreateGroupDialog by remember { mutableStateOf(false) }
+    // v7.1.83 — sélecteur de dossier CIBLE (« Déplacer vers un groupe… »).
+    var showMoveToGroupPicker by remember { mutableStateOf(false) }
     var showBulkDeleteDialog by remember { mutableStateOf(false) }
-    var renameTarget by remember { mutableStateOf<Category?>(null) }
-    var renameGroupTarget by remember { mutableStateOf<CategoryGroup?>(null) }
     // Fusion par superposition (drop d'une catégorie sur une autre) → nommer le groupe.
     var pendingMergeIds by remember { mutableStateOf<List<String>?>(null) }
-    // Changement d'image de couverture d'un dossier (mode sélection).
-    var groupImageTarget by remember { mutableStateOf<CategoryGroup?>(null) }
-    var pendingGroupCropUri by remember { mutableStateOf<Uri?>(null) }
-    val screenContext = LocalContext.current
+    // v7.1.127 — dossier en cours d'édition (nom + image) dans la feuille partagée, qui
+    // remplace l'ancien couple « Renommer » (mini-dialogue) + « Changer l'image »
+    // (sélecteur photo direct, suivi de son propre recadrage).
+    var editGroupTarget by remember { mutableStateOf<CategoryGroup?>(null) }
     val screenScope = rememberCoroutineScope()
-    // Photo Picker système (v7.1.66) — aucune permission requise.
-    val groupPhotoPicker = rememberSystemPhotoPicker { uri -> pendingGroupCropUri = uri }
 
     // Reporte l'état de sélection au conteneur (masque la nav globale).
     LaunchedEffect(isSelectionActive) { onSelectionModeChange(isSelectionActive) }
@@ -186,9 +219,17 @@ fun CategoriesScreen(
         isSelectionActive = false; selectedIds.clear(); selectedGroupIds.clear()
     }
 
-    // Bouton Retour en mode sélection : vide la sélection et reste sur l'écran.
-    // Inactif hors sélection → la navigation standard (retour d'écran) reprend.
-    BackHandler(enabled = isSelectionActive) { exitSelection() }
+    // v7.1.98 — priorité du bouton Retour, identique sur les 5 écrans de sélection :
+    // 1) la recherche inline est ouverte → on la ferme, la sélection SURVIT ;
+    // 2) sinon on quitte la sélection ; 3) sinon la navigation reprend normalement.
+    BackHandler(enabled = (isSelectionActive && searchActive) || isSelectionActive) {
+        if (searchActive) {
+            searchActive = false
+            viewModel.setSearchQuery("")
+        } else {
+            exitSelection()
+        }
+    }
     // Cocher/décocher NE ferme PAS le mode sélection : on y reste (affichage « 0
     // sélectionné »). Seul « Annuler » de la TopBar quitte le mode.
     fun toggleSelectCategory(id: String) {
@@ -247,34 +288,68 @@ fun CategoriesScreen(
         if (selectedIds.isNotEmpty() || selectedGroupIds.isNotEmpty()) isSelectionActive = true
     }
 
+    /** v7.1.98 — vrai quand TOUTES les entrées de la racine sont cochées (bascule partagée). */
+    val allTopEntriesSelected = topEntries.isNotEmpty() && topEntries.all { entry ->
+        when (entry) {
+            is TopEntry.Folder -> entry.group.id in selectedGroupIds
+            is TopEntry.Single -> entry.category.id in selectedIds
+        }
+    }
+
+    /**
+     * Décoche les entrées AFFICHÉES, et elles seules — pendant exact de [selectAll], qui
+     * ne coche que `topEntries`. Sous une recherche, les coches hors filtre survivent.
+     * On RESTE en mode sélection : seul Annuler / Retour en sort.
+     */
+    fun deselectVisible() {
+        topEntries.forEach { entry ->
+            when (entry) {
+                is TopEntry.Folder -> selectedGroupIds.remove(entry.group.id)
+                is TopEntry.Single -> selectedIds.remove(entry.category.id)
+            }
+        }
+    }
+
     // ── Dialogues du mode sélection ───────────────────────────────────────────
+    if (showMoveToGroupPicker) {
+        // v7.1.83 — sélecteur de dossiers MODERNE (vignettes, hiérarchie, recherche) au
+        // lieu d'un item « Move to X » par dossier. Le déplacement reste celui de
+        // v7.1.70 (transactionnel : rattachement des catégories + fusion des dossiers
+        // cochés dans la cible).
+        CategoryPickerSheet(
+            title = stringResource(R.string.categories_move_to_group),
+            categories = categories,
+            groups = groups,
+            folderTargets = true,
+            // On ne propose pas comme cible un dossier qu'on est en train de déplacer.
+            excludeGroupIds = selectedGroupIds.toSet(),
+            onPickFolder = { targetId ->
+                val merges = selectedGroupIds.associateWith { gid ->
+                    categories.filter { it.parentGroupId == gid }.map { it.id }
+                }
+                viewModel.moveSelectionToGroup(selectedIds.toList(), merges, targetId)
+                showMoveToGroupPicker = false
+                exitSelection()
+            },
+            onDismiss = { showMoveToGroupPicker = false }
+        )
+    }
+
     if (showCreateGroupDialog) {
-        TextPromptDialog(
-            title = stringResource(R.string.categories_create_group),
-            hint = stringResource(R.string.categories_group_name_hint),
-            initial = "",
-            confirmLabel = stringResource(R.string.common_create),
-            onConfirm = { name ->
-                viewModel.createGroup(name, selectedIds.toList())
+        // v7.1.82 — feuille moderne (aperçu vivant, image de couverture, vignettes de ce
+        // qu'on groupe) à la place du dialogue nu. Le nommage d'un groupe né du geste de
+        // FUSION et le renommage gardent [TextPromptDialog] (hors périmètre V1).
+        CreateGroupSheet(
+            members = selectedCategories,
+            // v7.1.84 — le dossier parent se choisit DANS la feuille (défaut : racine).
+            groups = groups,
+            initialParentId = null,
+            onConfirm = { name, imagePath, parentId ->
+                viewModel.createGroup(name, selectedIds.toList(), imagePath, parentId)
                 showCreateGroupDialog = false
                 exitSelection()
             },
             onDismiss = { showCreateGroupDialog = false }
-        )
-    }
-
-    renameTarget?.let { target ->
-        TextPromptDialog(
-            title = stringResource(R.string.categories_rename),
-            hint = stringResource(R.string.common_name_label),
-            initial = target.name,
-            confirmLabel = stringResource(R.string.common_save),
-            onConfirm = { name ->
-                viewModel.rename(target, name)
-                renameTarget = null
-                exitSelection()
-            },
-            onDismiss = { renameTarget = null }
         )
     }
 
@@ -294,90 +369,55 @@ fun CategoriesScreen(
         )
     }
 
-    renameGroupTarget?.let { target ->
-        TextPromptDialog(
-            title = stringResource(R.string.categories_rename),
-            hint = stringResource(R.string.categories_group_name_hint),
-            initial = target.name,
-            confirmLabel = stringResource(R.string.common_save),
-            onConfirm = { name ->
-                viewModel.renameGroup(target, name)
-                renameGroupTarget = null
-                exitSelection()
-            },
-            onDismiss = { renameGroupTarget = null }
-        )
-    }
-
     if (showBulkDeleteDialog) {
         // Dialogue type-aware : groupe unique → texte « groupe + ses catégories ».
         val singleGroup = selectedGroups.singleOrNull()?.takeIf { selectedIds.isEmpty() }
         val singleGroupMemberCount = singleGroup?.let { g ->
             categories.count { it.parentGroupId == g.id }
         } ?: 0
-        AlertDialog(
+        // v7.1.130 — titre et texte choisis AVANT l'appel (le socle prend des `String`) ;
+        // la bascule « groupe unique / sélection » est exactement celle d'avant.
+        JtrAlertDialog(
             onDismissRequest = { showBulkDeleteDialog = false },
-            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = {
-                Text(
-                    if (singleGroup != null)
-                        stringResource(R.string.categories_delete_group_title, singleGroup.name)
-                    else stringResource(R.string.categories_delete_selected_title, totalSelected)
-                )
-            },
-            text = {
-                Text(
-                    if (singleGroup != null)
-                        stringResource(R.string.categories_delete_group_text,
-                            singleGroup.name, singleGroupMemberCount)
-                    else stringResource(R.string.categories_delete_selected_text)
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (selectedIds.isNotEmpty()) viewModel.deleteSelected(selectedIds.toList())
-                        // Suppression du groupe ET de son contenu (cascade).
-                        selectedGroups.forEach { g ->
-                            viewModel.deleteGroupWithContents(
-                                g, categories.filter { it.parentGroupId == g.id }.map { it.id })
-                        }
-                        showBulkDeleteDialog = false
-                        exitSelection()
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(stringResource(R.string.common_delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBulkDeleteDialog = false }) {
-                    Text(stringResource(R.string.common_cancel))
+            icon = Icons.Default.Warning,
+            title = if (singleGroup != null)
+                stringResource(R.string.categories_delete_group_title, singleGroup.name)
+            else stringResource(R.string.categories_delete_selected_title, totalSelected),
+            text = if (singleGroup != null)
+                stringResource(R.string.categories_delete_group_text,
+                    singleGroup.name, singleGroupMemberCount)
+            else stringResource(R.string.categories_delete_selected_text),
+            confirmLabel = stringResource(R.string.common_delete),
+            onConfirm = {
+                if (selectedIds.isNotEmpty()) viewModel.deleteSelected(selectedIds.toList())
+                // Suppression du groupe ET de son contenu (cascade).
+                selectedGroups.forEach { g ->
+                    viewModel.deleteGroupWithContents(
+                        g, categories.filter { it.parentGroupId == g.id }.map { it.id })
                 }
-            }
-        )
-    }
-
-    pendingGroupCropUri?.let { uri ->
-        ImageCropDialog(
-            sourceUri = uri,
-            cropShape = CropShape.RECTANGLE,
-            onCropComplete = { cropped ->
-                groupImageTarget?.let { target ->
-                    screenScope.launch {
-                        val path = withContext(Dispatchers.IO) {
-                            copyCategoryPhotoToStorage(screenContext, cropped)
-                        }
-                        if (path != null) viewModel.setGroupImage(target, path)
-                    }
-                }
-                pendingGroupCropUri = null
-                groupImageTarget = null
+                showBulkDeleteDialog = false
                 exitSelection()
             },
-            onDismiss = { pendingGroupCropUri = null; groupImageTarget = null }
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
         )
     }
 
+
+    // v7.1.127 — ÉDITION d'un dossier : la MÊME feuille que sa création, pré-remplie.
+    // Nom et image partent en UNE écriture (le fichier remplacé est libéré par le
+    // repository, cf. v7.1.105).
+    editGroupTarget?.let { target ->
+        EditGroupSheet(
+            group = target,
+            onConfirm = { name, imagePath ->
+                viewModel.updateGroup(target, name, imagePath)
+                editGroupTarget = null
+                exitSelection()
+            },
+            onDismiss = { editGroupTarget = null }
+        )
+    }
 
     pendingEditCategory?.let { category ->
         EditCategoryDialog(
@@ -403,24 +443,64 @@ fun CategoriesScreen(
         )
     }
 
+    // FAB « remonter en haut » (v7.1.72) : états de défilement du navigateur NORMAL
+    // (TopEntriesBrowser). En mode sélection, le contenu bascule sur ReorderableTopGrid/List
+    // (états internes propres) → le FAB est masqué (visible=false). derivedStateOf reclé sur
+    // viewMode → ne recompose qu'au franchissement du seuil.
+    val topListState = rememberLazyListState()
+    val topGridState = rememberLazyGridState()
+    val showScrollToTop by remember(viewMode) {
+        derivedStateOf {
+            if (isSelectionActive) false
+            else {
+                val index = if (viewMode == JtrViewMode.GRID) topGridState.firstVisibleItemIndex
+                else topListState.firstVisibleItemIndex
+                index > SCROLL_TO_TOP_THRESHOLD
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
-            if (isSelectionActive) {
+            if (isSelectionActive && searchActive) {
+                // v7.1.98 — recherche CONTEXTUELLE pendant la sélection : elle filtre
+                // l'affichage sans toucher aux coches, et la fermer n'efface que la requête.
+                JtrSearchableTopAppBar(
+                    title = "",
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                    searchActive = true,
+                    onSearchActiveChange = { searchActive = it },
+                    // v7.1.99 — cet écran filtre des CATÉGORIES et des dossiers par leur nom
+                    // (`CategoryViewModel`), pas des contacts : le placeholder le dit enfin.
+                    searchPlaceholder = stringResource(R.string.category_search_placeholder)
+                )
+            } else if (isSelectionActive) {
                 // En-tête de sélection : Tout sélectionner (G) · compteur (C) · Annuler (D).
                 TopAppBar(
                     title = {
+                        // Le plural couvre 0 (« 0 selected ») : plus de chaîne séparée pour
+                        // ce cas, c'est désormais la même forme sur les 5 écrans (v7.1.98).
                         Text(
-                            if (totalSelected == 0) stringResource(R.string.categories_selection_none)
-                            else pluralStringResource(R.plurals.categories_selection_count, totalSelected, totalSelected)
+                            pluralStringResource(
+                                R.plurals.categories_selection_count, totalSelected, totalSelected
+                            )
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = { selectAll() }) {
-                            Icon(Icons.Default.SelectAll,
-                                contentDescription = stringResource(R.string.select_all))
-                        }
+                        SelectAllToggle(
+                            allSelected = allTopEntriesSelected,
+                            onSelectAll = { selectAll() },
+                            onDeselectAll = { deselectVisible() }
+                        )
                     },
                     actions = {
+                        // v7.1.98 — loupe conservée EN sélection (comme l'Accueil) : on
+                        // cherche, on coche, on recommence — les coches survivent au filtre.
+                        IconButton(onClick = { searchActive = true }) {
+                            Icon(Icons.Default.Search,
+                                contentDescription = stringResource(R.string.action_search))
+                        }
                         TextButton(onClick = { exitSelection() }) {
                             Text(stringResource(R.string.common_cancel),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer)
@@ -429,7 +509,8 @@ fun CategoriesScreen(
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 )
             } else if (isPickingMoveTarget) {
@@ -457,7 +538,8 @@ fun CategoriesScreen(
                     onSearchQueryChange = { viewModel.setSearchQuery(it) },
                     searchActive = searchActive,
                     onSearchActiveChange = { searchActive = it },
-                    searchPlaceholder = stringResource(R.string.home_search_placeholder),
+                    // v7.1.99 — même périmètre qu'en sélection : des catégories.
+                    searchPlaceholder = stringResource(R.string.category_search_placeholder),
                     actions = {
                         // Header minimaliste (v5.3.1) : Loupe → « + » → 3 points.
                         // Tri et Affichage vivent EXCLUSIVEMENT dans le menu 3 points.
@@ -468,7 +550,9 @@ fun CategoriesScreen(
                             )
                         }
                         JtrOverflowMenu(
-                            sortCriteria = categorySortCriteria(sortOrder) { viewModel.setSortOrder(it) },
+                            // v7.1.78 — includeCustom : « Personnalisé » n'est offert qu'à la
+                            // RACINE (le détail de dossier garde ses trois critères).
+                            sortCriteria = categorySortCriteria(sortOrder, includeCustom = true) { viewModel.setSortOrder(it) },
                             viewMode = viewMode,
                             onViewModeChange = { viewModel.setViewMode(it) }
                         )
@@ -498,36 +582,33 @@ fun CategoriesScreen(
                         exitSelection()
                     },
                     canCreateGroup = selectedIds.size >= 2 && selectedGroupIds.isEmpty(),
-                    movableGroups = movableGroups,
                     canMove = totalSelected >= 1 && movableGroups.isNotEmpty(),
                     onCreateGroup = { showCreateGroupDialog = true },
-                    onMoveToGroup = { targetId ->
-                        val merges = selectedGroupIds.associateWith { gid ->
-                            categories.filter { it.parentGroupId == gid }.map { it.id }
-                        }
-                        viewModel.moveSelectionToGroup(selectedIds.toList(), merges, targetId)
-                        exitSelection()
-                    },
+                    onMoveToGroup = { showMoveToGroupPicker = true },
                     canDelete = totalSelected >= 1,
                     onDelete = { showBulkDeleteDialog = true },
-                    canRename = totalSelected == 1,
-                    onRename = {
+                    canEdit = totalSelected == 1,
+                    onEdit = {
                         val cat = selectedCategories.singleOrNull()
-                        if (cat != null) renameTarget = cat
-                        else selectedGroups.singleOrNull()?.let { renameGroupTarget = it }
-                    },
-                    canChangeImage = totalSelected == 1,
-                    onChangeImage = {
-                        val cat = selectedCategories.singleOrNull()
-                        if (cat != null) {
-                            pendingEditCategory = cat
-                        } else selectedGroups.singleOrNull()?.let { g ->
-                            groupImageTarget = g
-                            groupPhotoPicker()
-                        }
+                        if (cat != null) pendingEditCategory = cat
+                        else selectedGroups.singleOrNull()?.let { editGroupTarget = it }
                     }
                 )
             }
+        },
+        // FAB secondaire « remonter en haut » (v7.1.72) : bas-fin, au-dessus de la nav bar
+        // globale (padding racine). L'ajout de catégorie est une icône « + » en TopAppBar :
+        // aucun FAB d'ajout à chevaucher.
+        floatingActionButton = {
+            ScrollToTopFab(
+                visible = showScrollToTop,
+                onClick = {
+                    screenScope.launch {
+                        if (viewMode == JtrViewMode.GRID) topGridState.animateScrollToItem(0)
+                        else topListState.animateScrollToItem(0)
+                    }
+                }
+            )
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -550,7 +631,10 @@ fun CategoriesScreen(
                             viewModel.moveCategoryToGroup(categoryId, groupId)
                             exitSelection()
                         },
-                        enableMerge = true
+                        enableMerge = true,
+                        // Fix v7.1.81 — MÊME état que le navigateur normal : l'appui
+                        // long entre en sélection sans bouger la liste.
+                        gridState = topGridState
                     )
                     else -> ReorderableTopList(
                         entries = topEntries,
@@ -565,7 +649,8 @@ fun CategoriesScreen(
                             viewModel.moveCategoryToGroup(categoryId, groupId)
                             exitSelection()
                         },
-                        enableMerge = true
+                        enableMerge = true,
+                        listState = topListState
                     )
                 }
             } else if (categories.isEmpty() && groups.isEmpty()) {
@@ -590,12 +675,14 @@ fun CategoriesScreen(
                 // Mode cible : « ➕ Nouvelle catégorie » en PREMIER choix fixe — crée
                 // la cible à la volée et y déplace immédiatement les contacts cochés.
                 if (isPickingMoveTarget) {
-                    OutlinedButton(
+                    // v7.1.134 — tonal : c'est une affordance en TÊTE DE LISTE, pas un CTA ;
+                    // le filet `outline` la faisait lire comme un champ de saisie.
+                    FilledTonalButton(
                         onClick = { showCreateTargetDialog = true },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null,
                             modifier = Modifier.size(18.dp))
@@ -615,12 +702,8 @@ fun CategoriesScreen(
                     onGroupClick = onGroupClick,
                     onCategoryLongClick = { startSelectionCategory(it) },
                     onGroupLongClick = { startSelectionGroup(it) },
-                    // Tuile virtuelle « Favoris » : hors recherche et hors mode cible
-                    // (elle ne peut pas recevoir de contacts déplacés).
-                    favoritesCount = if (isSearching || isPickingMoveTarget) 0 else favoritePersonCount,
-                    onFavoritesClick = {
-                        onCategoryClick(CategoryDetailViewModel.FAVORITES_CATEGORY_ID)
-                    }
+                    listState = topListState,
+                    gridState = topGridState
                 )
             }
         }
@@ -753,9 +836,9 @@ fun CategoryListRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -772,26 +855,19 @@ fun CategoryListRow(
                     .padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Avatar : couverture si dispo, sinon cercle teinté + icône dans la couleur.
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(if (category.imagePath != null) accent else accent.copy(alpha = 0.16f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (category.imagePath != null) {
-                        AsyncImage(
-                            model = category.imagePath,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(Icons.Default.Folder, contentDescription = null, tint = accent,
-                            modifier = Modifier.size(22.dp))
-                    }
-                }
+                // v7.1.126 — MÊME vignette que les feuilles de sélection ([PickerThumbnail]),
+                // d'où un ANNEAU à la couleur de la catégorie autour de l'image. Avant, la
+                // couleur ne teintait que le FOND du disque — qu'une photo recouvrait
+                // entièrement : deux catégories illustrées ne se distinguaient plus que par
+                // la barre de 5 dp. L'anneau, lui, survit à l'image. Effet voulu du partage :
+                // sans photo, le repli devient l'INITIALE sur teinte douce, bien plus
+                // distinctive que l'icône de dossier identique pour toutes.
+                PickerThumbnail(
+                    imagePath = category.imagePath,
+                    name = category.name,
+                    colorHex = category.color,
+                    size = 44.dp
+                )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = category.name, style = MaterialTheme.typography.titleMedium,
@@ -841,25 +917,25 @@ internal fun TopEntriesBrowser(
     onGroupClick: (Long) -> Unit,
     onCategoryLongClick: (String) -> Unit,
     onGroupLongClick: (Long) -> Unit,
-    favoritesCount: Int = 0,
-    onFavoritesClick: () -> Unit = {}
+    // États de défilement hoistés (v7.1.72) pour le FAB « remonter en haut ». LIST/DETAIL
+    // partagent [listState] (LazyColumn), GRID a [gridState]. Défauts = aucun appelant impacté.
+    listState: LazyListState = rememberLazyListState(),
+    gridState: LazyGridState = rememberLazyGridState()
 ) {
-    // Catégorie VIRTUELLE « Favoris » : visible dès 2 contacts favoris, toujours
-    // en tête (les favoris restent par ailleurs premiers dans leurs catégories).
-    val showFavorites = favoritesCount >= 2
+    // v7.1.100 — la tuile virtuelle « Favoris » a été retirée. Elle s'insérait ICI, en
+    // tête, alors que le mode sélection rend la MÊME liste sans elle : les deux vues
+    // partageant le même état de défilement (v7.1.81), tout glissait d'une cellule à
+    // l'appui long. Ce navigateur et le réordonnable affichent désormais exactement
+    // les mêmes entrées. Les favoris restent portés par `isFavorite` (étoile + tri).
     when (viewMode) {
         JtrViewMode.GRID -> LazyVerticalGrid(
+            state = gridState,
             columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (showFavorites) {
-                item(key = "jtr_favorites") {
-                    FavoritesGridTile(count = favoritesCount, onClick = onFavoritesClick)
-                }
-            }
             items(entries, key = { topEntryKey(it) }) { entry ->
                 when (entry) {
                     is TopEntry.Folder -> FolderGridTile(
@@ -879,16 +955,11 @@ internal fun TopEntriesBrowser(
         }
 
         JtrViewMode.DETAIL -> LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (showFavorites) {
-                item(key = "jtr_favorites") {
-                    FavoritesRow(count = favoritesCount, showCount = true,
-                        onClick = onFavoritesClick)
-                }
-            }
             items(entries, key = { topEntryKey(it) }) { entry ->
                 when (entry) {
                     is TopEntry.Folder -> FolderListRow(
@@ -906,16 +977,11 @@ internal fun TopEntriesBrowser(
         }
 
         JtrViewMode.LIST -> LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            if (showFavorites) {
-                item(key = "jtr_favorites") {
-                    FavoritesRow(count = favoritesCount, showCount = false,
-                        onClick = onFavoritesClick)
-                }
-            }
             items(entries, key = { topEntryKey(it) }) { entry ->
                 when (entry) {
                     is TopEntry.Folder -> EntryCompactRow(
@@ -923,119 +989,17 @@ internal fun TopEntriesBrowser(
                         name = entry.group.name,
                         isFavorite = entry.group.isFavorite,
                         imagePath = entry.group.imagePath,
-                        accent = MaterialTheme.colorScheme.primaryContainer,
+                        colorHex = null,
                         onClick = { onGroupClick(entry.group.id) },
                         onLongClick = { onGroupLongClick(entry.group.id) })
-                    is TopEntry.Single -> {
-                        val accent = rememberCategoryColor(entry.category.color)
-                        EntryCompactRow(
-                            isFolder = false,
-                            name = entry.category.name,
-                            isFavorite = entry.category.isFavorite,
-                            imagePath = entry.category.imagePath,
-                            accent = accent,
-                            onClick = { onCategoryClick(entry.category.id) },
-                            onLongClick = { onCategoryLongClick(entry.category.id) })
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** Tuile (grille) de la catégorie virtuelle « Favoris » : or + étoile + compteur. */
-@Composable
-private fun FavoritesGridTile(count: Int, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(Color(0xFFFFD54F), Color(0xFFFFA000))
-                )
-            )
-            .clickable(onClick = onClick)
-    ) {
-        Icon(
-            Icons.Default.Star,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.9f),
-            modifier = Modifier.size(56.dp).align(Alignment.Center)
-        )
-        Box(modifier = Modifier.fillMaxSize().bottomScrim())
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .padding(12.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.favorites_category),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-            Text(
-                text = pluralStringResource(R.plurals.categories_person_count, count, count),
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.8f),
-                maxLines = 1
-            )
-        }
-    }
-}
-
-/** Ligne (liste/détail) de la catégorie virtuelle « Favoris ». */
-@Composable
-private fun FavoritesRow(count: Int, showCount: Boolean, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        // Surface ACCORDÉE à la palette (même token que l'accueil/Paramètres/mode Détails),
-        // au lieu du `surfaceContainerHighest` par défaut du Card (neutre/lavande en clair).
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(if (showCount) 48.dp else 40.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(Color(0xFFFFD54F), Color(0xFFFFA000))
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Star, contentDescription = null,
-                    tint = Color.White, modifier = Modifier.size(22.dp))
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.favorites_category),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-                if (showCount) {
-                    Text(
-                        text = pluralStringResource(R.plurals.categories_person_count, count, count),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
+                    is TopEntry.Single -> EntryCompactRow(
+                        isFolder = false,
+                        name = entry.category.name,
+                        isFavorite = entry.category.isFavorite,
+                        imagePath = entry.category.imagePath,
+                        colorHex = entry.category.color,
+                        onClick = { onCategoryClick(entry.category.id) },
+                        onLongClick = { onCategoryLongClick(entry.category.id) })
                 }
             }
         }
@@ -1050,16 +1014,19 @@ private fun EntryCompactRow(
     name: String,
     isFavorite: Boolean,
     imagePath: String?,
-    accent: Color,
+    // v7.1.126 — la COULEUR STOCKÉE (hex), et non plus une couleur déjà résolue : la
+    // vignette partagée en tire l'anneau et sa teinte de repli. `null` pour un dossier,
+    // qui n'a pas de couleur propre et retombe donc sur un liseré neutre.
+    colorHex: String?,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         // Surface ACCORDÉE à la palette (même token que l'accueil/Paramètres/mode Détails),
         // au lieu du `surfaceContainerHighest` par défaut du Card (neutre/lavande en clair).
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -1068,23 +1035,24 @@ private fun EntryCompactRow(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(if (isFolder) RoundedCornerShape(10.dp) else CircleShape)
-                    .background(accent),
-                contentAlignment = Alignment.Center
-            ) {
-                if (imagePath != null) {
-                    AsyncImage(model = imagePath, contentDescription = null,
-                        modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                } else {
-                    Icon(Icons.Default.Folder, contentDescription = null,
-                        tint = if (isFolder) MaterialTheme.colorScheme.onPrimaryContainer
-                        else Color.White,
-                        modifier = Modifier.size(20.dp))
-                }
-            }
+            // v7.1.126 — c'est CE mode qui s'appelle « Liste », et c'est ici que la plainte
+            // portait : avatar de 40 dp dont le fond `accent` disparaissait sous l'image,
+            // ne laissant AUCUN indice de couleur. La vignette partagée des feuilles de
+            // sélection apporte l'ANNEAU, qui lui survit à la photo. La FORME est conservée
+            // telle quelle (carré arrondi = dossier, disque = catégorie) : c'est elle qui
+            // dit la nature de l'entrée, l'anneau ne dit que son identité.
+            PickerThumbnail(
+                imagePath = imagePath,
+                name = name,
+                colorHex = colorHex,
+                size = 40.dp,
+                shape = if (isFolder) RoundedCornerShape(10.dp) else CircleShape,
+                // Idem : dossier sans photo teinté comme avant le lot. Sans effet sur une
+                // catégorie, dont le repli est l'initiale (autre branche du composant).
+                folderContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                folderIconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                folderIconSize = 20.dp
+            )
             Spacer(Modifier.width(12.dp))
             Text(
                 text = name,
@@ -1121,21 +1089,22 @@ internal fun SelectionFooter(
     favoriteActive: Boolean,
     onToggleFavorite: () -> Unit,
     canCreateGroup: Boolean,
-    movableGroups: List<CategoryGroup>,
     canMove: Boolean,
     onCreateGroup: () -> Unit,
-    onMoveToGroup: (Long) -> Unit,
+    // v7.1.83 — UNE entrée « Déplacer vers un groupe… » qui ouvre le sélecteur de
+    // dossiers moderne, au lieu d'un item par dossier (liste plate ingérable).
+    onMoveToGroup: () -> Unit,
     canDelete: Boolean,
     onDelete: () -> Unit,
-    canRename: Boolean,
-    onRename: () -> Unit,
-    canChangeImage: Boolean,
-    onChangeImage: () -> Unit,
+    // v7.1.127 — UNE action « Modifier » remplace le menu « ⋮ » (Renommer / Changer
+    // l'image) : les deux ouvraient en fait deux moitiés du même formulaire. L'appelant
+    // route vers le formulaire de CATÉGORIE ou celui de DOSSIER selon ce qui est coché.
+    canEdit: Boolean,
+    onEdit: () -> Unit,
     canMoveOut: Boolean = false,
     onMoveOut: (() -> Unit)? = null
 ) {
     var folderMenu by remember { mutableStateOf(false) }
-    var overflowMenu by remember { mutableStateOf(false) }
     val folderEnabled = canCreateGroup || canMove || (canMoveOut && onMoveOut != null)
     BottomAppBar(
         containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -1166,12 +1135,10 @@ internal fun SelectionFooter(
                         onClick = { folderMenu = false; onMoveOut() })
                 }
                 if (canMove) {
-                    movableGroups.forEach { g ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.categories_move_to, g.name)) },
-                            leadingIcon = { Icon(Icons.Default.Folder, null) },
-                            onClick = { folderMenu = false; onMoveToGroup(g.id) })
-                    }
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.categories_move_to_group)) },
+                        leadingIcon = { Icon(Icons.Default.Folder, null) },
+                        onClick = { folderMenu = false; onMoveToGroup() })
                 }
             }
         }
@@ -1180,23 +1147,11 @@ internal fun SelectionFooter(
             FooterActionColumn(Icons.Default.Delete, stringResource(R.string.common_delete),
                 canDelete, onDelete, tintOverride = MaterialTheme.colorScheme.error)
         }
-        // Overflow (Renommer / Changer l'image).
+        // Modifier — le formulaire complet (nom + image, et la couleur pour une
+        // catégorie). Un seul élément coché, sinon rien à pré-remplir.
         Box(Modifier.weight(1f).fillMaxHeight()) {
-            FooterActionColumn(Icons.Default.MoreVert,
-                stringResource(R.string.common_more_actions),
-                enabled = canRename || canChangeImage, onClick = { overflowMenu = true })
-            DropdownMenu(expanded = overflowMenu, onDismissRequest = { overflowMenu = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.categories_rename)) },
-                    enabled = canRename,
-                    leadingIcon = { Icon(Icons.Default.DriveFileRenameOutline, null) },
-                    onClick = { overflowMenu = false; onRename() })
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.categories_change_image)) },
-                    enabled = canChangeImage,
-                    leadingIcon = { Icon(Icons.Default.Image, null) },
-                    onClick = { overflowMenu = false; onChangeImage() })
-            }
+            FooterActionColumn(Icons.Default.Edit, stringResource(R.string.common_edit),
+                enabled = canEdit, onClick = onEdit)
         }
     }
 }
@@ -1328,9 +1283,9 @@ private fun FolderListRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -1345,20 +1300,23 @@ private fun FolderListRow(
                     .padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (group.imagePath != null) {
-                        AsyncImage(model = group.imagePath, contentDescription = null,
-                            modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    } else {
-                        Icon(Icons.Default.Folder, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(24.dp))
-                    }
-                }
+                // v7.1.126 — même vignette partagée que les catégories, pour que les deux
+                // lignes se lisent comme une famille. Un dossier n'a pas de couleur propre :
+                // `colorHex = null` lui donne un liseré neutre, et le carré arrondi continue
+                // de dire « dossier ».
+                PickerThumbnail(
+                    imagePath = group.imagePath,
+                    name = group.name,
+                    colorHex = null,
+                    size = 44.dp,
+                    shape = RoundedCornerShape(12.dp),
+                    // Habillage du dossier sans photo REPRIS DE L'AVANT-LOT : teinté par la
+                    // palette, pas neutre. Le neutre reste le défaut du composant, donc les
+                    // feuilles de sélection gardent le leur.
+                    folderContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    folderIconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    folderIconSize = 24.dp
+                )
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(group.name, style = MaterialTheme.typography.titleMedium,
@@ -1388,17 +1346,11 @@ private fun FolderListRow(
  * niveau mélangées (dossiers + catégories). L'affichage reste STRICTEMENT une grille
  * de carrés ([LazyVerticalGrid]).
  *
- * `data` est une copie de travail re-synchronisée hors glissement. L'élément suivi
- * est translaté en X et Y pour rester sous le doigt (déplacement multi-directionnel) ;
- * les autres carrés se décalent via `animateItem()`. Au drop, l'ordre est persisté.
+ * v7.1.125 — n'est plus qu'un ADAPTATEUR : la mécanique du geste vit dans
+ * [ReorderableGrid] (copie de travail re-synchronisée hors glissement, élément suivi
+ * translaté en X et Y sous le doigt, voisins décalés par `animateItem()`, ordre persisté
+ * au drop). Ce qui reste ici est le métier des catégories.
  */
-/** Action différée déclenchée au Drop — traitée HORS du callback tactile (anti-crash). */
-private sealed interface DropAction {
-    data class Merge(val ids: List<String>) : DropAction
-    data class Insert(val categoryId: String, val groupId: Long) : DropAction
-    data class Reorder(val refs: List<TopOrderRef>) : DropAction
-}
-
 @Composable
 internal fun ReorderableTopGrid(
     entries: List<TopEntry>,
@@ -1410,251 +1362,104 @@ internal fun ReorderableTopGrid(
     onPersistOrder: (List<TopOrderRef>) -> Unit,
     onMergeRequest: (List<String>) -> Unit,
     onMoveToFolder: (String, Long) -> Unit,
-    enableMerge: Boolean = true
+    enableMerge: Boolean = true,
+    // Fix v7.1.81 — état de défilement HOISTABLE : l'appelant passe le MÊME état que son
+    // navigateur normal, sinon l'entrée en mode sélection recréait une grille à l'index 0
+    // (« flash » + liste renvoyée tout en haut sous le doigt).
+    gridState: LazyGridState = rememberLazyGridState()
 ) {
-    val gridState = rememberLazyGridState()
-    val data = remember { mutableStateListOf<TopEntry>() }
-    var draggingIndex by remember { mutableStateOf<Int?>(null) }
-    var initialOffset by remember { mutableStateOf(IntOffset.Zero) }
-    var delta by remember { mutableStateOf(Offset.Zero) }
-    // Position du doigt en coordonnées GLOBALES (Window) — stable, indépendante de la
-    // tuile déplacée. Base unique et fiable de la détection de collision.
-    var pointerWin by remember { mutableStateOf(Offset.Zero) }
-    // Coordonnées de la grille dans la fenêtre → conversion local ↔ window.
-    var gridCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    // Clé de la tuile « cible de fusion » (le doigt survole une autre tuile).
-    var mergeTargetKey by remember { mutableStateOf<String?>(null) }
-    // Action de Drop différée : assignée DANS le geste, TRAITÉE en dehors (anti-crash
-    // InputDispatcher — on ne déclenche jamais dialogue/Room dans le callback tactile).
-    var pendingDrop by remember { mutableStateOf<DropAction?>(null) }
-
-    LaunchedEffect(entries) {
-        if (draggingIndex == null) { data.clear(); data.addAll(entries) }
+    // v7.1.125 — la mécanique du drag (copie de travail semée, hit-test en coordonnées
+    // fenêtre, auto-défilement, action de drop différée hors canal tactile) vit désormais
+    // dans [ReorderableGrid], partagé avec la galerie. Ne reste ici que le MÉTIER des
+    // catégories : ce qu'un drop au CENTRE veut dire (fusionner deux catégories, ou
+    // déposer une catégorie dans un dossier) et le rendu des tuiles.
+    val mergeAllowed: (TopEntry, TopEntry) -> Boolean = { dragged, _ ->
+        dragged is TopEntry.Single
     }
-
-    // Traite l'action de Drop hors du canal tactile (libéré) — ouvre le dialogue ou
-    // appelle le ViewModel sans stresser l'InputDispatcher.
-    LaunchedEffect(pendingDrop) {
-        when (val action = pendingDrop) {
-            is DropAction.Merge -> onMergeRequest(action.ids)
-            is DropAction.Insert -> onMoveToFolder(action.categoryId, action.groupId)
-            is DropAction.Reorder -> onPersistOrder(action.refs)
-            null -> {}
-        }
-        if (pendingDrop != null) pendingDrop = null
-    }
-
-    fun keyOf(e: TopEntry) = when (e) {
-        is TopEntry.Folder -> "g_${e.group.id}"
-        is TopEntry.Single -> "c_${e.category.id}"
-    }
-    fun refs(): List<TopOrderRef> = data.map {
-        when (it) {
-            is TopEntry.Folder -> TopOrderRef.Group(it.group.id)
-            is TopEntry.Single -> TopOrderRef.Cat(it.category.id)
-        }
-    }
-    fun draggedTranslation(): Offset {
-        val idx = draggingIndex ?: return Offset.Zero
-        val current = gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == idx }
-        val off = current?.offset ?: IntOffset.Zero
-        return Offset((initialOffset.x + delta.x) - off.x, (initialOffset.y + delta.y) - off.y)
-    }
-    // Coin haut-gauche d'une tuile (offset local de la grille) en coordonnées Window.
-    fun itemWindowTopLeft(localOffset: IntOffset): Offset {
-        val c = gridCoords ?: return Offset(localOffset.x.toFloat(), localOffset.y.toFloat())
-        return c.localToWindow(Offset(localOffset.x.toFloat(), localOffset.y.toFloat()))
-    }
-    // Trouve la tuile (≠ index `from`) dont la BBOX GLOBALE contient le doigt.
-    fun targetUnderFinger(from: Int) =
-        gridState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
-            if (info.index == from || info.index !in data.indices) return@firstOrNull false
-            val tl = itemWindowTopLeft(info.offset)
-            pointerWin.x >= tl.x && pointerWin.x <= tl.x + info.size.width &&
-                pointerWin.y >= tl.y && pointerWin.y <= tl.y + info.size.height
-        }
-    // Le doigt est-il dans la zone CENTRALE (50 % des deux axes) de la tuile ?
-    // → intention de fusion/insertion ; sur les bords → réordonnancement (les
-    // tuiles adjacentes se décalent en temps réel via animateItem()).
-    fun inMergeZone(info: androidx.compose.foundation.lazy.grid.LazyGridItemInfo): Boolean {
-        val tl = itemWindowTopLeft(info.offset)
-        val w = info.size.width.toFloat()
-        val h = info.size.height.toFloat()
-        return pointerWin.x >= tl.x + w * 0.25f && pointerWin.x <= tl.x + w * 0.75f &&
-            pointerWin.y >= tl.y + h * 0.25f && pointerWin.y <= tl.y + h * 0.75f
-    }
-    // CORRECTIF v5.5 (superposition) : le réordonnancement n'est déclenché qu'une
-    // fois le doigt passé AU-DELÀ du centre de la tuile survolée, du côté opposé
-    // à l'emplacement de la tuile déplacée (projection vectorielle en coordonnées
-    // Window). Avant, l'échange partait dès le bord proche (25 %) : la cible
-    // « fuyait » par swap avant que le doigt n'atteigne la zone centrale, rendant
-    // la fusion inaccessible (poursuite infinie). Bord proche neutre → fusion
-    // atteignable ; traversée complète → réordonnancement, comme un springboard.
-    fun fingerPastTargetCenter(from: Int, info: androidx.compose.foundation.lazy.grid.LazyGridItemInfo): Boolean {
-        val fromInfo = gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == from }
-            ?: return true
-        val fromTl = itemWindowTopLeft(fromInfo.offset)
-        val fromCenter = Offset(
-            fromTl.x + fromInfo.size.width / 2f, fromTl.y + fromInfo.size.height / 2f)
-        val tl = itemWindowTopLeft(info.offset)
-        val center = Offset(tl.x + info.size.width / 2f, tl.y + info.size.height / 2f)
-        val dirX = center.x - fromCenter.x
-        val dirY = center.y - fromCenter.y
-        return (pointerWin.x - center.x) * dirX + (pointerWin.y - center.y) * dirY >= 0f
-    }
-
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        state = gridState,
-        modifier = Modifier
-            .fillMaxSize()
-            .onGloballyPositioned { gridCoords = it }
-            .pointerInput(Unit) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { offset ->
-                        val coords = gridCoords
-                        if (coords == null || !coords.isAttached)
-                            return@detectDragGesturesAfterLongPress
-                        // `offset` est local à la grille → on le passe en coordonnées Window.
-                        pointerWin = coords.localToWindow(offset)
-                        val hit = gridState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
-                            val tl = itemWindowTopLeft(info.offset)
-                            pointerWin.x >= tl.x && pointerWin.x <= tl.x + info.size.width &&
-                                pointerWin.y >= tl.y && pointerWin.y <= tl.y + info.size.height
-                        }
-                        if (hit != null) {
-                            draggingIndex = hit.index
-                            initialOffset = hit.offset
-                            delta = Offset.Zero
-                            mergeTargetKey = null
-                            Log.d("JTR_DRAG", "onDragStart finger(win)=(${pointerWin.x},${pointerWin.y}) grab=${keyOf(data[hit.index])}")
-                        }
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        val from = draggingIndex ?: return@detectDragGesturesAfterLongPress
-                        val coords = gridCoords
-                        if (coords == null || !coords.isAttached)
-                            return@detectDragGesturesAfterLongPress
-                        delta += dragAmount
-                        // Position GLOBALE (Window) du doigt — stable, indépendante de la
-                        // tuile en cours de déplacement.
-                        pointerWin = coords.localToWindow(change.position)
-                        val target = targetUnderFinger(from)
-                        val draggedIsSingle = data.getOrNull(from) is TopEntry.Single
-                        // ZONE CENTRALE (50 %) : intention de fusion/insertion. Le
-                        // réordonnancement n'a lieu qu'APRÈS traversée du centre de la
-                        // cible (fingerPastTargetCenter) — le bord proche est neutre,
-                        // la cible ne « fuit » plus avant la fusion (v5.5).
-                        if (enableMerge && draggedIsSingle && target != null && inMergeZone(target)) {
-                            mergeTargetKey = keyOf(data[target.index])
-                            Log.d("JTR_DRAG", "onDrag finger(win)=(${pointerWin.x},${pointerWin.y}) hover=${keyOf(data[target.index])} idx=${target.index} mergeTarget=$mergeTargetKey")
-                        } else {
-                            mergeTargetKey = null
-                            if (target != null && fingerPastTargetCenter(from, target)) {
-                                data.add(target.index, data.removeAt(from))
-                                draggingIndex = target.index
-                            }
-                        }
-                    },
-                    onDragEnd = {
-                        // ANTI-CRASH : on NE déclenche RIEN ici (ni dialogue, ni Room).
-                        // On lit l'état figé, on calcule l'action, on la DÉPOSE dans
-                        // `pendingDrop`, et on libère immédiatement le canal tactile. Le
-                        // traitement réel est fait par le LaunchedEffect(pendingDrop).
-                        try {
-                            val coords = gridCoords
-                            if (coords == null || !coords.isAttached) {
-                                // Layout invalide au lâcher → on annule poliment, sans
-                                // forcer le moindre calcul de coordonnées.
-                                Log.d("JTR_DRAG", "onDragEnd ANNULÉ (layout détaché)")
-                            } else {
-                                val from = draggingIndex
-                                val dragged = from?.let { data.getOrNull(it) } as? TopEntry.Single
-                                var action: DropAction? = null
-                                if (enableMerge && from != null && dragged != null) {
-                                    // SEULE la cible figée pendant le survol (zone centrale)
-                                    // déclenche une fusion : un drop sur les bords reste un
-                                    // réordonnancement — pas de fusion accidentelle.
-                                    val te: TopEntry? = mergeTargetKey?.let { key ->
-                                        data.firstOrNull { keyOf(it) == key } }
-                                    when (val entry = te) {
-                                        is TopEntry.Single -> if (entry.category.id != dragged.category.id) {
-                                            Log.d("JTR_DRAG", "onDragEnd ACTION=MERGE ${dragged.category.id} + ${entry.category.id}")
-                                            action = DropAction.Merge(listOf(dragged.category.id, entry.category.id))
-                                        }
-                                        is TopEntry.Folder -> {
-                                            Log.d("JTR_DRAG", "onDragEnd ACTION=INSERT ${dragged.category.id} -> group ${entry.group.id}")
-                                            action = DropAction.Insert(dragged.category.id, entry.group.id)
-                                        }
-                                        else -> {}
-                                    }
-                                }
-                                if (action == null) {
-                                    Log.d("JTR_DRAG", "onDragEnd ACTION=REORDER (aucune cible)")
-                                    action = DropAction.Reorder(refs())
-                                }
-                                pendingDrop = action
-                            }
-                        } catch (e: Exception) {
-                            Log.e("JTR_ERROR", "Crash évité dans onDragEnd", e)
-                        } finally {
-                            // Réinitialisation défensive de l'état du geste.
-                            draggingIndex = null
-                            mergeTargetKey = null
-                        }
-                    },
-                    onDragCancel = { draggingIndex = null; mergeTargetKey = null }
-                )
-            },
+    ReorderableGrid(
+        items = entries,
+        key = { entry ->
+            when (entry) {
+                is TopEntry.Folder -> "g_${entry.group.id}"
+                is TopEntry.Single -> "c_${entry.category.id}"
+            }
+        },
+        columns = 2,
+        gridState = gridState,
+        onPersistOrder = { ordered ->
+            onPersistOrder(
+                ordered.map {
+                    when (it) {
+                        is TopEntry.Folder -> TopOrderRef.Group(it.group.id)
+                        is TopEntry.Single -> TopOrderRef.Cat(it.category.id)
+                    }
+                }
+            )
+        },
         contentPadding = PaddingValues(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        itemsIndexed(data, key = { _, e -> keyOf(e) }) { index, entry ->
-            val isDragged = index == draggingIndex
-            val mod = if (isDragged) {
-                Modifier.zIndex(1f).graphicsLayer {
-                    val t = draggedTranslation(); translationX = t.x; translationY = t.y
-                }
-            } else {
-                Modifier.animateItem()
-            }
-            val mergeHighlight = mergeTargetKey == keyOf(entry)
-            when (entry) {
-                is TopEntry.Folder -> TopSelectionTile(
-                    isFolder = true,
-                    name = entry.group.name,
-                    isFavorite = entry.group.isFavorite,
-                    // Compteur enrichi : sous-catégories + cumul des contacts.
-                    subtitle = stringResource(R.string.categories_folder_counter,
-                        entry.members.size, entry.members.sumOf { countOf(it.id) }),
-                    imagePath = entry.group.imagePath,
-                    accent = MaterialTheme.colorScheme.primaryContainer,
-                    selected = isGroupSelected(entry.group.id),
-                    mergeHighlight = mergeHighlight,
-                    onClick = { onToggleGroup(entry.group.id) },
-                    modifier = mod
-                )
-                is TopEntry.Single -> {
-                    val accent = rememberCategoryColor(entry.category.color)
-                    val c = countOf(entry.category.id)
-                    TopSelectionTile(
-                        isFolder = false,
-                        name = entry.category.name,
-                        isFavorite = entry.category.isFavorite,
-                        subtitle = pluralStringResource(R.plurals.categories_person_count, c, c),
-                        imagePath = entry.category.imagePath,
-                        accent = accent,
-                        selected = isCategorySelected(entry.category.id),
-                        mergeHighlight = mergeHighlight,
-                        onClick = { onToggleCategory(entry.category.id) },
-                        modifier = mod
-                    )
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        // Le footer contextuel du mode sélection recouvre le bas de la grille (~125 dp) :
+        // la zone d'auto-défilement est élargie pour commencer au-dessus de lui.
+        autoScrollBottomZone = 190.dp,
+        canCenterDrop = if (enableMerge) mergeAllowed else null,
+        onCenterDrop = { dragged, target ->
+            val cat = (dragged as? TopEntry.Single)?.category
+            if (cat != null) {
+                when (target) {
+                    is TopEntry.Single ->
+                        if (target.category.id != cat.id) {
+                            onMergeRequest(listOf(cat.id, target.category.id))
+                        }
+                    is TopEntry.Folder -> onMoveToFolder(cat.id, target.group.id)
                 }
             }
         }
+    ) { entry, _, isCenterTarget, mod ->
+        when (entry) {
+            is TopEntry.Folder -> TopSelectionTile(
+                isFolder = true,
+                name = entry.group.name,
+                isFavorite = entry.group.isFavorite,
+                // Compteur enrichi : sous-categories + cumul des contacts.
+                subtitle = stringResource(R.string.categories_folder_counter,
+                    entry.members.size, entry.members.sumOf { countOf(it.id) }),
+                imagePath = entry.group.imagePath,
+                accent = MaterialTheme.colorScheme.primaryContainer,
+                selected = isGroupSelected(entry.group.id),
+                mergeHighlight = isCenterTarget,
+                onClick = { onToggleGroup(entry.group.id) },
+                modifier = mod
+            )
+            is TopEntry.Single -> {
+                val accent = rememberCategoryColor(entry.category.color)
+                val c = countOf(entry.category.id)
+                TopSelectionTile(
+                    isFolder = false,
+                    name = entry.category.name,
+                    isFavorite = entry.category.isFavorite,
+                    subtitle = pluralStringResource(R.plurals.categories_person_count, c, c),
+                    imagePath = entry.category.imagePath,
+                    accent = accent,
+                    selected = isCategorySelected(entry.category.id),
+                    mergeHighlight = isCenterTarget,
+                    onClick = { onToggleCategory(entry.category.id) },
+                    modifier = mod
+                )
+            }
+        }
     }
+}
+
+/**
+ * Action différée déclenchée au Drop — traitée HORS du callback tactile (anti-crash).
+ * v7.1.125 : ne sert plus qu'à la LISTE ; la grille, passée au moteur partagé
+ * [ReorderableGrid], porte désormais cette mécanique en interne.
+ */
+private sealed interface DropAction {
+    data class Merge(val ids: List<String>) : DropAction
+    data class Insert(val categoryId: String, val groupId: Long) : DropAction
+    data class Reorder(val refs: List<TopOrderRef>) : DropAction
 }
 
 /**
@@ -1677,10 +1482,12 @@ internal fun ReorderableTopList(
     onPersistOrder: (List<TopOrderRef>) -> Unit,
     onMergeRequest: (List<String>) -> Unit,
     onMoveToFolder: (String, Long) -> Unit,
-    enableMerge: Boolean = true
+    enableMerge: Boolean = true,
+    // Fix v7.1.81 — même hoisting que ReorderableTopGrid (pas de reset à l'appui long).
+    listState: LazyListState = rememberLazyListState()
 ) {
-    val listState = rememberLazyListState()
-    val data = remember { mutableStateListOf<TopEntry>() }
+    // Fix v7.1.81 (2e cause) — semée à la création : voir ReorderableTopGrid.
+    val data = remember { mutableStateListOf<TopEntry>().apply { addAll(entries) } }
     var draggingIndex by remember { mutableStateOf<Int?>(null) }
     var initialOffsetY by remember { mutableIntStateOf(0) }
     var deltaY by remember { mutableFloatStateOf(0f) }
@@ -1691,6 +1498,15 @@ internal fun ReorderableTopList(
     // Action de Drop différée : assignée DANS le geste, traitée HORS du callback
     // tactile (anti-crash InputDispatcher — voir ReorderableTopGrid).
     var pendingDrop by remember { mutableStateOf<DropAction?>(null) }
+    // v7.1.78 — auto-défilement pendant le drag (voir ReorderableTopGrid) : vitesse en
+    // px/frame, posée par onDrag, appliquée par la boucle LaunchedEffect, remise à zéro
+    // à la fin du geste.
+    var autoScrollSpeed by remember { mutableFloatStateOf(0f) }
+    val autoDensity = LocalDensity.current
+    val autoScrollZonePx = with(autoDensity) { 64.dp.toPx() }
+    // Zone basse élargie : la liste passe SOUS le footer contextuel (voir la grille).
+    val autoScrollBottomZonePx = with(autoDensity) { 190.dp.toPx() }
+    val autoScrollMaxStepPx = with(autoDensity) { 10.dp.toPx() }
 
     LaunchedEffect(entries) {
         if (draggingIndex == null) { data.clear(); data.addAll(entries) }
@@ -1750,6 +1566,50 @@ internal fun ReorderableTopList(
         val dir = center - fromCenter
         return (pointerWinY - center) * dir >= 0f
     }
+    // Résolution cible → fusion/réordonnancement, partagée entre onDrag et la boucle
+    // d'auto-défilement (même raison que la grille : la liste glisse sous un doigt
+    // immobile, les échanges doivent continuer de cascader).
+    fun resolveDragTarget() {
+        val from = draggingIndex ?: return
+        val target = targetUnderFinger(from)
+        val draggedIsSingle = data.getOrNull(from) is TopEntry.Single
+        if (enableMerge && draggedIsSingle && target != null && inMergeBand(target)) {
+            mergeTargetKey = keyOf(data[target.index])
+        } else {
+            mergeTargetKey = null
+            // Réordonnancement seulement après traversée du centre (v5.5).
+            if (target != null && fingerPastTargetCenter(from, target)) {
+                data.add(target.index, data.removeAt(from))
+                draggingIndex = target.index
+            }
+        }
+    }
+    // v7.1.78 — pas d'auto-défilement selon la proximité des bords (voir la grille).
+    fun autoScrollStepFor(pointerY: Float): Float {
+        val c = listCoords ?: return 0f
+        if (!c.isAttached) return 0f
+        val top = c.localToWindow(Offset.Zero).y
+        val bottom = top + c.size.height
+        return when {
+            pointerY <= top + autoScrollZonePx ->
+                -autoScrollMaxStepPx * ((top + autoScrollZonePx - pointerY) / autoScrollZonePx).coerceIn(0.25f, 1f)
+            pointerY >= bottom - autoScrollBottomZonePx ->
+                autoScrollMaxStepPx * ((pointerY - (bottom - autoScrollBottomZonePx)) / autoScrollBottomZonePx).coerceIn(0.25f, 1f)
+            else -> 0f
+        }
+    }
+
+    // Boucle d'auto-défilement (une itération par frame, voir ReorderableTopGrid).
+    LaunchedEffect(draggingIndex != null) {
+        while (draggingIndex != null) {
+            val step = autoScrollSpeed
+            if (step != 0f) {
+                listState.scrollBy(step)
+                resolveDragTarget()
+            }
+            withFrameMillis { }
+        }
+    }
 
     LazyColumn(
         state = listState,
@@ -1772,28 +1632,20 @@ internal fun ReorderableTopList(
                             initialOffsetY = hit.offset
                             deltaY = 0f
                             mergeTargetKey = null
+                            autoScrollSpeed = 0f
                         }
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
-                        val from = draggingIndex ?: return@detectDragGesturesAfterLongPress
+                        if (draggingIndex == null) return@detectDragGesturesAfterLongPress
                         val coords = listCoords
                         if (coords == null || !coords.isAttached)
                             return@detectDragGesturesAfterLongPress
                         deltaY += dragAmount.y
                         pointerWinY = coords.localToWindow(change.position).y
-                        val target = targetUnderFinger(from)
-                        val draggedIsSingle = data.getOrNull(from) is TopEntry.Single
-                        if (enableMerge && draggedIsSingle && target != null && inMergeBand(target)) {
-                            mergeTargetKey = keyOf(data[target.index])
-                        } else {
-                            mergeTargetKey = null
-                            // Réordonnancement seulement après traversée du centre (v5.5).
-                            if (target != null && fingerPastTargetCenter(from, target)) {
-                                data.add(target.index, data.removeAt(from))
-                                draggingIndex = target.index
-                            }
-                        }
+                        // Fusion/réordonnancement : logique partagée avec l'auto-défilement.
+                        resolveDragTarget()
+                        autoScrollSpeed = autoScrollStepFor(pointerWinY)
                     },
                     onDragEnd = {
                         // ANTI-CRASH : aucun dialogue/Room ici — voir ReorderableTopGrid.
@@ -1827,9 +1679,10 @@ internal fun ReorderableTopList(
                         } finally {
                             draggingIndex = null
                             mergeTargetKey = null
+                            autoScrollSpeed = 0f
                         }
                     },
-                    onDragCancel = { draggingIndex = null; mergeTargetKey = null }
+                    onDragCancel = { draggingIndex = null; mergeTargetKey = null; autoScrollSpeed = 0f }
                 )
             },
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -1895,16 +1748,16 @@ private fun TopSelectionRow(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .then(
                 if (mergeHighlight) Modifier.border(
                     width = 2.dp,
                     color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(12.dp))
+                    shape = RoundedCornerShape(16.dp))
                 else Modifier
             )
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer
             else MaterialTheme.colorScheme.surface
@@ -2054,28 +1907,17 @@ internal fun TextPromptDialog(
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var text by remember { mutableStateOf(initial) }
-    AlertDialog(
+    // v7.1.128 (L4a) — corps délégué au socle partagé : le champ passe du dernier
+    // `OutlinedTextField` à 12 dp du fichier au `FormTextField` du formulaire, et la
+    // signature publique ne bouge pas (les deux appelants en profitent sans rien changer).
+    JtrPromptDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text(hint) },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(text) }, enabled = text.isNotBlank()) {
-                Text(confirmLabel)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-        }
+        title = title,
+        label = hint,
+        initialValue = initial,
+        confirmLabel = confirmLabel,
+        onConfirm = onConfirm,
+        dismissLabel = stringResource(R.string.common_cancel)
     )
 }
 
@@ -2106,15 +1948,27 @@ fun AddCategoryDialog(
 ) = CategoryFormDialog(
     title = stringResource(R.string.categories_new_dialog_title),
     initialName = "",
-    initialColor = "#2E86C1",
+    // v7.1.79 — le défaut vient de la PALETTE CURATÉE (bleu doux, analogue au bleu
+    // historique #2E86C1) : pas de pastille « couleur actuelle » parasite en création.
+    initialColor = "#64B5F6",
     initialImagePath = null,
     confirmLabel = stringResource(R.string.common_create),
     onConfirm = onConfirm,
     onDismiss = onDismiss
 )
 
-/** Formulaire de catégorie UNIFIÉ (création ET édition) : nom + couleur + image. */
-@OptIn(ExperimentalLayoutApi::class) // FlowRow (pastilles de couleur, cibles tactiles 48 dp)
+/**
+ * Formulaire de catégorie UNIFIÉ (création ET édition) : nom + couleur + image.
+ *
+ * v7.1.79 — refonte V1 : FEUILLE MONTANTE (cohérente avec le sélecteur, le tri et les
+ * langues) au lieu du dialogue centré ; APERÇU VIVANT en tête (image, sinon initiale sur
+ * teinte douce + anneau — langage v7.1.77) avec badge caméra ; palette CURATÉE douce
+ * ([categoryColorPalette]) en section compacte sous le nom (l'image prime, la couleur
+ * reste le moteur du repli) ; bouton de validation pleine largeur. Les chaînes photo
+ * (Photo Picker → crop → filesDir) et la signature `onConfirm(name, color, imagePath)`
+ * sont inchangées — Dialog (zoom/crop) sur feuille : même empilement qu'avant.
+ */
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun CategoryFormDialog(
     title: String,
@@ -2129,157 +1983,144 @@ private fun CategoryFormDialog(
     val scope = rememberCoroutineScope()
 
     var name by remember { mutableStateOf(initialName) }
-    val presetColors = listOf("#2E86C1", "#E74C3C", "#27AE60", "#F39C12", "#8E44AD", "#16A085")
+    // En ÉDITION d'une catégorie dont l'hex (ancienne palette, restauration .jtr…) est
+    // HORS palette curatée : il devient la PREMIÈRE pastille (« couleur actuelle ») —
+    // la couleur d'origine reste sélectionnable, aucune perte silencieuse.
+    val palette = remember(initialColor) {
+        if (initialColor in categoryColorPalette) categoryColorPalette
+        else listOf(initialColor) + categoryColorPalette
+    }
     var selectedColor by remember { mutableStateOf(initialColor) }
     var imagePath by remember { mutableStateOf(initialImagePath) }
-    var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
-    // v7.1.49 — visionneuse plein écran de l'image de catégorie (même composant que
-    // l'avatar de contact), ouverte PAR-DESSUS ce formulaire (Dialog sur Dialog).
-    var showImageZoom by remember { mutableStateOf(false) }
 
-    // Photo Picker système (v7.1.66) — aucune permission requise.
-    val photoPicker = rememberSystemPhotoPicker { uri -> pendingCropUri = uri }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val accent = rememberCategoryColor(selectedColor)
 
-    // Le formulaire RESTE en composition sous la visionneuse (Dialog empilé) : `name`,
-    // `selectedColor` et `imagePath` sont des `remember` de CE composable, donc fermer la
-    // visionneuse ne recompose rien — le brouillon d'édition est préservé par construction.
-    if (showImageZoom) {
-        imagePath?.let { current ->
-            PhotoZoomDialog(
-                photoUri = current,
-                onDismiss = { showImageZoom = false },
-                // ⚠️ On ferme la visionneuse AVANT d'ouvrir le sélecteur : sans cela le
-                // crop viendrait s'empiler en 3e dialogue au-dessus d'elle.
-                onReplace = { showImageZoom = false; photoPicker() },
-                onRemove = { showImageZoom = false; imagePath = null }
-            )
-        }
-    }
-
-    pendingCropUri?.let { uri ->
-        ImageCropDialog(
-            sourceUri = uri,
-            cropShape = CropShape.RECTANGLE,
-            onCropComplete = { croppedUri ->
-                scope.launch {
-                    val path = withContext(Dispatchers.IO) {
-                        copyCategoryPhotoToStorage(context, croppedUri)
-                    }
-                    if (path != null) imagePath = path
-                }
-                pendingCropUri = null
-            },
-            onDismiss = { pendingCropUri = null }
-        )
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        // Fix v7.1.79 — le bouton de validation est ÉPINGLÉ hors de la zone scrollable,
+        // dans la Column porteuse de l'imePadding : dès que le clavier s'ouvre (focus
+        // auto en création), il REMONTE au-dessus et reste tappable sans « Done ». Le
+        // contenu (aperçu, nom, palette) se compresse et défile au-dessus de lui
+        // (`weight(1f, fill = false)` : même grammaire que la liste du sélecteur).
+        Column(modifier = Modifier.fillMaxWidth().imePadding()) {
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .clip(CircleShape)
-                        .background(rememberCategoryColor(selectedColor))
-                        // Image présente → on la MONTRE en grand (Remplacer/Retirer y sont
-                        // proposés) ; image absente → rien à zoomer, on va droit au picker.
-                        .clickable { if (imagePath != null) showImageZoom = true else photoPicker() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (imagePath != null) {
-                        AsyncImage(
-                            model = imagePath,
-                            contentDescription = stringResource(R.string.categories_image_cd),
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.25f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = null,
-                                tint = Color.White, modifier = Modifier.size(28.dp))
+            Text(title, style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.height(16.dp))
+
+            // ── APERÇU VIVANT (v7.1.79, extrait en v7.1.111) : image si présente, sinon
+            // initiale du nom sur teinte douce + anneau d'accent — le composant partagé
+            // porte aussi le zoom (Remplacer/Retirer), le Photo Picker et le recadrage.
+            FormPhotoHeader(
+                photo = imagePath,
+                accent = accent,
+                fallbackIcon = Icons.Default.Folder,
+                photoContentDescription = stringResource(R.string.categories_image_cd),
+                cropShape = CropShape.RECTANGLE,
+                onPhotoCropped = { croppedUri ->
+                    scope.launch {
+                        val path = withContext(Dispatchers.IO) {
+                            copyCategoryPhotoToStorage(context, croppedUri)
                         }
-                    } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.AddAPhoto, contentDescription = null,
-                                tint = Color.White, modifier = Modifier.size(28.dp))
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(stringResource(R.string.common_photo),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White)
-                        }
+                        if (path != null) imagePath = path
                     }
-                }
+                },
+                onPhotoRemoved = { imagePath = null },
+                fallbackInitialFrom = name
+            )
+            Spacer(Modifier.height(8.dp))
 
-                // Aucun bouton « Retirer » ICI : taper le cercle ouvre la visionneuse, qui
-                // porte déjà Remplacer/Retirer (v7.1.49). Simple respiration avant le nom.
-                Spacer(modifier = Modifier.height(8.dp))
+            val focusRequester = remember { FocusRequester() }
+            // v7.1.112 — champ consolidé sur FormTextField (même rendu : il EST la version
+            // factorisée de cet OutlinedTextField).
+            FormTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = stringResource(R.string.common_name_label),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+            )
+            if (initialName.isEmpty()) {
+                // Focus auto en CRÉATION seulement : en édition, le clavier recouvrirait
+                // l'aperçu et la palette qu'on vient précisément retoucher.
+                LaunchedEffect(Unit) { focusRequester.requestFocus() }
+            }
+            Spacer(Modifier.height(20.dp))
 
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.common_name_label)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(stringResource(R.string.common_color_label),
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.align(Alignment.Start))
-                Spacer(modifier = Modifier.height(8.dp))
-                // FlowRow : se replie sur une 2e ligne si l'espace manque (écrans étroits /
-                // grande police) au lieu de rogner la dernière pastille.
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    presetColors.forEach { color ->
-                        // Cible tactile ≥ 48 dp (a11y) : pastille VISIBLE de 36 dp centrée
-                        // dans une zone CLIQUABLE de 48 dp (le visuel est inchangé).
+            // ── Couleur : section compacte SECONDAIRE (l'image prime ; la couleur reste
+            // le moteur du repli initiale/anneau et des tuiles sans image).
+            Text(stringResource(R.string.common_color_label),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            // FlowRow : 2 rangées de 6 ; se replie proprement (écran étroit, grande police).
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                palette.forEach { color ->
+                    val swatch = rememberCategoryColor(color)
+                    val selected = selectedColor == color
+                    // Cible tactile 48 dp ; sélection = ANNEAU détaché + coche (plus de
+                    // coche blanche posée sur un aplat).
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .then(if (selected) Modifier.border(2.dp, swatch, CircleShape) else Modifier)
+                            .clickable { selectedColor = color },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(32.dp)
                                 .clip(CircleShape)
-                                .clickable { selectedColor = color },
+                                .background(swatch),
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(android.graphics.Color.parseColor(color))),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (selectedColor == color) {
-                                    Icon(Icons.Default.Check, contentDescription = null,
-                                        tint = Color.White, modifier = Modifier.size(20.dp))
-                                }
+                            if (selected) {
+                                Icon(Icons.Default.Check, contentDescription = null,
+                                    tint = Color.White, modifier = Modifier.size(16.dp))
                             }
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
+            Spacer(Modifier.height(16.dp))
+            }
+
+            // Barre d'action FIXE (voir le commentaire d'en-tête de la Column).
+            Button(
                 onClick = { if (name.isNotBlank()) onConfirm(name, selectedColor, imagePath) },
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
             ) { Text(confirmLabel) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+            Spacer(Modifier.height(16.dp))
         }
-    )
+    }
 }
 
-internal fun copyCategoryPhotoToStorage(context: android.content.Context, uri: Uri): String? = try {
-    val dir = File(context.filesDir, "photos").also { it.mkdirs() }
-    val dest = File(dir, "category_${UUID.randomUUID()}.jpg")
-    context.contentResolver.openInputStream(uri)?.use { it.copyTo(dest.outputStream()) }
-    dest.absolutePath
-} catch (_: Exception) { null }
+internal fun copyCategoryPhotoToStorage(context: android.content.Context, uri: Uri): String? {
+    val path = try {
+        val dir = File(context.filesDir, "photos").also { it.mkdirs() }
+        val dest = File(dir, "category_${UUID.randomUUID()}.jpg")
+        context.contentResolver.openInputStream(uri)?.use { it.copyTo(dest.outputStream()) }
+        dest.absolutePath
+    } catch (_: Exception) { null }
+    // v7.1.116 (a') — le `crop_` source (sas filesDir/crops/) part APRÈS la copie, succès
+    // OU échec : seul le flux d'édition de contact nettoyait son sas, les quatre call-sites
+    // de cette fonction (création/édition de catégorie et de groupe) laissaient chacun un
+    // orphelin par recadrage validé. L'effacement vit ICI pour qu'aucun futur appelant ne
+    // puisse l'oublier ; `deleteFileIfOwned` ne touche que nos dossiers (une URI de picker
+    // `content://` est refusée par construction) et un fichier déjà absent est un no-op.
+    ImageFileStore.deleteFileIfOwned(context, uri.toString())
+    return path
+}

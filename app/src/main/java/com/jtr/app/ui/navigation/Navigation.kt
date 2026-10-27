@@ -49,8 +49,10 @@ import com.jtr.app.ui.category.SelectContactsScreen
 import com.jtr.app.ui.components.JtrBottomBarTransitions
 import com.jtr.app.ui.contacts.ImportContactsScreen
 import com.jtr.app.ui.home.HomeScreen
+import com.jtr.app.ui.gallery.GalleryScreen
 import com.jtr.app.ui.map.MapScreen
 import com.jtr.app.ui.person.*
+import com.jtr.app.ui.search.SearchScreen
 import com.jtr.app.ui.settings.SettingsScreen
 import com.jtr.app.ui.theme.ThemePreset
 import com.jtr.app.ui.trash.TrashScreen
@@ -75,8 +77,33 @@ object Routes {
     const val MAP_PICKER = "map_picker"
     const val TRASH = "trash"
     const val IMPORT_CONTACTS = "import_contacts"
+    // v7.1.69 — écran de recherche dédié (ouvert depuis la loupe de l'accueil)
+    const val SEARCH = "search"
+
+    /**
+     * v7.1.85 — MÊME écran, avec un `categoryId` OPTIONNEL : la loupe d'une catégorie
+     * ouvre la page dédiée SCOPÉE à cette catégorie. Le motif à argument optionnel
+     * accepte aussi [SEARCH] tel quel (argument absent ⇒ `null` ⇒ recherche globale,
+     * comportement de l'accueil strictement inchangé).
+     */
+    const val SEARCH_ROUTE = "search?categoryId={categoryId}&groupId={groupId}"
+    const val ARG_SEARCH_CATEGORY_ID = "categoryId"
+
+    /**
+     * v7.1.87 — second périmètre OPTIONNEL : la loupe d'un DOSSIER cherche les contacts de
+     * tout son sous-arbre. Les deux scopes s'EXCLUENT (catégorie XOR dossier XOR global) ;
+     * les deux absents ⇒ recherche globale, accueil strictement inchangé.
+     */
+    const val ARG_SEARCH_GROUP_ID = "groupId"
+
+    fun searchInCategory(categoryId: String) = "search?categoryId=$categoryId"
+    fun searchInGroup(groupId: Long) = "search?groupId=$groupId"
+
+    /** v7.1.89 — galerie d'images d'un contact (`personId` = UUID TEXT, jamais nul). */
+    const val GALLERY = "gallery/{personId}"
 
     fun personDetail(personId: String) = "person_detail/$personId"
+    fun gallery(personId: String) = "gallery/$personId"
     fun categoryDetail(categoryId: String) = "category_detail/$categoryId"
     fun categoryGroupDetail(groupId: Long) = "category_group_detail/$groupId"
 
@@ -305,6 +332,7 @@ fun JTRMainScaffold(
                 HomeScreen(
                     onNavigateToAddPerson = { navController.navigate(Routes.addPerson()) },
                     onNavigateToPersonDetail = { id -> navController.navigate(Routes.personDetail(id)) },
+                    onNavigateToSearch = { navController.navigate(Routes.SEARCH) },
                     onSelectionModeChange = { homeSelectionMode = it },
                     // « Déplacer » : bascule fluide vers l'onglet Catégories en mode cible.
                     onMoveSelectionToCategory = { ids ->
@@ -392,6 +420,8 @@ fun JTRMainScaffold(
                             navController.popBackStack()
                         }
                     },
+                    // v7.1.89 — carré « galerie » à côté de l'avatar.
+                    onNavigateToGallery = { navController.navigate(Routes.gallery(personId)) },
                     onNavigateToMap = { navController.navigate(Routes.MAP_PICKER) },
                     cityFromMap = cityFromMap,
                     latFromMap = latFromMap,
@@ -402,6 +432,18 @@ fun JTRMainScaffold(
                         backStackEntry.savedStateHandle.remove<Double>("selected_lng")
                     }
                 )
+            }
+
+            // v7.1.89 — galerie d'un contact : écran plein, empilé sur la fiche.
+            composable(
+                route = Routes.GALLERY,
+                arguments = listOf(navArgument("personId") { type = NavType.StringType }),
+                enterTransition = { slideInHorizontally(initialOffsetX = { rtlSign * it }) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -rtlSign * it / 3 }) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -rtlSign * it / 3 }) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { rtlSign * it }) }
+            ) {
+                GalleryScreen(onNavigateBack = { navController.popBackStack() })
             }
 
             composable(Routes.MAP_PICKER) {
@@ -459,6 +501,11 @@ fun JTRMainScaffold(
                     },
                     onGroupClick = { subGroupId ->
                         navController.navigate(Routes.categoryGroupDetail(subGroupId))
+                    },
+                    // v7.1.87 — la loupe ouvre la MÊME page de recherche que l'accueil,
+                    // scopée aux contacts de tout le sous-arbre de ce dossier.
+                    onNavigateToScopedSearch = { id ->
+                        navController.navigate(Routes.searchInGroup(id))
                     }
                 )
             }
@@ -481,6 +528,11 @@ fun JTRMainScaffold(
                     // sélection (aucun dialogue), retour automatique après validation.
                     onAddExistingContacts = {
                         navController.navigate(Routes.selectContacts(categoryId))
+                    },
+                    // v7.1.85 — la loupe ouvre la MÊME page de recherche que l'accueil,
+                    // scopée à cette catégorie.
+                    onNavigateToScopedSearch = { id ->
+                        navController.navigate(Routes.searchInCategory(id))
                     }
                 )
             }
@@ -513,6 +565,38 @@ fun JTRMainScaffold(
 
             composable(Routes.TRASH) {
                 TrashScreen(onNavigateBack = { navController.popBackStack() })
+            }
+
+            // Recherche dédiée (v7.1.69) : plein écran, retour → accueil. La barre d'onglets
+            // n'apparaît pas (SEARCH n'est pas une destination de premier niveau).
+            composable(
+                route = Routes.SEARCH_ROUTE,
+                arguments = listOf(
+                    navArgument(Routes.ARG_SEARCH_CATEGORY_ID) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                    // v7.1.87 — StringType nullable (et NON LongType) : seul un type
+                    // nullable autorise « argument absent ⇒ null » ; le ViewModel convertit.
+                    navArgument(Routes.ARG_SEARCH_GROUP_ID) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                ),
+                enterTransition = { slideInHorizontally(initialOffsetX = { rtlSign * it }) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -rtlSign * it / 3 }) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -rtlSign * it / 3 }) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { rtlSign * it }) }
+            ) {
+                SearchScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToPersonDetail = { id -> navController.navigate(Routes.personDetail(id)) },
+                    // v7.1.73 — résultats catégories/dossiers : mêmes routes que l'onglet Catégories.
+                    onNavigateToCategory = { id -> navController.navigate(Routes.categoryDetail(id)) },
+                    onNavigateToGroup = { id -> navController.navigate(Routes.categoryGroupDetail(id)) }
+                )
             }
 
             // Import des contacts du téléphone depuis les Paramètres (v7.1.28) —

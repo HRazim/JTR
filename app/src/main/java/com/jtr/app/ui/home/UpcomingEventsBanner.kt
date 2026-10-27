@@ -59,11 +59,14 @@ fun UpcomingEventsBanner(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(end = 6.dp)
             )
+            // v7.1.140 — titre NEUTRE, icône en accent : l'en-tête n'a pas de fond propre,
+            // il est posé sur le fond d'écran. Le titre en `primary` y était un rouge brique
+            // en Corail. Même grammaire que la Corbeille (v7.1.136) et les Paramètres
+            // (v7.1.137) : seule l'icône porte l'accent.
             Text(
                 text = stringResource(R.string.events_title),
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
+                fontWeight = FontWeight.SemiBold
             )
         }
         LazyRow(

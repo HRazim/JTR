@@ -4,11 +4,31 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jtr.app.data.files.OrphanFileSweeper
+import com.jtr.app.data.files.SweepPlan
 import com.jtr.app.worker.ReminderScheduler
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/**
+ * États du nettoyage des fichiers orphelins (v7.1.106, lot C2) — UDF strict, en deux temps
+ * ÉTANCHES : [Confirm] fige le plan du dry-run, et seul [SettingsViewModel.confirmCleanup]
+ * (le bouton du dialogue) déclenche la suppression de CE plan. Aucune écriture en base.
+ */
+sealed interface CleanupUiState {
+    data object Idle : CleanupUiState
+    data object Scanning : CleanupUiState
+    /** Dry-run terminé, rien trouvé : simple message, aucun fichier à supprimer. */
+    data object Empty : CleanupUiState
+    /** Dry-run terminé : [plan] = la liste exacte, affichée (nombre + taille) à confirmer. */
+    data class Confirm(val plan: SweepPlan) : CleanupUiState
+    data object Deleting : CleanupUiState
+    data class Done(val freedBytes: Long) : CleanupUiState
+}
 
 /**
  * SettingsViewModel — Persiste les préférences de notification via SharedPreferences.
@@ -73,5 +93,42 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun markPermissionAsked(permission: String) {
         prefs.edit().putBoolean("asked_$permission", true).apply()
+    }
+
+    // ── Nettoyage des fichiers orphelins (v7.1.106, lot C2) ──────────────────
+
+    private val _cleanupState = MutableStateFlow<CleanupUiState>(CleanupUiState.Idle)
+    val cleanupState: StateFlow<CleanupUiState> = _cleanupState.asStateFlow()
+
+    /** Lance le dry-run (lecture seule). Le résultat attend une confirmation humaine. */
+    fun scanUnusedFiles() {
+        if (_cleanupState.value is CleanupUiState.Scanning ||
+            _cleanupState.value is CleanupUiState.Deleting
+        ) return
+        _cleanupState.value = CleanupUiState.Scanning
+        viewModelScope.launch {
+            val plan = withContext(Dispatchers.IO) {
+                OrphanFileSweeper.scan(getApplication<Application>().applicationContext)
+            }
+            _cleanupState.value =
+                if (plan.count == 0) CleanupUiState.Empty else CleanupUiState.Confirm(plan)
+        }
+    }
+
+    /** Supprime EXACTEMENT le plan confirmé — jamais un re-scan silencieux. */
+    fun confirmCleanup() {
+        val plan = (_cleanupState.value as? CleanupUiState.Confirm)?.plan ?: return
+        _cleanupState.value = CleanupUiState.Deleting
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                OrphanFileSweeper.execute(getApplication<Application>().applicationContext, plan)
+            }
+            _cleanupState.value = CleanupUiState.Done(result.freedBytes)
+        }
+    }
+
+    /** Ferme le dialogue courant (annulation ou acquittement du résultat). */
+    fun dismissCleanup() {
+        _cleanupState.value = CleanupUiState.Idle
     }
 }

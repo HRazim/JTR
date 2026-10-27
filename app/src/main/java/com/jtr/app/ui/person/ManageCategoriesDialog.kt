@@ -1,12 +1,14 @@
 package com.jtr.app.ui.person
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -15,7 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -30,6 +32,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,13 +54,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import com.jtr.app.R
 import com.jtr.app.domain.model.Category
 import com.jtr.app.domain.model.CategoryGroup
@@ -70,8 +77,12 @@ import com.jtr.app.utils.searchTokens
 /**
  * Une ligne du sélecteur de catégories, à plat avec son niveau d'indentation pour
  * refléter la hiérarchie récursive (dossiers → sous-dossiers → catégories).
+ *
+ * v7.1.80 — `internal` (ainsi que le moteur et les lignes ci-dessous) : le MÊME langage
+ * sert désormais au sélecteur de cible du « Move » et au rattachement à un dossier
+ * ([com.jtr.app.ui.category.CategoryPickerSheet]) — réutilisation, pas de fork.
  */
-private sealed interface CategoryPickerRow {
+internal sealed interface CategoryPickerRow {
     val indent: Int
 
     /**
@@ -105,26 +116,49 @@ private sealed interface CategoryPickerRow {
  * récursif PAR CONSTRUCTION : on s'arrête au dossier replié, donc un sous-dossier n'est
  * même pas atteint tant que son parent est fermé — tout le sous-arbre disparaît d'un coup.
  * Les catégories LIBRES (sans dossier) ne dépendent d'aucun dossier : toujours visibles.
+ *
+ * v7.1.80 — deux paramètres pour les NOUVEAUX usages (défauts = comportement historique) :
+ * [excludeCategoryIds] retire des catégories de l'arbre ET de la recherche (le « Move »
+ * exclut sa catégorie SOURCE des cibles) ; [pruneEmptyFolders] n'émet un dossier que si
+ * son sous-arbre contient au moins une catégorie restante (un picker de rattachement
+ * n'affiche pas de bandeaux morts — le sélecteur de la fiche, lui, montre tout).
  */
-private fun buildCategoryPickerRows(
+internal fun buildCategoryPickerRows(
     categories: List<Category>,
     groups: List<CategoryGroup>,
     query: String,
-    expandedFolders: Set<Long>
+    expandedFolders: Set<Long>,
+    excludeCategoryIds: Set<String> = emptySet(),
+    pruneEmptyFolders: Boolean = false,
+    // v7.1.83 — dossiers à retirer de l'arbre (sélecteur de dossier CIBLE : on ne propose
+    // ni le dossier courant, ni ceux qu'on est en train de déplacer).
+    excludeGroupIds: Set<Long> = emptySet()
 ): List<CategoryPickerRow> {
+    val cats =
+        if (excludeCategoryIds.isEmpty()) categories
+        else categories.filter { it.id !in excludeCategoryIds }
+    val grps =
+        if (excludeGroupIds.isEmpty()) groups
+        else groups.filter { it.id !in excludeGroupIds }
     // Moteur de recherche CENTRAL (multi-mots, insensible casse/accents, sûr en arabe).
     val tokens = query.searchTokens()
     if (tokens.isNotEmpty()) {
-        return categories
+        return cats
             .filter { it.name.matchesAllTokens(tokens) }
             .map { CategoryPickerRow.Item(it, 0) }
     }
 
     val rows = mutableListOf<CategoryPickerRow>()
-    val catsByGroup = categories.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
-    val subByParent = groups.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
+    val catsByGroup = cats.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
+    val subByParent = grps.filter { it.parentGroupId != null }.groupBy { it.parentGroupId!! }
+
+    // Un sous-arbre « vivant » contient au moins une catégorie (après exclusions).
+    fun subtreeHasCategory(group: CategoryGroup): Boolean =
+        catsByGroup[group.id].orEmpty().isNotEmpty() ||
+            subByParent[group.id].orEmpty().any { subtreeHasCategory(it) }
 
     fun emitGroup(group: CategoryGroup, indent: Int) {
+        if (pruneEmptyFolders && !subtreeHasCategory(group)) return
         val childCategories = catsByGroup[group.id].orEmpty()
         val childGroups = subByParent[group.id].orEmpty()
         val expanded = group.id in expandedFolders
@@ -139,8 +173,12 @@ private fun buildCategoryPickerRows(
         childGroups.forEach { emitGroup(it, indent + 1) }
     }
 
-    groups.filter { it.parentGroupId == null }.forEach { emitGroup(it, 0) }
-    categories.filter { it.parentGroupId == null }.forEach { rows += CategoryPickerRow.Item(it, 0) }
+    // Un dossier dont le parent a été exclu remonte à la RACINE plutôt que de disparaître
+    // avec lui (sinon des cibles valides deviendraient inatteignables).
+    val visibleIds = grps.map { it.id }.toSet()
+    grps.filter { it.parentGroupId == null || it.parentGroupId !in visibleIds }
+        .forEach { emitGroup(it, 0) }
+    cats.filter { it.parentGroupId == null }.forEach { rows += CategoryPickerRow.Item(it, 0) }
     return rows
 }
 
@@ -232,7 +270,7 @@ fun ManageCategoriesDialog(
                     TextField(
                         value = query,
                         onValueChange = { query = it },
-                        placeholder = { Text(stringResource(R.string.person_categories_search_placeholder)) },
+                        placeholder = { Text(stringResource(R.string.category_search_placeholder)) },
                         singleLine = true,
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
@@ -331,7 +369,7 @@ fun ManageCategoriesDialog(
                         )
                     }
                 }
-                items(rows, key = ::pickerRowKey) { row ->
+                itemsIndexed(rows, key = { _, row -> pickerRowKey(row) }) { index, row ->
                     when (row) {
                         is CategoryPickerRow.Folder -> FolderHeaderRow(
                             group = row.group,
@@ -349,7 +387,11 @@ fun ManageCategoriesDialog(
                             category = row.category,
                             indent = row.indent,
                             checked = row.category.id in memberIds,
-                            onCheckedChange = { onToggle(row.category.id, it) }
+                            onCheckedChange = { onToggle(row.category.id, it) },
+                            // Divider léger uniquement ENTRE deux catégories qui se suivent :
+                            // il casse la « masse blanche » sans encadrer les bandeaux de
+                            // dossier (eux se détachent déjà par leur fond + marge).
+                            showDivider = rows.getOrNull(index + 1) is CategoryPickerRow.Item
                         )
                     }
                 }
@@ -375,105 +417,246 @@ fun ManageCategoriesDialog(
     }
 }
 
-private fun pickerRowKey(row: CategoryPickerRow): String = when (row) {
+internal fun pickerRowKey(row: CategoryPickerRow): String = when (row) {
     is CategoryPickerRow.Folder -> "g_${row.group.id}"
     is CategoryPickerRow.Item -> "c_${row.category.id}"
 }
 
 /**
- * En-tête de dossier : repliable (v7.1.54) mais toujours PAS cochable — un contact
- * appartient à des catégories, jamais à un dossier. Le clic ne peut donc que déplier.
+ * v7.1.77 — vignette d'identité d'une ligne du sélecteur : l'IMAGE de la catégorie ou
+ * du dossier devient l'identifiant visuel principal (HR personnalise ses catégories
+ * avec des images, c'est ce qu'il reconnaît — 13/18 en ont une). À défaut, repli DOUX :
+ * initiale sur teinte discrète de la couleur de la catégorie (fini la pastille saturée,
+ * la couleur n'est plus qu'un accent), ou icône dossier neutre pour un groupe sans
+ * image. Chargement Coil, même mécanisme que les tuiles (chemin absolu filesDir/photos).
  */
 @Composable
-private fun FolderHeaderRow(
+internal fun PickerThumbnail(
+    imagePath: String?,
+    name: String,
+    colorHex: String?,
+    modifier: Modifier = Modifier,
+    // v7.1.126 — diamètre paramétrable : 36 dp dans les feuilles de sélection (défaut
+    // d'origine), 40/44 dp dans les listes de catégories. L'anneau et son liseré, eux, ne
+    // changent PAS avec la taille : un liseré qui grossit se lirait comme un cadre.
+    size: Dp = 36.dp,
+    // v7.1.126 — forme paramétrable pour servir AUSSI les dossiers, que les listes
+    // dessinent en carré arrondi (la forme est ce qui distingue un dossier d'une
+    // catégorie ; l'anneau ne doit pas effacer cette distinction).
+    shape: Shape = CircleShape,
+    // v7.1.126 — habillage du repli DOSSIER (ni photo, ni couleur propre). Les défauts
+    // sont le rendu NEUTRE de ce composant, celui des feuilles de sélection : elles ne
+    // passent rien et ne changent donc pas. Seules les listes de l'écran Catégories les
+    // surchargent, pour garder leur dossier TEINTÉ par la palette comme avant v7.1.126.
+    folderContainerColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    folderIconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    folderIconSize: Dp = 18.dp
+) {
+    // Itération 2 — ANNEAU d'accent discret autour de la vignette : la couleur stockée de
+    // la catégorie reste visible même quand une image occupe le disque (avant, l'image
+    // effaçait toute identité couleur). Adoucie (alpha), jamais d'aplat saturé. Un dossier
+    // n'a pas de couleur stockée (CategoryGroup) → liseré neutre, qui donne au passage un
+    // bord net aux photos claires sur fond clair.
+    val accent = if (colorHex != null) rememberCategoryColor(colorHex) else null
+    val ring = accent?.copy(alpha = 0.55f) ?: MaterialTheme.colorScheme.outlineVariant
+    Box(
+        modifier = modifier
+            .size(size)
+            .border(1.5.dp, ring, shape)
+            // Fin espace entre l'anneau et le disque : lu comme un LISERÉ, pas un cadre.
+            .padding(3.dp)
+            .clip(shape),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            imagePath != null -> AsyncImage(
+                model = imagePath,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            accent != null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(accent.copy(alpha = 0.16f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // codePointAt : une initiale emoji/arabe (surrogate pair) reste entière.
+                    val initial = name.trim().let {
+                        if (it.isEmpty()) "" else String(Character.toChars(it.codePointAt(0))).uppercase()
+                    }
+                    if (initial.isEmpty()) {
+                        Icon(Icons.Default.Folder, null, Modifier.size(18.dp), tint = accent)
+                    } else {
+                        Text(
+                            initial,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = accent
+                        )
+                    }
+                }
+            }
+            else -> Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(folderContainerColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Folder, null,
+                    modifier = Modifier.size(folderIconSize),
+                    tint = folderIconTint
+                )
+            }
+        }
+    }
+}
+
+/**
+ * En-tête de dossier : repliable (v7.1.54) mais toujours PAS cochable — un contact
+ * appartient à des catégories, jamais à un dossier. Le clic ne peut donc que déplier.
+ * v7.1.77 : l'icône dossier générique cède la place à la vignette du groupe (son image
+ * de couverture, sinon repli dossier neutre).
+ *
+ * Itération 2 — le dossier se lit comme un CONTENANT au premier regard (retour HR :
+ * « trop plat », groupes et catégories indistincts) :
+ * - BANDEAU à fond doux ([surfaceContainerHigh], rôle de thème → suit le mode sombre)
+ *   au lieu d'une ligne nue ; nom un cran plus marqué (titleSmall/onSurface).
+ * - L'indentation décale le BLOC entier (padding AVANT le fond) : un sous-dossier est
+ *   un bandeau plus court en retrait, pas un bandeau pleine largeur au texte décalé.
+ * - Marge haute HORS fond = respiration entre le bloc d'un groupe et le suivant.
+ * - Chevron déporté en FIN de ligne (convention des listes de dossiers) : vignettes et
+ *   noms restent alignés à l'ouverture, avec ou sans enfants.
+ */
+@Composable
+internal fun FolderHeaderRow(
     group: CategoryGroup,
     indent: Int,
     expanded: Boolean,
     hasChildren: Boolean,
-    onToggleExpand: () -> Unit
+    onToggleExpand: () -> Unit,
+    // v7.1.83 — non nul ⇒ le dossier est une CIBLE sélectionnable (déplacer une catégorie
+    // dans un groupe) : le corps de la ligne CHOISIT, et le chevron devient une zone
+    // cliquable à part pour déplier. Nul (usages historiques) ⇒ la ligne déplie, inchangé.
+    onSelect: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(start = (indent * 20).dp, top = 6.dp)
             .clip(MaterialTheme.shapes.small)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             // Dossier vide : rien à déplier ⇒ ligne inerte (pas de ripple qui promette
-            // une ouverture qui n'arrivera pas).
+            // une ouverture qui n'arrivera pas) — sauf s'il est sélectionnable.
             .then(
-                if (hasChildren) Modifier.clickable(role = Role.Button, onClick = onToggleExpand)
-                else Modifier
+                when {
+                    onSelect != null -> Modifier.clickable(role = Role.Button, onClick = onSelect)
+                    hasChildren -> Modifier.clickable(role = Role.Button, onClick = onToggleExpand)
+                    else -> Modifier
+                }
             )
-            .padding(start = (indent * 16).dp, top = 8.dp, bottom = 2.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        if (hasChildren) {
-            Icon(
-                // AutoMirrored : en RTL (arabe) le chevron « fermé » doit pointer vers la
-                // GAUCHE, sens de lecture. Ouvert, il pointe vers le bas dans les deux sens.
-                if (expanded) Icons.Default.KeyboardArrowDown
-                else Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = stringResource(
-                    if (expanded) R.string.common_hide else R.string.common_show
-                ),
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        } else {
-            // Même gouttière que les dossiers repliables : les noms restent alignés.
-            Spacer(Modifier.size(18.dp))
-        }
-        Icon(
-            Icons.Default.Folder, null,
-            modifier = Modifier.size(18.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        PickerThumbnail(imagePath = group.imagePath, name = group.name, colorHex = null)
         Text(
             group.name,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
         )
+        if (hasChildren) {
+            val chevron = @Composable {
+                Icon(
+                    // AutoMirrored : en RTL (arabe) le chevron « fermé » doit pointer vers la
+                    // GAUCHE, sens de lecture. Ouvert, il pointe vers le bas dans les deux sens.
+                    if (expanded) Icons.Default.KeyboardArrowDown
+                    else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = stringResource(
+                        if (expanded) R.string.common_hide else R.string.common_show
+                    ),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (onSelect != null) {
+                // Cible tactile propre pour déplier sans choisir le dossier.
+                IconButton(onClick = onToggleExpand) { chevron() }
+            } else {
+                chevron()
+            }
+        }
     }
 }
 
+/**
+ * v7.1.80 — [checked] devient NULLABLE : `null` = ligne de sélection SIMPLE (le tap
+ * CHOISIT, rôle Button, pas de case — le sélecteur de cible du « Move ») ; non-null =
+ * ligne cochable historique (fiche contact, rattachement multiple). Les appels
+ * existants passent un Boolean : comportement strictement inchangé.
+ */
 @Composable
-private fun CategoryCheckRow(
+internal fun CategoryCheckRow(
     category: Category,
     indent: Int,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    checked: Boolean?,
+    onCheckedChange: (Boolean) -> Unit,
+    showDivider: Boolean
 ) {
-    // Toute la ligne est cochable (accessibilité : rôle Checkbox + libellé = nom).
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.small)
-            .toggleable(
-                value = checked,
-                role = Role.Checkbox,
-                onValueChange = onCheckedChange
-            )
-            .padding(start = (indent * 16).dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
+    // Itération 2 — l'indentation enveloppe la ligne ENTIÈRE (divider compris) et sort de
+    // la zone cliquable : le ripple s'arrête au bord indenté, l'arbre parent → enfants se
+    // lit au décalage du bloc, cohérent avec les bandeaux de dossier.
+    Column(modifier = Modifier.padding(start = (indent * 20).dp)) {
+        // Toute la ligne est cochable/cliquable (a11y : rôle Checkbox ou Button + nom).
+        Row(
             modifier = Modifier
-                .size(20.dp)
-                .clip(CircleShape)
-                .background(rememberCategoryColor(category.color))
-        )
-        Text(
-            category.name,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
-        // Étoile (v7.1.50) : les favoris remontent en tête (ORDER BY isFavorite DESC côté
-        // DAO) — sans repère visuel, l'ordre paraissait arbitraire.
-        if (category.isFavorite) {
-            FavoriteStar(size = 16.dp)
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.small)
+                .then(
+                    if (checked != null) Modifier.toggleable(
+                        value = checked,
+                        role = Role.Checkbox,
+                        onValueChange = onCheckedChange
+                    ) else Modifier.clickable(role = Role.Button) { onCheckedChange(true) }
+                )
+                .padding(top = 4.dp, bottom = 4.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // v7.1.77 — l'image de la catégorie remplace la pastille de couleur saturée :
+            // c'est elle que HR reconnaît. Sans image, initiale sur teinte douce de la
+            // couleur (l'accent subsiste, discret).
+            PickerThumbnail(
+                imagePath = category.imagePath,
+                name = category.name,
+                colorHex = category.color
+            )
+            Text(
+                category.name,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f)
+            )
+            // Étoile (v7.1.50) : les favoris remontent en tête (ORDER BY isFavorite DESC côté
+            // DAO) — sans repère visuel, l'ordre paraissait arbitraire.
+            if (category.isFavorite) {
+                FavoriteStar(size = 16.dp)
+            }
+            // Le rôle/clic est porté par la Row → la case ne re-gère pas l'événement.
+            // Sélection simple (checked == null) : pas de case, le tap suffit.
+            if (checked != null) {
+                Checkbox(checked = checked, onCheckedChange = null)
+            }
         }
-        // Le rôle/clic est porté par la Row → la case ne re-gère pas l'événement.
-        Checkbox(checked = checked, onCheckedChange = null)
+        if (showDivider) {
+            HorizontalDivider(
+                // Retrait = vignette (36) + espace (12) : le trait court sous le NOM,
+                // à la Material, et suit le sens de lecture (padding start) en RTL.
+                modifier = Modifier.padding(start = 48.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+        }
     }
 }

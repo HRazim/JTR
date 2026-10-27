@@ -19,9 +19,9 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jtr.app.R
 import com.jtr.app.data.backup.BackupManager
+import com.jtr.app.ui.components.JtrAlertDialog
 
 /**
  * Dialogue « Sauvegarde & restauration » :
@@ -77,22 +78,21 @@ fun BackupDialog(
 
     // Confirmation de restauration AVANT d'écraser/fusionner les données.
     pendingImportUri?.let { uri ->
-        AlertDialog(
+        // v7.1.132 - DESTRUCTIF au sens du socle : la restauration fusionne et ECRASE les
+        // fiches de meme identifiant, sans retour arriere. L'icone d'alerte reste donc rouge
+        // (c'est elle qui porte la distinction depuis v7.1.131), et la confirmation avec elle.
+        JtrAlertDialog(
             onDismissRequest = { pendingImportUri = null },
-            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.backup_confirm_title)) },
-            text = { Text(stringResource(R.string.backup_confirm_text)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    pendingImportUri = null
-                    viewModel.import(uri)
-                }) { Text(stringResource(R.string.backup_confirm_action)) }
+            icon = Icons.Default.Warning,
+            title = stringResource(R.string.backup_confirm_title),
+            text = stringResource(R.string.backup_confirm_text),
+            confirmLabel = stringResource(R.string.backup_confirm_action),
+            onConfirm = {
+                pendingImportUri = null
+                viewModel.import(uri)
             },
-            dismissButton = {
-                TextButton(onClick = { pendingImportUri = null }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
         )
     }
 
@@ -107,19 +107,25 @@ fun BackupDialog(
                     style = MaterialTheme.typography.bodyMedium)
 
                 when (val s = state) {
+                    // v7.1.136 — 24 dp comme [com.jtr.app.ui.components.JtrProgressDialog] :
+                    // deux tailles de cercle pour la même idée, c'est une de trop.
                     is BackupUiState.Working -> Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(10.dp))
                         Text(stringResource(R.string.backup_working),
                             style = MaterialTheme.typography.bodyMedium)
                     }
+                    // v7.1.136 — succès en `onSurfaceVariant` et non `primary` : en Corail,
+                    // `primary` est le rouge brique, et « sauvegarde exportée » s'affichait
+                    // donc en rouge, juste au-dessus du message d'échec. Le rouge reste au
+                    // seul `error` (ci-dessous) — 5e morsure de `primary`, même remède.
                     is BackupUiState.Success -> Text(
                         text = if (s.isExport)
                             pluralStringResource(R.plurals.backup_export_success, s.count, s.count)
                         else pluralStringResource(R.plurals.backup_import_success, s.count, s.count),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     is BackupUiState.Error -> Text(
                         text = stringResource(s.messageRes),
@@ -139,7 +145,11 @@ fun BackupDialog(
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.backup_export))
                 }
-                OutlinedButton(
+                // v7.1.134 — paire canonique sous « Exporter » (`Button` plein) : plein fort
+                // puis plein doux. Volontairement PAS en `error` bien qu'il mène à une
+                // restauration destructive — le rouge est porté par la confirmation, le poser
+                // dès l'entrée le banaliserait.
+                FilledTonalButton(
                     onClick = { importLauncher.launch("*/*") },
                     enabled = state !is BackupUiState.Working,
                     modifier = Modifier.fillMaxWidth()

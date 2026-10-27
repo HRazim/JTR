@@ -5,13 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.runtime.Composable
@@ -26,6 +23,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jtr.app.R
+import com.jtr.app.ui.components.JtrAlertDialog
 import com.jtr.app.ui.welcome.ContactSelectionScreen
 
 /**
@@ -77,15 +75,12 @@ fun ImportContactsScreen(
         }
 
         is ImportContactsViewModel.UiState.Error -> {
-            AlertDialog(
+            JtrAlertDialog(
                 onDismissRequest = onNavigateBack,
-                icon = { Icon(Icons.Default.Contacts, contentDescription = null) },
-                title = { Text(stringResource(R.string.welcome_import_failed)) },
-                confirmButton = {
-                    TextButton(onClick = onNavigateBack) {
-                        Text(stringResource(R.string.common_ok))
-                    }
-                }
+                icon = Icons.Default.Contacts,
+                title = stringResource(R.string.welcome_import_failed),
+                confirmLabel = stringResource(R.string.common_ok),
+                onConfirm = onNavigateBack
             )
         }
 
@@ -135,19 +130,16 @@ private fun ImportProgressDialog(done: Int, total: Int) {
  */
 @Composable
 private fun ImportRecapDialog(imported: Int, updated: Int, skipped: Int, onDismiss: () -> Unit) {
-    AlertDialog(
+    // Le conditionnel est calcule AVANT l'appel : le socle prend un corps `text: String`.
+    val message = if (updated > 0)
+        stringResource(R.string.import_contacts_done_message_updated, imported, updated, skipped)
+    else stringResource(R.string.import_contacts_done_message, imported, skipped)
+    JtrAlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Default.Contacts, contentDescription = null) },
-        title = { Text(stringResource(R.string.import_contacts_done_title)) },
-        text = {
-            Text(
-                if (updated > 0)
-                    stringResource(R.string.import_contacts_done_message_updated, imported, updated, skipped)
-                else stringResource(R.string.import_contacts_done_message, imported, skipped)
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_done)) }
-        }
+        icon = Icons.Default.Contacts,
+        title = stringResource(R.string.import_contacts_done_title),
+        text = message,
+        confirmLabel = stringResource(R.string.common_done),
+        onConfirm = onDismiss
     )
 }
