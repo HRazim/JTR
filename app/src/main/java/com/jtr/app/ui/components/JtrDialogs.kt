@@ -2,9 +2,14 @@ package com.jtr.app.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -14,10 +19,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 
 /**
  * SOCLE DE DIALOGUE PARTAGÉ (v7.1.128, lot L4).
@@ -185,5 +193,53 @@ fun JtrPromptDialog(
                 colors = jtrDismissButtonColors()
             ) { Text(dismissLabel) }
         }
+    )
+}
+
+
+/**
+ * Dialogue de PROGRESSION (v7.1.135) — un travail en cours, AUCUNE action offerte.
+ *
+ * Le dernier `AlertDialog` nu du module était celui-là : un dialogue à `confirmButton = {}`,
+ * c'est-à-dire un dialogue dont le seul slot obligatoire du composant M3 est rempli par du
+ * vide. Ce n'est pas une confirmation sans bouton, c'est un autre objet — d'où un composant
+ * à lui, plutôt qu'un paramètre de plus sur [JtrAlertDialog].
+ *
+ * **Non annulable, et c'est le propos** : fermer en plein scan laisserait un plan fantôme et
+ * rien n'est interruptible. L'ancien code s'en remettait à un `onDismissRequest` VIDE (le
+ * rappel partait, ne faisait rien, le dialogue restait) ; on le dit désormais au conteneur
+ * lui-même via [DialogProperties] — même résultat à l'écran, mais l'intention est lisible
+ * au lieu d'être déduite d'une lambda vide.
+ *
+ * @param message texte affiché À CÔTÉ du cercle de progression (l'étape en cours) ; `null`
+ *   laisse le cercle seul.
+ */
+@Composable
+fun JtrProgressDialog(
+    title: String,
+    modifier: Modifier = Modifier,
+    message: String? = null,
+    icon: ImageVector? = null
+) {
+    AlertDialog(
+        onDismissRequest = {},
+        modifier = modifier,
+        properties = DialogProperties(
+            dismissOnBackPress = false, dismissOnClickOutside = false),
+        icon = icon?.let {
+            { Icon(it, contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+        },
+        title = { Text(title) },
+        text = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                if (message != null) {
+                    Spacer(Modifier.width(16.dp))
+                    Text(message)
+                }
+            }
+        },
+        confirmButton = {}
     )
 }

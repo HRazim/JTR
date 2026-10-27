@@ -60,6 +60,7 @@ import com.jtr.app.security.SecuritySetupDialog
 import com.jtr.app.security.SecurityViewModel
 import com.jtr.app.ui.backup.BackupDialog
 import com.jtr.app.ui.components.JtrAlertDialog
+import com.jtr.app.ui.components.JtrProgressDialog
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
 import com.jtr.app.ui.theme.ThemePreset
 import com.jtr.app.utils.LocaleManager
@@ -596,28 +597,18 @@ fun SettingsScreen(
 
     // ── Nettoyage des fichiers orphelins (v7.1.106, lot C2) ────────────────────
     // Scan (dry-run) → confirmation avec nombre + taille → suppression → bilan.
-    // Pendant le travail, le dialogue n'est PAS annulable (onDismissRequest vide) :
-    // fermer en plein scan laisserait un plan fantôme, et rien n'est interruptible.
+    // Pendant le travail, le dialogue n'est PAS annulable — fermer en plein scan laisserait
+    // un plan fantôme, et rien n'est interruptible. C'est désormais [JtrProgressDialog] qui
+    // porte cette règle (v7.1.135), dans son conteneur plutôt que dans un rappel vide.
     when (val cleanup = cleanupState) {
         is CleanupUiState.Scanning, is CleanupUiState.Deleting -> {
-            AlertDialog(
-                onDismissRequest = {},
-                icon = { Icon(Icons.Default.CleaningServices, contentDescription = null) },
-                title = { Text(stringResource(R.string.settings_cleanup_title)) },
-                text = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            stringResource(
-                                if (cleanup is CleanupUiState.Scanning)
-                                    R.string.settings_cleanup_scanning
-                                else R.string.backup_working
-                            )
-                        )
-                    }
-                },
-                confirmButton = {}
+            JtrProgressDialog(
+                icon = Icons.Default.CleaningServices,
+                title = stringResource(R.string.settings_cleanup_title),
+                message = stringResource(
+                    if (cleanup is CleanupUiState.Scanning) R.string.settings_cleanup_scanning
+                    else R.string.backup_working
+                )
             )
         }
         is CleanupUiState.Confirm -> {

@@ -23,7 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -59,6 +58,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.jtr.app.R
 import com.jtr.app.domain.model.GalleryImage
+import com.jtr.app.ui.components.FormTextField
 import com.jtr.app.ui.components.WheelPicker
 import com.jtr.app.ui.components.rememberDialogBottomInsetDp
 import com.jtr.app.ui.map.MapScreen
@@ -294,22 +294,30 @@ private fun DescriptionEditor(
     // Plafond : ~la moitié de l'écran, quel que soit l'appareil — au-delà, scroll interne.
     val maxFieldHeight = LocalConfiguration.current.screenHeightDp.dp / 2
     Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
-        OutlinedTextField(
+        // v7.1.135 — le champ du FORMULAIRE (16 dp, `surfaceVariant`) et non un
+        // `OutlinedTextField` nu : c'était le dernier champ du module resté au défaut M3
+        // (coins 4 dp, intérieur transparent), à côté d'un panneau qui, lui, suit le
+        // langage des formulaires depuis le Groupe 3. `textStyle` disparaît : le socle
+        // n'en impose aucun, donc le champ hérite de `LocalTextStyle`, qui EST
+        // `bodyLarge` ici — même rendu, un paramètre de moins.
+        FormTextField(
             value = draft,
             onValueChange = onDraftChange,
             // Le libellé flottant porte le nom du champ (a11y) — l'icône de la ligne au
             // repos n'est plus là pour le faire.
-            label = { Text(stringResource(R.string.gallery_details_description)) },
-            placeholder = { Text(stringResource(R.string.gallery_details_description_hint)) },
+            label = stringResource(R.string.gallery_details_description),
+            placeholder = stringResource(R.string.gallery_details_description_hint),
             // v7.1.126 — même traitement que les notes : une description est de la prose,
             // majuscule en début de champ et après un point.
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+            // L'auto-grandissement tient à ces deux-là : plancher de lignes + plafond de
+            // hauteur. `singleLine = false` est EXPLICITE — le socle, lui, part de `true`.
+            singleLine = false,
             minLines = EDITOR_MIN_LINES,
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = maxFieldHeight)
-                .focusRequester(focusRequester),
-            textStyle = MaterialTheme.typography.bodyLarge
+                .focusRequester(focusRequester)
         )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = onDone) {
