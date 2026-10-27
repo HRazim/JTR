@@ -675,7 +675,9 @@ fun CategoriesScreen(
                 // Mode cible : « ➕ Nouvelle catégorie » en PREMIER choix fixe — crée
                 // la cible à la volée et y déplace immédiatement les contacts cochés.
                 if (isPickingMoveTarget) {
-                    OutlinedButton(
+                    // v7.1.134 — tonal : c'est une affordance en TÊTE DE LISTE, pas un CTA ;
+                    // le filet `outline` la faisait lire comme un champ de saisie.
+                    FilledTonalButton(
                         onClick = { showCreateTargetDialog = true },
                         modifier = Modifier
                             .fillMaxWidth()

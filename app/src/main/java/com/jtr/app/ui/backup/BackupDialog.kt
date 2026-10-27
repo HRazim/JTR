@@ -19,9 +19,9 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -139,7 +139,11 @@ fun BackupDialog(
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.backup_export))
                 }
-                OutlinedButton(
+                // v7.1.134 — paire canonique sous « Exporter » (`Button` plein) : plein fort
+                // puis plein doux. Volontairement PAS en `error` bien qu'il mène à une
+                // restauration destructive — le rouge est porté par la confirmation, le poser
+                // dès l'entrée le banaliserait.
+                FilledTonalButton(
                     onClick = { importLauncher.launch("*/*") },
                     enabled = state !is BackupUiState.Working,
                     modifier = Modifier.fillMaxWidth()

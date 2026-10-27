@@ -22,10 +22,10 @@ import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.ChecklistRtl
 import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -223,7 +223,9 @@ fun WelcomeScreen(
                     }
                     Spacer(Modifier.height(10.dp))
                     // Importation SÉLECTIVE : ouvre la liste native cochable.
-                    OutlinedButton(
+                    // v7.1.134 — tonal : collé sous le primaire, même hauteur 56 dp. Plein
+                    // fort / plein doux se lit d'un coup d'œil ; le filet clair, non.
+                    FilledTonalButton(
                         onClick = {
                             if (hasContactsPermission()) {
                                 viewModel.loadDeviceContacts()
