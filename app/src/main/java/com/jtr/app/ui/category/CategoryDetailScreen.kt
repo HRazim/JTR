@@ -318,14 +318,15 @@ fun CategoryDetailScreen(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                                 onClick = { dismiss(); showInfoDialog = true }
                             )
-                            // v7.1.70 — « Supprimer » (icône corbeille + rouge), MÊME action
-                            // visuelle que le footer de l'écran Catégories (#2). La confirmation
-                            // (inchangée) décrit honnêtement le passage en corbeille.
+                            // v7.1.70 — « Supprimer » : MÊME action visuelle que le footer de
+                            // l'écran Catégories (#2). La confirmation (inchangée) décrit
+                            // honnêtement le passage en corbeille.
+                            // v7.1.139 — seule l'ICÔNE reste en `error`, le libellé redevient
+                            // neutre : c'était le dernier item de menu à peindre AUSSI son texte
+                            // en rouge, là où les trois autres (dissoudre, mettre à la corbeille,
+                            // supprimer une fiche) ne teintent que l'icône depuis v7.1.129.
                             DropdownMenuItem(
-                                text = {
-                                    Text(stringResource(R.string.common_delete),
-                                        color = MaterialTheme.colorScheme.error)
-                                },
+                                text = { Text(stringResource(R.string.common_delete)) },
                                 leadingIcon = { Icon(Icons.Default.Delete, null,
                                     tint = MaterialTheme.colorScheme.error) },
                                 onClick = { dismiss(); showTrashConfirm = true }
