@@ -57,7 +57,11 @@ private fun jtrDismissButtonColors() = ButtonDefaults.textButtonColors(
  *   (un dialogue dont « Annuler » et le tap-dehors divergent serait un piège).
  * @param destructive colore la confirmation en `error` — le SEUL idiome destructif retenu,
  *   via `textButtonColors` : il teint aussi l'état pressé et l'état désactivé, ce que le
- *   `Text(color = error)` de l'ancien code ne faisait pas.
+ *   `Text(color = error)` de l'ancien code ne faisait pas. Il teint AUSSI l'icône, et
+ *   c'est elle qui porte réellement la distinction : sur une palette chaude (Corail),
+ *   `primary` et `error` sont deux rouges brique que rien ne sépare, donc un confirm
+ *   « rouge » n'informe plus. Une icône NON destructive se tait donc en
+ *   `onSurfaceVariant` (v7.1.131) : icône rouge = destructif, icône neutre = non.
  */
 @Composable
 fun JtrAlertDialog(
@@ -81,7 +85,7 @@ fun JtrAlertDialog(
                 Icon(
                     it, contentDescription = null,
                     tint = if (destructive) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },

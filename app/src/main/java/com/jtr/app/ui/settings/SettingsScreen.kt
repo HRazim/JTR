@@ -59,6 +59,7 @@ import com.jtr.app.security.SecurityAuthDialog
 import com.jtr.app.security.SecuritySetupDialog
 import com.jtr.app.security.SecurityViewModel
 import com.jtr.app.ui.backup.BackupDialog
+import com.jtr.app.ui.components.JtrAlertDialog
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
 import com.jtr.app.ui.theme.ThemePreset
 import com.jtr.app.utils.LocaleManager
@@ -620,79 +621,55 @@ fun SettingsScreen(
             )
         }
         is CleanupUiState.Confirm -> {
-            AlertDialog(
+            // Taille localisée par l'OS (« 71 Mo », « 71 MB »…). Calculée UNE fois ici :
+            // le socle ne prend que des String, et le corps comme le bouton la citent.
+            val freeable = android.text.format.Formatter.formatShortFileSize(
+                context, cleanup.plan.totalBytes
+            )
+            JtrAlertDialog(
                 onDismissRequest = { settingsViewModel.dismissCleanup() },
-                icon = { Icon(Icons.Default.CleaningServices, contentDescription = null) },
-                title = { Text(stringResource(R.string.settings_cleanup_title)) },
-                text = {
-                    Text(
-                        // Forme pluralisée (v7.1.107) : « 1 unused file » vs « 2 unused
-                        // files » — chaque forme garde %1$d (lint ImpliedQuantity).
-                        pluralStringResource(
-                            R.plurals.settings_cleanup_confirm_message,
-                            cleanup.plan.count,
-                            cleanup.plan.count,
-                            // Taille localisée par l'OS (« 71 Mo », « 71 MB »…).
-                            android.text.format.Formatter.formatShortFileSize(
-                                context, cleanup.plan.totalBytes
-                            )
-                        )
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = { settingsViewModel.confirmCleanup() }) {
-                        // v7.1.116 (b) — le bouton nomme le GAIN (« Free up 71 MB »), pas
-                        // l'acte de suppression : clé dédiée (common_delete est partagé).
-                        Text(
-                            stringResource(
-                                R.string.settings_cleanup_confirm_button,
-                                android.text.format.Formatter.formatShortFileSize(
-                                    context, cleanup.plan.totalBytes
-                                )
-                            )
-                        )
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { settingsViewModel.dismissCleanup() }) {
-                        Text(stringResource(R.string.common_cancel))
-                    }
-                }
+                icon = Icons.Default.CleaningServices,
+                title = stringResource(R.string.settings_cleanup_title),
+                // Forme pluralisée (v7.1.107) : « 1 unused file » vs « 2 unused
+                // files » — chaque forme garde %1$d (lint ImpliedQuantity).
+                text = pluralStringResource(
+                    R.plurals.settings_cleanup_confirm_message,
+                    cleanup.plan.count,
+                    cleanup.plan.count,
+                    freeable
+                ),
+                // v7.1.116 (b) — le bouton nomme le GAIN (« Free up 71 MB »), pas
+                // l'acte de suppression : clé dédiée (common_delete est partagé).
+                confirmLabel = stringResource(
+                    R.string.settings_cleanup_confirm_button, freeable
+                ),
+                onConfirm = { settingsViewModel.confirmCleanup() },
+                dismissLabel = stringResource(R.string.common_cancel)
             )
         }
         is CleanupUiState.Empty -> {
-            AlertDialog(
+            JtrAlertDialog(
                 onDismissRequest = { settingsViewModel.dismissCleanup() },
-                icon = { Icon(Icons.Default.CleaningServices, contentDescription = null) },
-                title = { Text(stringResource(R.string.settings_cleanup_title)) },
-                text = { Text(stringResource(R.string.settings_cleanup_none)) },
-                confirmButton = {
-                    TextButton(onClick = { settingsViewModel.dismissCleanup() }) {
-                        Text(stringResource(R.string.common_ok))
-                    }
-                }
+                icon = Icons.Default.CleaningServices,
+                title = stringResource(R.string.settings_cleanup_title),
+                text = stringResource(R.string.settings_cleanup_none),
+                confirmLabel = stringResource(R.string.common_ok),
+                onConfirm = { settingsViewModel.dismissCleanup() }
             )
         }
         is CleanupUiState.Done -> {
-            AlertDialog(
+            JtrAlertDialog(
                 onDismissRequest = { settingsViewModel.dismissCleanup() },
-                icon = { Icon(Icons.Default.CleaningServices, contentDescription = null) },
-                title = { Text(stringResource(R.string.settings_cleanup_title)) },
-                text = {
-                    Text(
-                        stringResource(
-                            R.string.settings_cleanup_done,
-                            android.text.format.Formatter.formatShortFileSize(
-                                context, cleanup.freedBytes
-                            )
-                        )
+                icon = Icons.Default.CleaningServices,
+                title = stringResource(R.string.settings_cleanup_title),
+                text = stringResource(
+                    R.string.settings_cleanup_done,
+                    android.text.format.Formatter.formatShortFileSize(
+                        context, cleanup.freedBytes
                     )
-                },
-                confirmButton = {
-                    TextButton(onClick = { settingsViewModel.dismissCleanup() }) {
-                        Text(stringResource(R.string.common_ok))
-                    }
-                }
+                ),
+                confirmLabel = stringResource(R.string.common_ok),
+                onConfirm = { settingsViewModel.dismissCleanup() }
             )
         }
         is CleanupUiState.Idle -> Unit
@@ -1190,17 +1167,14 @@ private fun PermissionRationaleDialog(
     onContinue: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    JtrAlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(icon, contentDescription = null) },
-        title = { Text(title) },
-        text = { Text(message) },
-        confirmButton = {
-            TextButton(onClick = onContinue) { Text(stringResource(R.string.common_ok)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-        }
+        icon = icon,
+        title = title,
+        text = message,
+        confirmLabel = stringResource(R.string.common_ok),
+        onConfirm = onContinue,
+        dismissLabel = stringResource(R.string.common_cancel)
     )
 }
 
@@ -1213,19 +1187,14 @@ private fun PermissionSettingsDialog(
     onOpen: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    JtrAlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(icon, contentDescription = null) },
-        title = { Text(title) },
-        text = { Text(message) },
-        confirmButton = {
-            TextButton(onClick = onOpen) {
-                Text(stringResource(R.string.common_open_settings))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-        }
+        icon = icon,
+        title = title,
+        text = message,
+        confirmLabel = stringResource(R.string.common_open_settings),
+        onConfirm = onOpen,
+        dismissLabel = stringResource(R.string.common_cancel)
     )
 }
 

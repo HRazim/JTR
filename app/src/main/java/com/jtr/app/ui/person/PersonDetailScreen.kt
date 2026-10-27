@@ -281,28 +281,22 @@ fun PersonDetailScreen(
     }
 
     if (showBackgroundRationale) {
-        AlertDialog(
+        JtrAlertDialog(
             onDismissRequest = { showBackgroundRationale = false },
-            icon = { Icon(Icons.Default.LocationOn, null,
-                tint = MaterialTheme.colorScheme.primary) },
-            title = { Text(stringResource(R.string.settings_location_bg_title)) },
-            text = { Text(stringResource(R.string.settings_location_bg_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showBackgroundRationale = false
-                    // R+ : la requête runtime est un no-op → redirection Réglages (logique
-                    // partagée avec le flux Paramètres via LocationUtils, plus de divergence).
-                    LocationUtils.requestBackgroundLocation(context) {
-                        backgroundPermissionLauncher.launch(
-                            Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                    }
-                }) { Text(stringResource(R.string.permission_allow)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBackgroundRationale = false }) {
-                    Text(stringResource(R.string.common_cancel))
+            icon = Icons.Default.LocationOn,
+            title = stringResource(R.string.settings_location_bg_title),
+            text = stringResource(R.string.settings_location_bg_message),
+            confirmLabel = stringResource(R.string.permission_allow),
+            onConfirm = {
+                showBackgroundRationale = false
+                // R+ : la requête runtime est un no-op → redirection Réglages (logique
+                // partagée avec le flux Paramètres via LocationUtils, plus de divergence).
+                LocationUtils.requestBackgroundLocation(context) {
+                    backgroundPermissionLauncher.launch(
+                        Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 }
-            }
+            },
+            dismissLabel = stringResource(R.string.common_cancel)
         )
     }
 
