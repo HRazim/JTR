@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jtr.app.R
 import com.jtr.app.data.backup.BackupManager
+import com.jtr.app.ui.components.JtrAlertDialog
 
 /**
  * Dialogue « Sauvegarde & restauration » :
@@ -77,22 +78,21 @@ fun BackupDialog(
 
     // Confirmation de restauration AVANT d'écraser/fusionner les données.
     pendingImportUri?.let { uri ->
-        AlertDialog(
+        // v7.1.132 - DESTRUCTIF au sens du socle : la restauration fusionne et ECRASE les
+        // fiches de meme identifiant, sans retour arriere. L'icone d'alerte reste donc rouge
+        // (c'est elle qui porte la distinction depuis v7.1.131), et la confirmation avec elle.
+        JtrAlertDialog(
             onDismissRequest = { pendingImportUri = null },
-            icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.backup_confirm_title)) },
-            text = { Text(stringResource(R.string.backup_confirm_text)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    pendingImportUri = null
-                    viewModel.import(uri)
-                }) { Text(stringResource(R.string.backup_confirm_action)) }
+            icon = Icons.Default.Warning,
+            title = stringResource(R.string.backup_confirm_title),
+            text = stringResource(R.string.backup_confirm_text),
+            confirmLabel = stringResource(R.string.backup_confirm_action),
+            onConfirm = {
+                pendingImportUri = null
+                viewModel.import(uri)
             },
-            dismissButton = {
-                TextButton(onClick = { pendingImportUri = null }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
         )
     }
 

@@ -32,7 +32,6 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,7 +42,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -75,6 +73,7 @@ import com.jtr.app.data.contacts.CAP_RELATION
 import com.jtr.app.data.contacts.CAP_WEBSITE
 import com.jtr.app.data.contacts.DeviceContact
 import com.jtr.app.data.contacts.DuplicateStrategy
+import com.jtr.app.ui.components.JtrAlertDialog
 import com.jtr.app.ui.components.JtrSearchableTopAppBar
 
 /**
@@ -225,31 +224,26 @@ private fun DuplicateStrategyDialog(
     onDismiss: () -> Unit
 ) {
     var selected by remember { mutableStateOf(DuplicateStrategy.SKIP) }
-    AlertDialog(
+    JtrAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.import_strategy_title)) },
-        text = {
-            Column {
-                Text(
-                    text = stringResource(R.string.import_strategy_message),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(12.dp))
-                StrategyOption(R.string.import_strategy_skip, DuplicateStrategy.SKIP, selected) { selected = it }
-                StrategyOption(R.string.import_strategy_update, DuplicateStrategy.UPDATE, selected) { selected = it }
-                StrategyOption(
-                    R.string.import_strategy_import_anyway, DuplicateStrategy.IMPORT_ANYWAY, selected
-                ) { selected = it }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(selected) }) {
-                Text(pluralStringResource(R.plurals.import_selected_count, count, count))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+        title = stringResource(R.string.import_strategy_title),
+        confirmLabel = pluralStringResource(R.plurals.import_selected_count, count, count),
+        onConfirm = { onConfirm(selected) },
+        dismissLabel = stringResource(R.string.common_cancel),
+        // Corps RICHE (message + 3 options radio a etat) : `content`, pas `text`. Le socle
+        // pose lui-meme la Column du corps - l'ancienne est donc retiree, pas deplacee.
+        content = {
+            Text(
+                text = stringResource(R.string.import_strategy_message),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+            StrategyOption(R.string.import_strategy_skip, DuplicateStrategy.SKIP, selected) { selected = it }
+            StrategyOption(R.string.import_strategy_update, DuplicateStrategy.UPDATE, selected) { selected = it }
+            StrategyOption(
+                R.string.import_strategy_import_anyway, DuplicateStrategy.IMPORT_ANYWAY, selected
+            ) { selected = it }
         }
     )
 }
