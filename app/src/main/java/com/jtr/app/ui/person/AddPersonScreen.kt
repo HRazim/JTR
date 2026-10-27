@@ -209,9 +209,14 @@ fun AddPersonScreen(
                             contentDescription = stringResource(R.string.person_save))
                     }
                 },
+                // v7.1.140 — `navigationIconContentColor` MANQUAIT : la flèche de retour
+                // retombait sur le défaut M3 (`onSurfaceVariant`) alors que le fond de la
+                // barre est `primaryContainer`. Le bloc est désormais celui du socle
+                // [com.jtr.app.ui.components.JtrSearchableTopAppBar], aux quatre couleurs.
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
@@ -265,10 +270,14 @@ fun AddPersonScreen(
 
             // ── Réseaux sociaux ──────────────────────────────────────────────
             Text(
+                // v7.1.140 — titre NEUTRE : c'était le dernier en-tête de section coloré
+                // en `primary` du formulaire, alors que les accordéons voisins
+                // (ProfileFormFields, v7.1.118) laissent le titre à la couleur du texte et
+                // ne gardent l'accent que sur l'icône. En Corail, `primary` est un rouge
+                // brique : « Social networks » s'affichait comme une alerte.
                 stringResource(R.string.person_social_links_title),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.align(Alignment.Start)
             )
             if (pendingLinks.isNotEmpty()) {

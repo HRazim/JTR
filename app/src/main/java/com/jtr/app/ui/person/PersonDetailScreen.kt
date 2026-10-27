@@ -410,11 +410,23 @@ fun PersonDetailScreen(
                         }
                     }
                 },
+                // v7.1.140 — les deux couleurs d'icône MANQUAIENT : la flèche de retour
+                // retombait sur le défaut M3. Elles suivent la MÊME condition que le titre,
+                // car cette barre change de fond en édition — un bloc fixe copié du socle y
+                // poserait des icônes `onPrimaryContainer` sur un fond secondaire.
+                // L'étoile favori (`FavoriteStar`/`StarBorder`), le « ⋮ » et le « ✓ » de
+                // l'édition portent un `tint` EXPLICITE : ils priment et ne bougent pas.
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = if (isEditing) MaterialTheme.colorScheme.secondaryContainer
                                      else MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = if (isEditing) MaterialTheme.colorScheme.onSecondaryContainer
-                                        else MaterialTheme.colorScheme.onPrimaryContainer
+                                        else MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor =
+                        if (isEditing) MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.onPrimaryContainer,
+                    actionIconContentColor =
+                        if (isEditing) MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         },
