@@ -123,11 +123,17 @@ fun CategoryDetailScreen(
             // Keyé sur la locale courante (cf. PersonDetailScreen) : jamais de format périmé
             // après un changement de langue in-app (v7.1.30).
             val infoLocale = Locale.getDefault()
-            AlertDialog(
+            JtrAlertDialog(
                 onDismissRequest = { showInfoDialog = false },
-                icon = { Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary) },
-                title = { Text(stringResource(R.string.person_info_title)) },
-                text = {
+                icon = Icons.Default.Info,
+                title = stringResource(R.string.person_info_title),
+                confirmLabel = stringResource(R.string.common_ok),
+                onConfirm = { showInfoDialog = false },
+                // Corps RICHE (paires libellé/valeur) : `content`, pas `text`. Jumeau du ⓘ
+                // d'une fiche (PersonDetailScreen), migré en v7.1.128 — mais PAS factorisable
+                // avec lui : ici une ligne sans horodatage DISPARAÎT, là-bas « modifié le »
+                // retombe sur la date de création. Deux règles d'affichage, deux corps.
+                content = {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         // Ligne MASQUÉE si l'horodatage est absent (0) plutôt qu'affichée à
                         // « — » ou « 1970 » : dans un dialogue à deux lignes, une ligne vide
@@ -150,11 +156,6 @@ fun CategoryDetailScreen(
                                     style = MaterialTheme.typography.bodyLarge)
                             }
                         }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showInfoDialog = false }) {
-                        Text(stringResource(R.string.common_ok))
                     }
                 }
             )

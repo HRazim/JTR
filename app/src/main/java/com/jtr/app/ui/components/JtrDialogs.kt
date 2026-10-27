@@ -128,8 +128,13 @@ fun JtrAlertDialog(
  * sur un renommage, on continue le mot, on ne se retrouve pas avant la première lettre.
  *
  * @param validate la confirmation est désactivée tant qu'elle renvoie `false`.
+ * @param leadingIcon icône de tête du champ, relayée au [FormTextField] (v7.1.133) : le
+ *   dialogue « + lien » portait un maillon, et un socle qui l'avalerait ne serait plus un
+ *   socle mais un rabot.
  * @param supportingContent bloc affiché SOUS le champ (p. ex. l'aperçu d'une plateforme
- *   détectée à partir d'une URL).
+ *   détectée à partir d'une URL). Il REÇOIT la valeur courante (v7.1.133) : un aperçu
+ *   dérivé de la saisie ne peut pas se contenter d'être rendu « quelque part sous » le
+ *   champ, il doit lire ce qui vient d'être tapé.
  */
 @Composable
 fun JtrPromptDialog(
@@ -144,7 +149,8 @@ fun JtrPromptDialog(
     placeholder: String? = null,
     validate: (String) -> Boolean = { it.isNotBlank() },
     singleLine: Boolean = true,
-    supportingContent: (@Composable ColumnScope.() -> Unit)? = null
+    leadingIcon: ImageVector? = null,
+    supportingContent: (@Composable ColumnScope.(value: String) -> Unit)? = null
 ) {
     var field by remember {
         mutableStateOf(TextFieldValue(initialValue, TextRange(initialValue.length)))
@@ -160,10 +166,11 @@ fun JtrPromptDialog(
                     onValueChange = { field = it },
                     label = label,
                     placeholder = placeholder,
+                    leadingIcon = leadingIcon,
                     singleLine = singleLine,
                     modifier = Modifier.fillMaxWidth()
                 )
-                supportingContent?.invoke(this)
+                supportingContent?.invoke(this, field.text)
             }
         },
         confirmButton = {

@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.dp
 import com.jtr.app.R
 import com.jtr.app.ui.components.FavoriteStar
 import com.jtr.app.ui.components.JtrAlertDialog
+import com.jtr.app.ui.components.JtrPromptDialog
 import com.jtr.app.ui.components.PhotoZoomDialog
 import com.jtr.app.ui.components.rememberSystemPhotoPicker
 import com.jtr.app.utils.DateCanonical
@@ -962,52 +963,40 @@ private fun EditPhotoBadge(
 
 @Composable
 internal fun AddSocialLinkDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
-    var url by remember { mutableStateOf("") }
-    val detected by remember { derivedStateOf { extractSocialLinks(url).firstOrNull() } }
-
-    AlertDialog(
+    // Signature PUBLIQUE conservée (2 appelants : AddPersonScreen et cet écran) ; seul le
+    // corps change. La saisie n'est plus un état local : elle vit dans JtrPromptDialog, et
+    // l'aperçu la reçoit par `supportingContent` — c'est pour lui que le socle passe
+    // désormais la valeur courante (v7.1.133).
+    JtrPromptDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.person_add_link_dialog_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    label = { Text(stringResource(R.string.person_add_link_url_label)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
-                    shape = RoundedCornerShape(12.dp)
-                )
-                AnimatedVisibility(visible = detected != null) {
-                    val platform = detected?.platform ?: return@AnimatedVisibility
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        // Icône de marque (couleurs d'origine, non teintée) — même rendu
-                        // que l'Accueil/le profil (source unique getSocialIcon/iconRes).
-                        Icon(
-                            painter = painterResource(platform.iconRes),
-                            contentDescription = null,
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Text(platform.displayName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold)
-                    }
+        title = stringResource(R.string.person_add_link_dialog_title),
+        confirmLabel = stringResource(R.string.person_add_link_action),
+        onConfirm = { url -> onConfirm(url); onDismiss() },
+        dismissLabel = stringResource(R.string.common_cancel),
+        label = stringResource(R.string.person_add_link_url_label),
+        leadingIcon = Icons.Default.Link,
+        supportingContent = { url ->
+            val detected = remember(url) { extractSocialLinks(url).firstOrNull() }
+            Spacer(Modifier.height(12.dp))
+            AnimatedVisibility(visible = detected != null) {
+                val platform = detected?.platform ?: return@AnimatedVisibility
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Icône de marque (couleurs d'origine, non teintée) — même rendu
+                    // que l'Accueil/le profil (source unique getSocialIcon/iconRes).
+                    Icon(
+                        painter = painterResource(platform.iconRes),
+                        contentDescription = null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Text(platform.displayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold)
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(url); onDismiss() },
-                enabled = url.isNotBlank()
-            ) { Text(stringResource(R.string.person_add_link_action)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }

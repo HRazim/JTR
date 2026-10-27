@@ -50,7 +50,6 @@ import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.WorkOutline
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -755,10 +754,14 @@ private fun IconPickerDialog(
     onPick: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    JtrAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.note_section_icon_picker_title)) },
-        text = {
+        title = stringResource(R.string.note_section_icon_picker_title),
+        confirmLabel = stringResource(R.string.common_ok),
+        onConfirm = onDismiss,
+        // Corps RICHE (grille d'icônes cliquables) : `content`, pas `text`. Le bouton ne
+        // VALIDE rien — un tap sur une icône applique et ferme ; « OK » n'est que la sortie.
+        content = {
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -785,9 +788,6 @@ private fun IconPickerDialog(
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_ok)) }
         }
     )
 }
