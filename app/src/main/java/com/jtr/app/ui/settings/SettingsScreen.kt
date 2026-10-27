@@ -396,7 +396,10 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // ── Carte « Général » ─────────────────────────────────────────────
-            SettingsCard(title = stringResource(R.string.settings_section_general)) {
+            SettingsCard(
+                icon = Icons.Default.Tune,
+                title = stringResource(R.string.settings_section_general)
+            ) {
                 SettingsToggleRow(
                     icon = Icons.Default.DarkMode,
                     title = stringResource(R.string.settings_dark_mode_title),
@@ -425,7 +428,10 @@ fun SettingsScreen(
             }
 
             // ── Carte « Contacts » (v7.1.28) : import depuis le téléphone ──────
-            SettingsCard(title = stringResource(R.string.settings_section_contacts)) {
+            SettingsCard(
+                icon = Icons.Default.Contacts,
+                title = stringResource(R.string.settings_section_contacts)
+            ) {
                 SettingsNavRow(
                     icon = Icons.Default.Contacts,
                     title = stringResource(R.string.settings_import_contacts_title),
@@ -435,7 +441,10 @@ fun SettingsScreen(
             }
 
             // ── Carte « Notifications » (logique système v6.0.2 inchangée) ─────
-            SettingsCard(title = stringResource(R.string.settings_section_notifications)) {
+            SettingsCard(
+                icon = Icons.Default.Notifications,
+                title = stringResource(R.string.settings_section_notifications)
+            ) {
                 // checked = intention utilisateur ET réalité OS → jamais ON si l'OS bloque.
                 SettingsToggleRow(
                     icon = Icons.Default.Notifications,
@@ -480,7 +489,10 @@ fun SettingsScreen(
             }
 
             // ── Carte « Sécurité » (v6.2.0) : verrou local 100 % sur l'appareil ─
-            SettingsCard(title = stringResource(R.string.settings_section_security)) {
+            SettingsCard(
+                icon = Icons.Default.Lock,
+                title = stringResource(R.string.settings_section_security)
+            ) {
                 SettingsToggleRow(
                     icon = Icons.Default.Lock,
                     title = stringResource(R.string.security_set_password),
@@ -514,7 +526,10 @@ fun SettingsScreen(
             }
 
             // ── Carte « Autres » ──────────────────────────────────────────────
-            SettingsCard(title = stringResource(R.string.settings_section_others)) {
+            SettingsCard(
+                icon = Icons.Default.MoreHoriz,
+                title = stringResource(R.string.settings_section_others)
+            ) {
                 SettingsNavRow(
                     icon = Icons.Default.SettingsBackupRestore,
                     title = stringResource(R.string.backup_menu),
@@ -799,12 +814,33 @@ fun SettingsScreen(
 
 // ── Cartes & lignes ──────────────────────────────────────────────────────────
 
-/** Carte de section : surface arrondie, élévation douce, titre accent en haut. */
+/**
+ * Carte de section : surface arrondie, élévation douce, en-tête en haut.
+ *
+ * v7.1.137 (L7) — HR garde les cartes : un écran de réglages se balaie, et l'encadrement
+ * est ce qui permet de le balayer. Seul l'EN-TÊTE change, pour parler la même langue que
+ * celui du formulaire de contact ([com.jtr.app.ui.person.ProfileFormFields], v7.1.118) :
+ * icône d'accent, `Spacer` de 8 dp, titre `labelLarge` SemiBold, hauteur min 48 dp.
+ *
+ * Le titre perd son `primary` : sur une palette chaude (Corail), ce primaire est un rouge
+ * brique, et « Sécurité » s'affichait donc comme une alerte. L'accent ne reste que sur
+ * l'icône — même règle qu'au « ⋮ » d'une fiche (v7.1.129) et qu'à la Corbeille (v7.1.136).
+ *
+ * L'en-tête s'aligne à 16 dp, comme le contenu de tête des [ListItem] des rangées : icône
+ * de section et icônes de réglage tombent sur la MÊME verticale.
+ *
+ * Le rayon passe de 24 à 16 dp — le rayon des champs et des feuilles depuis le Groupe 3 ;
+ * c'est la seule part de l'encadrement qui bouge (élévations et marges inchangées).
+ */
 @Composable
-private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun SettingsCard(
+    icon: ImageVector,
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
         // tonalElevation : en mode sombre, la surface est éclaircie (overlay M3) →
         // les cartes ressortent du fond ; shadowElevation gère l'ombre en clair.
@@ -812,13 +848,22 @@ private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> U
         shadowElevation = 2.dp
     ) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 4.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(icon, contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
             content()
         }
     }
