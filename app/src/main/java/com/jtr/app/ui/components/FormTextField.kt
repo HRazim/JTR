@@ -8,6 +8,8 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -16,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.TextFieldValue
@@ -50,14 +54,26 @@ private val FormFieldShape = RoundedCornerShape(16.dp)
 // On remet la teinte de l'ancien champ souple que HR voulait : `surfaceVariant`, la même
 // couleur de thème qu'avant v7.1.112, un ton à peine plus soutenu que le fond — seul le
 // contour tranche, l'intérieur reste « couleur de l'appli ».
+//
+// POIGNÉES (v7.1.141) : Compose n'a qu'UNE couleur pour la goutte du curseur ET les poignées
+// de sélection ; la racine du thème la rend transparente (goutte cachée, cf. JTRTheme). La
+// goutte n'existe que sélection VIDE, les poignées que sélection NON vide → [handlesVisible]
+// rend la couleur aux seules poignées. Passée explicitement, elle contourne le cache M3 des
+// couleurs par défaut (qui fige l'ambiant transparent au premier champ du process).
 @Composable
-private fun formFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
-    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-    errorContainerColor = MaterialTheme.colorScheme.surfaceVariant
-)
+private fun formFieldColors(handlesVisible: Boolean = false): TextFieldColors =
+    OutlinedTextFieldDefaults.colors(
+        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+        errorContainerColor = MaterialTheme.colorScheme.surfaceVariant
+    ).copy(
+        textSelectionColors = TextSelectionColors(
+            handleColor = if (handlesVisible) MaterialTheme.colorScheme.primary else Color.Transparent,
+            backgroundColor = LocalTextSelectionColors.current.backgroundColor
+        )
+    )
 
 /**
  * CHAMP TEXTE de formulaire (v7.1.112, G3b-1) — le style v7.1.79 en un seul moteur, à côté
@@ -90,12 +106,30 @@ internal fun FormTextField(
     placeholder: String? = null,
     visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        placeholder = placeholder?.let { { Text(it) } },
-        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
+    // v7.1.141 — la sélection vit ici (elle pilote la visibilité des poignées) : même
+    // idiome que BasicTextField(String), qui fait exactement cela en interne. Le texte suit
+    // toujours [value] ; la sélection/composition locales sont conservées.
+    var tfvState by remember { mutableStateOf(TextFieldValue(text = value)) }
+    val tfv = tfvState.copy(text = value)
+    SideEffect {
+        if (tfv.selection != tfvState.selection || tfv.composition != tfvState.composition) {
+            tfvState = tfv
+        }
+    }
+    // L'appelant n'est notifié que si le TEXTE change : un glissement de poignée (sélection
+    // seule) ne doit pas marquer le formulaire modifié ni déclencher l'auto-save.
+    var lastText by remember(value) { mutableStateOf(value) }
+    FormTextField(
+        value = tfv,
+        onValueChange = { newValue ->
+            tfvState = newValue
+            val textChanged = lastText != newValue.text
+            lastText = newValue.text
+            if (textChanged) onValueChange(newValue.text)
+        },
+        label = label,
+        placeholder = placeholder,
+        leadingIcon = leadingIcon,
         trailingIcon = trailingIcon,
         singleLine = singleLine,
         minLines = minLines,
@@ -105,8 +139,6 @@ internal fun FormTextField(
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        shape = FormFieldShape,
-        colors = formFieldColors(),
         // v7.1.115 — TOUT champ simple remonte au-dessus du clavier à la prise de focus
         // (le Nom et ses sous-champs ne le faisaient pas : seuls quelques champs du bas
         // portaient le modifier à la main). Intégré ICI, c'est désormais une garantie du
@@ -163,7 +195,7 @@ internal fun FormTextField(
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         shape = FormFieldShape,
-        colors = formFieldColors(),
+        colors = formFieldColors(handlesVisible = !value.selection.collapsed),
         modifier = modifier
     )
 }
