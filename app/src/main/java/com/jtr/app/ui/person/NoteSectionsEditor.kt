@@ -95,6 +95,7 @@ import com.jtr.app.R
 import com.jtr.app.domain.model.NOTE_ICON_NOTES
 import com.jtr.app.domain.model.NoteSection
 import com.jtr.app.domain.model.combinedText
+import com.jtr.app.domain.model.isSameNoteSplit
 import com.jtr.app.domain.model.withCombinedText
 import com.jtr.app.ui.components.FormTextField
 import com.jtr.app.ui.components.JtrAlertDialog
@@ -289,7 +290,8 @@ fun NoteSectionsEditor(
                         onFocusedChange = { cardFocused = it },
                         // v7.1.75 — champ UNIQUE : le texte tapé est redistribué en
                         // (title = 1re ligne, content = reste) via withCombinedText —
-                        // round-trip sans perte (cf. NoteSection.kt).
+                        // round-trip sans perte, sauf un saut de ligne final seul, non
+                        // persisté et jamais réécrit dans le champ (cf. NoteSection.kt).
                         onTextChange = { newText ->
                             onSectionsChange(sections.map {
                                 if (it.id == section.id) it.withCombinedText(newText) else it
@@ -679,8 +681,16 @@ private fun NoteContentField(
     // Sert UNIQUEMENT à la garde « curseur en fin » du recentrage au focus ; la frappe reste pilotée
     // par `startsWith` sur le texte (comportement inchangé).
     var tfv by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+    // v7.1.144 — `tfv` EST le dernier texte tapé (local, à jour sans délai, contrairement à la
+    // valeur hissée qui transite par un StateFlow). Une valeur remontée qui donne le MÊME découpage
+    // title/content n'est que la projection de cette frappe — pour « titre⏎ », la recombinaison
+    // perd le saut de ligne final (cf. combinedText) — et ne doit PAS écraser le champ : sinon le
+    // texte est réécrit, le curseur forcé en fin et la composition IME perdue (frappe corrompue).
+    // Seul un VRAI changement (découpage différent : chargement, undo…) est appliqué.
     LaunchedEffect(value) {
-        if (value != tfv.text) tfv = TextFieldValue(value, TextRange(value.length))
+        if (shouldResyncNoteField(hoisted = value, local = tfv.text)) {
+            tfv = TextFieldValue(value, TextRange(value.length))
+        }
     }
 
     fun cursorAtEnd() = tfv.selection.collapsed && tfv.selection.end >= tfv.text.length
@@ -791,6 +801,15 @@ private fun IconPickerDialog(
         }
     )
 }
+
+/**
+ * Décision de réconciliation du champ de note (v7.1.144) : la valeur hissée [hoisted] ne remplace
+ * le texte [local] du champ que si elle représente une AUTRE section (découpage title/content
+ * différent). Une simple projection de la frappe locale (ex. « titre⏎ » remonté en « titre ») est
+ * ignorée → saut de ligne final, curseur et composition IME préservés.
+ */
+internal fun shouldResyncNoteField(hoisted: String, local: String): Boolean =
+    hoisted != local && !isSameNoteSplit(hoisted, local)
 
 /** Sections « propres » avant persistance : retire les sections vides + réindexe l'ordre. */
 fun sanitizeNoteSections(sections: List<NoteSection>): List<NoteSection> =
