@@ -25,8 +25,8 @@ android {
         applicationId = "com.jtr.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 195
-        versionName = "7.1.141"
+        versionCode = 196
+        versionName = "7.1.142"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -53,9 +53,28 @@ android {
         }
         release {
             signingConfig = signingConfigs.getByName("release")
-            // ⚠️ Pas de minification/R8 pour cette première release (éviter tout
-            // risque de comportement R8 juste avant la mise en ligne).
-            isMinifyEnabled = false
+            // R8 : réduction + optimisation + obscurcissement. Les fichiers de règles sont
+            // déclarés EXPLICITEMENT : sans `proguardFiles`, AGP retombe sur
+            // proguard-android.txt et n'applique jamais proguard-rules.pro (où vit le
+            // contrat du `.jtr`).
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        // DEV-ONLY — validation R8 : la config release installable EN PARALLÈLE
+        // (com.jtr.app.r8test, signature debug), sans jamais toucher la prod ni le build
+        // debug. `-PnoR8` produit la même app SANS R8 : installer l'une puis l'autre
+        // par-dessus simule la mise à jour que vivront les utilisateurs.
+        create("r8test") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".r8test"
+            versionNameSuffix = "-r8test"
+            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = !project.hasProperty("noR8")
+            isShrinkResources = !project.hasProperty("noR8")
         }
     }
 
