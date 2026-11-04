@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.jtr.app.data.files.OrphanFileSweeper
 import com.jtr.app.utils.GeofenceManager
 import com.jtr.app.utils.JtrNotificationManager
 import com.jtr.app.worker.ImportantDateCheckWorker
@@ -15,6 +16,7 @@ import com.jtr.app.worker.ProximityCheckWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.maplibre.android.MapLibre
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
@@ -36,6 +38,9 @@ class JTRApplication : Application() {
     val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
+        // v7.1.145 — borne de la garde anti-course du balayage des `restore_*` orphelins :
+        // tout média extrait par une restauration lancée dans CE process lui est postérieur.
+        val processStartMillis = System.currentTimeMillis()
         super.onCreate()
         // Timber (v7.1.107) : arbre planté UNIQUEMENT en debug — en release, les
         // Timber.i/d de l'app (dont le dry-run du balayage d'orphelins, qui liste des
@@ -51,6 +56,13 @@ class JTRApplication : Application() {
         // les alarmes exactes des rappels sont (re)programmées et toute fenêtre déjà
         // ouverte est rattrapée. Idempotent → pas de doublon même à réouvertures répétées.
         ImportantDateCheckWorker.runNow(this)
+        // v7.1.145 — orphelins d'une restauration COUPÉE (force-stop pendant l'extraction) :
+        // balayés en tâche de fond (IO), au mieux. Seuls les `restore_*` NON référencés et
+        // antérieurs à ce process sont supprimés (cf. OrphanFileSweeper) ; aucune écriture en base.
+        applicationScope.launch {
+            runCatching { OrphanFileSweeper.sweepRestoreOrphansAtStartup(this@JTRApplication, processStartMillis) }
+                .onFailure { Timber.w(it, "restore_ orphan sweep skipped") }
+        }
     }
 
     /**

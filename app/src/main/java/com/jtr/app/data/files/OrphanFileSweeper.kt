@@ -58,14 +58,57 @@ object OrphanFileSweeper {
      * Dry-run complet : lit les 4 champs de référence en base (corbeille incluse) puis
      * délègue à la variante testable. Ne supprime RIEN, n'écrit RIEN en base.
      */
-    suspend fun scan(context: Context): SweepPlan {
+    suspend fun scan(context: Context): SweepPlan =
+        scan(context, loadReferences(context), System.currentTimeMillis())
+
+    /** Valeurs brutes des 4 SEULS champs de fichier, sur TOUTES les lignes (corbeille incluse). */
+    private suspend fun loadReferences(context: Context): List<String> {
         val db = AppDatabase.getInstance(context)
-        val references = db.personDao().getAllPhotoUris() +
+        return db.personDao().getAllPhotoUris() +
             db.categoryDao().getAllImagePaths() +
             db.categoryGroupDao().getAllImagePaths() +
             db.galleryImageDao().getAllPaths()
-        return scan(context, references, System.currentTimeMillis())
     }
+
+    /**
+     * v7.1.145 — balayage AU DÉMARRAGE des `restore_*` orphelins laissés par une restauration
+     * COUPÉE (force-stop pendant l'extraction des médias, avant la transaction).
+     *
+     * ⚠️ Un `restore_*` n'est PAS un temporaire : `BackupManager.importFrom` extrait chaque
+     * média dans `photos/` sous ce nom, et le fichier DEVIENT la photo définitive du contact.
+     * Seul un `restore_*` NON référencé est orphelin. Un fichier n'est supprimé que s'il
+     * remplit les 4 conditions :
+     *  1. dans `photos/` avec le préfixe `restore_` ([restoreOrphansOnly]) ;
+     *  2. NON référencé dans les 4 champs de fichier, corbeille incluse ([scan]) ;
+     *  3. `lastModified < processStartMillis` ([scan]) : une restauration lancée APRÈS
+     *     l'ouverture de l'app (médias plus récents) n'est jamais touchée ;
+     *  4. suppression via [ImageFileStore.deleteFileIfOwned] ([execute]).
+     * Lecture seule de la base, aucune écriture.
+     */
+    suspend fun sweepRestoreOrphansAtStartup(context: Context, processStartMillis: Long): SweepResult {
+        val plan = restoreOrphansOnly(context, scan(context, loadReferences(context), processStartMillis))
+        Timber.tag(TAG).i("demarrage: ${plan.count} restore_ orphelin(s), ${plan.totalBytes} octets")
+        return execute(context, plan)
+    }
+
+    /**
+     * Restreint un plan aux SEULS fichiers `restore_*` situés DIRECTEMENT dans `photos/`
+     * (jamais `gallery/`, `crops/`, ni un sous-dossier). Pure, pour le test JVM.
+     */
+    internal fun restoreOrphansOnly(context: Context, plan: SweepPlan): SweepPlan {
+        val photosDir = context.filesDir
+            ?.let { runCatching { File(it, RESTORE_DIR).canonicalPath }.getOrNull() }
+            ?: return SweepPlan(emptyList(), 0L)
+        val files = plan.files.filter { file ->
+            file.name.startsWith(RESTORE_PREFIX) &&
+                runCatching { file.canonicalFile.parentFile?.path }.getOrNull() == photosDir
+        }
+        return SweepPlan(files, files.sumOf { it.length() })
+    }
+
+    /** Emplacement et préfixe des médias extraits par `BackupManager.importFrom` (`:245-246`). */
+    private const val RESTORE_DIR = "photos"
+    private const val RESTORE_PREFIX = "restore_"
 
     /**
      * Cœur du balayage, découplé de Room pour les tests JVM : [references] = valeurs brutes
