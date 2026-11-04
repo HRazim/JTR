@@ -358,6 +358,8 @@
     <string name="backup_import">恢复备份</string>
     <string name="backup_working">操作进行中…</string>
     <string name="backup_failed">操作失败 — 文件无效或无法访问</string>
+    <string name="backup_export_cancelled">已取消导出 — 未创建任何文件</string>
+    <string name="backup_import_cancelled">已取消恢复 — 未选择任何文件</string>
     <string name="backup_confirm_title">恢复此备份？</string>
     <string name="backup_confirm_text">数据将与当前数据合并；相同标识的条目将被覆盖。此操作不可撤销。</string>
     <string name="backup_confirm_action">恢复</string>

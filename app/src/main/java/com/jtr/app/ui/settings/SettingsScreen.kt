@@ -58,7 +58,6 @@ import com.jtr.app.R
 import com.jtr.app.security.SecurityAuthDialog
 import com.jtr.app.security.SecuritySetupDialog
 import com.jtr.app.security.SecurityViewModel
-import com.jtr.app.ui.backup.BackupDialog
 import com.jtr.app.ui.components.JtrAlertDialog
 import com.jtr.app.ui.components.JtrProgressDialog
 import com.jtr.app.ui.navigation.nestedScreenContentInsets
@@ -124,12 +123,13 @@ fun SettingsScreen(
     onFontScaleChange: (Float) -> Unit = {},
     onNavigateToTrash: () -> Unit = {},
     onNavigateToImportContacts: () -> Unit = {},
+    // Sauvegarde & restauration .jtr — relocalisée ici depuis le menu de l'Accueil (v5.5).
+    // Le dialogue et ses sélecteurs vivent au niveau de l'activité, au-dessus du verrou
+    // (v7.1.143) : cet écran ne fait que l'ouvrir.
+    onOpenBackup: () -> Unit = {},
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
     var showPrivacySheet by remember { mutableStateOf(false) }
-    // Sauvegarde & restauration .jtr — relocalisée ici depuis le menu de
-    // l'Accueil (v5.5) ; le BackupViewModel est résolu par BackupDialog.
-    var showBackupDialog by remember { mutableStateOf(false) }
     var showThemePicker by remember { mutableStateOf(false) }
     var showLanguagePicker by remember { mutableStateOf(false) }
     var showFontPicker by remember { mutableStateOf(false) }
@@ -536,7 +536,7 @@ fun SettingsScreen(
                     icon = Icons.Default.SettingsBackupRestore,
                     title = stringResource(R.string.backup_menu),
                     subtitle = stringResource(R.string.settings_backup_subtitle),
-                    onClick = { showBackupDialog = true }
+                    onClick = onOpenBackup
                 )
                 // v7.1.106 (lot C2) — balayage MANUEL des fichiers orphelins : jamais au
                 // démarrage, jamais sans dry-run confirmé. Le scan ne supprime rien.
@@ -606,10 +606,6 @@ fun SettingsScreen(
             preset = selectedPreset,
             onDismiss = { showPrivacySheet = false }
         )
-    }
-
-    if (showBackupDialog) {
-        BackupDialog(onDismiss = { showBackupDialog = false })
     }
 
     // ── Nettoyage des fichiers orphelins (v7.1.106, lot C2) ────────────────────

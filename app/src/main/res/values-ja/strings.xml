@@ -358,6 +358,8 @@
     <string name="backup_import">バックアップを復元</string>
     <string name="backup_working">処理中…</string>
     <string name="backup_failed">失敗しました — ファイルが無効またはアクセスできません</string>
+    <string name="backup_export_cancelled">エクスポートをキャンセルしました — ファイルは作成されていません</string>
+    <string name="backup_import_cancelled">復元をキャンセルしました — ファイルが選択されていません</string>
     <string name="backup_confirm_title">このバックアップを復元しますか？</string>
     <string name="backup_confirm_text">データは現在のデータと統合され、同じ ID の項目は上書きされます。この操作は元に戻せません。</string>
     <string name="backup_confirm_action">復元</string>

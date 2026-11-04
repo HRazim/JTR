@@ -4,9 +4,9 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -31,7 +30,10 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.navigation.compose.rememberNavController
 import com.jtr.app.data.repository.PersonRepository
 import com.jtr.app.security.LockScreen
-import com.jtr.app.security.SecurityManager
+import com.jtr.app.security.LockViewModel
+import com.jtr.app.ui.backup.BackupDialogHost
+import com.jtr.app.ui.backup.BackupPickers
+import com.jtr.app.ui.backup.BackupViewModel
 import com.jtr.app.ui.navigation.JTRMainScaffold
 import com.jtr.app.utils.JtrNotificationManager
 import com.jtr.app.utils.LocaleManager
@@ -44,6 +46,11 @@ import com.jtr.app.ui.theme.ThemeViewModel
 class MainActivity : FragmentActivity() {
 
     private val themeViewModel: ThemeViewModel by viewModels()
+
+    // v7.1.143 — portée ACTIVITÉ, donc AU-DESSUS de la porte du verrou : l'écran de verrou
+    // retire toute l'app de la composition, ces deux états n'en dépendent pas.
+    private val lockViewModel: LockViewModel by viewModels()
+    private val backupViewModel: BackupViewModel by viewModels()
 
     // Applique la langue applicative choisie (LocaleManager) au contexte de cette
     // Activity — indispensable pour une ComponentActivity 100 % Compose, où
@@ -64,9 +71,12 @@ class MainActivity : FragmentActivity() {
 
         // Association de fichier `.jtr` (v7.1.27) : ouverture d'une archive depuis un
         // gestionnaire de fichiers (ACTION_VIEW). L'URI est routée vers le dialogue
-        // d'import AVEC CONFIRMATION (jamais d'écriture directe) et n'est traitée
-        // qu'APRÈS déverrouillage (le scaffold n'est composé que déverrouillé).
-        val importUri: Uri? = if (intent?.action == Intent.ACTION_VIEW) intent.data else null
+        // d'import AVEC CONFIRMATION (jamais d'écriture directe), affiché seulement
+        // déverrouillé. Offerte au PREMIER onCreate de cette instance uniquement (jamais
+        // au retour d'une recréation) puis consommée : elle ne se ré-arme pas (v7.1.143).
+        if (savedInstanceState == null && intent?.action == Intent.ACTION_VIEW) {
+            intent.data?.let(backupViewModel::offerExternalImport)
+        }
 
         setContent {
             val isDarkMode by themeViewModel.isDarkMode.collectAsState()
@@ -101,30 +111,44 @@ class MainActivity : FragmentActivity() {
                     LocalDensity provides Density(baseDensity.density, fontScale)
                 ) {
                     // ── Garde de verrou local (v6.2.0, re-verrouillage v6.2.3) ──
-                    // isUnlocked = vrai d'emblée si le verrou n'est PAS actif.
                     // Le re-verrouillage est piloté par le PROCESS (ProcessLifecycleOwner)
                     // et non par l'Activity : un recreate() (changement de langue/config)
                     // ne fait PAS passer le process en arrière-plan, donc son ON_STOP ne
-                    // se déclenche QUE lors d'un vrai retour d'arrière-plan. Résultat : le
-                    // changement de langue ne re-verrouille plus et n'auto-invoque plus la
-                    // biométrie ; le verrou reste affiché au démarrage à froid et au vrai
-                    // retour d'arrière-plan.
-                    val context = LocalContext.current
-                    var isUnlocked by rememberSaveable {
-                        mutableStateOf(!SecurityManager.isLockEnabled(context))
-                    }
+                    // se déclenche QUE lors d'un vrai retour d'arrière-plan. La session de
+                    // déverrouillage vit dans [LockViewModel] (v7.1.143) : jamais
+                    // sauvegardée, elle ne survit pas à la mort du processus.
+                    // `collectAsState` (et non WithLifecycle) : l'état est suivi même
+                    // arrêté, l'écran de verrou est donc déjà composé au retour.
+                    val lockEnabled by lockViewModel.lockEnabled.collectAsState()
+                    val needsAuth by lockViewModel.needsAuth.collectAsState()
                     DisposableEffect(Unit) {
                         val processLifecycle = ProcessLifecycleOwner.get().lifecycle
                         val observer = LifecycleEventObserver { _, event ->
-                            if (event == Lifecycle.Event.ON_STOP) isUnlocked = false
+                            if (event == Lifecycle.Event.ON_STOP) lockViewModel.onAppBackgrounded()
                         }
                         processLifecycle.addObserver(observer)
                         onDispose { processLifecycle.removeObserver(observer) }
                     }
-                    val locked = SecurityManager.isLockEnabled(context) && !isUnlocked
 
-                    if (locked) {
-                        LockScreen(onUnlocked = { isUnlocked = true })
+                    // Verrou actif → FLAG_SECURE : aperçu des apps récentes masqué et
+                    // captures d'écran bloquées. Indépendant du reste, retirable seul.
+                    LaunchedEffect(lockEnabled) {
+                        if (lockEnabled) {
+                            window.setFlags(
+                                WindowManager.LayoutParams.FLAG_SECURE,
+                                WindowManager.LayoutParams.FLAG_SECURE
+                            )
+                        } else {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        }
+                    }
+
+                    // Au-dessus de la porte : les sélecteurs de sauvegarde restent enregistrés
+                    // pendant l'écran de verrou, leur résultat n'est jamais perdu.
+                    BackupPickers(backupViewModel)
+
+                    if (lockEnabled && needsAuth) {
+                        LockScreen(onUnlocked = lockViewModel::onUnlocked)
                     } else {
                         // Permission POST_NOTIFICATIONS (Android 13+) : sans elle, AUCUNE
                         // notification locale (anniversaires, proximité) ne s'affiche, même
@@ -145,8 +169,9 @@ class MainActivity : FragmentActivity() {
                                 fontScale = fontScale,
                                 onFontScaleChange = { themeViewModel.setFontScale(it) },
                                 notificationPersonId = notificationPersonId,
-                                importUri = importUri
+                                onOpenBackup = backupViewModel::openDialog
                             )
+                            BackupDialogHost(backupViewModel)
                         }
                     }
                 }

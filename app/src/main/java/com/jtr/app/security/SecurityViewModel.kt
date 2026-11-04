@@ -15,8 +15,7 @@ class SecurityViewModel(application: Application) : AndroidViewModel(application
 
     private val ctx = application.applicationContext
 
-    private val _lockEnabled = MutableStateFlow(SecurityManager.isLockEnabled(ctx))
-    val lockEnabled: StateFlow<Boolean> = _lockEnabled.asStateFlow()
+    val lockEnabled: StateFlow<Boolean> = SecurityManager.lockEnabled(ctx)
 
     private val _biometricEnabled = MutableStateFlow(SecurityManager.isBiometricEnabled(ctx))
     val biometricEnabled: StateFlow<Boolean> = _biometricEnabled.asStateFlow()
@@ -25,7 +24,6 @@ class SecurityViewModel(application: Application) : AndroidViewModel(application
     val biometricAvailable: Boolean = Biometrics.isAvailable(ctx)
 
     fun refresh() {
-        _lockEnabled.value = SecurityManager.isLockEnabled(ctx)
         _biometricEnabled.value = SecurityManager.isBiometricEnabled(ctx)
     }
 

@@ -361,6 +361,8 @@
     <string name="backup_import">Восстановить копию</string>
     <string name="backup_working">Выполняется операция…</string>
     <string name="backup_failed">Операция не удалась — файл недействителен или недоступен</string>
+    <string name="backup_export_cancelled">Экспорт отменён — файл не создан</string>
+    <string name="backup_import_cancelled">Восстановление отменено — файл не выбран</string>
     <string name="backup_confirm_title">Восстановить эту копию?</string>
     <string name="backup_confirm_text">Данные будут объединены с текущими; записи с тем же ID будут перезаписаны. Это нельзя отменить.</string>
     <string name="backup_confirm_action">Восстановить</string>

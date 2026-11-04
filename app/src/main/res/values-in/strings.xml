@@ -379,6 +379,8 @@
     <string name="backup_import">Pulihkan cadangan</string>
     <string name="backup_working">Operasi sedang berjalan…</string>
     <string name="backup_failed">Operasi gagal — file tidak valid atau tidak dapat diakses</string>
+    <string name="backup_export_cancelled">Ekspor dibatalkan — tidak ada file yang dibuat</string>
+    <string name="backup_import_cancelled">Pemulihan dibatalkan — tidak ada file yang dipilih</string>
     <string name="backup_confirm_title">Pulihkan cadangan ini?</string>
     <string name="backup_confirm_text">Data akan digabungkan dengan data saat ini; entri dengan ID sama akan ditimpa. Ini tidak dapat dibatalkan.</string>
     <string name="backup_confirm_action">Pulihkan</string>

@@ -361,6 +361,8 @@
     <string name="backup_import">Sicherung wiederherstellen</string>
     <string name="backup_working">Vorgang läuft…</string>
     <string name="backup_failed">Vorgang fehlgeschlagen – Datei ungültig oder nicht zugänglich</string>
+    <string name="backup_export_cancelled">Export abgebrochen – es wurde keine Datei erstellt</string>
+    <string name="backup_import_cancelled">Wiederherstellung abgebrochen – keine Datei ausgewählt</string>
     <string name="backup_confirm_title">Diese Sicherung wiederherstellen?</string>
     <string name="backup_confirm_text">Die Daten werden mit deinen aktuellen Daten zusammengeführt; Einträge mit derselben ID werden überschrieben. Dies kann nicht rückgängig gemacht werden.</string>
     <string name="backup_confirm_action">Wiederherstellen</string>

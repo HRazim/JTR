@@ -358,6 +358,8 @@
     <string name="backup_import">Restaurer une sauvegarde</string>
     <string name="backup_working">Opération en cours…</string>
     <string name="backup_failed">Échec — fichier invalide ou inaccessible</string>
+    <string name="backup_export_cancelled">Export annulé — aucun fichier créé</string>
+    <string name="backup_import_cancelled">Restauration annulée — aucun fichier choisi</string>
     <string name="backup_confirm_title">Restaurer cette sauvegarde ?</string>
     <string name="backup_confirm_text">Les données seront fusionnées avec vos données actuelles ; les fiches au même identifiant seront écrasées. Action irréversible.</string>
     <string name="backup_confirm_action">Restaurer</string>
