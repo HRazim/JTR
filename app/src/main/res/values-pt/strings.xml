@@ -361,6 +361,8 @@
     <string name="backup_import">Restaurar uma cópia</string>
     <string name="backup_working">Operação em curso…</string>
     <string name="backup_failed">Operação falhada — ficheiro inválido ou inacessível</string>
+    <string name="backup_export_cancelled">Exportação cancelada — nenhum ficheiro criado</string>
+    <string name="backup_import_cancelled">Restauro cancelado — nenhum ficheiro escolhido</string>
     <string name="backup_confirm_title">Restaurar esta cópia?</string>
     <string name="backup_confirm_text">Os dados serão combinados com os teus dados atuais; as entradas com o mesmo ID serão substituídas. Isto não pode ser anulado.</string>
     <string name="backup_confirm_action">Restaurar</string>

@@ -361,6 +361,8 @@
     <string name="backup_import">백업 복원</string>
     <string name="backup_working">작업 진행 중…</string>
     <string name="backup_failed">작업 실패 — 파일이 잘못되었거나 접근할 수 없습니다</string>
+    <string name="backup_export_cancelled">내보내기 취소됨 — 파일이 생성되지 않았습니다</string>
+    <string name="backup_import_cancelled">복원 취소됨 — 선택된 파일이 없습니다</string>
     <string name="backup_confirm_title">이 백업을 복원할까요?</string>
     <string name="backup_confirm_text">데이터가 현재 데이터와 병합되며, 동일한 ID를 가진 항목은 덮어쓰여집니다. 되돌릴 수 없습니다.</string>
     <string name="backup_confirm_action">복원</string>

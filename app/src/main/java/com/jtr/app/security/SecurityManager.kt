@@ -5,6 +5,9 @@ import android.content.SharedPreferences
 import android.util.Base64
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
@@ -67,6 +70,25 @@ object SecurityManager {
     fun isLockEnabled(context: Context): Boolean =
         prefs(context).getBoolean(K_LOCK_ENABLED, false)
 
+    @Volatile
+    private var lockEnabledState: MutableStateFlow<Boolean>? = null
+
+    /**
+     * Activation du verrou, OBSERVABLE (v7.1.143) : la porte de MainActivity la collecte,
+     * donc activer ou désactiver le verrou est pris en compte sans attendre une
+     * recomposition fortuite. Miroir de la préférence chiffrée, publié par les seules
+     * écritures qui la changent ([setPattern], [disableLock]).
+     */
+    fun lockEnabled(context: Context): StateFlow<Boolean> = lockEnabledFlow(context).asStateFlow()
+
+    private fun lockEnabledFlow(context: Context): MutableStateFlow<Boolean> {
+        lockEnabledState?.let { return it }
+        synchronized(this) {
+            lockEnabledState?.let { return it }
+            return MutableStateFlow(isLockEnabled(context)).also { lockEnabledState = it }
+        }
+    }
+
     fun isBiometricEnabled(context: Context): Boolean =
         prefs(context).getBoolean(K_BIOMETRIC, false)
 
@@ -85,6 +107,7 @@ object SecurityManager {
             .putBoolean(K_LOCK_ENABLED, true)
             .apply()
         resetFailedAttempts(context)
+        lockEnabledFlow(context).value = true
     }
 
     fun verifyPattern(context: Context, pattern: List<Int>): Boolean {
@@ -127,6 +150,7 @@ object SecurityManager {
     /** Efface TOUTES les données de sécurité (schéma, code de secours, drapeaux). */
     fun disableLock(context: Context) {
         prefs(context).edit().clear().apply()
+        lockEnabledFlow(context).value = false
     }
 
     // ── Anti-force-brute ───────────────────────────────────────────────────────────

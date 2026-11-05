@@ -363,6 +363,8 @@
     <string name="backup_import">Restore a backup</string>
     <string name="backup_working">Operation in progress…</string>
     <string name="backup_failed">Operation failed — invalid or inaccessible file</string>
+    <string name="backup_export_cancelled">Export cancelled — no file was created</string>
+    <string name="backup_import_cancelled">Restore cancelled — no file selected</string>
     <string name="backup_confirm_title">Restore this backup?</string>
     <string name="backup_confirm_text">The data will be merged with your current data; entries with the same ID will be overwritten. This cannot be undone.</string>
     <string name="backup_confirm_action">Restore</string>

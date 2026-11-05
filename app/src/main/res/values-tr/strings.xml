@@ -361,6 +361,8 @@
     <string name="backup_import">Yedeği geri yükle</string>
     <string name="backup_working">İşlem sürüyor…</string>
     <string name="backup_failed">İşlem başarısız — geçersiz veya erişilemeyen dosya</string>
+    <string name="backup_export_cancelled">Dışa aktarma iptal edildi — dosya oluşturulmadı</string>
+    <string name="backup_import_cancelled">Geri yükleme iptal edildi — dosya seçilmedi</string>
     <string name="backup_confirm_title">Bu yedek geri yüklensin mi?</string>
     <string name="backup_confirm_text">Veriler mevcut verilerinle birleştirilecek; aynı kimliğe sahip kayıtların üzerine yazılacak. Bu işlem geri alınamaz.</string>
     <string name="backup_confirm_action">Geri yükle</string>

@@ -1,6 +1,5 @@
 package com.jtr.app.ui.backup
 
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -26,20 +25,50 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jtr.app.R
 import com.jtr.app.data.backup.BackupManager
 import com.jtr.app.ui.components.JtrAlertDialog
+
+/**
+ * Sélecteurs SAF de la sauvegarde (v7.1.143), à monter AU-DESSUS de la porte du verrou :
+ * enregistrés en permanence, ils reçoivent leur résultat même si l'écran de verrou s'est
+ * affiché pendant que le sélecteur était ouvert. Montés sous la porte, ils se désinscrivaient
+ * et le résultat était perdu (export de 0 octet, restauration sans effet, sans message).
+ */
+@Composable
+fun BackupPickers(viewModel: BackupViewModel) {
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream"),
+        viewModel::onExportDestination
+    )
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent(),
+        viewModel::onImportSource
+    )
+    val request by viewModel.pickerRequest.collectAsState()
+    LaunchedEffect(request) {
+        when (request ?: return@LaunchedEffect) {
+            BackupPickerRequest.EXPORT -> exportLauncher.launch(BackupManager.suggestedFileName())
+            BackupPickerRequest.IMPORT -> importLauncher.launch("*/*")
+        }
+        viewModel.onPickerLaunched()
+    }
+}
+
+/** Affiche le dialogue tant que la session de sauvegarde le demande (à monter sous la porte). */
+@Composable
+fun BackupDialogHost(viewModel: BackupViewModel) {
+    val visible by viewModel.dialogVisible.collectAsStateWithLifecycle()
+    if (visible) BackupDialog(viewModel)
+}
 
 /**
  * Dialogue « Sauvegarde & restauration » :
@@ -47,57 +76,16 @@ import com.jtr.app.ui.components.JtrAlertDialog
  *    l'emplacement (Téléchargements, Drive…) du fichier `.jtr` ;
  *  - IMPORT via [ActivityResultContracts.GetContent] + dialogue de CONFIRMATION
  *    explicite avant toute écriture en base (fusion, doublons écrasés).
- * Les états (en cours / succès / échec) viennent du [BackupViewModel] (UDF).
+ * Vue sans état propre : sélecteurs, archive en attente et issues vivent dans le
+ * [BackupViewModel] d'activité (UDF), qui survit à l'écran de verrou.
  */
 @Composable
-fun BackupDialog(
-    onDismiss: () -> Unit,
-    viewModel: BackupViewModel = viewModel(),
-    /**
-     * URI d'un `.jtr` ouvert depuis un gestionnaire de fichiers (v7.1.27). Quand
-     * non-null, la CONFIRMATION de restauration est armée d'emblée — l'écriture
-     * n'a lieu qu'après accord explicite, comme pour un import lancé in-app.
-     */
-    initialImportUri: Uri? = null
-) {
+private fun BackupDialog(viewModel: BackupViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
-
-    // Ouverture externe : pré-arme le dialogue de confirmation sur l'URI entrante.
-    LaunchedEffect(initialImportUri) {
-        if (initialImportUri != null) pendingImportUri = initialImportUri
-    }
-
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/octet-stream")
-    ) { uri -> if (uri != null) viewModel.export(uri) }
-
-    val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri -> if (uri != null) pendingImportUri = uri }
-
-    // Confirmation de restauration AVANT d'écraser/fusionner les données.
-    pendingImportUri?.let { uri ->
-        // v7.1.132 - DESTRUCTIF au sens du socle : la restauration fusionne et ECRASE les
-        // fiches de meme identifiant, sans retour arriere. L'icone d'alerte reste donc rouge
-        // (c'est elle qui porte la distinction depuis v7.1.131), et la confirmation avec elle.
-        JtrAlertDialog(
-            onDismissRequest = { pendingImportUri = null },
-            icon = Icons.Default.Warning,
-            title = stringResource(R.string.backup_confirm_title),
-            text = stringResource(R.string.backup_confirm_text),
-            confirmLabel = stringResource(R.string.backup_confirm_action),
-            onConfirm = {
-                pendingImportUri = null
-                viewModel.import(uri)
-            },
-            dismissLabel = stringResource(R.string.common_cancel),
-            destructive = true
-        )
-    }
+    val pendingImportUri by viewModel.pendingImportUri.collectAsStateWithLifecycle()
 
     AlertDialog(
-        onDismissRequest = { viewModel.reset(); onDismiss() },
+        onDismissRequest = viewModel::closeDialog,
         icon = { Icon(Icons.Default.SettingsBackupRestore, null,
             tint = MaterialTheme.colorScheme.primary) },
         title = { Text(stringResource(R.string.backup_menu)) },
@@ -132,11 +120,19 @@ fun BackupDialog(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error
                     )
+                    is BackupUiState.Cancelled -> Text(
+                        text = stringResource(
+                            if (s.isExport) R.string.backup_export_cancelled
+                            else R.string.backup_import_cancelled
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     BackupUiState.Idle -> {}
                 }
 
                 Button(
-                    onClick = { exportLauncher.launch(BackupManager.suggestedFileName()) },
+                    onClick = viewModel::requestExport,
                     enabled = state !is BackupUiState.Working,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -150,7 +146,7 @@ fun BackupDialog(
                 // restauration destructive — le rouge est porté par la confirmation, le poser
                 // dès l'entrée le banaliserait.
                 FilledTonalButton(
-                    onClick = { importLauncher.launch("*/*") },
+                    onClick = viewModel::requestImport,
                     enabled = state !is BackupUiState.Working,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -162,9 +158,29 @@ fun BackupDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { viewModel.reset(); onDismiss() }) {
+            TextButton(onClick = viewModel::closeDialog) {
                 Text(stringResource(R.string.common_ok))
             }
         }
     )
+
+    // Confirmation de restauration AVANT d'écraser/fusionner les données. Composée APRÈS le
+    // dialogue principal : chaque dialogue ouvre sa fenêtre dans l'ordre de composition, et
+    // au déverrouillage les deux entrent ensemble (archive déjà en attente) — composée avant,
+    // la confirmation s'ouvrait SOUS le dialogue principal, invisible et inatteignable.
+    if (pendingImportUri != null) {
+        // v7.1.132 - DESTRUCTIF au sens du socle : la restauration fusionne et ECRASE les
+        // fiches de meme identifiant, sans retour arriere. L'icone d'alerte reste donc rouge
+        // (c'est elle qui porte la distinction depuis v7.1.131), et la confirmation avec elle.
+        JtrAlertDialog(
+            onDismissRequest = viewModel::cancelImport,
+            icon = Icons.Default.Warning,
+            title = stringResource(R.string.backup_confirm_title),
+            text = stringResource(R.string.backup_confirm_text),
+            confirmLabel = stringResource(R.string.backup_confirm_action),
+            onConfirm = viewModel::confirmImport,
+            dismissLabel = stringResource(R.string.common_cancel),
+            destructive = true
+        )
+    }
 }

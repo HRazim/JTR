@@ -361,6 +361,8 @@
     <string name="backup_import">استعادة نسخة احتياطية</string>
     <string name="backup_working">العملية جارية…</string>
     <string name="backup_failed">فشلت العملية — الملف غير صالح أو يتعذّر الوصول إليه</string>
+    <string name="backup_export_cancelled">أُلغي التصدير — لم يُنشأ أي ملف</string>
+    <string name="backup_import_cancelled">أُلغيت الاستعادة — لم يُختر أي ملف</string>
     <string name="backup_confirm_title">استعادة هذه النسخة الاحتياطية؟</string>
     <string name="backup_confirm_text">ستُدمج البيانات مع بياناتك الحالية؛ وستُستبدل الإدخالات التي تحمل المعرّف نفسه. لا يمكن التراجع عن هذا الإجراء.</string>
     <string name="backup_confirm_action">استعادة</string>

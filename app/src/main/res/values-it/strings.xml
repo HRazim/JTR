@@ -361,6 +361,8 @@
     <string name="backup_import">Ripristina un backup</string>
     <string name="backup_working">Operazione in corso…</string>
     <string name="backup_failed">Operazione non riuscita — file non valido o inaccessibile</string>
+    <string name="backup_export_cancelled">Esportazione annullata — nessun file creato</string>
+    <string name="backup_import_cancelled">Ripristino annullato — nessun file selezionato</string>
     <string name="backup_confirm_title">Ripristinare questo backup?</string>
     <string name="backup_confirm_text">I dati verranno uniti a quelli attuali; le voci con lo stesso ID verranno sovrascritte. L\'operazione non può essere annullata.</string>
     <string name="backup_confirm_action">Ripristina</string>

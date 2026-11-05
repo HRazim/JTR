@@ -358,6 +358,8 @@
     <string name="backup_import">Restaurar una copia</string>
     <string name="backup_working">Operación en curso…</string>
     <string name="backup_failed">Error — archivo no válido o inaccesible</string>
+    <string name="backup_export_cancelled">Exportación cancelada — no se creó ningún archivo</string>
+    <string name="backup_import_cancelled">Restauración cancelada — no se eligió ningún archivo</string>
     <string name="backup_confirm_title">¿Restaurar esta copia?</string>
     <string name="backup_confirm_text">Los datos se fusionarán con los actuales; las fichas con el mismo identificador se sobrescribirán. Acción irreversible.</string>
     <string name="backup_confirm_action">Restaurar</string>

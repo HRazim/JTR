@@ -68,9 +68,12 @@ fun Person.effectiveNoteSections(notesTitle: String, likesTitle: String): List<N
  * Texte UNIQUE d'une section (v7.1.75) : titre et contenu recombinés pour le champ
  * d'édition unique (« 1re ligne = titre »). Concaténation PURE — aucun trim, aucune
  * normalisation. Invariant avec [splitCombinedText] : `combined(split(x)) == x` pour
- * tout x → le texte visible ne change jamais ; seule la répartition title/content peut
- * être redistribuée, et elle est un point fixe dès la première passe (aucune dérive
- * aux cycles d'édition suivants).
+ * tout x SAUF UNE exception (v7.1.144) : un titre suivi d'UN saut de ligne final et
+ * d'un contenu vide (`"titre\n"`, ou `"titre\r\n"`) → split = ("titre", "") →
+ * recombiné `"titre"` : le saut de ligne final est perdu. Il n'est donc PAS persisté
+ * (acceptable, aucun texte perdu) et l'éditeur ne doit JAMAIS réécrire le champ avec
+ * cette forme pendant la frappe (cf. [isSameNoteSplit]). Hors cette exception, la
+ * répartition title/content est un point fixe dès la première passe.
  */
 fun NoteSection.combinedText(): String = when {
     title.isEmpty() -> content
@@ -94,6 +97,16 @@ fun splitCombinedText(text: String): Pair<String, String> {
     if (first.isBlank()) return "" to text
     return first to text.substring(idx + 1)
 }
+
+/**
+ * Vrai si deux textes de champ donnent EXACTEMENT la même section (même découpage
+ * title/content) (v7.1.144). Ne diffèrent alors, au plus, que par le saut de ligne
+ * final non persisté (exception de [combinedText]). Sert à l'éditeur : une valeur
+ * remontée qui n'est que la projection de ce qui est déjà tapé ne doit pas écraser le
+ * champ ; tout VRAI changement (chargement, undo…) change le découpage → appliqué.
+ */
+fun isSameNoteSplit(a: String, b: String): Boolean =
+    splitCombinedText(a) == splitCombinedText(b)
 
 /** Section mise à jour depuis le champ unique : title/content redistribués, reste intact. */
 fun NoteSection.withCombinedText(text: String): NoteSection {

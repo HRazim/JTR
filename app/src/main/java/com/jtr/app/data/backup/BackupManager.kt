@@ -36,6 +36,11 @@ import timber.log.Timber
  * (profils corbeille incluse, catégories, dossiers, liaisons N-N, réseaux).
  * Les listes sont nullables pour permettre la VALIDATION post-parse d'un
  * fichier corrompu (Gson laisse `null` les champs manquants).
+ *
+ * ⚠️ CONTRAT `.jtr` : les noms de champs de ce graphe (cette classe et les entités
+ * qu'elle porte) SONT les clés JSON. Tout champ ou classe ajouté au graphe exige
+ * sa règle keep dans `proguard-rules.pro`, sinon R8 le renomme et l'archive devient
+ * illisible.
  */
 data class BackupPayload(
     val formatVersion: Int = 0,
