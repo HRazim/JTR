@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -147,6 +149,23 @@ class MainActivity : FragmentActivity() {
                     // pendant l'écran de verrou, leur résultat n'est jamais perdu.
                     BackupPickers(backupViewModel)
 
+                    // v7.1.146 — ÉTAT de navigation AU-DESSUS de la porte (l'AFFICHAGE reste
+                    // dessous) : verrouillé, le scaffold n'est toujours PAS composé. Avant, un
+                    // NavController neuf naissait à chaque déverrouillage (retour forcé à
+                    // l'Accueil) et l'ancien fuyait avec les ViewModels de sa pile. Créés une
+                    // seule fois, ils survivent au verrou (et à recreate(), comme avant) :
+                    //  - le NavController (pile + ViewModels des entrées) ;
+                    //  - un SaveableStateHolder : à la sortie de composition (verrouillage), il
+                    //    enregistre l'état `rememberSaveable` des écrans (défilement, saisie…),
+                    //    restitué au déverrouillage ;
+                    //  - le deep link de notification, CONSOMMÉ une fois : sans cela, son
+                    //    LaunchedEffect le rejouerait à chaque déverrouillage sur la pile conservée.
+                    val navController = rememberNavController()
+                    val unlockedContentState = rememberSaveableStateHolder()
+                    var pendingNotificationPersonId by rememberSaveable {
+                        mutableStateOf(notificationPersonId)
+                    }
+
                     if (lockEnabled && needsAuth) {
                         LockScreen(onUnlocked = lockViewModel::onUnlocked)
                     } else {
@@ -154,31 +173,40 @@ class MainActivity : FragmentActivity() {
                         // notification locale (anniversaires, proximité) ne s'affiche, même
                         // si le canal est créé. Demandée une seule fois au premier lancement.
                         RequestNotificationPermissionOnce()
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.background
-                        ) {
-                            val navController = rememberNavController()
-                            JTRMainScaffold(
-                                navController = navController,
-                                repository = repository,
-                                isDarkMode = isDarkMode,
-                                onDarkModeChange = { themeViewModel.setDarkMode(it) },
-                                selectedPreset = selectedPreset,
-                                onPresetSelected = { themeViewModel.setPreset(it) },
-                                fontScale = fontScale,
-                                onFontScaleChange = { themeViewModel.setFontScale(it) },
-                                notificationPersonId = notificationPersonId,
-                                onOpenBackup = backupViewModel::openDialog
-                            )
-                            BackupDialogHost(backupViewModel)
+                        unlockedContentState.SaveableStateProvider(UNLOCKED_CONTENT_KEY) {
+                            Surface(
+                                modifier = Modifier.fillMaxSize(),
+                                color = MaterialTheme.colorScheme.background
+                            ) {
+                                JTRMainScaffold(
+                                    navController = navController,
+                                    repository = repository,
+                                    isDarkMode = isDarkMode,
+                                    onDarkModeChange = { themeViewModel.setDarkMode(it) },
+                                    selectedPreset = selectedPreset,
+                                    onPresetSelected = { themeViewModel.setPreset(it) },
+                                    fontScale = fontScale,
+                                    onFontScaleChange = { themeViewModel.setFontScale(it) },
+                                    notificationPersonId = pendingNotificationPersonId,
+                                    onOpenBackup = backupViewModel::openDialog
+                                )
+                                BackupDialogHost(backupViewModel)
+                            }
                         }
+                        // Composé APRÈS le scaffold : son effet part après celui du deep link
+                        // (même passe, ordre FIFO), qui a donc déjà navigué. Le passage à null
+                        // relance ce dernier à vide (no-op) ; les déverrouillages suivants ne
+                        // renavigueront plus.
+                        LaunchedEffect(Unit) { pendingNotificationPersonId = null }
                     }
                 }
             }
         }
     }
 }
+
+/** Clé du contenu déverrouillé dans son SaveableStateHolder (v7.1.146). */
+private const val UNLOCKED_CONTENT_KEY = "unlocked_content"
 
 /**
  * Demande la permission POST_NOTIFICATIONS au premier lancement sur Android 13+.
