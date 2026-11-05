@@ -36,6 +36,7 @@ import com.jtr.app.security.LockViewModel
 import com.jtr.app.ui.backup.BackupDialogHost
 import com.jtr.app.ui.backup.BackupPickers
 import com.jtr.app.ui.backup.BackupViewModel
+import com.jtr.app.ui.components.ImeBatchOrderingRoot
 import com.jtr.app.ui.navigation.JTRMainScaffold
 import com.jtr.app.utils.JtrNotificationManager
 import com.jtr.app.utils.LocaleManager
@@ -81,123 +82,128 @@ class MainActivity : FragmentActivity() {
         }
 
         setContent {
-            val isDarkMode by themeViewModel.isDarkMode.collectAsState()
-            val selectedPreset by themeViewModel.selectedPreset.collectAsState()
-            val fontScale by themeViewModel.fontScale.collectAsState()
+            // v7.1.147 — RACINE de saisie : réordonne touche/action APRÈS le lot IME (course de
+            // foundation 1.7.6, cf. ImeBatchOrderFix). Au-dessus du thème ET du gate du verrou :
+            // tous les champs (écran de verrou, dialogues, feuilles) en profitent.
+            ImeBatchOrderingRoot {
+                val isDarkMode by themeViewModel.isDarkMode.collectAsState()
+                val selectedPreset by themeViewModel.selectedPreset.collectAsState()
+                val fontScale by themeViewModel.fontScale.collectAsState()
 
-            // ── System Bars : SOURCE UNIQUE = thème IN-APP (v7.1.12) ─────────────────
-            // enableEdgeToEdge() (SystemBarStyle.auto) déciderait l'apparence des icônes
-            // système (heure, batterie, Wi-Fi…) d'après le mode sombre du SYSTÈME ; or le FOND
-            // de la barre est dessiné par le thème de l'app. En cas de DIVERGENCE (système clair
-            // + app en sombre), on aurait icônes sombres sur fond sombre = illisible. On pilote
-            // donc l'apparence des icônes d'après le isDark IN-APP : thème clair → icônes sombres
-            // (isAppearanceLight* = true), thème sombre → icônes claires (false). La clé
-            // [isDarkMode] rend l'effet réactif → bascule Light↔Dark mise à jour immédiatement.
-            // Les barres restent transparentes (edge-to-edge) : on ne touche QUE l'apparence des
-            // icônes, pas les couleurs/transparence posées par enableEdgeToEdge().
-            val view = LocalView.current
-            DisposableEffect(isDarkMode) {
-                val controller = WindowCompat.getInsetsController(window, view)
-                controller.isAppearanceLightStatusBars = !isDarkMode
-                controller.isAppearanceLightNavigationBars = !isDarkMode
-                onDispose { }
-            }
+                // ── System Bars : SOURCE UNIQUE = thème IN-APP (v7.1.12) ─────────────────
+                // enableEdgeToEdge() (SystemBarStyle.auto) déciderait l'apparence des icônes
+                // système (heure, batterie, Wi-Fi…) d'après le mode sombre du SYSTÈME ; or le FOND
+                // de la barre est dessiné par le thème de l'app. En cas de DIVERGENCE (système clair
+                // + app en sombre), on aurait icônes sombres sur fond sombre = illisible. On pilote
+                // donc l'apparence des icônes d'après le isDark IN-APP : thème clair → icônes sombres
+                // (isAppearanceLight* = true), thème sombre → icônes claires (false). La clé
+                // [isDarkMode] rend l'effet réactif → bascule Light↔Dark mise à jour immédiatement.
+                // Les barres restent transparentes (edge-to-edge) : on ne touche QUE l'apparence des
+                // icônes, pas les couleurs/transparence posées par enableEdgeToEdge().
+                val view = LocalView.current
+                DisposableEffect(isDarkMode) {
+                    val controller = WindowCompat.getInsetsController(window, view)
+                    controller.isAppearanceLightStatusBars = !isDarkMode
+                    controller.isAppearanceLightNavigationBars = !isDarkMode
+                    onDispose { }
+                }
 
-            JTRTheme(darkTheme = isDarkMode, preset = selectedPreset) {
-                // Échelle de police choisie dans l'app appliquée à TOUT le texte
-                // (accessibilité, plafond strict 1.30 garanti par ThemeViewModel).
-                // On remplace l'échelle système par la nôtre → mise en page stable
-                // et bornée, indépendamment du réglage système.
-                val baseDensity = LocalDensity.current
-                CompositionLocalProvider(
-                    LocalDensity provides Density(baseDensity.density, fontScale)
-                ) {
-                    // ── Garde de verrou local (v6.2.0, re-verrouillage v6.2.3) ──
-                    // Le re-verrouillage est piloté par le PROCESS (ProcessLifecycleOwner)
-                    // et non par l'Activity : un recreate() (changement de langue/config)
-                    // ne fait PAS passer le process en arrière-plan, donc son ON_STOP ne
-                    // se déclenche QUE lors d'un vrai retour d'arrière-plan. La session de
-                    // déverrouillage vit dans [LockViewModel] (v7.1.143) : jamais
-                    // sauvegardée, elle ne survit pas à la mort du processus.
-                    // `collectAsState` (et non WithLifecycle) : l'état est suivi même
-                    // arrêté, l'écran de verrou est donc déjà composé au retour.
-                    val lockEnabled by lockViewModel.lockEnabled.collectAsState()
-                    val needsAuth by lockViewModel.needsAuth.collectAsState()
-                    DisposableEffect(Unit) {
-                        val processLifecycle = ProcessLifecycleOwner.get().lifecycle
-                        val observer = LifecycleEventObserver { _, event ->
-                            if (event == Lifecycle.Event.ON_STOP) lockViewModel.onAppBackgrounded()
+                JTRTheme(darkTheme = isDarkMode, preset = selectedPreset) {
+                    // Échelle de police choisie dans l'app appliquée à TOUT le texte
+                    // (accessibilité, plafond strict 1.30 garanti par ThemeViewModel).
+                    // On remplace l'échelle système par la nôtre → mise en page stable
+                    // et bornée, indépendamment du réglage système.
+                    val baseDensity = LocalDensity.current
+                    CompositionLocalProvider(
+                        LocalDensity provides Density(baseDensity.density, fontScale)
+                    ) {
+                        // ── Garde de verrou local (v6.2.0, re-verrouillage v6.2.3) ──
+                        // Le re-verrouillage est piloté par le PROCESS (ProcessLifecycleOwner)
+                        // et non par l'Activity : un recreate() (changement de langue/config)
+                        // ne fait PAS passer le process en arrière-plan, donc son ON_STOP ne
+                        // se déclenche QUE lors d'un vrai retour d'arrière-plan. La session de
+                        // déverrouillage vit dans [LockViewModel] (v7.1.143) : jamais
+                        // sauvegardée, elle ne survit pas à la mort du processus.
+                        // `collectAsState` (et non WithLifecycle) : l'état est suivi même
+                        // arrêté, l'écran de verrou est donc déjà composé au retour.
+                        val lockEnabled by lockViewModel.lockEnabled.collectAsState()
+                        val needsAuth by lockViewModel.needsAuth.collectAsState()
+                        DisposableEffect(Unit) {
+                            val processLifecycle = ProcessLifecycleOwner.get().lifecycle
+                            val observer = LifecycleEventObserver { _, event ->
+                                if (event == Lifecycle.Event.ON_STOP) lockViewModel.onAppBackgrounded()
+                            }
+                            processLifecycle.addObserver(observer)
+                            onDispose { processLifecycle.removeObserver(observer) }
                         }
-                        processLifecycle.addObserver(observer)
-                        onDispose { processLifecycle.removeObserver(observer) }
-                    }
 
-                    // Verrou actif → FLAG_SECURE : aperçu des apps récentes masqué et
-                    // captures d'écran bloquées. Indépendant du reste, retirable seul.
-                    LaunchedEffect(lockEnabled) {
-                        if (lockEnabled) {
-                            window.setFlags(
-                                WindowManager.LayoutParams.FLAG_SECURE,
-                                WindowManager.LayoutParams.FLAG_SECURE
-                            )
-                        } else {
-                            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-                        }
-                    }
-
-                    // Au-dessus de la porte : les sélecteurs de sauvegarde restent enregistrés
-                    // pendant l'écran de verrou, leur résultat n'est jamais perdu.
-                    BackupPickers(backupViewModel)
-
-                    // v7.1.146 — ÉTAT de navigation AU-DESSUS de la porte (l'AFFICHAGE reste
-                    // dessous) : verrouillé, le scaffold n'est toujours PAS composé. Avant, un
-                    // NavController neuf naissait à chaque déverrouillage (retour forcé à
-                    // l'Accueil) et l'ancien fuyait avec les ViewModels de sa pile. Créés une
-                    // seule fois, ils survivent au verrou (et à recreate(), comme avant) :
-                    //  - le NavController (pile + ViewModels des entrées) ;
-                    //  - un SaveableStateHolder : à la sortie de composition (verrouillage), il
-                    //    enregistre l'état `rememberSaveable` des écrans (défilement, saisie…),
-                    //    restitué au déverrouillage ;
-                    //  - le deep link de notification, CONSOMMÉ une fois : sans cela, son
-                    //    LaunchedEffect le rejouerait à chaque déverrouillage sur la pile conservée.
-                    val navController = rememberNavController()
-                    val unlockedContentState = rememberSaveableStateHolder()
-                    var pendingNotificationPersonId by rememberSaveable {
-                        mutableStateOf(notificationPersonId)
-                    }
-
-                    if (lockEnabled && needsAuth) {
-                        LockScreen(onUnlocked = lockViewModel::onUnlocked)
-                    } else {
-                        // Permission POST_NOTIFICATIONS (Android 13+) : sans elle, AUCUNE
-                        // notification locale (anniversaires, proximité) ne s'affiche, même
-                        // si le canal est créé. Demandée une seule fois au premier lancement.
-                        RequestNotificationPermissionOnce()
-                        unlockedContentState.SaveableStateProvider(UNLOCKED_CONTENT_KEY) {
-                            Surface(
-                                modifier = Modifier.fillMaxSize(),
-                                color = MaterialTheme.colorScheme.background
-                            ) {
-                                JTRMainScaffold(
-                                    navController = navController,
-                                    repository = repository,
-                                    isDarkMode = isDarkMode,
-                                    onDarkModeChange = { themeViewModel.setDarkMode(it) },
-                                    selectedPreset = selectedPreset,
-                                    onPresetSelected = { themeViewModel.setPreset(it) },
-                                    fontScale = fontScale,
-                                    onFontScaleChange = { themeViewModel.setFontScale(it) },
-                                    notificationPersonId = pendingNotificationPersonId,
-                                    onOpenBackup = backupViewModel::openDialog
+                        // Verrou actif → FLAG_SECURE : aperçu des apps récentes masqué et
+                        // captures d'écran bloquées. Indépendant du reste, retirable seul.
+                        LaunchedEffect(lockEnabled) {
+                            if (lockEnabled) {
+                                window.setFlags(
+                                    WindowManager.LayoutParams.FLAG_SECURE,
+                                    WindowManager.LayoutParams.FLAG_SECURE
                                 )
-                                BackupDialogHost(backupViewModel)
+                            } else {
+                                window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
                             }
                         }
-                        // Composé APRÈS le scaffold : son effet part après celui du deep link
-                        // (même passe, ordre FIFO), qui a donc déjà navigué. Le passage à null
-                        // relance ce dernier à vide (no-op) ; les déverrouillages suivants ne
-                        // renavigueront plus.
-                        LaunchedEffect(Unit) { pendingNotificationPersonId = null }
+
+                        // Au-dessus de la porte : les sélecteurs de sauvegarde restent enregistrés
+                        // pendant l'écran de verrou, leur résultat n'est jamais perdu.
+                        BackupPickers(backupViewModel)
+
+                        // v7.1.146 — ÉTAT de navigation AU-DESSUS de la porte (l'AFFICHAGE reste
+                        // dessous) : verrouillé, le scaffold n'est toujours PAS composé. Avant, un
+                        // NavController neuf naissait à chaque déverrouillage (retour forcé à
+                        // l'Accueil) et l'ancien fuyait avec les ViewModels de sa pile. Créés une
+                        // seule fois, ils survivent au verrou (et à recreate(), comme avant) :
+                        //  - le NavController (pile + ViewModels des entrées) ;
+                        //  - un SaveableStateHolder : à la sortie de composition (verrouillage), il
+                        //    enregistre l'état `rememberSaveable` des écrans (défilement, saisie…),
+                        //    restitué au déverrouillage ;
+                        //  - le deep link de notification, CONSOMMÉ une fois : sans cela, son
+                        //    LaunchedEffect le rejouerait à chaque déverrouillage sur la pile conservée.
+                        val navController = rememberNavController()
+                        val unlockedContentState = rememberSaveableStateHolder()
+                        var pendingNotificationPersonId by rememberSaveable {
+                            mutableStateOf(notificationPersonId)
+                        }
+
+                        if (lockEnabled && needsAuth) {
+                            LockScreen(onUnlocked = lockViewModel::onUnlocked)
+                        } else {
+                            // Permission POST_NOTIFICATIONS (Android 13+) : sans elle, AUCUNE
+                            // notification locale (anniversaires, proximité) ne s'affiche, même
+                            // si le canal est créé. Demandée une seule fois au premier lancement.
+                            RequestNotificationPermissionOnce()
+                            unlockedContentState.SaveableStateProvider(UNLOCKED_CONTENT_KEY) {
+                                Surface(
+                                    modifier = Modifier.fillMaxSize(),
+                                    color = MaterialTheme.colorScheme.background
+                                ) {
+                                    JTRMainScaffold(
+                                        navController = navController,
+                                        repository = repository,
+                                        isDarkMode = isDarkMode,
+                                        onDarkModeChange = { themeViewModel.setDarkMode(it) },
+                                        selectedPreset = selectedPreset,
+                                        onPresetSelected = { themeViewModel.setPreset(it) },
+                                        fontScale = fontScale,
+                                        onFontScaleChange = { themeViewModel.setFontScale(it) },
+                                        notificationPersonId = pendingNotificationPersonId,
+                                        onOpenBackup = backupViewModel::openDialog
+                                    )
+                                    BackupDialogHost(backupViewModel)
+                                }
+                            }
+                            // Composé APRÈS le scaffold : son effet part après celui du deep link
+                            // (même passe, ordre FIFO), qui a donc déjà navigué. Le passage à null
+                            // relance ce dernier à vide (no-op) ; les déverrouillages suivants ne
+                            // renavigueront plus.
+                            LaunchedEffect(Unit) { pendingNotificationPersonId = null }
+                        }
                     }
                 }
             }
